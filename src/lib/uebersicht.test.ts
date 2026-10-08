@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ladeQuelle } from "./supabase";
-import { aktivitaet, heuteSatz, kontingente, parseEvents, parseSnapshot, pipeline } from "./uebersicht";
+import { ladeQuelle, type Lesequelle } from "./supabase";
+import { aktivitaet, heuteSatz, kontingente, parseEvents, parseSnapshot, pipeline, schiene } from "./uebersicht";
 
 const jetzt = new Date("2026-10-08T12:00:00Z");
 const vor = (h: number) => new Date(jetzt.getTime() - h * 3_600_000).toISOString();
@@ -46,20 +46,48 @@ test("heuteSatz ist ohne Daten null, sonst mit Belegen", () => {
   assert.equal(r?.belege.length, 1);
 });
 
-test("ladeQuelle ohne Variablen meldet nicht-konfiguriert", async () => {
-  assert.deepEqual(await ladeQuelle({}), { zustand: "nicht-konfiguriert" });
+const kette = (res: { data: unknown; error: unknown }) => {
+  const k: Record<string, unknown> = { then: (f: (r: typeof res) => unknown) => Promise.resolve(res).then(f) };
+  for (const m of ["gte", "order", "limit"]) k[m] = () => k;
+  return k;
+};
+const fake = (tabellen: Record<string, { data: unknown; error: unknown }>, gesehen: string[] = []) =>
+  ({
+    from: (t: string) => ({
+      select: () => {
+        gesehen.push(t);
+        return kette(tabellen[t]);
+      },
+    }),
+  }) as unknown as Lesequelle;
+
+test("ladeQuelle liest beide Tabellen mit der Sitzung", async () => {
+  const gesehen: string[] = [];
+  const r = await ladeQuelle(
+    fake({ loop_events: { data: [{ created_at: vor(1) }], error: null }, loop_snapshot: { data: [{ project: "a" }], error: null } }, gesehen),
+    jetzt,
+  );
+  assert.deepEqual(gesehen.sort(), ["loop_events", "loop_snapshot"]);
+  assert.equal(r.zustand === "ok" && r.quelle.events.length, 1);
+  assert.equal(r.zustand === "ok" && r.quelle.snapshot.length, 1);
 });
 
-test("ladeQuelle liest beide Tabellen und fängt Fehler", async () => {
-  const urls: string[] = [];
-  const ok = (async (u: string) => {
-    urls.push(u);
-    return { ok: true, json: async () => [] };
-  }) as unknown as typeof fetch;
-  const r = await ladeQuelle({ NEXT_PUBLIC_SUPABASE_URL: "https://x.supabase.co/", NEXT_PUBLIC_SUPABASE_ANON_KEY: "k" }, ok, jetzt);
-  assert.equal(r.zustand, "ok");
-  assert.ok(urls.some((u) => u.startsWith("https://x.supabase.co/rest/v1/loop_events")));
-  assert.ok(urls.some((u) => u.includes("/loop_snapshot")));
-  const bad = (async () => ({ ok: false, status: 500 })) as unknown as typeof fetch;
-  assert.deepEqual(await ladeQuelle({ NEXT_PUBLIC_SUPABASE_URL: "https://x", NEXT_PUBLIC_SUPABASE_ANON_KEY: "k" }, bad, jetzt), { zustand: "fehler" });
+test("ladeQuelle meldet Fehler statt zu raten", async () => {
+  const bad = { data: null, error: { message: "x" } };
+  assert.deepEqual(await ladeQuelle(fake({ loop_events: bad, loop_snapshot: { data: [], error: null } }), jetzt), { zustand: "fehler" });
+  const wirft = {
+    from: () => {
+      throw new Error("x");
+    },
+  } as unknown as Lesequelle;
+  assert.deepEqual(await ladeQuelle(wirft, jetzt), { zustand: "fehler" });
+});
+
+test("schiene zeigt die sieben Stufen und zählt nur echte Daten", () => {
+  const s = parseSnapshot([{ project: "a", stage: "work" }, { project: "b", stage: "WORK" }, { project: "c", stage: "extra" }]);
+  const r = schiene(s);
+  assert.deepEqual(r.slice(0, 7).map((x) => x.stage), ["PLAN", "QUEUE", "WORK", "PR", "GATE", "MERGE", "DEPLOY"]);
+  assert.equal(r[2].anzahl, 2);
+  assert.deepEqual(r[7], { stage: "EXTRA", anzahl: 1 });
+  assert.deepEqual(schiene([]), []);
 });

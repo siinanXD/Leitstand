@@ -32,9 +32,11 @@ export default defineConfig({
   webServer: externalBaseURL
     ? undefined
     : {
-        command: "npx next start --hostname 127.0.0.1 --port 43124",
+        // NEXT_PUBLIC_* wird beim Build eingebettet; die Tests mocken Supabase unter dieser Adresse.
+        command: "npm run build && npx next start --hostname 127.0.0.1 --port 43124",
+        env: { NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321", NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key" },
         url: "http://127.0.0.1:43124",
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        timeout: 300_000,
       },
 });

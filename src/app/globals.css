@@ -213,3 +213,120 @@ body {
   background: var(--color-accent-primary);
   border-radius: var(--radius-tool);
 }
+
+.kopf {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  padding-bottom: var(--space-16);
+}
+
+.kopf p {
+  margin: 0;
+}
+
+.marke {
+  color: var(--color-text-primary);
+}
+
+.kopf-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-left: auto;
+}
+
+.kopf-hinweis {
+  flex-basis: 100%;
+  text-align: right;
+}
+
+.knopf {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-16);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font: inherit;
+  cursor: pointer;
+}
+
+.knopf:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.knopf.aktiv {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+  font-weight: 600;
+}
+
+.knopf.aktiv:disabled {
+  cursor: wait;
+}
+
+.schiene li.belegt {
+  border-color: var(--color-accent-primary);
+}
+
+.segmente {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.segmente div {
+  height: var(--space-8);
+  background: var(--color-bg-raised);
+  border-radius: var(--radius-tool);
+}
+
+.segmente div.voll {
+  background: var(--color-accent-primary);
+}
+
+.anmelden {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-32) var(--space-16);
+}
+
+.formular {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.formular input {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-12);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font: inherit;
+}
+
+.meldung {
+  margin: var(--space-16) 0 0;
+}
+
+.meldung.fehler {
+  color: var(--color-status-error);
+}
+
+.meldung a {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 899px) {
+  .schiene {
+    flex-wrap: wrap;
+  }
+
+  .schiene li {
+    flex: 1 1 96px;
+  }
+}
