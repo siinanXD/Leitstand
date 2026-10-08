@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, gespiegelteIds, issueText, linearId, marker, reparatur, waehle, type LinearIssue } from "./auswahl";
+import { ausLinear, gespiegelteIds, issueText, linearId, marker, nachruecken, reparatur, waehle, type LinearIssue } from "./auswahl";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
   id: o.identifier,
@@ -85,4 +85,22 @@ test("ausLinear übernimmt Labels, Status und Blocker", () => {
   assert.deepEqual(i.labels, ["claude"]);
   assert.equal(i.priority, 0);
   assert.deepEqual(i.blockiertVon, [{ identifier: "SIN-2", stateType: "started" }]);
+});
+
+test("nachruecken: wichtigstes Backlog-Issue ohne Design, Sinan-Aufgabe oder Blocker", () => {
+  const issues = [
+    issue({ identifier: "SIN-10", stateType: "backlog", labels: [], priority: 3, createdAt: "2026-10-01T00:00:00Z" }),
+    issue({ identifier: "SIN-11", stateType: "backlog", labels: ["design"], priority: 1 }),
+    issue({ identifier: "SIN-12", stateType: "backlog", labels: [], priority: 2 }),
+    issue({ identifier: "SIN-13", stateType: "backlog", labels: ["sinan"], priority: 1 }),
+    issue({ identifier: "SIN-14", stateType: "backlog", labels: [], priority: 1, blockiertVon: [{ identifier: "SIN-9", stateType: "started" }] }),
+  ];
+  assert.equal(nachruecken(issues, new Set(), 1)?.identifier, "SIN-12");
+});
+
+test("nachruecken: nichts, solange ein Todo wartet oder kein Platz frei ist", () => {
+  const backlog = issue({ identifier: "SIN-20", stateType: "backlog", labels: [] });
+  assert.equal(nachruecken([backlog, issue({ identifier: "SIN-21" })], new Set(), 1), null);
+  assert.equal(nachruecken([backlog, issue({ identifier: "SIN-22", stateType: "started" })], new Set(), 1), null);
+  assert.equal(nachruecken([backlog], new Set(), 1)?.identifier, "SIN-20");
 });

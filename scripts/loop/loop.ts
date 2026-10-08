@@ -1,7 +1,8 @@
 /**
  * Loop des Leitstands (SIN-413). Aufruf aus den Workflows:
  *
- *   npx tsx scripts/loop/loop.ts dispatch            Todo-Issues aus Linear als GitHub-Issue mit Label `claude` starten
+ *   npx tsx scripts/loop/loop.ts dispatch            Todo-Issues aus Linear als GitHub-Issue mit Label `claude` starten;
+ *                                                    ist keins da, rückt das wichtigste Backlog-Issue nach (SIN-417)
  *   npx tsx scripts/loop/loop.ts gemergt --pr 12     Linear-Issue zum gemergten PR auf Done setzen
  *   npx tsx scripts/loop/loop.ts reparatur --pr 12 --lauf <url>   nach rotem `build`: @claude bitten oder stoppen
  *
@@ -9,7 +10,7 @@
  * Optional: LOOP_MAX_PARALLEL (Standard 1), DRY_RUN=1, SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY für loop_events.
  * Ohne Supabase-Secrets steht nur eine Warnung im Log (nie ein Abbruch).
  */
-import { ausLinear, gespiegelteIds, issueText, linearId, PROJEKT, reparatur, waehle, type GithubIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, gespiegelteIds, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -73,7 +74,7 @@ type Node = Parameters<typeof ausLinear>[0] & { team: { id: string } };
 async function projektIssues(): Promise<Node[]> {
   const d = await linear<{ issues: { nodes: Node[] } }>(
     `query($p: String!) {
-      issues(first: 100, filter: { project: { name: { eq: $p } }, state: { type: { in: ["unstarted", "started"] } } }) {
+      issues(first: 100, filter: { project: { name: { eq: $p } }, state: { type: { in: ["backlog", "unstarted", "started"] } } }) {
         nodes { id identifier title description priority url createdAt team { id }
           labels { nodes { name } } state { type }
           inverseRelations { nodes { type issue { identifier state { type } } } } }
@@ -108,13 +109,42 @@ async function issueNachKennung(identifier: string) {
   return d.issue;
 }
 
+/** Backlog-Issue auf Todo mit Label `claude` setzen und das in Linear vermerken (SIN-417). */
+async function rueckeNach(i: LinearIssue, teamId: string) {
+  const d = await linear<{ team: { states: { nodes: { id: string; name: string }[] }; labels: { nodes: { id: string; name: string }[] } } }>(
+    `query($t: String!) { team(id: $t) { states { nodes { id name } } labels(first: 250) { nodes { id name } } } }`,
+    { t: teamId },
+  );
+  const todo = d.team.states.nodes.find((x) => x.name === "Todo");
+  const label = d.team.labels.nodes.find((x) => x.name.toLowerCase() === LABEL);
+  if (!todo || !label) throw new Error("Status „Todo“ oder Label „claude“ in Linear nicht gefunden");
+  if (DRY) return console.log(`[trocken] würde nachrücken: ${i.identifier}`);
+  await linear(`mutation($id: String!, $s: String!, $l: [String!]) { issueUpdate(id: $id, input: { stateId: $s, addedLabelIds: $l }) { success } }`, {
+    id: i.id,
+    s: todo.id,
+    l: [label.id],
+  });
+  await kommentar(i.id, "Automatisch aus dem Backlog nachgerückt: keine anderen Leitstand-Issues mehr in der Schlange (SIN-417). Mit Label `design`, `sinan` oder `needs-human` rückt ein Issue nie nach.");
+  console.log(`Nachgerückt: ${i.identifier}`);
+}
+
 async function dispatch() {
   await ereignis("dispatch", "start");
   const nodes = await projektIssues();
   const issues = nodes.map(ausLinear);
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=all&per_page=100`);
   const max = Number(env.LOOP_MAX_PARALLEL ?? 1);
-  const wahl = waehle(issues, gespiegelteIds(ghIssues), max);
+  const gespiegelt = gespiegelteIds(ghIssues);
+  let wahl = waehle(issues, gespiegelt, max);
+  if (!wahl.length) {
+    const naechstes = nachruecken(issues, gespiegelt, max);
+    if (naechstes) {
+      const node = nodes.find((n) => n.id === naechstes.id)!;
+      await rueckeNach(naechstes, node.team.id);
+      const befoerdert: LinearIssue = { ...naechstes, stateType: "unstarted", labels: [...naechstes.labels, LABEL] };
+      wahl = waehle([...issues.filter((i) => i.id !== naechstes.id), befoerdert], gespiegelt, max);
+    }
+  }
   if (!wahl.length) {
     console.log("Nichts zu starten (keine freien Plätze oder keine Todo-Issues mit Label claude).");
     await ereignis("dispatch", "uebersprungen");
