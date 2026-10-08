@@ -34,6 +34,23 @@ Regeln für alle Agenten in diesem Repo. Sie ersetzen Rückfragen an Sinan. Dies
 - Barrierefreiheits-Tests abschalten, um etwas durchzubringen.
 - Personendaten in Prompts.
 
+## Loop (SIN-413)
+
+Der Leitstand baut sich selbst wie die Lern-App, in schlanker Form:
+
+1. `dispatch.yml` (alle 2 Stunden, von Hand und nach jedem Merge) holt aus Linear die Todo-Issues im Projekt „Leitstand“ mit Label `claude`, die nicht blockiert sind. Höchstens `LOOP_MAX_PARALLEL` (Standard 1) laufen gleichzeitig.
+2. Für jedes gewählte Issue entsteht ein GitHub-Issue mit Label `claude`. Das startet `claude.yml`. Linear springt auf „In Progress“.
+3. Der Worker öffnet den PR. `build` prüft, `automerge.yml` mergt per Squash, sobald `build` grün ist.
+4. `loop-merge.yml` setzt das Linear-Issue aus dem PR-Titel auf „Done“ und startet sofort das nächste.
+5. `repair.yml`: Ist `build` auf einem `claude/`-PR rot, bittet der Loop `@claude` um Reparatur. Höchstens 3 Runden (`repair:1` bis `repair:3`), dann `needs-human` und Hinweis in Linear.
+
+Regeln:
+
+- Ein Linear-Issue startet nur mit Label `claude` und Status „Todo“. Backlog startet nie.
+- PRs, die `.github/workflows/` ändern, mergen nie automatisch. Sinan entscheidet.
+- Ereignisse landen in `loop_events` mit Projekt `leitstand`, sobald die Secrets `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` im Repo stehen. Ohne sie gibt es nur eine Warnung im Log.
+- Logik in `src/lib/loop/auswahl.ts` (rein, mit Tests), Netz in `scripts/loop/loop.ts`.
+
 ## Pull Requests
 
 - Ein PR pro Linear-Issue. Titel als Conventional Commit mit Linear-ID, z. B. `feat(uebersicht): Projekt-Karten (SIN-304)`.
