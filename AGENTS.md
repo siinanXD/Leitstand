@@ -6,7 +6,7 @@ Regeln für alle Agenten in diesem Repo. Sie ersetzen Rückfragen an Sinan. Dies
 
 1. Das zugewiesene Linear-Issue (SIN-304, SIN-305 unter SIN-242)
 2. `siinanXD/Content-Agent-Lernapp`: `AGENTS.md`, `docs/design/regeln-2026.md`, `docs/design/tokens.json`
-3. Figma-Datei `7Ti9iVUjUjw3rh9WYhSu9K` (Frames 00–06) ist die einzige Quelle für Farben, Abstände, Komponenten
+3. Figma-Datei `7Ti9iVUjUjw3rh9WYhSu9K` ist die einzige Quelle für Farben, Abstände, Komponenten. Maßgeblich ist die **Variante 2026**: Frame `10:3` „B1 Leitstand · Variante 2026 (Bento, präzise)“ (Kopfzeile, „Heute in einem Satz“ mit Belegen, Bento mit Pipeline-Schiene, In Arbeit, Zahlen, Braucht dich, Kontingente, Aktivität 24 h). Alle Zahlen und Texte in diesem Frame sind Beispiele und werden nie übernommen. Werte per `get_design_context` lesen, nicht schätzen.
 
 ## Grundsatz
 
