@@ -1,0 +1,58 @@
+# Claude baut Leitstand-Issues (SIN-304, SIN-305, ...). Schlanke Fassung des Loops der Lern-App.
+# Auslöser: Label "claude" auf einem Issue oder @claude in Kommentaren (nur Nutzer mit Schreibrechten).
+# Läuft mit AGENT_WORKFLOW_TOKEN, damit PRs Folge-Workflows (build) auslösen. Ohne das Secret scheitert der Lauf sofort.
+name: Claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [labeled]
+
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+      || (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+      || (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      || (github.event_name == 'issues' && github.event.label.name == 'claude')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Agenten-Token prüfen
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Secret AGENT_WORKFLOW_TOKEN fehlt."
+            exit 1
+          fi
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          fetch-depth: 1
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          label_trigger: claude
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 60
+            --allowedTools "Bash(git fetch:*),Bash(git merge:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx tsc:*),Bash(npx vitest:*),Bash(npx eslint:*),Bash(node --check:*)"
+            --append-system-prompt "Wurdest du auf einem Issue ausgelöst und hast Commits auf deinen Branch gepusht, öffne den PR selbst: gh pr create --head <Branch> --base main --title <Titel> --body <Text>. Kein Draft. Titel als Conventional Commit mit Linear-ID, z. B. feat(uebersicht): Projekt-Karten (SIN-304). Body beginnt mit 'Closes #<Issue-Nummer>' und nennt in einem Satz, was sich ändert. Lies zuerst AGENTS.md. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test. Kein Playwright, kein Docker. Committe nie node_modules oder Build-Ausgaben. Nie selbst mergen, nie Labels setzen oder entfernen. Höchstens 3 Reparaturrunden pro PR."
