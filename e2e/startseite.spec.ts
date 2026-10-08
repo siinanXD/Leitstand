@@ -33,8 +33,8 @@ test("Übersicht mit Beispiel-Daten hat keine axe-Fehler", async ({ page }) => {
   await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) =>
     route.fulfill({
       json: [
-        { id: "1", created_at: new Date(jetzt - 600_000).toISOString(), project: "beispiel", type: "pr", message: "Beispiel-Ereignis" },
-        { id: "2", created_at: new Date(jetzt - 7_200_000).toISOString(), project: "beispiel", type: "gate", message: "Beispiel-Gate" },
+        { id: "1", created_at: new Date(jetzt - 600_000).toISOString(), project: "beispiel", step: "pr", status: "ok", issue: "SIN-1", pr: 1 },
+        { id: "2", created_at: new Date(jetzt - 7_200_000).toISOString(), project: "beispiel", step: "gate", status: "start", issue: "SIN-2", pr: null },
       ],
     }),
   );

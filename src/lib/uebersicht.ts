@@ -1,6 +1,6 @@
 // Reine Ableitungen für die Übersicht. Eingabe sind Zeilen aus loop_events und loop_snapshot (SIN-303); nichts wird erfunden.
 
-export type LoopEvent = { id: string; created_at: string; project: string | null; type: string | null; message: string | null };
+export type LoopEvent = { id: string; created_at: string; project: string | null; step: string | null; status: string | null; issue: string | null; pr: number | null };
 export type SnapshotRow = {
   project: string;
   stage: string | null;
@@ -25,7 +25,7 @@ export function parseEvents(raw: unknown): LoopEvent[] {
     const o = obj(r);
     const created = o && str(o.created_at);
     if (!o || !created || Number.isNaN(Date.parse(created))) return [];
-    return [{ id: String(o.id ?? created), created_at: created, project: str(o.project), type: str(o.type), message: str(o.message) }];
+    return [{ id: String(o.id ?? created), created_at: created, project: str(o.project), step: str(o.step), status: str(o.status), issue: str(o.issue), pr: num(o.pr) }];
   });
 }
 

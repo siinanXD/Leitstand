@@ -48,7 +48,7 @@ export function Bento({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
             <ul className="liste" aria-label="Belege">
               {satz.belege.map((b) => (
                 <li key={b.id}>
-                  <span className="mono">{uhrzeit(b.created_at)}</span> {b.project ?? ""} {b.type ?? ""} {b.message ?? ""}
+                  <span className="mono">{uhrzeit(b.created_at)}</span> {[b.project, b.step, b.status, b.issue].filter(Boolean).join(" ")}
                 </li>
               ))}
             </ul>
