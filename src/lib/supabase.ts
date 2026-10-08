@@ -1,27 +1,23 @@
 import { parseEvents, parseSnapshot, type Quelle } from "./uebersicht";
 
-export type Laden = { zustand: "ok"; quelle: Quelle } | { zustand: "nicht-konfiguriert" } | { zustand: "fehler" };
+export type Laden = { zustand: "ok"; quelle: Quelle } | { zustand: "fehler" };
 
-type Env = Record<string, string | undefined>;
+type Antwort = PromiseLike<{ data: unknown; error: unknown }>;
+type Kette = Antwort & { gte(spalte: string, wert: string): Kette; order(spalte: string, opt: { ascending: boolean }): Kette; limit(n: number): Kette };
 
-/** Lesezugriff über PostgREST mit dem öffentlichen Anon-Key (RLS schützt die Tabellen). */
-export async function ladeQuelle(env: Env = process.env, fetchFn: typeof fetch = fetch, jetzt = new Date()): Promise<Laden> {
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return { zustand: "nicht-konfiguriert" };
-  const kopf = { apikey: key, Authorization: `Bearer ${key}` };
+/** Der Teil des Supabase-Clients, den die Datenschicht braucht (für Tests ersetzbar). */
+export type Lesequelle = { from(tabelle: string): { select(spalten: string): Kette } };
+
+/** Lesen mit der Sitzung des Nutzers; RLS (`leitstand_nutzer`) entscheidet, was ankommt. */
+export async function ladeQuelle(client: Lesequelle, jetzt = new Date()): Promise<Laden> {
   const ab = new Date(jetzt.getTime() - 24 * 3_600_000).toISOString();
-  const get = async (pfad: string) => {
-    const res = await fetchFn(`${url.replace(/\/$/, "")}/rest/v1/${pfad}`, { headers: kopf, cache: "no-store" });
-    if (!res.ok) throw new Error(`Supabase ${res.status}`);
-    return res.json() as Promise<unknown>;
-  };
   try {
     const [events, snapshot] = await Promise.all([
-      get(`loop_events?select=*&created_at=gte.${encodeURIComponent(ab)}&order=created_at.desc&limit=1000`),
-      get("loop_snapshot?select=*&limit=200"),
+      client.from("loop_events").select("*").gte("created_at", ab).order("created_at", { ascending: false }).limit(1000),
+      client.from("loop_snapshot").select("*").limit(200),
     ]);
-    return { zustand: "ok", quelle: { events: parseEvents(events), snapshot: parseSnapshot(snapshot) } };
+    if (events.error || snapshot.error) return { zustand: "fehler" };
+    return { zustand: "ok", quelle: { events: parseEvents(events.data), snapshot: parseSnapshot(snapshot.data) } };
   } catch {
     return { zustand: "fehler" };
   }

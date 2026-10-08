@@ -73,7 +73,19 @@ export function pipeline(snapshot: SnapshotRow[]): { stage: string; anzahl: numb
   return [...zaehler].map(([stage, anzahl]) => ({ stage, anzahl }));
 }
 
-const LAEUFT = new Set(["running", "in_progress", "active"]);
+export const STUFEN = ["PLAN", "QUEUE", "WORK", "PR", "GATE", "MERGE", "DEPLOY"];
+
+/** Pipeline-Schiene: feste Stufen, Zahlen nur aus dem Snapshot; ohne Stufen-Daten leer. */
+export function schiene(snapshot: SnapshotRow[]): { stage: string; anzahl: number }[] {
+  const zaehler = new Map<string, number>();
+  for (const { stage, anzahl } of pipeline(snapshot)) zaehler.set(stage.toUpperCase(), (zaehler.get(stage.toUpperCase()) ?? 0) + anzahl);
+  if (zaehler.size === 0) return [];
+  const fest = STUFEN.map((stage) => ({ stage, anzahl: zaehler.get(stage) ?? 0 }));
+  const weitere = [...zaehler].filter(([stage]) => !STUFEN.includes(stage)).map(([stage, anzahl]) => ({ stage, anzahl }));
+  return [...fest, ...weitere];
+}
+
+const LAEUFT =new Set(["running", "in_progress", "active"]);
 const WARTET = new Set(["waiting", "blocked", "needs_review", "needs_human"]);
 
 export const inArbeit = (s: SnapshotRow[]) => s.filter((r) => r.status && LAEUFT.has(r.status));
