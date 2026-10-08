@@ -1,0 +1,104 @@
+/* Tokens aus Figma-Datei 7Ti9iVUjUjw3rh9WYhSu9K, Frame „00 Stilblatt“ (get_variable_defs, 08.10.2026). Farben nie als Hex im Code. */
+:root {
+  --color-bg-base: #0c0a09;
+  --color-bg-surface: #1c1917;
+  --color-bg-raised: #292524;
+  --color-border-subtle: #3a3532;
+  --color-text-primary: #fafaf9;
+  --color-text-secondary: #a8a29e;
+  --color-accent-primary: #ea580c;
+  --color-accent-strong: #c2410c;
+  --color-accent-soft: #431407;
+  --color-status-ok: #22c55e;
+  --color-status-warn: #f59e0b;
+  --color-status-error: #ef4444;
+  --color-status-info: #38bdf8;
+  /* Abstände und Rundung nach docs/design/regeln-2026.md der Lern-App (Leitstand: 2 px, 1-px-Linien). */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --radius-tool: 2px;
+  --bento-gap: 12px;
+  --bento-gap-wide: 16px;
+  --bento-line: 1px solid var(--color-border-subtle);
+  --touch-min: 44px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+.mono-label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.bento {
+  display: grid;
+  gap: var(--bento-gap);
+  padding: var(--space-16);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+@media (min-width: 900px) {
+  .bento {
+    grid-template-columns: 2fr 1fr;
+    gap: var(--bento-gap-wide);
+    padding: var(--space-32);
+  }
+}
+
+.tile {
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  padding: var(--space-24);
+}
+
+.tile h1,
+.tile h2 {
+  margin: var(--space-8) 0 var(--space-12);
+}
+
+.tile a.action {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-16);
+  background: var(--color-accent-strong);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-tool);
+  text-decoration: none;
+  font-weight: 600;
+}
