@@ -46,7 +46,8 @@ Der Leitstand baut sich selbst wie die Lern-App, in schlanker Form:
 
 Regeln:
 
-- Ein Linear-Issue startet nur mit Label `claude` und Status „Todo“. Backlog startet nie.
+- Ein Linear-Issue startet nur mit Label `claude` und Status „Todo“.
+- Nachrücken (SIN-417): Ist keins mehr in der Schlange, setzt `dispatch` das wichtigste Backlog-Issue (Priorität, dann ältestes) auf „Todo“ mit Label `claude`. Nie mit Label `design`, `sinan` oder `needs-human`, nie blockiert. Wer ein Backlog-Issue zurückhalten will, gibt ihm eins dieser Labels.
 - PRs, die `.github/workflows/` ändern, mergen nie automatisch. Sinan entscheidet.
 - Ereignisse landen in `loop_events` mit Projekt `leitstand`, sobald die Secrets `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` im Repo stehen. Ohne sie gibt es nur eine Warnung im Log.
 - Logik in `src/lib/loop/auswahl.ts` (rein, mit Tests), Netz in `scripts/loop/loop.ts`.

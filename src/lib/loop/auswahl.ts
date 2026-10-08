@@ -62,6 +62,25 @@ export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: numb
     .slice(0, frei);
 }
 
+/** Labels, mit denen ein Backlog-Issue nie automatisch nachrückt (Design zuerst, Aufgabe für Sinan, Stopp). */
+export const NIE_AUTOMATISCH = ["design", "sinan", "needs-human"];
+
+/**
+ * Nachrücken (SIN-417): Ist kein Todo-Issue mit Label `claude` startbar und noch ein Platz frei, rückt das
+ * wichtigste Backlog-Issue nach (höchste Priorität, dann ältestes). Nie mit Label aus NIE_AUTOMATISCH, nie blockiert.
+ */
+export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max: number): LinearIssue | null {
+  const laufend = issues.filter((i) => i.stateType === "started" && hatLabel(i)).length;
+  if (laufend >= max) return null;
+  const wartend = issues.filter((i) => i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier));
+  if (wartend.length) return null;
+  const kandidaten = issues
+    .filter((i) => i.stateType === "backlog" && !offenBlockiert(i))
+    .filter((i) => !i.labels.some((l) => NIE_AUTOMATISCH.includes(l.toLowerCase())))
+    .sort((a, b) => rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt));
+  return kandidaten[0] ?? null;
+}
+
 /** Text des GitHub-Issues, das den Worker (claude.yml) startet. */
 export function issueText(i: LinearIssue): { title: string; body: string } {
   const kurz = i.identifier.toLowerCase();
