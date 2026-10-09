@@ -59,3 +59,9 @@ Regeln:
 - Vor dem Push: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`.
 - Höchstens 3 Reparaturrunden pro PR, dann stoppen und Blocker melden.
 - Nie selbst mergen.
+
+## Projekt-Wächter (SIN-419)
+
+- `scripts/waechter/waechter.ts` (Netz) und `src/lib/waechter/` (rein, mit Tests): je Linear-Projekt „In Progress“ mit Projekt-Link „GitHub“ Schlange füllen, Hänger reparieren, Tages-Update; neue Projekte einrichten.
+- Workflow-Vorlage: `docs/waechter/waechter.yml` nach `.github/workflows/waechter.yml` kopieren (Sinan, Worker darf Workflows nicht ändern). Trockenlauf: `DRY_RUN=1`.
+- `AGENT_WORKFLOW_TOKEN` braucht Lese- und Kommentarrechte auf alle aktiven Repos.
