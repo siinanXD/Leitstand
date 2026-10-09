@@ -2,7 +2,7 @@
  * Projekt-Wächter (SIN-419): reine Funktionen, kein Netz.
  * Das Skript scripts/waechter/waechter.ts holt Daten aus Linear und GitHub und führt die geplanten Aktionen aus.
  */
-import { MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, type LinearIssue } from "../loop/auswahl";
+import { LABEL, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, type LinearIssue } from "../loop/auswahl";
 
 export const PLANUNG_TITEL = "Nächste Schritte planen";
 export const EINRICHTEN_TITEL = "Projekt einrichten";
@@ -113,11 +113,15 @@ export type HaengerAktion = { art: "zuruecksetzen" | "needs-human"; issue: Waech
 const prGehoertZu = (pr: PrInfo, i: LinearIssue) =>
   pr.titel.includes(i.identifier) || pr.branch.toLowerCase().includes(i.identifier.toLowerCase());
 
-/** Issue „In Progress“ seit mehr als 6 Stunden ohne offenen PR: einmal zurück auf Todo, danach needs-human. */
+/**
+ * Issue „In Progress“ seit mehr als 6 Stunden ohne offenen PR: einmal zurück auf Todo, danach needs-human.
+ * Nur Loop-Issues (Label `claude`). Epics und Handarbeit (z. B. SIN-242) bleiben „In Progress“.
+ */
 export function erkenneIssueHaenger(issues: WaechterIssue[], offenePrs: PrInfo[], jetzt: Date): HaengerAktion[] {
   const r: HaengerAktion[] = [];
   for (const i of issues) {
     if (i.stateType !== "started" || !i.startedAt) continue;
+    if (!hatLabel(i, LABEL)) continue;
     if (hatLabel(i, "needs-human")) continue;
     if (jetzt.getTime() - ms(i.startedAt) <= HAENGER_STUNDEN * STUNDE) continue;
     if (offenePrs.some((pr) => prGehoertZu(pr, i))) continue;
