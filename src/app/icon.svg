@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <!-- Leitstand-App-Icon A „Schiene“ (Figma 7Ti9iVUjUjw3rh9WYhSu9K, Komponente 40:2): bg/base, text/secondary, text/primary, accent/primary -->
+  <rect width="120" height="120" fill="#0c0a09"/>
+  <rect x="26" y="57" width="68" height="6" rx="3" fill="#a8a29e"/>
+  <circle cx="28" cy="60" r="11" fill="#fafaf9"/>
+  <circle cx="60" cy="60" r="11" fill="#fafaf9"/>
+  <circle cx="92" cy="60" r="13" fill="#ea580c"/>
+</svg>
