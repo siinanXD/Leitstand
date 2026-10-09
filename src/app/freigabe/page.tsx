@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import type { BereichZeile } from "@/lib/bereiche";
 import { browserClient } from "@/lib/browser-client";
+import { BereichIcon } from "../bereich-icon";
 import { Rahmen } from "../rahmen";
 
 type Detail = {
@@ -76,54 +77,45 @@ function Inhalt() {
 
   const { detail } = zustand;
   const offen = detail.pr.status === "open" && !detail.pr.entwurf;
+  const dateien = (n: number) => `${n} ${n === 1 ? "Datei" : "Dateien"}`;
   return (
     <main className="seite freigabe">
-      <header className="tile">
-        <p className="mono-label">
-          {repo} · <span className="mono">#{detail.pr.nummer}</span>
-        </p>
+      <header className="freigabe-kopf">
+        <p className="augenbraue">Braucht dich · Freigabe</p>
         <h1>{detail.pr.titel}</h1>
+        <p className="leer mono">
+          {repo} · #{detail.pr.nummer}
+        </p>
+        <ul className="merkmale" aria-label="Merkmale">
+          <li className="mono">{detail.pr.status}</li>
+          <li className="mono">
+            {detail.pr.zweig} → {detail.pr.ziel}
+          </li>
+          <li className="mono">{detail.pr.autor ?? "unbekannt"}</li>
+        </ul>
       </header>
 
-      <section className="tile" aria-labelledby="merkmale">
-        <h2 id="merkmale" className="mono-label">
-          Merkmale
-        </h2>
-        <dl className="zahlen">
-          <div>
-            <dt>Status</dt>
-            <dd className="mono">{detail.pr.status}</dd>
-          </div>
-          <div>
-            <dt>Zweig</dt>
-            <dd className="mono">
-              {detail.pr.zweig} → {detail.pr.ziel}
-            </dd>
-          </div>
-          <div>
-            <dt>Autor</dt>
-            <dd className="mono">{detail.pr.autor ?? "unbekannt"}</dd>
-          </div>
-          <div>
-            <dt>Dateien</dt>
-            <dd className="mono">{detail.dateien}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="tile" aria-labelledby="aenderungen">
-        <h2 id="aenderungen" className="mono-label">
-          Änderungen nach Bereichen
+      <section aria-labelledby="aenderungen">
+        <h2 id="aenderungen" className="mono-label bereiche-kopf">
+          <span>Was sich ändert</span>
+          <span>
+            {detail.bereiche.length} {detail.bereiche.length === 1 ? "Bereich" : "Bereiche"} · {dateien(detail.dateien)}
+          </span>
         </h2>
         {detail.bereiche.length === 0 ? (
           <p className="leer">Keine Daten</p>
         ) : (
-          <ul className="liste">
+          <ul className="bereiche">
             {detail.bereiche.map((b) => (
               <li key={b.bereich}>
-                <strong>{b.bereich}</strong> <span className="mono">{b.dateien}</span>
-                <br />
-                <span className="leer">{b.satz}</span>
+                <BereichIcon bereich={b.bereich} />
+                <div>
+                  <p className="mono-label zeile">
+                    <span>{b.bereich}</span>
+                    <span>{dateien(b.dateien)}</span>
+                  </p>
+                  <p className="satz-bereich">{b.satz}</p>
+                </div>
               </li>
             ))}
           </ul>
@@ -131,8 +123,8 @@ function Inhalt() {
       </section>
 
       {detail.grund && (
-        <section className="tile grund" aria-labelledby="grund">
-          <h2 id="grund" className="mono-label">
+        <section className="grund" aria-labelledby="grund">
+          <h2 id="grund" className="marke-grund">
             Grund für Freigabe
           </h2>
           <p>{detail.grund}</p>
@@ -146,7 +138,7 @@ function Inhalt() {
       )}
 
       <div className="aktionen">
-        <button type="button" className="knopf aktiv" disabled={!offen || laeuft || meldung !== null} onClick={() => void freigeben()}>
+        <button type="button" className="knopf aktiv voll" disabled={!offen || laeuft || meldung !== null} onClick={() => void freigeben()}>
           Freigeben
         </button>
         <a className="knopf" href={detail.pr.url} target="_blank" rel="noreferrer">
@@ -156,6 +148,7 @@ function Inhalt() {
           Später
         </button>
       </div>
+      <p className="leer fuss">Freigeben läuft serverseitig und wird protokolliert.</p>
     </main>
   );
 }
