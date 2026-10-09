@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { auswertungSatz, bereicheSumme, merges, zahlen } from "@/lib/auswertung";
 import type { BereichZeile } from "@/lib/bereiche";
 import { browserClient } from "@/lib/browser-client";
 import { REPOS } from "@/lib/freigabe";
+import { projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
 import { Rahmen } from "../rahmen";
 
@@ -42,30 +44,41 @@ function useBereiche(quelle: Quelle, jetzt: Date) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schluessel]);
 
-  return { projekte: [...new Set(heuteMerges.map((m) => m.project))], je: ergebnis?.schluessel === schluessel ? ergebnis.je : null };
+  const anzahl = new Map<string, number>();
+  for (const m of heuteMerges) anzahl.set(m.project, (anzahl.get(m.project) ?? 0) + 1);
+  return { projekte: [...anzahl.keys()], anzahl, je: ergebnis?.schluessel === schluessel ? ergebnis.je : null };
 }
 
 function Inhalt({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const satz = auswertungSatz(quelle, jetzt);
   const z = zahlen(quelle, jetzt);
-  const { projekte, je } = useBereiche(quelle, jetzt);
+  const { projekte, anzahl, je } = useBereiche(quelle, jetzt);
+  const feld = (name: string, wert: string | number, akzent = false) => (
+    <div key={name}>
+      <dt className="mono-label">{name}</dt>
+      <dd className={`mono${akzent ? " akzent" : ""}`}>{wert}</dd>
+    </div>
+  );
 
   return (
-    <main className="bento">
-      <section className="tile breit" aria-labelledby="heute">
-        <h1 id="heute" className="mono-label">
-          Auswertung heute
-        </h1>
+    <main className="seite auswertung">
+      <header>
+        <p className="augenbraue">Tages-Auswertung</p>
+        <h1>Auswertung heute</h1>
+      </header>
+
+      <section className="satzfeld" aria-labelledby="heute">
+        <h2 id="heute" className="mono-label">
+          Heute in einem Satz
+        </h2>
         {satz ? (
           <>
             <p className="satz">{satz.satz}</p>
             {satz.belege.length > 0 && (
-              <ul className="liste" aria-label="Belege">
+              <ul className="merkmale" aria-label="Belege">
                 {satz.belege.map((b) => (
-                  <li key={`${b.project}#${b.pr}`}>
-                    <span className="mono">
-                      {b.project} #{b.pr}
-                    </span>
+                  <li key={`${b.project}#${b.pr}`} className="mono">
+                    #{b.pr}
                     {b.selbstBehoben && " · selbst behoben"}
                   </li>
                 ))}
@@ -77,65 +90,50 @@ function Inhalt({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
         )}
       </section>
 
-      <section className="tile" aria-labelledby="zahlen">
-        <h2 id="zahlen" className="mono-label">
+      <section aria-labelledby="zahlen">
+        <h2 id="zahlen" className="sr-only">
           Zahlen
         </h2>
         {!satz ? (
           KEINE_DATEN
         ) : (
-          <dl className="zahlen">
-            <div>
-              <dt>Gemergt</dt>
-              <dd className="mono">{z.gemergt}</dd>
-            </div>
-            <div>
-              <dt>Selbst behoben</dt>
-              <dd className="mono">{z.selbstBehoben}</dd>
-            </div>
-            <div>
-              <dt>Braucht dich</dt>
-              <dd className="mono">{z.brauchtDich}</dd>
-            </div>
-            {z.claude.map((k) => (
-              <div key={k.name}>
-                <dt>{k.name} (Schätzung)</dt>
-                <dd className="mono">
-                  {k.used} / {k.limit}
-                </dd>
-              </div>
-            ))}
+          <dl className="zahlenfeld">
+            {feld("Gemergt", z.gemergt)}
+            {feld("Selbst behoben", z.selbstBehoben)}
+            {feld("Braucht dich", z.brauchtDich, z.brauchtDich > 0)}
+            {z.claude.length > 0 ? z.claude.map((k) => feld(`${k.name} · Schätzung`, `${k.used} / ${k.limit}`)) : feld("Claude · Schätzung", "Keine Daten")}
           </dl>
         )}
       </section>
 
-      <section className="tile" aria-labelledby="bereiche">
-        <h2 id="bereiche" className="mono-label">
-          Bereiche der Merges
+      <section aria-labelledby="bereiche">
+        <h2 id="bereiche" className="mono-label bereiche-kopf">
+          Pro Projekt
         </h2>
         {projekte.length === 0 ? (
           KEINE_DATEN
         ) : (
-          <ul className="liste">
-            {projekte.map((p) => (
-              <li key={p}>
-                <strong className="mono">{p}</strong>
-                {!je?.[p]?.length ? (
-                  <p className="leer">{je ? "Keine Daten" : "Wird geladen …"}</p>
-                ) : (
-                  <ul className="liste">
-                    {je[p].map((b) => (
-                      <li key={b.bereich}>
-                        {b.bereich} <span className="mono">{b.dateien}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
+          <ul className="projektzeilen">
+            {projekte.map((p) => {
+              const info = projektInfo(p);
+              const bereiche = je?.[p]?.map((b) => `${b.bereich} ${b.dateien}`).join(" · ");
+              return (
+                <li key={p} style={{ borderLeftColor: info.farbe }}>
+                  <strong>{info.name}</strong>
+                  <p className="leer">
+                    {anzahl.get(p)} gemergt{bereiche ? ` · ${bereiche}` : ` · ${je ? "Keine Daten zu Bereichen" : "Bereiche werden geladen …"}`}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
+
+      <Link className="knopf aktiv voll" href="/">
+        Freigabe ansehen
+      </Link>
+      <p className="leer fuss">Zahlen aus loop_events. Das Claude-Kontingent ist eine Schätzung.</p>
     </main>
   );
 }

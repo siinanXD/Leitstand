@@ -486,3 +486,240 @@ body {
 .tile.grund {
   border-color: var(--color-accent-primary);
 }
+
+/* E2 Freigabe und E4 Auswertung (SIN-430), Maße aus Figma 35:2 und 35:54. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.augenbraue {
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent-primary);
+}
+
+.freigabe-kopf,
+.auswertung > header {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.freigabe-kopf h1,
+.auswertung h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 600;
+}
+
+.freigabe-kopf p {
+  margin: 0;
+}
+
+.merkmale {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.merkmale li {
+  padding: var(--space-4) var(--space-8);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--color-text-secondary);
+}
+
+.bereiche-kopf {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-8);
+  font-size: 11px;
+}
+
+.bereiche {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bereiche li {
+  display: flex;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: var(--bento-line);
+}
+
+.bereich-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--color-text-secondary);
+}
+
+.bereiche li > div {
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+
+.bereiche .zeile {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.satz-bereich {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.grund {
+  padding: var(--space-12);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-tool);
+}
+
+.grund p {
+  margin: var(--space-8) 0 0;
+}
+
+.marke-grund {
+  display: inline-block;
+  margin: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-tool);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent-primary);
+}
+
+.aktionen {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.aktionen .knopf {
+  justify-content: center;
+  min-height: 48px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.aktionen .voll,
+.knopf.voll {
+  grid-column: 1 / -1;
+}
+
+.knopf.voll {
+  justify-content: center;
+  min-height: 48px;
+  text-decoration: none;
+  font-size: 16px;
+}
+
+.fuss {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.satzfeld {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.satzfeld h2 {
+  margin: 0;
+  font-size: 11px;
+}
+
+.satzfeld .satz {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+}
+
+.zahlenfeld {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.zahlenfeld > div {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border-right: var(--bento-line);
+  border-bottom: var(--bento-line);
+}
+
+.zahlenfeld > div:nth-child(2n) {
+  border-right: 0;
+}
+
+.zahlenfeld > div:nth-child(n + 3) {
+  border-bottom: 0;
+}
+
+.zahlenfeld dt {
+  font-size: 11px;
+}
+
+.zahlenfeld dd {
+  margin: 0;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 500;
+}
+
+.zahlenfeld dd.akzent {
+  color: var(--color-accent-primary);
+}
+
+.projektzeilen {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.projektzeilen li {
+  padding: var(--space-8) 0 var(--space-8) var(--space-12);
+  border-left: 3px solid var(--color-border-subtle);
+  border-bottom: var(--bento-line);
+}
+
+.projektzeilen p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
