@@ -100,6 +100,12 @@ test("Hänger: In Progress > 6 h ohne PR → zurück, danach needs-human", () =>
   assert.deepEqual(erkenneIssueHaenger([zweites], [], jetzt).map((a) => a.art), ["needs-human"]);
 });
 
+test("Hänger: Epic oder Handarbeit ohne Label claude bleibt In Progress", () => {
+  const epic = issue({ identifier: "SIN-242", stateType: "started", startedAt: vor(30), labels: [] });
+  const sinan = issue({ identifier: "SIN-5", stateType: "started", startedAt: vor(30), labels: ["sinan"] });
+  assert.deepEqual(erkenneIssueHaenger([epic, sinan], [], jetzt), []);
+});
+
 test("Hänger: junges Issue, offener PR oder needs-human werden übersprungen", () => {
   const jung = issue({ identifier: "SIN-1", stateType: "started", startedAt: vor(5) });
   const alt = issue({ identifier: "SIN-1", stateType: "started", startedAt: vor(8) });
