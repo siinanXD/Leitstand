@@ -468,3 +468,21 @@ body {
     flex: 1 1 96px;
   }
 }
+
+.freigabe {
+  max-width: 640px;
+}
+
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.aktionen .knopf {
+  text-decoration: none;
+}
+
+.tile.grund {
+  border-color: var(--color-accent-primary);
+}
