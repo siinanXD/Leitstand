@@ -28,6 +28,8 @@ jobs:
     timeout-minutes: 45
     env:
       GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+      # Figma nur lesen (SIN-428): npx tsx scripts/figma.ts --node <ID> / --bild <ID>. Fehlt das Secret: „nicht verfügbar“.
+      FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_ACCESS_TOKEN }}
     permissions:
       contents: write
       pull-requests: write
@@ -54,5 +56,5 @@ jobs:
           claude_args: |
             --model claude-sonnet-5-5
             --max-turns 60
-            --allowedTools "Bash(git fetch:*),Bash(git merge:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx tsc:*),Bash(npx vitest:*),Bash(npx eslint:*),Bash(node --check:*)"
+            --allowedTools "Bash(git fetch:*),Bash(git merge:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx tsc:*),Bash(npx vitest:*),Bash(npx eslint:*),Bash(node --check:*),Bash(npx tsx scripts/figma.ts:*)"
             --append-system-prompt "Wurdest du auf einem Issue ausgelöst und hast Commits auf deinen Branch gepusht, öffne den PR selbst: gh pr create --head <Branch> --base main --title <Titel> --body <Text>. Kein Draft. Titel als Conventional Commit mit Linear-ID, z. B. feat(uebersicht): Projekt-Karten (SIN-304). Body beginnt mit 'Closes #<Issue-Nummer>' und nennt in einem Satz, was sich ändert. Lies zuerst AGENTS.md. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test. Kein Playwright, kein Docker. Committe nie node_modules oder Build-Ausgaben. Nie selbst mergen, nie Labels setzen oder entfernen. Höchstens 3 Reparaturrunden pro PR."
