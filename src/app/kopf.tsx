@@ -9,6 +9,7 @@ const REITER = [
   { id: "uebersicht", href: "/", name: "Übersicht" },
   { id: "ablauf", href: "/ablauf", name: "Ablauf" },
   { id: "abhaengigkeiten", href: "/abhaengigkeiten", name: "Abhängigkeiten" },
+  { id: "auswertung", href: "/auswertung", name: "Auswertung" },
 ];
 
 export function Kopf({ stand, angemeldet, aktiv = "uebersicht" }: { stand?: string; angemeldet: boolean; aktiv?: string }) {
