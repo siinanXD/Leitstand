@@ -10,6 +10,9 @@ export type SnapshotRow = {
   quota_name: string | null;
   quota_used: number | null;
   quota_limit: number | null;
+  /** Optional: Linear-Kennung und Blocker (SIN-305). Fehlen die Spalten, bleibt die Abhängigkeits-Ansicht leer. */
+  issue: string | null;
+  blocked_by: string[];
 };
 
 export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[] };
@@ -18,6 +21,9 @@ export type Quota = { name: string; used: number; limit: number; schaetzung: boo
 const str = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
+
+/** Liste aus Array oder kommagetrenntem Text. */
+const liste = (v: unknown): string[] => (Array.isArray(v) ? v : typeof v === "string" ? v.split(",") : []).flatMap((x) => (typeof x === "string" && x.trim() !== "" ? [x.trim()] : []));
 
 export function parseEvents(raw: unknown): LoopEvent[] {
   if (!Array.isArray(raw)) return [];
@@ -45,6 +51,8 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         quota_name: str(o.quota_name),
         quota_used: num(o.quota_used),
         quota_limit: num(o.quota_limit),
+        issue: str(o.issue),
+        blocked_by: liste(o.blocked_by),
       },
     ];
   });
