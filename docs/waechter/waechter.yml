@@ -1,0 +1,40 @@
+# Projekt-Wächter (SIN-419). Nach .github/workflows/waechter.yml kopieren (der Worker darf Workflows nicht ändern).
+# Stündlich und von Hand. Je Linear-Projekt „In Progress“ mit GitHub-Link: Schlange füllen, Hänger reparieren,
+# Tages-Update; neue Projekte einrichten. Trockenlauf: von Hand mit dry_run.
+name: waechter
+
+on:
+  schedule:
+    - cron: "41 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur anzeigen, nichts ändern"
+        type: boolean
+        default: true
+
+concurrency:
+  group: waechter
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  waechter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Projekte prüfen
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          LOOP_MAX_PARALLEL: ${{ vars.LOOP_MAX_PARALLEL || '1' }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/waechter/waechter.ts
