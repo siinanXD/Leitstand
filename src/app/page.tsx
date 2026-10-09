@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { browserClient } from "@/lib/browser-client";
-import { useSitzung } from "@/lib/sitzung";
-import { ladeQuelle, type Laden, type Lesequelle } from "@/lib/supabase";
+import { useState } from "react";
+import { nurProjekt } from "@/lib/projekte";
 import { aktivitaet, brauchtDich, heuteSatz, inArbeit, kontingente, letzte24h, schiene, type Quelle, type SnapshotRow } from "@/lib/uebersicht";
-import { Kopf } from "./kopf";
+import { ProjektFilter, Rahmen, projekteIn, uhrzeit } from "./rahmen";
 
 const KEINE_DATEN = <p className="leer">Keine Daten</p>;
 const SEGMENTE = 10;
-
-const uhrzeit = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 
 function Zeilen({ zeilen }: { zeilen: SnapshotRow[] }) {
   if (zeilen.length === 0) return KEINE_DATEN;
@@ -164,56 +160,20 @@ export function Bento({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
 }
 
 export default function Home() {
-  const sitzung = useSitzung();
-  const [geladen, setGeladen] = useState<{ laden: Laden; jetzt: Date } | null>(null);
-  const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
-
-  useEffect(() => {
-    const client = browserClient();
-    if (!angemeldet || !client) return;
-    let aktiv = true;
-    const jetzt = new Date();
-    void ladeQuelle(client as unknown as Lesequelle, jetzt).then((laden) => aktiv && setGeladen({ laden, jetzt }));
-    return () => {
-      aktiv = false;
-    };
-  }, [angemeldet]);
-
-  if (sitzung.zustand === "nicht-konfiguriert") {
-    return (
-      <>
-        <Kopf angemeldet={false} />
-        <p className="hinweis" role="status">
-          Datenquelle nicht konfiguriert (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY).
-        </p>
-      </>
-    );
-  }
-  if (!angemeldet) {
-    return (
-      <>
-        <Kopf angemeldet={false} />
-        <p className="hinweis" role="status">
-          Sitzung wird geprüft …
-        </p>
-      </>
-    );
-  }
-  const leer: Quelle = { events: [], snapshot: [] };
+  const [filter, setFilter] = useState<string | null>(null);
   return (
-    <>
-      <Kopf angemeldet stand={geladen ? uhrzeit(geladen.jetzt.toISOString()) : undefined} />
-      {!geladen && (
-        <p className="hinweis" role="status">
-          Daten werden geladen …
-        </p>
-      )}
-      {geladen?.laden.zustand === "fehler" && (
-        <p className="hinweis" role="status">
-          Datenquelle nicht erreichbar.
-        </p>
-      )}
-      <Bento quelle={geladen?.laden.zustand === "ok" ? geladen.laden.quelle : leer} jetzt={geladen?.jetzt ?? new Date()} />
-    </>
+    <Rahmen aktiv="uebersicht">
+      {(quelle, jetzt) => {
+        const gefiltert: Quelle = { events: nurProjekt(quelle.events, filter), snapshot: nurProjekt(quelle.snapshot, filter) };
+        return (
+          <>
+            <div className="werkzeuge">
+              <ProjektFilter projekte={projekteIn(quelle)} wert={filter} onChange={setFilter} />
+            </div>
+            <Bento quelle={gefiltert} jetzt={jetzt} />
+          </>
+        );
+      }}
+    </Rahmen>
   );
 }

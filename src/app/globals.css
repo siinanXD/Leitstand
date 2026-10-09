@@ -13,6 +13,11 @@
   --color-status-warn: #f59e0b;
   --color-status-error: #ef4444;
   --color-status-info: #38bdf8;
+  /* Projektfarben (SIN-305): nur Streifen/Marke, nie Status. Werte vorläufig, mit Figma „Variante 2026“ D1–D3 abgleichen. */
+  --color-projekt-lernapp: #8b5cf6;
+  --color-projekt-beleg: #14b8a6;
+  --color-projekt-stoerung: #ec4899;
+  --color-projekt-leitstand: #84cc16;
   /* Abstände und Rundung nach docs/design/regeln-2026.md der Lern-App (Leitstand: 2 px, 1-px-Linien). */
   --space-4: 4px;
   --space-8: 8px;
@@ -286,6 +291,139 @@ body {
 
 .segmente div.voll {
   background: var(--color-accent-primary);
+}
+
+.reiter,
+.filter,
+.werkzeuge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.werkzeuge {
+  max-width: 1440px;
+  margin: var(--space-16) auto 0;
+  padding: 0 var(--space-16);
+}
+
+.reiter .knopf {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.knopf[aria-current="page"],
+.knopf[aria-pressed="true"] {
+  border-color: var(--color-accent-primary);
+}
+
+.knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.marke-projekt {
+  width: var(--space-8);
+  height: var(--space-16);
+  border-radius: var(--radius-tool);
+}
+
+.seite {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-16);
+  display: grid;
+  gap: var(--space-16);
+}
+
+.ablauf-flaeche {
+  display: grid;
+  gap: var(--space-16);
+  margin: var(--space-16) 0;
+}
+
+@media (min-width: 900px) {
+  .ablauf-flaeche {
+    grid-template-columns: 3fr 1fr;
+  }
+}
+
+.graph {
+  height: 520px;
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.panel {
+  padding: var(--space-16);
+  background: var(--color-bg-raised);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.panel a {
+  color: var(--color-text-primary);
+}
+
+.zeitleiste {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.zeitleiste input {
+  width: 100%;
+  min-height: var(--touch-min);
+}
+
+.react-flow__node.knoten {
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  box-shadow: none;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+}
+
+.react-flow__node.knoten.laeuft {
+  border-color: var(--color-accent-primary);
+}
+
+.react-flow__node.knoten.wartet {
+  border-color: var(--color-status-warn);
+}
+
+.react-flow__edge.kante .react-flow__edge-path {
+  stroke: var(--color-border-subtle);
+  stroke-width: 1px;
+}
+
+.react-flow__edge.kante.laeuft .react-flow__edge-path {
+  stroke: var(--color-accent-primary);
+  stroke-width: 2px;
+}
+
+.spalten {
+  display: grid;
+  gap: var(--space-16);
+  overflow-x: auto;
+  margin-top: var(--space-16);
+}
+
+.dep {
+  padding: var(--space-12);
+  background: var(--color-bg-raised);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.dep.kritisch {
+  border-color: var(--color-accent-primary);
 }
 
 .anmelden {
