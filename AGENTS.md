@@ -63,5 +63,5 @@ Regeln:
 ## Projekt-Wächter (SIN-419)
 
 - `scripts/waechter/waechter.ts` (Netz) und `src/lib/waechter/` (rein, mit Tests): je Linear-Projekt „In Progress“ mit Projekt-Link „GitHub“ Schlange füllen, Hänger reparieren, Tages-Update; neue Projekte einrichten.
-- Workflow-Vorlage: `docs/waechter/waechter.yml` nach `.github/workflows/waechter.yml` kopieren (Sinan, Worker darf Workflows nicht ändern). Trockenlauf: `DRY_RUN=1`.
+- Workflow: `.github/workflows/waechter.yml` (stündlich, Minute 41, und von Hand). Trockenlauf: von Hand mit `dry_run` oder lokal `DRY_RUN=1`.
 - `AGENT_WORKFLOW_TOKEN` braucht Lese- und Kommentarrechte auf alle aktiven Repos.

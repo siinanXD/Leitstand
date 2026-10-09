@@ -1,4 +1,4 @@
-# Projekt-Wächter (SIN-419). Nach .github/workflows/waechter.yml kopieren (der Worker darf Workflows nicht ändern).
+# Projekt-Wächter (SIN-419).
 # Stündlich und von Hand. Je Linear-Projekt „In Progress“ mit GitHub-Link: Schlange füllen, Hänger reparieren,
 # Tages-Update; neue Projekte einrichten. Trockenlauf: von Hand mit dry_run.
 name: waechter
