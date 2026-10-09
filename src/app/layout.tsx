@@ -8,6 +8,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "Leitstand",
   description: "Übersicht über Projekte, Worker, Tokens und Abläufe.",
+  // Vom Home-Bildschirm als eigene App öffnen (Voraussetzung für Push auf dem iPhone, SIN-421).
+  appleWebApp: { capable: true, title: "Leitstand", statusBarStyle: "black" },
 };
 
 // Meta-Tag kann kein CSS-Token lesen: Wert = bg/base aus Figma.
