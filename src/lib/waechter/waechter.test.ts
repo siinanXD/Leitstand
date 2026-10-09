@@ -3,7 +3,9 @@ import { test } from "node:test";
 import {
   erkenneIssueHaenger,
   erkennePrHaenger,
+  erledigtSeit,
   gesundheit,
+  kommtAlsNeuInFrage,
   kurzfassung,
   MARKER_ZURUECK,
   planeSchlange,
@@ -136,6 +138,18 @@ test("Neues Projekt: vollständig, mit Link, vorhandenes Einrichten-Issue, alt o
   assert.equal(pruefeNeuesProjekt(projekt({ createdAt: vor(24 * 8) }), [], jetzt), null);
   assert.equal(pruefeNeuesProjekt(projekt({ zusammenfassung: "Pausiert bis Q1" }), [], jetzt), null);
   assert.equal(pruefeNeuesProjekt(projekt({ statusTyp: "completed" }), [], jetzt), null);
+});
+
+test("Vorprüfung: abgebrochene, erledigte, alte und pausierte Projekte laden keine Issues", () => {
+  assert.equal(kommtAlsNeuInFrage(projekt(), jetzt), true);
+  assert.equal(kommtAlsNeuInFrage(projekt({ statusTyp: "canceled" }), jetzt), false);
+  assert.equal(kommtAlsNeuInFrage(projekt({ statusTyp: "completed" }), jetzt), false);
+  assert.equal(kommtAlsNeuInFrage(projekt({ createdAt: vor(24 * 8) }), jetzt), false);
+  assert.equal(kommtAlsNeuInFrage(projekt({ zusammenfassung: "Pausiert bis nach dem 12.10.2026." }), jetzt), false);
+});
+
+test("erledigtSeit: 48 Stunden zurück, als ISO-Zeit", () => {
+  assert.equal(erledigtSeit(jetzt), "2026-10-07T12:00:00.000Z");
 });
 
 test("kurzfassung kürzt auf 255 Zeichen", () => {

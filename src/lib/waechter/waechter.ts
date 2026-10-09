@@ -169,6 +169,14 @@ export function kurzfassung(text: string | null): string | null {
 
 export const istNeu = (p: Projekt, jetzt: Date) => jetzt.getTime() - ms(p.createdAt) <= NEU_TAGE * 24 * STUNDE;
 
+/** Nur neue, nicht pausierte Projekte in Backlog, Planned oder In Progress. Vor dem Laden der Issues prüfen (spart Linear-Abfragen). */
+export const kommtAlsNeuInFrage = (p: Projekt, jetzt: Date) =>
+  ["backlog", "planned", "started"].includes(p.statusTyp) && istNeu(p, jetzt) && !istPausiert(p);
+
+/** Ab wann erledigte Issues noch geladen werden: 48 h reichen für Tagesstand (24 h) und Hänger. */
+export const ERLEDIGT_SEIT_STUNDEN = 48;
+export const erledigtSeit = (jetzt: Date) => new Date(jetzt.getTime() - ERLEDIGT_SEIT_STUNDEN * STUNDE).toISOString();
+
 export type EinrichtenPlan = {
   titel: string;
   beschreibung: string;
@@ -182,7 +190,7 @@ export function pruefeNeuesProjekt(
   issues: { title: string; stateType: string }[],
   jetzt: Date,
 ): { aenderung: ProjektAenderung; einrichten: EinrichtenPlan | null } | null {
-  if (!["backlog", "planned", "started"].includes(p.statusTyp) || !istNeu(p, jetzt) || istPausiert(p)) return null;
+  if (!kommtAlsNeuInFrage(p, jetzt)) return null;
   const aenderung: ProjektAenderung = {};
   if (!p.zusammenfassung?.trim()) {
     const kurz = kurzfassung(p.beschreibung);

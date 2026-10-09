@@ -14,9 +14,11 @@ import { ausLinear, gespiegelteIds, LABEL, type GithubIssue } from "../../src/li
 import {
   erkenneIssueHaenger,
   erkennePrHaenger,
+  erledigtSeit,
   gesundheit,
   istAktiv,
   istPausiert,
+  kommtAlsNeuInFrage,
   MARKER_ZURUECK,
   planeSchlange,
   planungsIssue,
@@ -79,11 +81,11 @@ type ProjektNode = {
 
 async function ladeProjekte(): Promise<{ projekt: Projekt; letztesUpdateAt: string | null; teamId: string }[]> {
   const d = await linear<{ projects: { nodes: ProjektNode[] } }>(`query {
-    projects(first: 100) {
+    projects(first: 50) {
       nodes { id name description content priority createdAt status { type } lead { id }
-        externalLinks { nodes { label url } }
+        externalLinks(first: 10) { nodes { label url } }
         projectUpdates(first: 1) { nodes { createdAt } }
-        teams { nodes { id } } }
+        teams(first: 1) { nodes { id } } }
     }
   }`);
   return d.projects.nodes.map((n) => ({
@@ -109,15 +111,17 @@ type IssueNode = Parameters<typeof ausLinear>[0] & {
   comments: { nodes: { body: string }[] };
 };
 
+// Linear erlaubt höchstens 10 000 Punkte Komplexität je Abfrage (first × Felder). Deshalb nur offene Issues und die
+// der letzten 48 h, mit kleinen Unterlisten. Vorher 25 831 Punkte → „Query too complex“ in jedem Projekt.
 async function ladeIssues(projektId: string): Promise<WaechterIssue[]> {
   const d = await linear<{ project: { issues: { nodes: IssueNode[] } } }>(
     `query($p: String!) {
       project(id: $p) {
-        issues(first: 150) {
+        issues(first: 100, filter: { or: [{ state: { type: { nin: ["completed", "canceled"] } } }, { completedAt: { gt: "${erledigtSeit(jetzt)}" } }] }) {
           nodes { id identifier title description priority url createdAt startedAt completedAt
-            labels { nodes { name } } state { type }
-            inverseRelations { nodes { type issue { identifier state { type } } } }
-            comments(first: 50) { nodes { body } } }
+            labels(first: 10) { nodes { name } } state { type }
+            inverseRelations(first: 10) { nodes { type issue { identifier state { type } } } }
+            comments(first: 20) { nodes { body } } }
         }
       }
     }`,
@@ -287,6 +291,7 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
 
 async function neuesProjekt(p: { projekt: Projekt; teamId: string }) {
   const { projekt, teamId } = p;
+  if (!kommtAlsNeuInFrage(projekt, jetzt)) return;
   const issues = await ladeIssues(projekt.id);
   const r = pruefeNeuesProjekt(projekt, issues, jetzt);
   if (!r) return;
