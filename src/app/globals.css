@@ -845,6 +845,26 @@ body {
   margin: var(--space-16) 0 0;
 }
 
+.kopplung {
+  display: grid;
+  gap: var(--space-12);
+  margin-top: var(--space-16);
+}
+
+.kopplung-code {
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 2.5rem;
+  letter-spacing: 0.1em;
+}
+
+.meldung a,
+.anmelden .tile a {
+  min-height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+}
+
 .meldung.fehler {
   color: var(--color-status-error);
 }
