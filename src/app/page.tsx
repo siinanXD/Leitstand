@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { nurProjekt } from "@/lib/projekte";
-import { aktivitaet, brauchtDich, heuteSatz, inArbeit, kontingente, letzte24h, schiene, type Quelle, type SnapshotRow } from "@/lib/uebersicht";
+import { aktivitaet, brauchtDich, heuteSatz, kontingente, laufend, letzte24h, projekteImStand, schiene, type Quelle, type SnapshotRow } from "@/lib/uebersicht";
 import { ProjektFilter, Rahmen, projekteIn, uhrzeit } from "./rahmen";
 
 const KEINE_DATEN = <p className="leer">Keine Daten</p>;
@@ -13,7 +13,7 @@ function Zeilen({ zeilen }: { zeilen: SnapshotRow[] }) {
   return (
     <ul className="liste">
       {zeilen.map((z) => (
-        <li key={`${z.project}-${z.title ?? z.stage ?? ""}`}>
+        <li key={`${z.project}-${z.issue ?? ""}-${z.title ?? z.stage ?? ""}`}>
           <span className="mono">{z.project}</span> {z.title ?? z.stage ?? ""}
         </li>
       ))}
@@ -24,13 +24,13 @@ function Zeilen({ zeilen }: { zeilen: SnapshotRow[] }) {
 export function Bento({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const satz = heuteSatz(quelle, jetzt);
   const stufen = schiene(quelle.snapshot);
-  const laeuft = inArbeit(quelle.snapshot);
+  const laeuft = laufend(quelle, jetzt);
   const wartet = brauchtDich(quelle.snapshot);
   const quoten = kontingente(quelle.snapshot);
   const events24 = letzte24h(quelle.events, jetzt);
   const balken = aktivitaet(quelle.events, jetzt);
   const spitze = Math.max(...balken, 1);
-  const projekte = new Set(quelle.snapshot.map((s) => s.project)).size;
+  const projekte = projekteImStand(quelle, jetzt).length;
 
   return (
     <main className="bento">

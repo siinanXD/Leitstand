@@ -53,7 +53,7 @@ test("heuteSatz ist ohne Daten null, sonst mit Belegen", () => {
 
 const kette = (res: { data: unknown; error: unknown }) => {
   const k: Record<string, unknown> = { then: (f: (r: typeof res) => unknown) => Promise.resolve(res).then(f) };
-  for (const m of ["gte", "order", "limit"]) k[m] = () => k;
+  for (const m of ["gte", "order", "limit", "range"]) k[m] = () => k;
   return k;
 };
 const fake = (tabellen: Record<string, { data: unknown; error: unknown }>, gesehen: string[] = []) =>
