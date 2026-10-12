@@ -40,7 +40,6 @@ export function Kopf({ stand, angemeldet, aktiv = "uebersicht" }: { stand?: stri
               Abmelden
             </button>
           </div>
-          <p className="mono-label kopf-hinweis">Aktionen {FOLGT}</p>
         </>
       )}
     </header>

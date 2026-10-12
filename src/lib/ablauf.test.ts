@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abhaengigkeiten, graph, unbekannte, zeitpunkte } from "./ablauf";
+import { abhaengigkeiten, detailZeile, graph, unbekannte, zeitpunkte } from "./ablauf";
 import { alleProjekte, DISPATCHER_REGEL, nurProjekt, platzReihenfolge } from "./projekte";
 import { parseEvents, parseSnapshot } from "./uebersicht";
 
@@ -77,6 +77,34 @@ test("Namen aus echten loop_events (Lern-App) landen in den Stufen (SIN-482)", (
   assert.equal(z("dispatcher"), "fertig");
   assert.deepEqual(unbekannte(events), { projekte: [], schritte: ["NEU"] });
   assert.deepEqual(unbekannte(parseEvents([{ created_at: t(0), project: "fremd", step: "STATUS" }])), { projekte: ["fremd"], schritte: [] });
+});
+
+test("detailZeile: nur echte Werte, Repair-Runde, Dauer, hängt seit (SIN-503)", () => {
+  const ev = (o: object) => parseEvents([{ created_at: t(0), project: "lernapp", ...o }])[0];
+  const bis = (min: number) => Date.parse(t(min));
+  assert.equal(detailZeile(undefined, bis(5)), "");
+  assert.equal(detailZeile(ev({ step: "gate", status: "fehler", pr: 126 }), bis(5), { repair: 1 }), "PR #126 · ROT · REPAIR 1/3");
+  assert.equal(detailZeile(ev({ step: "work", status: "running", issue: "SIN-311" }), bis(6)), "SIN-311 · LÄUFT · 6 MIN");
+  assert.equal(detailZeile(ev({ step: "deploy", status: "running" }), bis(200)), "HÄNGT SEIT 3 H");
+  assert.equal(detailZeile(ev({ step: "queue", status: "ok" }), bis(5), { anzahl: 7 }), "7 IN SCHLANGE · ERLEDIGT");
+  assert.equal(detailZeile(ev({ step: "x" }), bis(5)), "");
+  assert.equal(detailZeile(ev({ status: "fehler" }), bis(5), { repair: 9 }), "ROT · REPAIR 3/3");
+});
+
+test("graph: Signal, Detailzeile und Bahnen je Projekt", () => {
+  const events = parseEvents([
+    { id: 1, created_at: t(0), project: "lernapp", step: "repair", status: "start", pr: 126 },
+    { id: 2, created_at: t(1), project: "lernapp", step: "pr", status: "fehler", pr: 126 },
+    { id: 3, created_at: t(2), project: "lernapp", step: "work", status: "running", issue: "SIN-309" },
+  ]);
+  const g = graph(events, [], alleProjekte(["lernapp", "beleg"]), Date.parse(t(8)), false);
+  const k = (id: string) => g.knoten.find((x) => x.id === id)!;
+  assert.deepEqual([k("lernapp-PR").signal, k("lernapp-PR").detail], ["error", "PR #126 · ROT · REPAIR 1/3"]);
+  assert.deepEqual([k("lernapp-WORK").signal, k("lernapp-WORK").detail], ["laeuft", "SIN-309 · LÄUFT · 6 MIN"]);
+  assert.equal(k("platz-1").detail, "LERN-APP · SIN-309");
+  assert.equal(k("beleg-WORK").detail, "");
+  assert.deepEqual(g.bahnen.map((b) => b.name), ["GEMEINSAM", "LERN-APP", "BELEG-ASSISTENT"]);
+  assert.equal(g.bahnen[0].farbe, null);
 });
 
 test("zeitpunkte sortiert ohne Doppelte", () => {
