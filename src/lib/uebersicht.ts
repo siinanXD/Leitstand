@@ -25,13 +25,23 @@ const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === "
 /** Liste aus Array oder kommagetrenntem Text. */
 const liste = (v: unknown): string[] => (Array.isArray(v) ? v : typeof v === "string" ? v.split(",") : []).flatMap((x) => (typeof x === "string" && x.trim() !== "" ? [x.trim()] : []));
 
+/** Projektnamen in loop_events, die vom Leitstand-Kürzel abweichen (SIN-482). Schlüssel kleingeschrieben. */
+const PROJEKT_ALIAS: Record<string, string> = { "content-agent-lernapp": "lernapp" };
+/** Schrittnamen der Loops → Stufe im Leitstand (SIN-482). Schlüssel großgeschrieben. */
+const STUFE_ALIAS: Record<string, string> = { PLANNER: "PLAN", DISPATCH: "QUEUE", WORKER: "WORK", "PR-GATE": "GATE" };
+/** Ereignisse des Betriebs: werden gezeigt, sind aber keine Stufe. */
+export const BETRIEB = ["STATUS", "DIGEST"];
+
+export const projektKuerzel = (name: string | null): string | null => (name ? (PROJEKT_ALIAS[name.toLowerCase()] ?? name) : null);
+export const stufeKuerzel = (name: string | null): string | null => (name ? (STUFE_ALIAS[name.toUpperCase()] ?? name) : null);
+
 export function parseEvents(raw: unknown): LoopEvent[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((r) => {
     const o = obj(r);
     const created = o && str(o.created_at);
     if (!o || !created || Number.isNaN(Date.parse(created))) return [];
-    return [{ id: String(o.id ?? created), created_at: created, project: str(o.project), step: str(o.step), status: str(o.status), issue: str(o.issue), pr: num(o.pr) }];
+    return [{ id: String(o.id ?? created), created_at: created, project: projektKuerzel(str(o.project)), step: stufeKuerzel(str(o.step)), status: str(o.status), issue: str(o.issue), pr: num(o.pr) }];
   });
 }
 
@@ -39,7 +49,7 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((r) => {
     const o = obj(r);
-    const project = o && str(o.project);
+    const project = o && projektKuerzel(str(o.project));
     if (!o || !project) return [];
     return [
       {

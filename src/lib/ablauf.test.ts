@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abhaengigkeiten, graph, zeitpunkte } from "./ablauf";
+import { abhaengigkeiten, graph, unbekannte, zeitpunkte } from "./ablauf";
 import { alleProjekte, DISPATCHER_REGEL, nurProjekt, platzReihenfolge } from "./projekte";
 import { parseEvents, parseSnapshot } from "./uebersicht";
 
@@ -64,6 +64,19 @@ test("graph: Platz gehört dem laufenden Projekt, Zurückspulen blendet Spätere
   assert.deepEqual(spaet.plaetze, []);
   assert.equal(spaet.knoten.find((k) => k.id === "beleg-WORK")!.zustand, "fertig");
   assert.equal(spaet.knoten.find((k) => k.id === "lernapp-WORK")!.zustand, "leer");
+});
+
+test("Namen aus echten loop_events (Lern-App) landen in den Stufen (SIN-482)", () => {
+  const schritte = ["PLANNER", "DISPATCH", "WORKER", "PR-GATE", "MERGE", "STATUS", "DIGEST", "NEU"];
+  const events = parseEvents(schritte.map((step, i) => ({ id: i, created_at: t(i), project: "Content-Agent-Lernapp", step, status: step === "WORKER" ? "running" : "ok" })));
+  assert.ok(events.every((e) => e.project === "lernapp"));
+  const g = graph(events, [], alleProjekte(["lernapp"]), Date.parse(t(30)), false);
+  const z = (id: string) => g.knoten.find((k) => k.id === id)!.zustand;
+  assert.deepEqual(["PLAN", "QUEUE", "WORK", "GATE", "MERGE"].map((s) => z(`lernapp-${s}`)), ["fertig", "fertig", "laeuft", "fertig", "fertig"]);
+  assert.equal(z("planer"), "fertig");
+  assert.equal(z("dispatcher"), "fertig");
+  assert.deepEqual(unbekannte(events), { projekte: [], schritte: ["NEU"] });
+  assert.deepEqual(unbekannte(parseEvents([{ created_at: t(0), project: "fremd", step: "STATUS" }])), { projekte: ["fremd"], schritte: [] });
 });
 
 test("zeitpunkte sortiert ohne Doppelte", () => {

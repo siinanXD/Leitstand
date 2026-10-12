@@ -1,6 +1,6 @@
 // Reine Ableitungen für Ablauf und Abhängigkeiten (SIN-305). Eingabe: loop_events und loop_snapshot; nichts wird erfunden.
 import { PROJEKTE, platzReihenfolge, type Projekt } from "./projekte";
-import { STUFEN, inArbeit, type LoopEvent, type SnapshotRow } from "./uebersicht";
+import { BETRIEB, STUFEN, inArbeit, type LoopEvent, type SnapshotRow } from "./uebersicht";
 
 export type Zustand = "laeuft" | "wartet" | "fertig" | "leer";
 export type AblaufKnoten = { id: string; label: string; projekt: string | null; stufe: string; zustand: Zustand; anzahl: number; x: number; y: number };
@@ -46,7 +46,7 @@ export function graph(events: LoopEvent[], snapshot: SnapshotRow[], projekte: Pr
     knoten.push({ id, label, projekt: null, stufe: label, zustand, anzahl: 0, x, y: 0 });
   };
   gemeinsam("planer", "PLANER", 0, ev.some((e) => gross(e.step) === "PLAN") ? "fertig" : "leer");
-  gemeinsam("dispatcher", "DISPATCHER", 200, ev.some((e) => gross(e.step).startsWith("DISPATCH")) ? "fertig" : "leer");
+  gemeinsam("dispatcher", "DISPATCHER", 200, ev.some((e) => gross(e.step) === "QUEUE") ? "fertig" : "leer");
   for (let i = 0; i < n; i++) gemeinsam(`platz-${i + 1}`, `PLATZ ${i + 1}`, 420 + i * 200, plaetze[i] ? "laeuft" : "leer");
   gemeinsam("waechter", "WÄCHTER", 420 + n * 200, "leer");
   kanten.push({ id: "planer-dispatcher", von: "planer", nach: "dispatcher", laeuft: false });
@@ -77,7 +77,20 @@ export function protokoll(events: LoopEvent[], knoten: AblaufKnoten, bis: number
     .reverse();
 }
 
-/** Zeitleiste: Zeitpunkte aller Ereignisse, älteste zuerst, ohne Doppelte. */
+/** Namen in den Ereignissen, die der Ablauf nicht kennt (nach der Zuordnung). Betriebs-Schritte zählen als bekannt. */
+export function unbekannte(events: LoopEvent[], liste: Projekt[] = PROJEKTE): { projekte: string[]; schritte: string[] } {
+  const ids = new Set(liste.map((p) => p.id));
+  const schritte = new Set([...STUFEN, ...BETRIEB]);
+  const projekte = new Set<string>();
+  const unbekannt = new Set<string>();
+  for (const e of events) {
+    if (e.project && !ids.has(e.project)) projekte.add(e.project);
+    if (e.step && !schritte.has(gross(e.step))) unbekannt.add(e.step);
+  }
+  return { projekte: [...projekte].sort(), schritte: [...unbekannt].sort() };
+}
+
+/** Zeitleiste:Zeitpunkte aller Ereignisse, älteste zuerst, ohne Doppelte. */
 export const zeitpunkte = (events: LoopEvent[]): number[] => [...new Set(events.map(ms))].sort((a, b) => a - b);
 
 export type DepKnoten = { issue: string; titel: string | null; project: string; spalte: number; blockiert: string[]; brauchtDich: boolean; kritisch: boolean };
