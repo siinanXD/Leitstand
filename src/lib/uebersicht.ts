@@ -20,6 +20,10 @@ export type SnapshotRow = {
   blocked_by: string[];
   /** Kontingente aus der Spalte `quotas` (SIN-499). */
   quotas: Quota[];
+  /** Optional (SIN-509): Labels (`sinan`, `risk:high`, `freigegeben`), geschätzte Minuten und PR-Nummer für „Braucht dich“. */
+  labels: string[];
+  minutes: number | null;
+  pr: number | null;
 };
 
 export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[] };
@@ -91,6 +95,9 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         issue: str(o.issue),
         blocked_by: liste(o.blocked_by),
         quotas: parseQuotas(o.quotas),
+        labels: liste(o.labels).map((l) => l.toLowerCase()),
+        minutes: num(o.minutes ?? o.estimate_min),
+        pr: num(o.pr),
       },
     ];
   });
@@ -150,7 +157,7 @@ export function inArbeitAusEreignissen(events: LoopEvent[]): SnapshotRow[] {
   }
   return [...letzte.values()]
     .filter((e) => e.step?.toUpperCase() === "WORK" && e.status && START.has(e.status.toLowerCase()))
-    .map((e) => ({ project: e.project!, stage: e.step, status: "running", title: e.issue, updated_at: e.created_at, quota_name: null, quota_used: null, quota_limit: null, issue: e.issue, blocked_by: [], quotas: [] }));
+    .map((e) => ({ project: e.project!, stage: e.step, status: "running", title: e.issue, updated_at: e.created_at, quota_name: null, quota_used: null, quota_limit: null, issue: e.issue, blocked_by: [], quotas: [], labels: [], minutes: null, pr: null }));
 }
 
 /** Snapshot zuerst; Issues ohne Snapshot-Zeile kommen aus den Ereignissen der 24 h. */

@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { browserClient } from "@/lib/browser-client";
 
-const FOLGT = "folgt in SIN-304 Teil 3";
-
 const REITER = [
   { id: "uebersicht", href: "/", name: "Übersicht" },
   { id: "ablauf", href: "/ablauf", name: "Ablauf" },
@@ -25,15 +23,15 @@ export function Kopf({ stand, angemeldet, aktiv = "uebersicht" }: { stand?: stri
               </Link>
             ))}
           </nav>
-          {stand && <p className="mono-label">Stand {stand}</p>}
+          {stand && <p className="mono-label live">Live {stand}</p>}
           <div className="kopf-aktionen">
-            <button type="button" className="knopf" disabled title={`Suche ${FOLGT}`}>
-              Suche <span className="mono">⌘K</span>
+            <button type="button" className="knopf" disabled>
+              <span className="mono">⌘K</span> Suche
             </button>
-            <button type="button" className="knopf" disabled title={`Planer jetzt ${FOLGT}`}>
+            <button type="button" className="knopf" disabled>
               Planer jetzt
             </button>
-            <button type="button" className="knopf" disabled title={`Notbremse ${FOLGT}`}>
+            <button type="button" className="knopf" disabled>
               Notbremse
             </button>
             <button type="button" className="knopf aktiv" onClick={() => void browserClient()?.auth.signOut()}>
