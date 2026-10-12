@@ -10,11 +10,16 @@ export type Projekt = {
   repo?: string;
   /** Projekte in Bauphase haben bei der Platzvergabe Vorrang. */
   bauphase?: boolean;
+  /** Bekannte Adressen (SIN-531): nur eintragen, was es wirklich gibt; fehlende Links zeigt die Seite als „nicht verfügbar“. */
+  links?: Partial<Record<LinkArt, string>>;
 };
+
+export const LINK_ARTEN = ["app", "vorschau", "github", "linear", "vercel", "supabase", "langfuse", "sentry", "posthog", "figma"] as const;
+export type LinkArt = (typeof LINK_ARTEN)[number];
 
 export const PROJEKTE: Projekt[] = [
   { id: "lernapp", name: "Lern-App", farbe: "var(--color-projekt-lernapp)", repo: "siinanXD/Content-Agent-Lernapp" },
-  { id: "leitstand", name: "Leitstand", farbe: "var(--color-projekt-leitstand)", repo: "siinanXD/Leitstand", bauphase: true },
+  { id: "leitstand", name: "Leitstand", farbe: "var(--color-projekt-leitstand)", repo: "siinanXD/Leitstand", bauphase: true, links: { figma: "https://www.figma.com/design/7Ti9iVUjUjw3rh9WYhSu9K" } },
   { id: "beleg", name: "Beleg-Assistent", farbe: "var(--color-projekt-beleg)", bauphase: true },
   { id: "stoerung", name: "Störungs-Assistent", farbe: "var(--color-projekt-stoerung)", bauphase: true },
 ];

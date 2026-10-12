@@ -41,7 +41,11 @@
       { "seite": "Ablauf nach Agent (Handy)", "id": "47:209", "pfad": "" },
       { "seite": "Abhängigkeiten", "id": "15:1662", "pfad": "src/app/abhaengigkeiten/page.tsx" },
       { "seite": "Freigabe", "id": "35:2", "pfad": "src/app/freigabe/page.tsx" },
-      { "seite": "Auswertung", "id": "35:54", "pfad": "src/app/auswertung/page.tsx" }
+      { "seite": "Auswertung", "id": "35:54", "pfad": "src/app/auswertung/page.tsx" },
+      { "seite": "Projekt", "id": "15:2", "pfad": "src/app/projekt/[id]/page.tsx" },
+      { "seite": "Deine Aufgaben", "id": "15:1730", "pfad": "" },
+      { "seite": "Alle Projekte", "id": "20:6", "pfad": "src/app/projekte/page.tsx" },
+      { "seite": "Alle Projekte (Handy)", "id": "21:108", "pfad": "" }
     ]
   },
   "doku": {

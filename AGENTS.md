@@ -13,6 +13,7 @@ Regeln für alle Agenten in diesem Repo. Sie ersetzen Rückfragen an Sinan. Dies
    - Ablauf nach Agent: `47:28` (Desktop), `47:209` (Handy), Komponente „Ablauf / Agent-Karte“ `46:78`
    - Abhängigkeiten: `15:1662`
    - Freigabe / Auswertung: `35:2` / `35:54`
+   - Projekt: `15:2`, Deine Aufgaben: `15:1730`; Alle Projekte: `20:6` (Desktop), `21:108` (Handy)
 
 ## Grundsatz
 
