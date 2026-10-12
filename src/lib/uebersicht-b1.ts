@@ -55,7 +55,7 @@ function offeneLaeufe(ev: LoopEvent[]): LoopEvent[] {
   return [...letzte.values()].filter((e) => e.step?.toUpperCase() === "WORK" && !!e.status && BEGONNEN.test(e.status));
 }
 
-export type ArbeitsZeile = { key: string; project: string; issue: string; titel: string | null; dauerMin: number | null; kosten: number | null };
+export type ArbeitsZeile = { key: string; project: string; issue: string | null; titel: string | null; dauerMin: number | null; kosten: number | null };
 
 /** „In Arbeit“: Linear „In Progress“ (Snapshot) oder offener Worker-Lauf; Issues mit späterem MERGE/Done-Ereignis fallen heraus. */
 export function inArbeitZeilen(q: Quelle, jetzt: Date): ArbeitsZeile[] {
@@ -69,13 +69,13 @@ export function inArbeitZeilen(q: Quelle, jetzt: Date): ArbeitsZeile[] {
     }
   }
   return laufend(q, jetzt).flatMap((r: SnapshotRow) => {
-    if (!r.issue) return [];
-    const k = taktKey(r.project, r.issue);
-    const start = ev.filter((e) => e.project === r.project && e.issue === r.issue && e.step?.toUpperCase() === "WORK" && !!e.status && BEGONNEN.test(e.status));
+    const k = taktKey(r.project, r.issue ?? (r.pr ? `#${r.pr}` : (r.title ?? "")));
+    const gleich = (e: LoopEvent) => !!r.issue && e.project === r.project && e.issue === r.issue;
+    const start = ev.filter((e) => gleich(e) && e.step?.toUpperCase() === "WORK" && !!e.status && BEGONNEN.test(e.status));
     const ersterStart = start.length ? Math.min(...start.map((e) => zeit(e.created_at))) : r.updated_at ? zeit(r.updated_at) : null;
     if (fertigSeit.has(k) && fertigSeit.get(k)! >= (ersterStart ?? 0)) return [];
-    const kosten = ev.filter((e) => e.project === r.project && e.issue === r.issue && e.cost !== null).reduce((a, e) => a + (e.cost ?? 0), 0);
-    const hat = ev.some((e) => e.project === r.project && e.issue === r.issue && e.cost !== null);
+    const kosten = ev.filter((e) => gleich(e) && e.cost !== null).reduce((a, e) => a + (e.cost ?? 0), 0);
+    const hat = ev.some((e) => gleich(e) && e.cost !== null);
     return [{ key: k, project: r.project, issue: r.issue, titel: r.title && r.title !== r.issue ? r.title : null, dauerMin: ersterStart ? Math.max(0, Math.round((jetzt.getTime() - ersterStart) / 60_000)) : null, kosten: hat ? kosten : null }];
   });
 }

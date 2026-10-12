@@ -85,7 +85,7 @@ export function Bento({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
             <ul className="arbeit">
               {laeuft.map((z) => (
                 <li key={z.key}>
-                  <span className="mono">{z.issue}</span>
+                  <span className="mono">{z.issue ?? ""}</span>
                   <span className="titel">{z.titel ?? z.project}</span>
                   <span className="mono">{z.dauerMin !== null ? dauer(z.dauerMin) : ""}</span>
                   <span className="mono">{z.kosten !== null ? euro(z.kosten) : ""}</span>

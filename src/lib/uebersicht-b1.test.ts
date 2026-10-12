@@ -80,3 +80,11 @@ test("belegChips: PR und Issue ohne Doppelte", () => {
   const c = belegChips(ev([{ created_at: vor(1), pr: 101, issue: "SIN-309" }, { created_at: vor(2), pr: 101 }]), jetzt);
   assert.deepEqual(c, ["#101", "SIN-309"]);
 });
+
+test("inArbeitZeilen: Snapshot-Zeile ohne Issue bleibt sichtbar", () => {
+  const snapshot = parseSnapshot([{ project: "beispiel", stage: "work", status: "running", title: "Beispiel-Aufgabe" }]);
+  const z = inArbeitZeilen({ events: [], snapshot }, jetzt);
+  assert.equal(z.length, 1);
+  assert.equal(z[0].issue, null);
+  assert.equal(z[0].titel, "Beispiel-Aufgabe");
+});
