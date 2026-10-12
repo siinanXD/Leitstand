@@ -14,7 +14,9 @@ test("Anmelden lädt und hat keine axe-Fehler", async ({ page }) => {
   expect((await axe(page)).violations).toEqual([]);
 });
 
-test("Einstellungen mit Mitteilungen haben keine axe-Fehler", async ({ page }) => {
+test("Einstellungen mit Mitteilungen haben keine axe-Fehler", async ({ page, context }) => {
+  // Headless-Chromium meldet „denied“; dann zeigt die Seite nur den Hinweis und keinen Schalter.
+  await context.grantPermissions(["notifications"]);
   const jetzt = Date.now();
   const sitzung = {
     access_token: "test",
