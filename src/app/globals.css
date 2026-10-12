@@ -241,11 +241,6 @@ body {
   margin-left: auto;
 }
 
-.kopf-hinweis {
-  flex-basis: 100%;
-  text-align: right;
-}
-
 .knopf {
   min-height: var(--touch-min);
   padding: 0 var(--space-16);
@@ -361,6 +356,8 @@ body {
   background: var(--color-bg-raised);
   border: var(--bento-line);
   border-radius: var(--radius-tool);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
 }
 
 .panel a {
@@ -429,37 +426,185 @@ body {
 .zeitleiste input {
   width: 100%;
   min-height: var(--touch-min);
+  accent-color: var(--color-accent-primary);
 }
 
-.react-flow__node.knoten {
+/* Ablauf nach Figma D2 (SIN-503): Bahnen mit Namen und Farbstreifen, zweizeilige Knoten, Status-Quadrat. */
+.graph-spalte {
+  display: grid;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.graph {
+  display: none;
   background: var(--color-bg-surface);
+}
+
+.bahn-liste,
+.bahn-karten,
+.legende {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bahn-liste {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.bahn-eintrag {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-left: 4px solid var(--color-border-subtle);
+  border-radius: var(--radius-tool);
+}
+
+.bahn-karten {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.bahn-name {
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.karte,
+.karte-inhalt {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-8) var(--space-12);
+  text-align: left;
+  background: var(--color-bg-base);
   color: var(--color-text-primary);
   border: var(--bento-line);
   border-radius: var(--radius-tool);
-  box-shadow: none;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 12px;
-  min-height: var(--touch-min);
-  display: flex;
-  align-items: center;
 }
 
-.react-flow__node.knoten.laeuft {
+.karte.laeuft,
+.react-flow__node.knoten.laeuft .karte-inhalt {
+  background: var(--color-accent-soft);
   border-color: var(--color-accent-primary);
 }
 
-.react-flow__node.knoten.wartet {
-  border-color: var(--color-status-warn);
+.karte[aria-pressed="true"] {
+  outline: 2px solid var(--color-accent-primary);
 }
 
-.react-flow__edge.kante .react-flow__edge-path {
-  stroke: var(--color-border-subtle);
-  stroke-width: 1px;
+.karte-kopf {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
 }
 
-.react-flow__edge.kante.laeuft .react-flow__edge-path {
-  stroke: var(--color-accent-primary);
-  stroke-width: 2px;
+.karte-detail {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.signal {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--color-bg-raised);
+}
+
+.signal.ok {
+  background: var(--color-status-ok);
+}
+
+.signal.warn {
+  background: var(--color-status-warn);
+}
+
+.signal.error {
+  background: var(--color-status-error);
+}
+
+.signal.laeuft {
+  background: var(--color-accent-primary);
+}
+
+.legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-16);
+  padding: var(--space-8) var(--space-12);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 900px) {
+  .graph {
+    display: block;
+  }
+
+  .bahn-liste {
+    display: none;
+  }
+
+  .react-flow__node-schritt,
+  .react-flow__node-bahn {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .react-flow__node-bahn {
+    pointer-events: none;
+  }
+
+  .karte-inhalt {
+    height: 100%;
+  }
+
+  .react-flow__node.knoten:focus-visible .karte-inhalt {
+    outline: 2px solid var(--color-accent-primary);
+  }
+
+  .bahn-flaeche {
+    width: 100%;
+    height: 100%;
+    padding: var(--space-8) var(--space-12);
+    background: var(--color-bg-surface);
+    border-left: 4px solid var(--color-border-subtle);
+  }
+
+  .griff.react-flow__handle {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .react-flow__edge.kante .react-flow__edge-path {
+    stroke: var(--color-border-subtle);
+    stroke-width: 1px;
+    stroke-dasharray: 4 4;
+  }
+
+  .react-flow__edge.kante.laeuft .react-flow__edge-path {
+    stroke: var(--color-accent-primary);
+    stroke-width: 2px;
+    stroke-dasharray: none;
+  }
 }
 
 .spalten {

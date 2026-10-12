@@ -1,15 +1,75 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
-import { Background, ReactFlow, type Edge, type Node } from "@xyflow/react";
+import { Handle, Position, ReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { useMemo, useState } from "react";
 import { bahnen, type Bahn } from "@/lib/agenten";
-import { graph, protokoll, unbekannte, zeitpunkte, type AblaufKnoten } from "@/lib/ablauf";
+import { LAYOUT, graph, protokoll, unbekannte, zeitpunkte, type AblaufBahn, type AblaufKnoten } from "@/lib/ablauf";
 import { DISPATCHER_REGEL, nurProjekt, projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
 import { ProjektFilter, Rahmen, projekteIn, uhrzeit } from "../rahmen";
 
 const ZUSTAND_TEXT = { laeuft: "läuft", wartet: "wartet", fertig: "erledigt", leer: "leer" } as const;
+
+const LEGENDE = [
+  { text: "Läuft", klasse: "laeuft" },
+  { text: "Erledigt", klasse: "ok" },
+  { text: "Wartet", klasse: "warn" },
+  { text: "Rot", klasse: "error" },
+] as const;
+
+const knotenName = (k: AblaufKnoten) => `${k.label}${k.anzahl > 0 ? ` · ${k.anzahl}` : ""}`;
+const knotenLabel = (k: AblaufKnoten) => `${k.projekt ? `${projektInfo(k.projekt).name} ` : ""}${k.label}, ${ZUSTAND_TEXT[k.zustand]}${k.detail ? `, ${k.detail}` : ""}`;
+
+/** Knoten nach Figma D2: Status-Quadrat + Titel, darunter Detailzeile aus echten Daten. */
+function Karte({ k }: { k: AblaufKnoten }) {
+  return (
+    <>
+      <span className="karte-kopf">
+        <span className={`signal ${k.signal}`} aria-hidden="true" />
+        {knotenName(k)}
+      </span>
+      <span className="karte-detail">{k.detail || "Keine Daten"}</span>
+    </>
+  );
+}
+
+function SchrittKnoten({ data }: NodeProps<Node<{ knoten: AblaufKnoten }>>) {
+  return (
+    <div className="karte-inhalt">
+      <Handle type="target" position={Position.Left} className="griff" isConnectable={false} />
+      <Karte k={data.knoten} />
+      <Handle type="source" position={Position.Right} className="griff" isConnectable={false} />
+    </div>
+  );
+}
+
+function BahnFlaeche({ data }: NodeProps<Node<{ bahn: AblaufBahn }>>) {
+  return (
+    <div className="bahn-flaeche" style={data.bahn.farbe ? { borderLeftColor: data.bahn.farbe } : undefined}>
+      <span className="bahn-name">{data.bahn.name}</span>
+    </div>
+  );
+}
+
+const NODE_TYPES = { schritt: SchrittKnoten, bahn: BahnFlaeche };
+
+function Legende({ bahnen: liste }: { bahnen: AblaufBahn[] }) {
+  return (
+    <ul className="legende" aria-label="Legende">
+      {liste.filter((b) => b.farbe).map((b) => (
+        <li key={b.id}>
+          <span className="signal" style={{ background: b.farbe ?? undefined }} aria-hidden="true" /> {b.name}
+        </li>
+      ))}
+      {LEGENDE.map((l) => (
+        <li key={l.klasse}>
+          <span className={`signal ${l.klasse}`} aria-hidden="true" /> {l.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const [filter, setFilter] = useState<string | null>(null);
@@ -24,21 +84,39 @@ function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const live = position === null || position >= punkte.length - 1;
   const bis = live ? jetzt.getTime() : punkte[position];
 
-  const { knoten, kanten, plaetze } = useMemo(() => graph(quelle.events, quelle.snapshot, sichtbar, bis, live), [quelle.events, quelle.snapshot, sichtbar, bis, live]);
+  const { knoten, kanten, plaetze, bahnen: flaechen } = useMemo(() => graph(quelle.events, quelle.snapshot, sichtbar, bis, live), [quelle.events, quelle.snapshot, sichtbar, bis, live]);
   const fremd = useMemo(() => unbekannte(quelle.events), [quelle.events]);
   const gewaehlt =knoten.find((k) => k.id === auswahl) ?? null;
 
-  const nodes: Node[] = knoten.map((k) => ({
-    id: k.id,
-    position: { x: k.x, y: k.y },
-    data: { label: `${k.label}${k.anzahl > 0 ? ` · ${k.anzahl}` : ""} (${ZUSTAND_TEXT[k.zustand]})` },
-    className: `knoten ${k.zustand}`,
-    style: k.projekt ? { borderLeft: `4px solid ${projektInfo(k.projekt).farbe}` } : undefined,
-    ariaLabel: `${k.projekt ? `${projektInfo(k.projekt).name} ` : ""}${k.label}, ${ZUSTAND_TEXT[k.zustand]}`,
+  const breite = Math.max(...knoten.map((k) => k.x)) + LAYOUT.breite + LAYOUT.abstand;
+  const hoehe = LAYOUT.bahn;
+  const bahnKnoten: Node[] = flaechen.map((b) => ({
+    id: `bahn-${b.id}`,
+    type: "bahn",
+    position: { x: 0, y: b.y },
+    data: { bahn: b },
+    style: { width: breite, height: hoehe },
+    zIndex: -1,
+    selectable: false,
+    focusable: false,
     draggable: false,
     connectable: false,
   }));
-  const edges: Edge[] = kanten.map((k) => ({ id: k.id, source: k.von, target: k.nach, animated: k.laeuft, className: k.laeuft ? "kante laeuft" : "kante" }));
+  const nodes: Node[] = [
+    ...bahnKnoten,
+    ...knoten.map((k) => ({
+      id: k.id,
+      type: "schritt",
+      position: { x: k.x, y: k.y },
+      data: { knoten: k },
+      className: `knoten ${k.zustand}`,
+      style: { width: LAYOUT.breite, height: LAYOUT.hoehe },
+      ariaLabel: knotenLabel(k),
+      draggable: false,
+      connectable: false,
+    })),
+  ];
+  const edges: Edge[] = kanten.map((k) => ({ id: k.id, type: "step", source: k.von, target: k.nach, className: k.laeuft ? "kante laeuft" : "kante" }));
 
   return (
     <main className="seite">
@@ -67,19 +145,40 @@ function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
           <p className="leer">Keine Daten</p>
         ) : (
           <div className="ablauf-flaeche">
-            <div className="graph" role="group" aria-label="Pipeline als Graph">
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                colorMode="dark"
-                fitView
-                nodesDraggable={false}
-                nodesConnectable={false}
-                proOptions={{ hideAttribution: true }}
-                onNodeClick={(_e, n) => setAuswahl(n.id)}
-              >
-                <Background />
-              </ReactFlow>
+            <div className="graph-spalte">
+              <div className="graph" role="group" aria-label="Pipeline als Graph">
+                <ReactFlow
+                  nodes={nodes}
+                  edges={edges}
+                  nodeTypes={NODE_TYPES}
+                  colorMode="dark"
+                  fitView
+                  nodesDraggable={false}
+                  nodesConnectable={false}
+                  proOptions={{ hideAttribution: true }}
+                  onNodeClick={(_e, n) => n.type === "schritt" && setAuswahl(n.id)}
+                />
+              </div>
+              <ul className="bahn-liste" aria-label="Pipeline nach Bahnen">
+                {flaechen.map((b) => (
+                  <li key={b.id} className="bahn-eintrag" style={b.farbe ? { borderLeftColor: b.farbe } : undefined}>
+                    <h2 className="bahn-name">{b.name}</h2>
+                    <ul className="bahn-karten">
+                      {knoten
+                        .filter((k) => (b.id === "gemeinsam" ? k.projekt === null : k.projekt === b.id))
+                        .map((k) => (
+                          <li key={k.id}>
+                            <button type="button" className={`karte ${k.zustand}`} aria-pressed={auswahl === k.id} aria-label={knotenLabel(k)} onClick={() => setAuswahl(k.id)}>
+                              <Karte k={k} />
+                            </button>
+                          </li>
+                        ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+              <Legende bahnen={flaechen} />
+              <p className="mono-label">Regel: Projektfarbe nur als Streifen/Marke, nie als Status. Status bleibt grün/gelb/rot/orange.</p>
             </div>
             <aside className="panel" aria-label="Details">
               {gewaehlt ? <Details knoten={gewaehlt} events={events} bis={bis} plaetze={plaetze} /> : <p className="leer">Knoten wählen für Protokoll und Links.</p>}
@@ -187,7 +286,7 @@ function Details({ knoten, events, bis, plaetze }: { knoten: AblaufKnoten; event
         <ul className="liste">
           {zeilen.map((e) => (
             <li key={e.id}>
-              <span className="mono">{uhrzeit(e.created_at)}</span> {[e.status, e.issue].filter(Boolean).join(" ")}
+              <span className="mono">{uhrzeit(e.created_at)}</span> {[e.step, e.status, e.issue].filter(Boolean).join(" ")}
             </li>
           ))}
         </ul>
