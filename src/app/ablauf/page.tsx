@@ -3,6 +3,7 @@
 import "@xyflow/react/dist/style.css";
 import { Background, ReactFlow, type Edge, type Node } from "@xyflow/react";
 import { useMemo, useState } from "react";
+import { bahnen, type Bahn } from "@/lib/agenten";
 import { graph, protokoll, unbekannte, zeitpunkte, type AblaufKnoten } from "@/lib/ablauf";
 import { DISPATCHER_REGEL, nurProjekt, projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
@@ -13,6 +14,7 @@ const ZUSTAND_TEXT = { laeuft: "läuft", wartet: "wartet", fertig: "erledigt", l
 function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const [filter, setFilter] = useState<string | null>(null);
   const [auswahl, setAuswahl] = useState<string | null>(null);
+  const [ansicht, setAnsicht] = useState<"projekt" | "agent">("projekt");
   const [position, setPosition] = useState<number | null>(null);
 
   const alle = projekteIn(quelle);
@@ -51,7 +53,17 @@ function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
             unbekannt: {[...fremd.projekte.map((p) => `Projekt ${p}`), ...fremd.schritte.map((s) => `Schritt ${s}`)].join(", ")}
           </p>
         )}
-        {knoten.every((k) => k.zustand === "leer") && sichtbar.length === 0 ? (
+        <div className="filter" role="group" aria-label="Ansicht">
+          <button type="button" className="knopf" aria-pressed={ansicht === "projekt"} onClick={() => setAnsicht("projekt")}>
+            Nach Projekt
+          </button>
+          <button type="button" className="knopf" aria-pressed={ansicht === "agent"} onClick={() => setAnsicht("agent")}>
+            Nach Agent
+          </button>
+        </div>
+        {ansicht === "agent" ? (
+          <NachAgent quelle={quelle} sichtbar={sichtbar.map((p) => p.id)} events={events} bis={bis} />
+        ) : knoten.every((k) => k.zustand === "leer") && sichtbar.length === 0 ? (
           <p className="leer">Keine Daten</p>
         ) : (
           <div className="ablauf-flaeche">
@@ -86,6 +98,74 @@ function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
         </div>
       </section>
     </main>
+  );
+}
+
+const euro = (v: number) => `${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+
+/** Ablauf nach Agent (SIN-486): eine Bahn je Agent, Bahnen untereinander. */
+function NachAgent({ quelle, sichtbar, events, bis }: { quelle: Quelle; sichtbar: string[]; events: Quelle["events"]; bis: number }) {
+  const [auswahl, setAuswahl] = useState<string | null>(null);
+  const liste = useMemo(() => bahnen(events, quelle.snapshot, sichtbar, bis), [events, quelle.snapshot, sichtbar, bis]);
+  const gewaehlt = liste.find((b) => b.agent.id === auswahl) ?? null;
+  return (
+    <div className="ablauf-flaeche">
+      <ul className="bahnen" aria-label="Bahnen nach Agent">
+        {liste.map((b) => (
+          <li key={b.agent.id} className={`bahn ${b.zustand}`}>
+            <button type="button" className="knopf" aria-pressed={auswahl === b.agent.id} onClick={() => setAuswahl(b.agent.id)}>
+              {b.agent.name} ({ZUSTAND_TEXT[b.zustand]})
+            </button>
+            <ul className="bahn-knoten">
+              {b.knoten.map((k) => (
+                <li key={k.id} className={`bahn-knoten-eintrag ${k.zustand}`}>
+                  {k.label} ({ZUSTAND_TEXT[k.zustand]})
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+      <aside className="panel" aria-label="Details">
+        {gewaehlt ? <AgentDetails bahn={gewaehlt} /> : <p className="leer">Agent wählen für Auftrag, Läufe, Kosten und Warteschlange.</p>}
+      </aside>
+    </div>
+  );
+}
+
+function AgentDetails({ bahn }: { bahn: Bahn }) {
+  const { agent, laeufe, kosten7d, warteschlange } = bahn;
+  return (
+    <>
+      <h2 className="mono-label">{agent.name}</h2>
+      <p>{agent.auftrag}</p>
+      <h3 className="mono-label">Letzte Läufe</h3>
+      {laeufe.length === 0 ? (
+        <p className="leer">Keine Daten</p>
+      ) : (
+        <ul className="liste">
+          {laeufe.map((e) => (
+            <li key={e.id}>
+              <span className="mono">{uhrzeit(e.created_at)}</span> {[e.step, e.status, e.issue].filter(Boolean).join(" ")}
+            </li>
+          ))}
+        </ul>
+      )}
+      <h3 className="mono-label">Kosten 7 Tage</h3>
+      <p className="mono">{kosten7d === null ? "Keine Daten" : `${euro(kosten7d)} von ${agent.budget7d === null ? "Keine Daten" : euro(agent.budget7d)}`}</p>
+      <h3 className="mono-label">Warteschlange</h3>
+      {warteschlange.length === 0 ? (
+        <p className="leer">Keine Daten</p>
+      ) : (
+        <ul className="liste">
+          {warteschlange.map((s) => (
+            <li key={s.issue}>
+              <span className="mono">{s.issue}</span> {s.title}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 

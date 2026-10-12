@@ -1,6 +1,11 @@
 // Reine Ableitungen für die Übersicht. Eingabe sind Zeilen aus loop_events und loop_snapshot (SIN-303); nichts wird erfunden.
 
-export type LoopEvent = { id: string; created_at: string; project: string | null; step: string | null; status: string | null; issue: string | null; pr: number | null };
+export type LoopEvent = { id: string; created_at: string; project: string | null; step: string | null; status: string | null; issue: string | null;
+  pr: number | null;
+  /** Optional (SIN-481): Agent-Rolle und Kosten in US-Dollar. Fehlen die Spalten, bleibt die Agenten-Ansicht bei „Keine Daten“. */
+  agent: string | null;
+  cost: number | null;
+};
 export type SnapshotRow = {
   project: string;
   stage: string | null;
@@ -41,7 +46,7 @@ export function parseEvents(raw: unknown): LoopEvent[] {
     const o = obj(r);
     const created = o && str(o.created_at);
     if (!o || !created || Number.isNaN(Date.parse(created))) return [];
-    return [{ id: String(o.id ?? created), created_at: created, project: projektKuerzel(str(o.project)), step: stufeKuerzel(str(o.step)), status: str(o.status), issue: str(o.issue), pr: num(o.pr) }];
+    return [{ id: String(o.id ?? created), created_at: created, project: projektKuerzel(str(o.project)), step: stufeKuerzel(str(o.step)), status: str(o.status), issue: str(o.issue), pr: num(o.pr), agent: str(o.agent)?.toLowerCase() ?? null, cost: num(o.cost_usd) }];
   });
 }
 
