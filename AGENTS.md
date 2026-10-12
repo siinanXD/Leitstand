@@ -7,6 +7,12 @@ Regeln für alle Agenten in diesem Repo. Sie ersetzen Rückfragen an Sinan. Dies
 1. Das zugewiesene Linear-Issue (SIN-304, SIN-305 unter SIN-242)
 2. `siinanXD/Content-Agent-Lernapp`: `AGENTS.md`, `docs/design/regeln-2026.md`, `docs/design/tokens.json`
 3. Figma-Datei `7Ti9iVUjUjw3rh9WYhSu9K` ist die einzige Quelle für Farben, Abstände, Komponenten. Maßgeblich ist die **Variante 2026**: Frame `10:3` „B1 Leitstand · Variante 2026 (Bento, präzise)“ (Kopfzeile, „Heute in einem Satz“ mit Belegen, Bento mit Pipeline-Schiene, In Arbeit, Zahlen, Braucht dich, Kontingente, Aktivität 24 h). Alle Zahlen und Texte in diesem Frame sind Beispiele und werden nie übernommen. Werte lesen, nicht schätzen: `npx tsx scripts/figma.ts --node <ID>` (Größen, Abstände, Farben, Texte, Schrift) und `--bild <ID>` (PNG zum Ansehen, SIN-428). Fehlt `FIGMA_ACCESS_TOKEN`, im PR „Figma nicht verfügbar“ schreiben.
+4. Frames je Seite (Variante 2026), vor dem Bauen einer Seite den passenden lesen:
+   - Übersicht: `10:3` (Desktop), `10:226` (Handy)
+   - Ablauf: `21:2` (Desktop), `15:209` (Handy)
+   - Ablauf nach Agent: `47:28` (Desktop), `47:209` (Handy), Komponente „Ablauf / Agent-Karte“ `46:78`
+   - Abhängigkeiten: `15:1662`
+   - Freigabe / Auswertung: `35:2` / `35:54`
 
 ## Grundsatz
 
