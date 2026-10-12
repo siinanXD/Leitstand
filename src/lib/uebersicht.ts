@@ -1,3 +1,5 @@
+import { parseOffenePrs, type OffenerPr } from "./wartende-prs";
+
 // Reine Ableitungen für die Übersicht. Eingabe sind Zeilen aus loop_events und loop_snapshot (SIN-303); nichts wird erfunden.
 
 export type LoopEvent = { id: string; created_at: string; project: string | null; step: string | null; status: string | null; issue: string | null;
@@ -24,6 +26,8 @@ export type SnapshotRow = {
   labels: string[];
   minutes: number | null;
   pr: number | null;
+  /** Optional (SIN-517): offene PRs des Projekts für „warten auf dich“. */
+  open_prs: OffenerPr[];
 };
 
 export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[] };
@@ -98,6 +102,7 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         labels: liste(o.labels).map((l) => l.toLowerCase()),
         minutes: num(o.minutes ?? o.estimate_min),
         pr: num(o.pr),
+        open_prs: parseOffenePrs(o.open_prs),
       },
     ];
   });
@@ -157,7 +162,7 @@ export function inArbeitAusEreignissen(events: LoopEvent[]): SnapshotRow[] {
   }
   return [...letzte.values()]
     .filter((e) => e.step?.toUpperCase() === "WORK" && e.status && START.has(e.status.toLowerCase()))
-    .map((e) => ({ project: e.project!, stage: e.step, status: "running", title: e.issue, updated_at: e.created_at, quota_name: null, quota_used: null, quota_limit: null, issue: e.issue, blocked_by: [], quotas: [], labels: [], minutes: null, pr: null }));
+    .map((e) => ({ project: e.project!, stage: e.step, status: "running", title: e.issue, updated_at: e.created_at, quota_name: null, quota_used: null, quota_limit: null, issue: e.issue, blocked_by: [], quotas: [], labels: [], minutes: null, pr: null, open_prs: [] }));
 }
 
 /** Snapshot zuerst; Issues ohne Snapshot-Zeile kommen aus den Ereignissen der 24 h. */
