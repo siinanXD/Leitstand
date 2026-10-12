@@ -4,7 +4,7 @@ export const CODE_GUELTIG_MS = 10 * 60_000;
 export const SPERRFENSTER_MS = 10 * 60_000;
 export const MAX_FEHLER = 5;
 
-/** Speicher für Kopplungscodes (Service-Role, Tabellen `leitstand.kopplung*`); für Tests ersetzbar. */
+/** Speicher für Kopplungscodes (Service-Role, Tabellen `public.leitstand_kopplung*`); für Tests ersetzbar. */
 export type Speicher = {
   /** Legt den Code an; false, wenn der Hash schon belegt ist. */
   anlegen(zeile: { codeHash: string; tokenHash: string; ablauf: Date }): Promise<boolean>;
