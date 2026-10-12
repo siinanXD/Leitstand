@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AGENTEN, agentenFuer, bahnen } from "./agenten";
+import { AGENTEN, agentGraph, agentKarte, agentenFuer, bahnen, budgetAnteil, kostenText } from "./agenten";
 import { parseEvents, parseSnapshot } from "./uebersicht";
 
 const t = (min: number) => new Date(Date.UTC(2026, 9, 9, 12, min)).toISOString();
@@ -63,4 +63,42 @@ test("Schritt ohne agent, der mehreren Agenten gehören könnte, wird nicht gera
   ];
   const events = parseEvents([{ created_at: t(1), step: "X", status: "ok" }]);
   assert.deepEqual(bahnen(events, [], [], bis, reg).map((x) => x.zustand), ["leer", "leer"]);
+});
+
+test("Agent-Karte: Zustand, Aktuell und Fuß aus echten Daten (SIN-505)", () => {
+  const events = parseEvents([{ created_at: t(50), project: "lernapp", step: "WORK", agent: "coding", status: "running", issue: "SIN-503", pr: 7, cost_usd: 6.2 }]);
+  const s = parseSnapshot([{ project: "lernapp", issue: "SIN-9", stage: "WORK", status: "todo" }]);
+  const coding = bahnen(events, s, ["lernapp"], bis).find((x) => x.agent.id === "coding")!;
+  const k = agentKarte(coding, bis);
+  assert.equal(k.signal, "laeuft");
+  assert.equal(k.aktuell, "PR #7 · SIN-503 · LÄUFT · 10 MIN");
+  assert.equal(k.fuss, "SCHLANGE 1 · 6,20 $");
+  assert.equal(k.budgetAnteil, null);
+  assert.equal(kostenText(6.2, 20), "6,20 / 20,00 $");
+  assert.equal(budgetAnteil(5, 20), 0.25);
+  assert.equal(budgetAnteil(50, 20), 1);
+});
+
+test("Agent-Karte ohne Daten: nichts erfunden", () => {
+  const k = agentKarte(bahnen([], [], [], bis).find((x) => x.agent.id === "research")!, bis);
+  assert.equal(k.signal, "leer");
+  assert.equal(k.aktuell, "Keine Daten");
+  assert.equal(k.fuss, "SCHLANGE 0");
+});
+
+test("Agent-Karte: Fehler wird rot", () => {
+  const events = parseEvents([{ created_at: t(1), agent: "pruefen", step: "GATE", status: "failed", pr: 245 }]);
+  assert.equal(agentKarte(bahnen(events, [], [], bis).find((x) => x.agent.id === "pruefen")!, bis).signal, "error");
+});
+
+test("Graph: Produkt-Bahn nur mit Agenten des Projekts, sonst Hinweis; Kante orange bei laufendem Agent", () => {
+  const events = parseEvents([{ created_at: t(55), project: "lernapp", agent: "video", step: "VIDEO", status: "running", issue: "SIN-483" }]);
+  const g = agentGraph(events, [], ["lernapp", "leitstand"], bis);
+  assert.deepEqual(g.knoten.filter((k) => k.lane === "lernapp").map((k) => k.bahn.agent.id), ["content", "video", "marketing"]);
+  assert.equal(g.knoten.filter((k) => k.lane === "leitstand").length, 0);
+  assert.ok(g.lanes.find((l) => l.id === "leitstand")!.hinweis);
+  assert.equal(g.kanten.filter((k) => k.von.startsWith("kette-") && k.nach.startsWith("kette-")).length, 5);
+  const laeuft = new Map(g.kanten.map((x) => [x.id, x.laeuft]));
+  assert.equal(laeuft.get("kette-betrieb>lernapp-video"), true);
+  assert.equal(laeuft.get("kette-planer>lernapp-content"), false);
 });

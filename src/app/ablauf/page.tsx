@@ -3,8 +3,8 @@
 import "@xyflow/react/dist/style.css";
 import { Handle, Position, ReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { useMemo, useState } from "react";
-import { bahnen, type Bahn } from "@/lib/agenten";
-import { LAYOUT, graph, protokoll, unbekannte, zeitpunkte, type AblaufBahn, type AblaufKnoten } from "@/lib/ablauf";
+import { AGENT_LAYOUT, agentGraph, agentKarte, budgetAnteil, kostenText, type AgentKarte, type AgentLane, type Bahn } from "@/lib/agenten";
+import { LAYOUT, graph, protokoll, signalAus, unbekannte, zeitpunkte, type AblaufBahn, type AblaufKnoten } from "@/lib/ablauf";
 import { DISPATCHER_REGEL, nurProjekt, projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
 import { ProjektFilter, Rahmen, projekteIn, uhrzeit } from "../rahmen";
@@ -200,71 +200,209 @@ function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   );
 }
 
-const euro = (v: number) => `${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+const AGENT_LEGENDE = [
+  { text: "OK", klasse: "ok" },
+  { text: "Wartet", klasse: "warn" },
+  { text: "Fehler", klasse: "error" },
+  { text: "Läuft", klasse: "laeuft" },
+  { text: "Leer", klasse: "leer" },
+] as const;
 
-/** Ablauf nach Agent (SIN-486): eine Bahn je Agent, Bahnen untereinander. */
-function NachAgent({ quelle, sichtbar, events, bis }: { quelle: Quelle; sichtbar: string[]; events: Quelle["events"]; bis: number }) {
-  const [auswahl, setAuswahl] = useState<string | null>(null);
-  const liste = useMemo(() => bahnen(events, quelle.snapshot, sichtbar, bis), [events, quelle.snapshot, sichtbar, bis]);
-  const gewaehlt = liste.find((b) => b.agent.id === auswahl) ?? null;
+/** Agent-Karte nach Figma 46:78: Status-Quadrat, Name, Auftrag, Aktuell, Trenner, Fuß mit Budget-Balken. */
+function AgentKarteInhalt({ k }: { k: AgentKarte }) {
   return (
-    <div className="ablauf-flaeche">
-      <ul className="bahnen" aria-label="Bahnen nach Agent">
-        {liste.map((b) => (
-          <li key={b.agent.id} className={`bahn ${b.zustand}`}>
-            <button type="button" className="knopf" aria-pressed={auswahl === b.agent.id} onClick={() => setAuswahl(b.agent.id)}>
-              {b.agent.name} ({ZUSTAND_TEXT[b.zustand]})
-            </button>
-            <ul className="bahn-knoten">
-              {b.knoten.map((k) => (
-                <li key={k.id} className={`bahn-knoten-eintrag ${k.zustand}`}>
-                  {k.label} ({ZUSTAND_TEXT[k.zustand]})
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
-      <aside className="panel" aria-label="Details">
-        {gewaehlt ? <AgentDetails bahn={gewaehlt} /> : <p className="leer">Agent wählen für Auftrag, Läufe, Kosten und Warteschlange.</p>}
-      </aside>
+    <>
+      <span className="karte-kopf">
+        <span className={`signal ${k.signal}`} aria-hidden="true" />
+        {k.name}
+      </span>
+      <span className="agent-auftrag">{k.auftrag}</span>
+      <span className="agent-aktuell">{k.aktuell}</span>
+      <span className="agent-trenner" aria-hidden="true" />
+      <span className="agent-fuss">{k.fuss}</span>
+      {k.budgetAnteil !== null && (
+        <span className="agent-budget" aria-hidden="true">
+          <span className={`agent-verbraucht ${k.signal}`} style={{ width: `${Math.round(k.budgetAnteil * 100)}%` }} />
+        </span>
+      )}
+    </>
+  );
+}
+
+const karteLabel = (k: AgentKarte) => `${k.name}, ${k.auftrag}, ${k.aktuell}, ${k.fuss}`;
+
+function AgentGraphKnoten({ data }: NodeProps<Node<{ karte: AgentKarte }>>) {
+  return (
+    <div className="karte-inhalt agent-karte">
+      <Handle id="l" type="target" position={Position.Left} className="griff" isConnectable={false} />
+      <Handle id="t" type="target" position={Position.Top} className="griff" isConnectable={false} />
+      <AgentKarteInhalt k={data.karte} />
+      <Handle id="r" type="source" position={Position.Right} className="griff" isConnectable={false} />
+      <Handle id="b" type="source" position={Position.Bottom} className="griff" isConnectable={false} />
     </div>
   );
 }
 
-function AgentDetails({ bahn }: { bahn: Bahn }) {
-  const { agent, laeufe, kosten7d, warteschlange } = bahn;
+function AgentBahnFlaeche({ data }: NodeProps<Node<{ lane: AgentLane }>>) {
+  const { lane } = data;
   return (
-    <>
-      <h2 className="mono-label">{agent.name}</h2>
-      <p>{agent.auftrag}</p>
-      <h3 className="mono-label">Letzte Läufe</h3>
-      {laeufe.length === 0 ? (
-        <p className="leer">Keine Daten</p>
-      ) : (
-        <ul className="liste">
-          {laeufe.map((e) => (
-            <li key={e.id}>
-              <span className="mono">{uhrzeit(e.created_at)}</span> {[e.step, e.status, e.issue].filter(Boolean).join(" ")}
-            </li>
-          ))}
-        </ul>
-      )}
-      <h3 className="mono-label">Kosten 7 Tage</h3>
-      <p className="mono">{kosten7d === null ? "Keine Daten" : `${euro(kosten7d)} von ${agent.budget7d === null ? "Keine Daten" : euro(agent.budget7d)}`}</p>
-      <h3 className="mono-label">Warteschlange</h3>
-      {warteschlange.length === 0 ? (
-        <p className="leer">Keine Daten</p>
-      ) : (
-        <ul className="liste">
-          {warteschlange.map((s) => (
-            <li key={s.issue}>
-              <span className="mono">{s.issue}</span> {s.title}
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
+    <div className="bahn-flaeche" style={lane.projekt ? { borderLeftColor: projektInfo(lane.projekt).farbe } : undefined}>
+      <span className="bahn-name">{lane.name}</span>
+      {lane.hinweis && <p className="agent-hinweis">{lane.hinweis}</p>}
+    </div>
+  );
+}
+
+const AGENT_NODE_TYPES = { agent: AgentGraphKnoten, bahn: AgentBahnFlaeche };
+
+/** Ablauf nach Agent (SIN-505, Figma D4/D5): Lieferkette, Produkt-Bahnen, Detailzeile. */
+function NachAgent({ quelle, sichtbar, events, bis }: { quelle: Quelle; sichtbar: string[]; events: Quelle["events"]; bis: number }) {
+  const [auswahl, setAuswahl] = useState<string | null>(null);
+  const g = useMemo(() => agentGraph(events, quelle.snapshot, sichtbar, bis), [events, quelle.snapshot, sichtbar, bis]);
+  const gewaehlt = g.knoten.find((k) => k.karte.id === auswahl) ?? null;
+  const lane = new Map(g.knoten.map((k) => [k.karte.id, k.lane]));
+
+  const nodes: Node[] = [
+    ...g.lanes.map((l) => ({
+      id: `bahn-${l.id}`,
+      type: "bahn",
+      position: { x: 0, y: l.y },
+      data: { lane: l },
+      style: { width: g.breite, height: l.hoehe },
+      zIndex: -1,
+      selectable: false,
+      focusable: false,
+      draggable: false,
+      connectable: false,
+    })),
+    ...g.knoten.map((k) => ({
+      id: k.karte.id,
+      type: "agent",
+      position: { x: k.x, y: k.y },
+      data: { karte: k.karte },
+      className: `knoten ${k.karte.signal}`,
+      style: { width: AGENT_LAYOUT.breite, height: AGENT_LAYOUT.hoehe },
+      ariaLabel: karteLabel(k.karte),
+      draggable: false,
+      connectable: false,
+    })),
+  ];
+  const edges: Edge[] = g.kanten.map((k) => {
+    const quer = lane.get(k.von) !== lane.get(k.nach);
+    return { id: k.id, type: "step", source: k.von, target: k.nach, sourceHandle: quer ? "b" : "r", targetHandle: quer ? "t" : "l", className: k.laeuft ? "kante laeuft" : "kante" };
+  });
+
+  return (
+    <div className="agent-ansicht">
+      <div className="agent-graph" style={{ height: g.hoehe + 24 }} role="group" aria-label="Lieferkette als Graph">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={AGENT_NODE_TYPES}
+          colorMode="dark"
+          fitView
+          nodesDraggable={false}
+          nodesConnectable={false}
+          proOptions={{ hideAttribution: true }}
+          onNodeClick={(_e, n) => n.type === "agent" && setAuswahl(n.id)}
+        />
+      </div>
+      <ol className="agent-liste" aria-label="Lieferkette nach Agent">
+        {g.lanes.map((l) => (
+          <li key={l.id} className="agent-lane" style={l.projekt ? { borderLeftColor: projektInfo(l.projekt).farbe } : undefined}>
+            <h2 className="bahn-name">{l.name}</h2>
+            {l.hinweis && <p className="agent-hinweis">{l.hinweis}</p>}
+            <ul className="agent-karten">
+              {g.knoten
+                .filter((k) => k.lane === l.id)
+                .map((k) => (
+                  <li key={k.karte.id}>
+                    <button type="button" className={`karte agent-karte ${k.karte.signal}`} aria-pressed={auswahl === k.karte.id} aria-label={karteLabel(k.karte)} onClick={() => setAuswahl(k.karte.id)}>
+                      <AgentKarteInhalt k={k.karte} />
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </li>
+        ))}
+      </ol>
+      <section className="agent-detail" aria-label="Details">
+        {gewaehlt ? <AgentDetails bahn={gewaehlt.bahn} bis={bis} /> : <p className="leer">Karte wählen für Auftrag, letzte Läufe, Kosten 7 Tage und Warteschlange.</p>}
+      </section>
+      <ul className="legende" aria-label="Legende">
+        {AGENT_LEGENDE.map((l) => (
+          <li key={l.klasse}>
+            <span className={`signal ${l.klasse}`} aria-hidden="true" /> {l.text}
+          </li>
+        ))}
+        {sichtbar.map((p) => (
+          <li key={p}>
+            <span className="signal" style={{ background: projektInfo(p).farbe }} aria-hidden="true" /> {projektInfo(p).name}
+          </li>
+        ))}
+      </ul>
+      <p className="mono-label">Regel: Status nur als Quadrat (grün/gelb/rot/orange). Projektfarbe nur als Streifen. Kante orange = dort läuft gerade etwas.</p>
+    </div>
+  );
+}
+
+const WARTESCHLANGE_MAX = 4;
+
+/** Detailzeile unter dem Graph (D4): Auftrag, letzte Läufe, Kosten 7 Tage, Warteschlange. Fehlende Werte entfallen. */
+function AgentDetails({ bahn, bis }: { bahn: Bahn; bis: number }) {
+  const { agent, laeufe, kosten7d, warteschlange } = bahn;
+  const kosten = kostenText(kosten7d, agent.budget7d);
+  const anteil = budgetAnteil(kosten7d, agent.budget7d);
+  const k = agentKarte(bahn, bis);
+  return (
+    <div className="agent-felder">
+      <div className={`agent-feld ${k.signal === "laeuft" ? "laeuft" : ""}`}>
+        <h2 className="mono-label">
+          <span className={`signal ${k.signal}`} aria-hidden="true" /> {agent.name}
+        </h2>
+        <p>Auftrag: {agent.auftrag}</p>
+        {agent.modell && <p className="leer">Modell: {agent.modell}</p>}
+        {agent.freigabe && <p className="leer">Freigabe: {agent.freigabe}</p>}
+      </div>
+      <div className="agent-feld">
+        <h3 className="mono-label">Letzte Läufe</h3>
+        {laeufe.length === 0 ? (
+          <p className="leer">Keine Daten</p>
+        ) : (
+          <ul className="liste">
+            {laeufe.slice(0, 4).map((e) => (
+              <li key={e.id} className={signalAus(e.status) === "error" ? "fehler" : undefined}>
+                <span className="mono">{uhrzeit(e.created_at)}</span> {[e.issue, e.pr !== null ? `#${e.pr}` : null, e.step, e.status].filter(Boolean).join(" ")}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="agent-feld">
+        <h3 className="mono-label">Kosten 7 Tage</h3>
+        <p className="mono">{kosten ?? "Keine Daten"}</p>
+        {anteil !== null && (
+          <span className="agent-budget" aria-hidden="true">
+            <span className="agent-verbraucht" style={{ width: `${Math.round(anteil * 100)}%` }} />
+          </span>
+        )}
+      </div>
+      <div className="agent-feld">
+        <h3 className="mono-label">Warteschlange · {warteschlange.length}</h3>
+        {warteschlange.length === 0 ? (
+          <p className="leer">Keine Daten</p>
+        ) : (
+          <ul className="liste">
+            {warteschlange.slice(0, WARTESCHLANGE_MAX).map((s) => (
+              <li key={s.issue}>
+                <span className="mono">{s.issue}</span> {s.title}
+              </li>
+            ))}
+            {warteschlange.length > WARTESCHLANGE_MAX && <li className="leer">+{warteschlange.length - WARTESCHLANGE_MAX} weitere</li>}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
 

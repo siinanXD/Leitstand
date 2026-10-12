@@ -7,7 +7,7 @@
     { "id": "pruefen", "name": "Prüfen", "auftrag": "Prüft Pull Requests, mergt bei grünem Build und repariert Fehler.", "workflows": ["GATE", "MERGE"], "budget7d": null },
     { "id": "betrieb", "name": "Betrieb", "auftrag": "Veröffentlicht, überwacht und berichtet den Stand.", "workflows": ["DEPLOY", "STATUS", "DIGEST"], "budget7d": null },
     { "id": "content", "name": "Content", "auftrag": "Erstellt Lerninhalte für die Lern-App.", "workflows": ["CONTENT"], "budget7d": null, "nurProjekte": ["lernapp"] },
-    { "id": "video", "name": "Video", "auftrag": "Erstellt Videos aus fertigen Inhalten.", "workflows": ["VIDEO"], "budget7d": null },
-    { "id": "marketing", "name": "Marketing", "auftrag": "Bereitet Veröffentlichung und Werbung für Produkte vor.", "workflows": ["MARKETING"], "budget7d": null }
+    { "id": "video", "name": "Video", "auftrag": "Erstellt Videos aus fertigen Inhalten.", "workflows": ["VIDEO"], "budget7d": null, "nurProjekte": ["lernapp"] },
+    { "id": "marketing", "name": "Marketing", "auftrag": "Bereitet Veröffentlichung und Werbung für Produkte vor.", "workflows": ["MARKETING"], "budget7d": null, "nurProjekte": ["lernapp"] }
   ]
 }
