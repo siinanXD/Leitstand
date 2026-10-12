@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test $(find src -name \"*.test.ts\")",
-    "test:a11y": "playwright test"
+    "test:a11y": "playwright test",
+    "stand": "tsx scripts/stand/pruefen.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

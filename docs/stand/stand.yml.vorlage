@@ -1,0 +1,51 @@
+# Stand-Agent (SIN-508). Nach .github/workflows/stand.yml kopieren (Agenten dürfen Workflows nicht ändern).
+# Täglich 06:15 UTC, nach jedem Merge auf main und von Hand. Bericht als Artefakt, Ereignis in loop_events.
+name: stand
+
+on:
+  schedule:
+    - cron: "15 6 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Kein Ereignis in loop_events schreiben"
+        type: boolean
+        default: false
+
+concurrency:
+  group: stand
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  stand:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Stand prüfen
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_ACCESS_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/stand/pruefen.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stand-bericht
+          path: stand-bericht.json
+          if-no-files-found: ignore

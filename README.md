@@ -12,6 +12,7 @@
 | `npm run lint` | ESLint |
 | `npm test` | Unit-Tests (Kontrast der Design-Tokens) |
 | `npm run test:a11y` | Playwright mit axe-core (nach `npm run build`) |
+| `npm run stand` | Stand-Agent: schreibt `stand-bericht.json` (SIN-508) |
 
 ## Umgebungsvariablen
 
