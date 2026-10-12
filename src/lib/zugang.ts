@@ -78,3 +78,38 @@ export async function pruefeCode(client: VerifyClient, email: string, code: stri
     return CODE_FEHLER;
   }
 }
+
+export const KOPPLUNG_FEHLER = "Kopplungscode falsch oder abgelaufen. Erzeuge am Gerät mit Sitzung einen neuen Code.";
+export const KOPPLUNG_GESPERRT = "Zu viele Fehlversuche. Warte 10 Minuten und versuche es mit einem neuen Code erneut.";
+export const KOPPLUNG_ERZEUGEN_FEHLER = "Code konnte nicht erzeugt werden. Versuche es später erneut.";
+
+/** Kopplungscode für die Anzeige in zwei Dreiergruppen. */
+export const zeigeKopplungsCode = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
+
+/** Kopplungscode (SIN-525) in dieser App einlösen: Der Server tauscht ihn gegen `token_hash`, danach legt `verifyOtp` die Sitzung an. Null bei Erfolg, sonst die Fehlermeldung. */
+export async function pruefeKopplung(client: LinkClient, code: string, hole: typeof fetch = fetch): Promise<string | null> {
+  if (!/^\d{6}$/.test(code.replace(/\s/g, ""))) return KOPPLUNG_FEHLER;
+  try {
+    const res = await hole("/api/kopplung/einloesen", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+    if (res.status === 429) return KOPPLUNG_GESPERRT;
+    if (!res.ok) return KOPPLUNG_FEHLER;
+    const { token_hash: tokenHash } = (await res.json()) as { token_hash?: unknown };
+    if (typeof tokenHash !== "string" || !tokenHash) return KOPPLUNG_FEHLER;
+    const { error } = await client.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+    return error ? KOPPLUNG_FEHLER : null;
+  } catch {
+    return KOPPLUNG_FEHLER;
+  }
+}
+
+/** Neuen Kopplungscode vom Server holen (braucht die Sitzung); null bei Fehler. */
+export async function holeKopplungsCode(zugriffstoken: string, hole: typeof fetch = fetch): Promise<{ code: string; gueltigBis: string } | null> {
+  try {
+    const res = await hole("/api/kopplung", { method: "POST", headers: { Authorization: `Bearer ${zugriffstoken}` } });
+    if (!res.ok) return null;
+    const { code, gueltigBis } = (await res.json()) as { code?: unknown; gueltigBis?: unknown };
+    return typeof code === "string" && typeof gueltigBis === "string" ? { code, gueltigBis } : null;
+  } catch {
+    return null;
+  }
+}

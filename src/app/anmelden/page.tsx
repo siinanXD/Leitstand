@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { browserClient } from "@/lib/browser-client";
 import { useSitzung } from "@/lib/sitzung";
-import { ANMELDEN_FEHLER, ANMELDEN_GESENDET, pruefeCode, pruefeLink, sendeLink } from "@/lib/zugang";
+import { ANMELDEN_FEHLER, ANMELDEN_GESENDET, pruefeCode, pruefeKopplung, pruefeLink, sendeLink } from "@/lib/zugang";
 import { Kopf } from "../kopf";
 
 export default function Anmelden() {
@@ -13,6 +13,9 @@ export default function Anmelden() {
   const [code, setCode] = useState("");
   const [codeMeldung, setCodeMeldung] = useState<string | null>(null);
   const [prueft, setPrueft] = useState(false);
+  const [kopplung, setKopplung] = useState("");
+  const [kopplungMeldung, setKopplungMeldung] = useState<string | null>(null);
+  const [kopplungPrueft, setKopplungPrueft] = useState(false);
   const [einLink, setEinLink] = useState("");
   const [linkMeldung, setLinkMeldung] = useState<string | null>(null);
   const [linkPrueft, setLinkPrueft] = useState(false);
@@ -43,6 +46,20 @@ export default function Anmelden() {
     const fehler = await pruefeCode(client, email, code);
     setPrueft(false);
     if (fehler) setCodeMeldung(fehler);
+    else router.replace("/");
+  }
+
+  async function kopplungPruefen(e: FormEvent) {
+    e.preventDefault();
+    const client = browserClient();
+    if (!client) {
+      setKopplungMeldung(ANMELDEN_FEHLER);
+      return;
+    }
+    setKopplungPrueft(true);
+    const fehler = await pruefeKopplung(client, kopplung);
+    setKopplungPrueft(false);
+    if (fehler) setKopplungMeldung(fehler);
     else router.replace("/");
   }
 
@@ -84,6 +101,21 @@ export default function Anmelden() {
           {meldung && (
             <p role="status" className={meldung === ANMELDEN_GESENDET ? "meldung" : "meldung fehler"}>
               {meldung}
+            </p>
+          )}
+          <form onSubmit={kopplungPruefen} className="formular" aria-labelledby="kopplung-titel">
+            <h2 id="kopplung-titel" className="mono-label">
+              Kopplungscode
+            </h2>
+            <label htmlFor="kopplung">Code (6 Ziffern) aus „Handy-App anmelden“ auf einem angemeldeten Gerät</label>
+            <input id="kopplung" name="kopplung" type="text" inputMode="numeric" autoComplete="off" pattern="[0-9 ]{6,7}" maxLength={7} required value={kopplung} onChange={(e) => setKopplung(e.target.value)} />
+            <button type="submit" className="knopf aktiv" disabled={kopplungPrueft}>
+              Mit Kopplungscode anmelden
+            </button>
+          </form>
+          {kopplungMeldung && (
+            <p role="status" className="meldung fehler">
+              {kopplungMeldung}
             </p>
           )}
           <form onSubmit={linkPruefen} className="formular" aria-labelledby="link-titel">
