@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { Pause } from "@/lib/aktionen-client";
 import { pauseSatz } from "@/lib/pause";
@@ -8,6 +9,7 @@ import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
 import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
 import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "./rahmen";
 import "./uebersicht.css";
+import "./projekte/projekte.css";
 
 const KEINE_DATEN = <p className="leer">Keine Daten</p>;
 const SEGMENTE = 20;
@@ -252,6 +254,17 @@ export default function Home() {
             <div className="werkzeuge">
               <ProjektFilter projekte={projekteIn(quelle)} wert={filter} onChange={setFilter} />
             </div>
+            <nav aria-label="Projektseiten">
+              <ul className="projekt-liste">
+                {projekteIn(quelle).map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/projekt/${p.id}`} className="projekt-name">
+                      <span className="marke-projekt" style={{ background: p.farbe }} aria-hidden="true" /> {p.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
             <Bento quelle={gefiltert} jetzt={jetzt} pause={pause} />
           </>
         );

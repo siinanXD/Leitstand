@@ -1,0 +1,91 @@
+/* Alle Projekte und Projektseite nach Figma D1/D3, C1/C4 (SIN-531): nur Tokens. */
+.projekte-seite .tabelle-kachel {
+  grid-column: 1 / -1;
+}
+
+.tabelle-rahmen {
+  overflow-x: auto;
+}
+
+.projekt-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.projekt-tabelle th,
+.projekt-tabelle td {
+  text-align: left;
+  padding: var(--space-8);
+  border-bottom: var(--bento-line);
+  vertical-align: middle;
+}
+
+.projekt-tabelle thead th {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.projekt-name,
+.link-leiste a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--touch-min);
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+
+.link-leiste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.link-leiste li {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-12);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font-size: 12px;
+}
+
+.projekt-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-16);
+}
+
+.aufgaben-spalten {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.aufgabe-knopf {
+  display: flex;
+  width: 100%;
+  min-height: var(--touch-min);
+  align-items: center;
+  gap: var(--space-8);
+  text-align: left;
+}
+
+.anleitung {
+  display: grid;
+  gap: var(--space-8);
+  align-content: start;
+}
+
+@media (min-width: 900px) {
+  .aufgaben-spalten {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
