@@ -10,7 +10,7 @@ const REITER = [
   { id: "auswertung", href: "/auswertung", name: "Auswertung" },
 ];
 
-export function Kopf({ stand, angemeldet, aktiv = "uebersicht" }: { stand?: string; angemeldet: boolean; aktiv?: string }) {
+export function Kopf({ stand, angemeldet, aktiv = "uebersicht", wartend = 0 }: { stand?: string; angemeldet: boolean; aktiv?: string; wartend?: number }) {
   return (
     <header className="kopf">
       <p className="mono-label marke">Leitstand</p>
@@ -20,6 +20,13 @@ export function Kopf({ stand, angemeldet, aktiv = "uebersicht" }: { stand?: stri
             {REITER.map((r) => (
               <Link key={r.id} href={r.href} className="knopf" aria-current={r.id === aktiv ? "page" : undefined}>
                 {r.name}
+                {r.id === "uebersicht" && wartend > 0 && (
+                  <span className="mono">
+                    {" "}
+                    ({wartend}
+                    <span className="sr-only"> warten auf dich</span>)
+                  </span>
+                )}
               </Link>
             ))}
           </nav>

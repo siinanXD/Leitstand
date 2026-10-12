@@ -4,7 +4,7 @@ import { useState } from "react";
 import { nurProjekt } from "@/lib/projekte";
 import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
 import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
-import { ProjektFilter, Rahmen, projekteIn } from "./rahmen";
+import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "./rahmen";
 import "./uebersicht.css";
 
 const KEINE_DATEN = <p className="leer">Keine Daten</p>;
@@ -194,14 +194,54 @@ export function Bento({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   );
 }
 
+/** Ganz oben (SIN-517): PRs, die auf Freigabe warten, mit einem Tipp auf „Freigeben“. Ohne wartende PRs keine Leiste. */
+function WartendeLeiste({ wartend }: { wartend: Wartende }) {
+  const { wartende, fehler, freigeben } = wartend;
+  if (wartende.length === 0) return null;
+  return (
+    <section className="tile wartende" aria-labelledby="wartende">
+      <h2 id="wartende" className="mono-label">
+        {wartende.length} {wartende.length === 1 ? "wartet" : "warten"} auf dich
+      </h2>
+      <ul className="aufgaben">
+        {wartende.map((p) => (
+          <li key={p.key} className="wartend-zeile">
+            <div className="wartend-text">
+              <span className="wartend-titel">{p.titel}</span>
+              <span className="grund">{p.grund}</span>
+              <span className="mono">
+                {p.repo} · #{p.nummer}
+              </span>
+              {fehler[p.key] && (
+                <span className="wartend-fehler" role="alert">
+                  {fehler[p.key]}
+                </span>
+              )}
+            </div>
+            {p.url && (
+              <a className="mono" href={p.url} target="_blank" rel="noreferrer" aria-label={`${p.titel} auf GitHub öffnen`}>
+                PR →
+              </a>
+            )}
+            <button type="button" className="knopf aktiv" aria-label={`${p.titel} freigeben`} onClick={() => void freigeben(p)}>
+              Freigeben
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export default function Home() {
   const [filter, setFilter] = useState<string | null>(null);
   return (
     <Rahmen aktiv="uebersicht">
-      {(quelle, jetzt) => {
+      {(quelle, jetzt, wartend) => {
         const gefiltert: Quelle = { events: nurProjekt(quelle.events, filter), snapshot: nurProjekt(quelle.snapshot, filter) };
         return (
           <>
+            <WartendeLeiste wartend={wartend} />
             <div className="werkzeuge">
               <ProjektFilter projekte={projekteIn(quelle)} wert={filter} onChange={setFilter} />
             </div>

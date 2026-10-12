@@ -2,7 +2,9 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { browserClient } from "@/lib/browser-client";
+import { useFreigaben } from "@/lib/freigabe-client";
 import { alleProjekte, type Projekt } from "@/lib/projekte";
+import { tabTitel, wartendePrs, type WartenderPr } from "@/lib/wartende-prs";
 import { useSitzung } from "@/lib/sitzung";
 import { ladeQuelle, type Laden, type Lesequelle } from "@/lib/supabase";
 import type { Quelle } from "@/lib/uebersicht";
@@ -13,10 +15,19 @@ export const uhrzeit = (iso: string) => new Date(iso).toLocaleTimeString("de-DE"
 const LEER: Quelle = { events: [], snapshot: [] };
 
 /** Sitzung prüfen, Daten laden, Kopf zeigen; die Seiten liefern nur den Inhalt. */
-export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: Quelle, jetzt: Date) => ReactNode }) {
+export type Wartende = { wartende: WartenderPr[]; fehler: Readonly<Record<string, string>>; freigeben(pr: WartenderPr): Promise<void> };
+
+export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: Quelle, jetzt: Date, wartend: Wartende) => ReactNode }) {
   const sitzung = useSitzung();
   const [geladen, setGeladen] = useState<{ laden: Laden; jetzt: Date } | null>(null);
   const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
+  const freigaben = useFreigaben();
+  const quelleOk = geladen?.laden.zustand === "ok" ? geladen.laden.quelle : LEER;
+  const wartende = wartendePrs(quelleOk.snapshot).filter((p) => !freigaben.erledigt.has(p.key));
+
+  useEffect(() => {
+    document.title = tabTitel(angemeldet ? wartende.length : 0);
+  }, [angemeldet, wartende.length]);
 
   useEffect(() => {
     const client = browserClient();
@@ -51,7 +62,7 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
   }
   return (
     <>
-      <Kopf angemeldet aktiv={aktiv} stand={geladen ? uhrzeit(geladen.jetzt.toISOString()) : undefined} />
+      <Kopf angemeldet aktiv={aktiv} stand={geladen ? uhrzeit(geladen.jetzt.toISOString()) : undefined} wartend={wartende.length} />
       {!geladen && (
         <p className="hinweis" role="status">
           Daten werden geladen …
@@ -62,7 +73,7 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
           Datenquelle nicht erreichbar.
         </p>
       )}
-      {children(geladen?.laden.zustand === "ok" ? geladen.laden.quelle : LEER, geladen?.jetzt ?? new Date())}
+      {children(quelleOk, geladen?.jetzt ?? new Date(), { wartende, fehler: freigaben.fehler, freigeben: freigaben.freigeben })}
     </>
   );
 }

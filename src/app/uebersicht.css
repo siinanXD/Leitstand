@@ -318,3 +318,33 @@
     grid-column: 1 / -1;
   }
 }
+
+.wartende {
+  display: grid;
+  gap: var(--space-8);
+  margin: var(--space-16);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-primary);
+}
+
+.wartend-zeile {
+  padding: var(--space-8) 0;
+}
+
+.wartend-text {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wartend-titel {
+  font-weight: 500;
+}
+
+.wartend-fehler {
+  color: var(--color-text-primary);
+  border-left: 2px solid var(--color-status-error);
+  padding-left: var(--space-8);
+}
