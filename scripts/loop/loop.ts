@@ -10,6 +10,8 @@
  * Optional: LOOP_MAX_PARALLEL (Standard 1), DRY_RUN=1, SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY für loop_events.
  * Ohne Supabase-Secrets steht nur eine Warnung im Log (nie ein Abbruch).
  */
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { LEHREN_ORDNER, leseLehre, workerHinweise } from "../../src/lib/lernen/lernen";
 import { ausLinear, gespiegelteIds, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
@@ -128,6 +130,19 @@ async function rueckeNach(i: LinearIssue, teamId: string) {
   console.log(`Nachgerückt: ${i.identifier}`);
 }
 
+/** Passende Lehren und Skills für das Issue (SIN-512). Fehlt der Ordner, gibt es keine Hinweise. */
+function lehrenHinweise(i: LinearIssue): string {
+  try {
+    const lehren = readdirSync(LEHREN_ORDNER)
+      .filter((d) => d.endsWith(".md") && d !== "INDEX.md")
+      .map((d) => leseLehre(`${LEHREN_ORDNER}/${d}`, readFileSync(`${LEHREN_ORDNER}/${d}`, "utf8")));
+    const skills = existsSync("docs/skills") ? readdirSync("docs/skills").filter((s) => existsSync(`docs/skills/${s}/SKILL.md`)) : [];
+    return workerHinweise(lehren, skills.filter((s) => i.labels.some((l) => s.includes(l.toLowerCase()))), null, { labels: i.labels });
+  } catch {
+    return "";
+  }
+}
+
 async function dispatch() {
   await ereignis("dispatch", "start");
   const nodes = await projektIssues();
@@ -151,7 +166,7 @@ async function dispatch() {
     return;
   }
   for (const i of wahl) {
-    const { title, body } = issueText(i);
+    const { title, body } = issueText(i, lehrenHinweise(i));
     const team = nodes.find((n) => n.id === i.id)!.team.id;
     if (DRY) {
       console.log(`[trocken] würde starten: ${title}`);

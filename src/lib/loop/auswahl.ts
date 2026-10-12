@@ -82,7 +82,7 @@ export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max:
 }
 
 /** Text des GitHub-Issues, das den Worker (claude.yml) startet. */
-export function issueText(i: LinearIssue): { title: string; body: string } {
+export function issueText(i: LinearIssue, hinweise = ""): { title: string; body: string } {
   const kurz = i.identifier.toLowerCase();
   return {
     title: `${i.identifier}: ${i.title}`,
@@ -95,6 +95,7 @@ export function issueText(i: LinearIssue): { title: string; body: string } {
       "---",
       `Arbeite auf dem Branch \`claude/${kurz}\`. PR-Titel als Conventional Commit mit \`${i.identifier}\`, Commits mit \`Part of ${i.identifier}\`.`,
       "Lies zuerst AGENTS.md. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test.",
+      ...(hinweise ? ["", hinweise] : []),
     ].join("\n"),
   };
 }
