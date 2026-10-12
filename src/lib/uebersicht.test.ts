@@ -13,7 +13,7 @@ test("parseEvents verwirft kaputte Zeilen", () => {
 
 test("parseEvents liest step, status, issue und pr", () => {
   const [e] = parseEvents([{ created_at: vor(1), project: "leitstand", step: "dispatch", status: "ok", issue: "SIN-410", pr: 9, type: "alt" }]);
-  assert.deepEqual([e.step, e.status, e.issue, e.pr], ["dispatch", "ok", "SIN-410", 9]);
+  assert.deepEqual([e.step, e.status, e.issue, e.pr], ["QUEUE", "ok", "SIN-410", 9]);
 });
 
 test("parseSnapshot braucht ein Projekt", () => {

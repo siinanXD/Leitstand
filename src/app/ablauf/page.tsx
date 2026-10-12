@@ -3,7 +3,7 @@
 import "@xyflow/react/dist/style.css";
 import { Background, ReactFlow, type Edge, type Node } from "@xyflow/react";
 import { useMemo, useState } from "react";
-import { graph, protokoll, zeitpunkte, type AblaufKnoten } from "@/lib/ablauf";
+import { graph, protokoll, unbekannte, zeitpunkte, type AblaufKnoten } from "@/lib/ablauf";
 import { DISPATCHER_REGEL, nurProjekt, projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
 import { ProjektFilter, Rahmen, projekteIn, uhrzeit } from "../rahmen";
@@ -23,7 +23,8 @@ function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const bis = live ? jetzt.getTime() : punkte[position];
 
   const { knoten, kanten, plaetze } = useMemo(() => graph(quelle.events, quelle.snapshot, sichtbar, bis, live), [quelle.events, quelle.snapshot, sichtbar, bis, live]);
-  const gewaehlt = knoten.find((k) => k.id === auswahl) ?? null;
+  const fremd = useMemo(() => unbekannte(quelle.events), [quelle.events]);
+  const gewaehlt =knoten.find((k) => k.id === auswahl) ?? null;
 
   const nodes: Node[] = knoten.map((k) => ({
     id: k.id,
@@ -45,6 +46,11 @@ function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
         </h1>
         <p className="leer">{DISPATCHER_REGEL}</p>
         <ProjektFilter projekte={alle} wert={filter} onChange={setFilter} />
+        {fremd.projekte.length + fremd.schritte.length > 0 && (
+          <p className="leer" role="status">
+            unbekannt: {[...fremd.projekte.map((p) => `Projekt ${p}`), ...fremd.schritte.map((s) => `Schritt ${s}`)].join(", ")}
+          </p>
+        )}
         {knoten.every((k) => k.zustand === "leer") && sichtbar.length === 0 ? (
           <p className="leer">Keine Daten</p>
         ) : (
