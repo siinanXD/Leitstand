@@ -2,159 +2,194 @@
 
 import { useState } from "react";
 import { nurProjekt } from "@/lib/projekte";
-import { aktivitaet, brauchtDich, heuteSatz, kontingente, laufend, letzte24h, projekteImStand, schiene, type Quelle, type SnapshotRow } from "@/lib/uebersicht";
-import { ProjektFilter, Rahmen, projekteIn, uhrzeit } from "./rahmen";
+import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
+import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
+import { ProjektFilter, Rahmen, projekteIn } from "./rahmen";
+import "./uebersicht.css";
 
 const KEINE_DATEN = <p className="leer">Keine Daten</p>;
-const SEGMENTE = 10;
+const SEGMENTE = 20;
 
-function Zeilen({ zeilen }: { zeilen: SnapshotRow[] }) {
-  if (zeilen.length === 0) return KEINE_DATEN;
-  return (
-    <ul className="liste">
-      {zeilen.map((z) => (
-        <li key={`${z.project}-${z.issue ?? ""}-${z.title ?? z.stage ?? ""}`}>
-          <span className="mono">{z.project}</span> {z.title ?? z.stage ?? ""}
-        </li>
-      ))}
-    </ul>
-  );
+const euro = (v: number) => `≈${v.toFixed(2).replace(".", ",")} €`;
+const dauer = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+/** Linear-Kennungen führen zu Linear, PRs des Leitstand-Repos zu GitHub; sonst kein Link (nichts raten). */
+function linkFuer(a: Aufgabe, projekt: string | undefined): string | null {
+  if (/^SIN-\d+$/.test(a.ref)) return `https://linear.app/sinan-kahraman/issue/${a.ref}`;
+  if (/^#\d+$/.test(a.ref) && projekt === "leitstand") return `https://github.com/siinanXD/Leitstand/pull/${a.ref.slice(1)}`;
+  return null;
 }
 
 export function Bento({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const satz = heuteSatz(quelle, jetzt);
-  const stufen = schiene(quelle.snapshot);
-  const laeuft = laufend(quelle, jetzt);
-  const wartet = brauchtDich(quelle.snapshot);
+  const chips = belegChips(quelle.events, jetzt);
+  const { stufen, grund } = pipelineSchiene(quelle.events, jetzt);
+  const laeuft = inArbeitZeilen(quelle, jetzt);
+  const zahlen = kennzahlen(quelle, jetzt);
+  const aufgaben = aufgabenFuerDich(quelle.snapshot);
   const quoten = kontingente(quelle.snapshot);
-  const events24 = letzte24h(quelle.events, jetzt);
-  const balken = aktivitaet(quelle.events, jetzt);
-  const spitze = Math.max(...balken, 1);
-  const projekte = projekteImStand(quelle, jetzt).length;
+  const kacheln = aktivitaetKacheln(quelle.events, jetzt);
+  const ereignisse = kacheln.reduce((n, k) => n + k.anzahl, 0);
+  const projektVon = (a: Aufgabe) => quelle.snapshot.find((s) => a.key.startsWith(`${s.project}|`))?.project;
 
   return (
-    <main className="bento">
-      <section className="tile breit" aria-labelledby="heute">
-        <h1 id="heute" className="mono-label">
-          Heute in einem Satz
-        </h1>
-        {satz ? (
-          <>
-            <p className="satz">{satz.satz}</p>
-            <ul className="liste" aria-label="Belege">
-              {satz.belege.map((b) => (
-                <li key={b.id}>
-                  <span className="mono">{uhrzeit(b.created_at)}</span> {[b.project, b.step, b.status, b.issue].filter(Boolean).join(" ")}
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          KEINE_DATEN
-        )}
-      </section>
-
-      <section className="tile breit" aria-labelledby="pipeline">
-        <h2 id="pipeline" className="mono-label">
-          Pipeline
-        </h2>
-        {stufen.length === 0 ? (
-          KEINE_DATEN
-        ) : (
-          <ol className="schiene">
-            {stufen.map((s) => (
-              <li key={s.stage} className={s.anzahl > 0 ? "belegt" : undefined}>
-                <span className="mono-label">{s.stage}</span>
-                <span className="zahl mono">{s.anzahl}</span>
+    <main className="bento-b1">
+      <section className="tile b1-satz" aria-labelledby="heute" style={{ gridColumn: "1 / -1" }}>
+        <div>
+          <h1 id="heute" className="mono-label">
+            Heute in einem Satz
+          </h1>
+          {satz ? <p className="satz-text">{satz.satz}</p> : KEINE_DATEN}
+        </div>
+        {chips.length > 0 && (
+          <ul className="chips" aria-label="Belege">
+            {chips.map((c) => (
+              <li key={c} className="chip mono">
+                {c}
               </li>
             ))}
-          </ol>
-        )}
-      </section>
-
-      <section className="tile" aria-labelledby="arbeit">
-        <h2 id="arbeit" className="mono-label">
-          In Arbeit
-        </h2>
-        <Zeilen zeilen={laeuft} />
-      </section>
-
-      <section className="tile" aria-labelledby="zahlen">
-        <h2 id="zahlen" className="mono-label">
-          Zahlen
-        </h2>
-        {quelle.events.length === 0 && quelle.snapshot.length === 0 ? (
-          KEINE_DATEN
-        ) : (
-          <dl className="zahlen">
-            <div>
-              <dt>Projekte</dt>
-              <dd className="mono">{projekte}</dd>
-            </div>
-            <div>
-              <dt>In Arbeit</dt>
-              <dd className="mono">{laeuft.length}</dd>
-            </div>
-            <div>
-              <dt>Ereignisse 24 h</dt>
-              <dd className="mono">{events24.length}</dd>
-            </div>
-          </dl>
-        )}
-      </section>
-
-      <section className="tile" aria-labelledby="braucht">
-        <h2 id="braucht" className="mono-label">
-          Braucht dich
-        </h2>
-        <Zeilen zeilen={wartet} />
-      </section>
-
-      <section className="tile" aria-labelledby="kontingente">
-        <h2 id="kontingente" className="mono-label">
-          Kontingente
-        </h2>
-        {quoten.length === 0 ? (
-          KEINE_DATEN
-        ) : (
-          <ul className="liste">
-            {quoten.map((q) => {
-              const gefuellt = Math.min(SEGMENTE, Math.round((q.used / q.limit) * SEGMENTE));
-              return (
-                <li key={q.name}>
-                  <span>
-                    {q.name}
-                    {q.schaetzung && " (Schätzung)"}
-                  </span>{" "}
-                  <span className="mono">
-                    {q.used} / {q.limit}
-                  </span>
-                  <div className="segmente" aria-hidden="true">
-                    {Array.from({ length: SEGMENTE }, (_, i) => (
-                      <div key={i} className={i < gefuellt ? "voll" : undefined} />
-                    ))}
-                  </div>
-                </li>
-              );
-            })}
           </ul>
         )}
       </section>
 
-      <section className="tile breit" aria-labelledby="aktivitaet">
-        <h2 id="aktivitaet" className="mono-label">
-          Aktivität 24 h
-        </h2>
-        {events24.length === 0 ? (
-          KEINE_DATEN
+      <div className="b1-spalte">
+        <section className="tile b1-kachel" aria-labelledby="pipeline">
+          <h2 id="pipeline" className="mono-label">
+            Pipeline · jetzt
+          </h2>
+          {stufen.length === 0 ? (
+            KEINE_DATEN
+          ) : (
+            <>
+              <ol className="stufen">
+                {stufen.map((s) => (
+                  <li key={s.stage} className={s.zustand === "leer" ? undefined : s.zustand}>
+                    {s.stage}
+                    {s.anzahl > 1 ? `×${s.anzahl}` : ""}
+                    {s.zustand === "rot" && <span className="sr-only"> rot</span>}
+                  </li>
+                ))}
+              </ol>
+              {grund && <p className="grund">{grund}</p>}
+            </>
+          )}
+        </section>
+
+        <section className="tile b1-kachel" aria-labelledby="arbeit">
+          <h2 id="arbeit" className="mono-label">
+            In Arbeit · {laeuft.length}
+          </h2>
+          {laeuft.length === 0 ? (
+            KEINE_DATEN
+          ) : (
+            <ul className="arbeit">
+              {laeuft.map((z) => (
+                <li key={z.key}>
+                  <span className="mono">{z.issue ?? ""}</span>
+                  <span className="titel">{z.titel ?? z.project}</span>
+                  <span className="mono">{z.dauerMin !== null ? dauer(z.dauerMin) : ""}</span>
+                  <span className="mono">{z.kosten !== null ? euro(z.kosten) : ""}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <div className="b1-spalte">
+        {zahlen.length === 0 ? (
+          <section className="tile b1-kachel" aria-label="Zahlen">
+            {KEINE_DATEN}
+          </section>
         ) : (
-          <div className="balken" role="img" aria-label={`${events24.length} Ereignisse in 24 Stunden, stündlich: ${balken.join(", ")}`}>
-            {balken.map((n, i) => (
-              <div key={i} style={{ height: `${(n / spitze) * 100}%` }} />
+          <dl className="kennzahlen" aria-label="Zahlen">
+            {zahlen.map((z) => (
+              <div key={z.label} className={z.hervor ? "kennzahl hervor" : "kennzahl"}>
+                <dd>{z.wert}</dd>
+                <dt className="mono-label">{z.label}</dt>
+              </div>
             ))}
-          </div>
+          </dl>
         )}
-      </section>
+
+        <div className="b1-reihe">
+          <section className="tile b1-kachel b1-braucht" aria-labelledby="braucht">
+            <h2 id="braucht" className="mono-label">
+              Braucht dich
+            </h2>
+            {aufgaben.length === 0 ? (
+              KEINE_DATEN
+            ) : (
+              <ul className="aufgaben">
+                {aufgaben.map((a) => {
+                  const href = linkFuer(a, projektVon(a));
+                  return (
+                    <li key={a.key}>
+                      <span>{a.titel}</span>
+                      {a.minuten !== null && <span className="mono">{a.minuten} MIN</span>}
+                      {href && (
+                        <a className="mono" href={href} target="_blank" rel="noreferrer" aria-label={`${a.titel} öffnen`}>
+                          ÖFFNEN →
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section className="tile b1-kachel" aria-labelledby="kontingente">
+            <h2 id="kontingente" className="mono-label">
+              Kontingente
+            </h2>
+            {quoten.length === 0 ? (
+              KEINE_DATEN
+            ) : (
+              quoten.map((q) => {
+                const anteil = q.used / q.limit;
+                const gefuellt = Math.min(SEGMENTE, Math.round(anteil * SEGMENTE));
+                return (
+                  <div key={q.name} className={anteil >= 1 ? "quote rot" : anteil >= 0.8 ? "quote warn" : "quote"}>
+                    <div className="quote-kopf mono">
+                      <span>{q.schaetzung ? `${q.name} ≈` : q.name}</span>
+                      <span>{q.schaetzung ? "Schätzung" : `${q.used}/${q.limit}`}</span>
+                    </div>
+                    <div
+                      className="segmente"
+                      role="img"
+                      aria-label={`${q.name}${q.schaetzung ? " (Schätzung)" : ""}: ${q.used} von ${q.limit}`}
+                    >
+                      {Array.from({ length: SEGMENTE }, (_, i) => (
+                        <div key={i} className={i < gefuellt ? "voll" : undefined} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </section>
+        </div>
+
+        <section className="tile b1-kachel" aria-labelledby="aktivitaet">
+          <h2 id="aktivitaet" className="mono-label">
+            Aktivität · 24 h · rot = Stillstand
+          </h2>
+          {ereignisse === 0 ? (
+            KEINE_DATEN
+          ) : (
+            <div
+              className="kacheln"
+              role="img"
+              aria-label={`${ereignisse} Ereignisse in 24 Stunden, stündlich: ${kacheln.map((k) => (k.rot ? `${k.anzahl} rot` : k.anzahl)).join(", ")}`}
+            >
+              {kacheln.map((k, i) => (
+                <div key={i} className={k.rot ? "rot" : k.stufe > 0 ? `s${k.stufe}` : undefined} />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

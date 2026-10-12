@@ -1,0 +1,320 @@
+/* Übersicht nach Figma B1/B2 (SIN-509): Werte aus Frame 10:3, nur Tokens. */
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--color-status-ok);
+}
+
+.bento-b1 {
+  display: grid;
+  gap: var(--bento-gap);
+  padding: var(--space-16);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.b1-spalte {
+  display: grid;
+  gap: var(--bento-gap);
+  align-content: start;
+  min-width: 0;
+}
+
+.b1-satz {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+}
+
+.b1-satz p {
+  margin: 0;
+}
+
+.b1-satz .satz-text {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.b1-kachel {
+  padding: var(--space-16);
+  display: grid;
+  gap: var(--space-8);
+  align-content: start;
+}
+
+.b1-kachel h2 {
+  margin: 0;
+}
+
+.stufen {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.stufen li {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  background: var(--color-bg-surface);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.stufen li::before {
+  content: "";
+  height: 4px;
+  background: var(--color-bg-raised);
+}
+
+.stufen li.ok::before {
+  background: var(--color-status-ok);
+}
+
+.stufen li.laufend {
+  background: var(--color-accent-soft);
+}
+
+.stufen li.laufend::before {
+  background: var(--color-accent-primary);
+}
+
+.stufen li.rot::before {
+  background: var(--color-status-error);
+}
+
+.grund {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-status-error);
+}
+
+.arbeit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.arbeit li {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: var(--bento-line);
+  font-size: 14px;
+}
+
+.arbeit li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--color-accent-primary);
+}
+
+.arbeit .mono,
+.aufgaben .mono {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.kennzahlen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--bento-gap);
+  margin: 0;
+}
+
+.kennzahl {
+  padding: var(--space-16);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  background: var(--color-bg-surface);
+  display: grid;
+  gap: 4px;
+}
+
+.kennzahl.hervor {
+  border-color: var(--color-accent-primary);
+}
+
+.kennzahl dd {
+  grid-row: 1;
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 30px;
+  line-height: 39px;
+}
+
+.kennzahl.hervor dd {
+  color: var(--color-accent-primary);
+}
+
+.kennzahl dt {
+  grid-row: 2;
+}
+
+.b1-braucht {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-primary);
+}
+
+.aufgaben {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.aufgaben li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--touch-min);
+}
+
+.aufgaben li > span:first-child {
+  flex: 1;
+  font-weight: 500;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.aufgaben a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--color-accent-primary);
+  text-decoration: none;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.quote {
+  display: grid;
+  gap: 4px;
+}
+
+.quote-kopf {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.quote .segmente {
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
+}
+
+.quote .segmente div.voll {
+  background: var(--color-status-ok);
+}
+
+.quote.warn .segmente div.voll {
+  background: var(--color-status-warn);
+}
+
+.quote.rot .segmente div.voll {
+  background: var(--color-status-error);
+}
+
+.kacheln {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.kacheln div {
+  height: 20px;
+  border-radius: var(--radius-tool);
+  background: var(--color-bg-raised);
+}
+
+.kacheln .s1 {
+  background: var(--color-accent-soft);
+}
+
+.kacheln .s2 {
+  background: var(--color-accent-strong);
+}
+
+.kacheln .s3 {
+  background: var(--color-accent-primary);
+}
+
+.kacheln .rot {
+  background: var(--color-status-error);
+}
+
+.b1-reihe {
+  display: grid;
+  gap: var(--bento-gap);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .bento-b1 {
+    grid-template-columns: minmax(0, 560fr) minmax(0, 820fr);
+    padding: var(--space-24);
+  }
+
+  .b1-satz {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .kennzahlen {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .b1-reihe {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .arbeit li {
+    grid-template-columns: auto 1fr;
+  }
+
+  .arbeit li > .titel {
+    grid-column: 1 / -1;
+  }
+}
