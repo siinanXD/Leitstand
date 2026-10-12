@@ -24,3 +24,22 @@ export async function sendeLink(client: OtpClient, email: string, ursprung: stri
     return ANMELDEN_FEHLER;
   }
 }
+
+export const CODE_FEHLER = "Code falsch oder abgelaufen. Prüfe die Ziffern oder fordere einen neuen Code an.";
+
+type VerifyClient = {
+  auth: { verifyOtp(a: { email: string; token: string; type: "email" }): PromiseLike<{ error: unknown }> };
+};
+
+/** Code aus der Mail (6 Ziffern) prüfen, z. B. in der Home-Bildschirm-App am iPhone. Null bei Erfolg, sonst die Fehlermeldung; falsch und abgelaufen werden gleich gemeldet. */
+export async function pruefeCode(client: VerifyClient, email: string, code: string): Promise<string | null> {
+  const adresse = email.trim();
+  const token = code.replace(/\s/g, "");
+  if (!adresse || !/^\d{6}$/.test(token)) return CODE_FEHLER;
+  try {
+    const { error } = await client.auth.verifyOtp({ email: adresse, token, type: "email" });
+    return error ? CODE_FEHLER : null;
+  } catch {
+    return CODE_FEHLER;
+  }
+}
