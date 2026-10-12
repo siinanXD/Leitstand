@@ -3,6 +3,7 @@
 import { useSitzung } from "@/lib/sitzung";
 import { Kopf } from "../kopf";
 import { Kopplung } from "../kopplung";
+import { Mitteilungen } from "../mitteilungen";
 
 export default function Einstellungen() {
   const sitzung = useSitzung();
@@ -12,6 +13,7 @@ export default function Einstellungen() {
       <Kopf angemeldet={angemeldet} aktiv="einstellungen" />
       <main className="anmelden">
         <h1 className="mono-label">Einstellungen</h1>
+        {angemeldet && <Mitteilungen />}
         {angemeldet && <Kopplung />}
       </main>
     </>

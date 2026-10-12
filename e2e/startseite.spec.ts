@@ -14,6 +14,23 @@ test("Anmelden lädt und hat keine axe-Fehler", async ({ page }) => {
   expect((await axe(page)).violations).toEqual([]);
 });
 
+test("Einstellungen mit Mitteilungen haben keine axe-Fehler", async ({ page }) => {
+  const jetzt = Date.now();
+  const sitzung = {
+    access_token: "test",
+    refresh_token: "test",
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: Math.floor(jetzt / 1000) + 3600,
+    user: { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", email: "test@example.org", app_metadata: {}, user_metadata: {}, created_at: new Date(jetzt).toISOString() },
+  };
+  await page.addInitScript(([schluessel, wert]) => localStorage.setItem(schluessel, wert), [SPEICHER, JSON.stringify(sitzung)]);
+  await page.goto("/einstellungen");
+  await expect(page.getByRole("heading", { name: "Mitteilungen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mitteilungen" })).toBeVisible();
+  expect((await axe(page)).violations).toEqual([]);
+});
+
 test("ohne Sitzung geht es auf /anmelden", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/anmelden$/);
