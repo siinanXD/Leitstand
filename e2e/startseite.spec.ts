@@ -15,8 +15,13 @@ test("Anmelden lädt und hat keine axe-Fehler", async ({ page }) => {
 });
 
 test("Einstellungen mit Mitteilungen haben keine axe-Fehler", async ({ page, context }) => {
-  // Headless-Chromium meldet „denied“; dann zeigt die Seite nur den Hinweis und keinen Schalter.
+  // Headless-Chromium meldet „denied“ oder hat keinen PushManager; dann zeigt die Seite nur den Hinweis und keinen Schalter.
   await context.grantPermissions(["notifications"]);
+  await page.addInitScript(() => {
+    if (!("PushManager" in window)) Object.defineProperty(window, "PushManager", { value: class PushManager {}, configurable: true });
+    if (!("Notification" in window)) Object.defineProperty(window, "Notification", { value: class Notification {}, configurable: true });
+    if (Notification.permission === "denied") Object.defineProperty(Notification, "permission", { get: () => "default", configurable: true });
+  });
   const jetzt = Date.now();
   const sitzung = {
     access_token: "test",
