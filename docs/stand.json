@@ -33,8 +33,10 @@
     "datei": "7Ti9iVUjUjw3rh9WYhSu9K",
     "agentsDatei": "AGENTS.md",
     "frames": [
-      { "seite": "Übersicht", "id": "10:3", "pfad": "src/app/page.tsx" },
-      { "seite": "Übersicht (Handy)", "id": "10:226", "pfad": "" },
+      { "seite": "Übersicht", "id": "52:190", "pfad": "src/app/page.tsx" },
+      { "seite": "Übersicht (Handy)", "id": "52:349", "pfad": "" },
+      { "seite": "Details", "id": "10:3", "pfad": "src/app/details/page.tsx" },
+      { "seite": "Details (Handy)", "id": "10:226", "pfad": "" },
       { "seite": "Ablauf", "id": "21:2", "pfad": "src/app/ablauf/page.tsx" },
       { "seite": "Ablauf (Handy)", "id": "15:209", "pfad": "" },
       { "seite": "Ablauf nach Agent", "id": "47:28", "pfad": "" },

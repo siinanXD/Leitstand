@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { usePause, type Pause } from "@/lib/aktionen-client";
 import { browserClient } from "@/lib/browser-client";
+import { hoereAufEreignisse, mitEreignis, type Echtzeitquelle } from "@/lib/echtzeit";
 import { useFreigaben } from "@/lib/freigabe-client";
 import { alleProjekte, type Projekt } from "@/lib/projekte";
 import { tabTitel, wartendePrs, type WartenderPr } from "@/lib/wartende-prs";
@@ -18,7 +19,7 @@ const LEER: Quelle = { events: [], snapshot: [] };
 /** Sitzung prüfen, Daten laden, Kopf zeigen; die Seiten liefern nur den Inhalt. */
 export type Wartende = { wartende: WartenderPr[]; fehler: Readonly<Record<string, string>>; freigeben(pr: WartenderPr): Promise<void> };
 
-export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: Quelle, jetzt: Date, wartend: Wartende, pause: Pause) => ReactNode }) {
+export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: Quelle, jetzt: Date, wartend: Wartende, pause: Pause, laden: "laedt" | "ok" | "fehler") => ReactNode }) {
   const sitzung = useSitzung();
   const [geladen, setGeladen] = useState<{ laden: Laden; jetzt: Date } | null>(null);
   const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
@@ -39,6 +40,20 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
     void ladeQuelle(client as unknown as Lesequelle, jetzt).then((laden) => offen && setGeladen({ laden, jetzt }));
     return () => {
       offen = false;
+    };
+  }, [angemeldet]);
+
+  // Neue Ereignisse und die Uhr (SIN-526): Einträge wandern ohne Neuladen, Laufzeiten zählen weiter.
+  useEffect(() => {
+    const client = browserClient();
+    if (!angemeldet || !client) return;
+    const abmelden = hoereAufEreignisse(client as unknown as Echtzeitquelle, (e) =>
+      setGeladen((g) => (g?.laden.zustand === "ok" ? { jetzt: new Date(), laden: { zustand: "ok", quelle: mitEreignis(g.laden.quelle, e) } } : g)),
+    );
+    const takt = setInterval(() => setGeladen((g) => (g ? { ...g, jetzt: new Date() } : g)), 60_000);
+    return () => {
+      abmelden();
+      clearInterval(takt);
     };
   }, [angemeldet]);
 
@@ -75,7 +90,7 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
           Datenquelle nicht erreichbar.
         </p>
       )}
-      {children(quelleOk, geladen?.jetzt ?? new Date(), { wartende, fehler: freigaben.fehler, freigeben: freigaben.freigeben }, pause)}
+      {children(quelleOk, geladen?.jetzt ?? new Date(), { wartende, fehler: freigaben.fehler, freigeben: freigaben.freigeben }, pause, geladen ? geladen.laden.zustand : "laedt")}
     </>
   );
 }

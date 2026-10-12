@@ -70,7 +70,7 @@ test("Übersicht mit Beispiel-Daten hat keine axe-Fehler", async ({ page }) => {
       ],
     }),
   );
-  await page.goto("/");
+  await page.goto("/details");
   await expect(page.getByRole("heading", { name: "Heute in einem Satz" })).toBeVisible();
   await expect(page.getByText("Beispiel-Aufgabe")).toBeVisible();
   expect((await axe(page)).violations).toEqual([]);
