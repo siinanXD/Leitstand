@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { usePause, type Pause } from "@/lib/aktionen-client";
 import { browserClient } from "@/lib/browser-client";
 import { useFreigaben } from "@/lib/freigabe-client";
 import { alleProjekte, type Projekt } from "@/lib/projekte";
@@ -17,11 +18,12 @@ const LEER: Quelle = { events: [], snapshot: [] };
 /** Sitzung prüfen, Daten laden, Kopf zeigen; die Seiten liefern nur den Inhalt. */
 export type Wartende = { wartende: WartenderPr[]; fehler: Readonly<Record<string, string>>; freigeben(pr: WartenderPr): Promise<void> };
 
-export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: Quelle, jetzt: Date, wartend: Wartende) => ReactNode }) {
+export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: Quelle, jetzt: Date, wartend: Wartende, pause: Pause) => ReactNode }) {
   const sitzung = useSitzung();
   const [geladen, setGeladen] = useState<{ laden: Laden; jetzt: Date } | null>(null);
   const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
   const freigaben = useFreigaben();
+  const pause = usePause(angemeldet);
   const quelleOk = geladen?.laden.zustand === "ok" ? geladen.laden.quelle : LEER;
   const wartende = wartendePrs(quelleOk.snapshot).filter((p) => !freigaben.erledigt.has(p.key));
 
@@ -62,7 +64,7 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
   }
   return (
     <>
-      <Kopf angemeldet aktiv={aktiv} stand={geladen ? uhrzeit(geladen.jetzt.toISOString()) : undefined} wartend={wartende.length} />
+      <Kopf angemeldet aktiv={aktiv} stand={geladen ? uhrzeit(geladen.jetzt.toISOString()) : undefined} wartend={wartende.length} pause={pause} />
       {!geladen && (
         <p className="hinweis" role="status">
           Daten werden geladen …
@@ -73,7 +75,7 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
           Datenquelle nicht erreichbar.
         </p>
       )}
-      {children(quelleOk, geladen?.jetzt ?? new Date(), { wartende, fehler: freigaben.fehler, freigeben: freigaben.freigeben })}
+      {children(quelleOk, geladen?.jetzt ?? new Date(), { wartende, fehler: freigaben.fehler, freigeben: freigaben.freigeben }, pause)}
     </>
   );
 }

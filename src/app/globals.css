@@ -1137,3 +1137,43 @@ body {
   font-size: 13px;
   line-height: 18px;
 }
+
+.idee {
+  position: relative;
+}
+
+.idee-form {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 10;
+  width: min(22rem, calc(100vw - 2 * var(--space-16)));
+  margin-top: var(--space-8);
+}
+
+.idee-form select {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-12);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font: inherit;
+}
+
+.idee-dringend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--touch-min);
+}
+
+.idee-dringend input {
+  min-height: auto;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.satz-pause {
+  color: var(--color-accent-primary);
+}

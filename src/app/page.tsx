@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import type { Pause } from "@/lib/aktionen-client";
+import { pauseSatz } from "@/lib/pause";
 import { nurProjekt } from "@/lib/projekte";
 import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
 import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
@@ -20,7 +22,7 @@ function linkFuer(a: Aufgabe, projekt: string | undefined): string | null {
   return null;
 }
 
-export function Bento({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
+export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; pause?: Pause }) {
   const satz = heuteSatz(quelle, jetzt);
   const chips = belegChips(quelle.events, jetzt);
   const { stufen, grund } = pipelineSchiene(quelle.events, jetzt);
@@ -39,6 +41,11 @@ export function Bento({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
           <h1 id="heute" className="mono-label">
             Heute in einem Satz
           </h1>
+          {pause?.stand?.pausiert && (
+            <p className="satz-text satz-pause" role="status">
+              {pauseSatz(pause.stand.seit)}
+            </p>
+          )}
           {satz ? <p className="satz-text">{satz.satz}</p> : KEINE_DATEN}
         </div>
         {chips.length > 0 && (
@@ -237,7 +244,7 @@ export default function Home() {
   const [filter, setFilter] = useState<string | null>(null);
   return (
     <Rahmen aktiv="uebersicht">
-      {(quelle, jetzt, wartend) => {
+      {(quelle, jetzt, wartend, pause) => {
         const gefiltert: Quelle = { events: nurProjekt(quelle.events, filter), snapshot: nurProjekt(quelle.snapshot, filter) };
         return (
           <>
@@ -245,7 +252,7 @@ export default function Home() {
             <div className="werkzeuge">
               <ProjektFilter projekte={projekteIn(quelle)} wert={filter} onChange={setFilter} />
             </div>
-            <Bento quelle={gefiltert} jetzt={jetzt} />
+            <Bento quelle={gefiltert} jetzt={jetzt} pause={pause} />
           </>
         );
       }}
