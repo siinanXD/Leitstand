@@ -25,7 +25,42 @@ export async function sendeLink(client: OtpClient, email: string, ursprung: stri
   }
 }
 
-export const CODE_FEHLER = "Code falsch oder abgelaufen. Prüfe die Ziffern oder fordere einen neuen Code an.";
+const LINK_TYPEN = ["magiclink", "email"] as const;
+type LinkTyp = (typeof LINK_TYPEN)[number];
+
+/** Token und Typ aus dem Mail-Link (`…/auth/v1/verify?token=…&type=magiclink`) lesen; null bei fremdem Host, fehlendem Token oder unbekanntem Typ. `projektUrl` ist die Supabase-URL des eigenen Projekts. */
+export function leseLink(eingabe: string, projektUrl: string): { tokenHash: string; type: LinkTyp } | null {
+  try {
+    const link = new URL(eingabe.trim());
+    const projekt = new URL(projektUrl);
+    if (link.origin !== projekt.origin || link.pathname !== "/auth/v1/verify") return null;
+    const tokenHash = link.searchParams.get("token");
+    const type = link.searchParams.get("type");
+    if (!tokenHash || tokenHash.startsWith("pkce_")) return null;
+    if (!LINK_TYPEN.includes(type as LinkTyp)) return null;
+    return { tokenHash, type: type as LinkTyp };
+  } catch {
+    return null;
+  }
+}
+
+type LinkClient = {
+  auth: { verifyOtp(a: { token_hash: string; type: LinkTyp }): PromiseLike<{ error: unknown }> };
+};
+
+/** Eingefügten Mail-Link prüfen und die Sitzung in dieser App anlegen. Null bei Erfolg, sonst dieselbe Meldung wie beim Code. */
+export async function pruefeLink(client: LinkClient, eingabe: string, projektUrl: string): Promise<string | null> {
+  const link = leseLink(eingabe, projektUrl);
+  if (!link) return CODE_FEHLER;
+  try {
+    const { error } = await client.auth.verifyOtp({ token_hash: link.tokenHash, type: link.type });
+    return error ? CODE_FEHLER : null;
+  } catch {
+    return CODE_FEHLER;
+  }
+}
+
+export const CODE_FEHLER ="Code falsch oder abgelaufen. Prüfe die Ziffern oder fordere einen neuen Code an.";
 
 type VerifyClient = {
   auth: { verifyOtp(a: { email: string; token: string; type: "email" }): PromiseLike<{ error: unknown }> };

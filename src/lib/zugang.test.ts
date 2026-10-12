@@ -1,6 +1,45 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ANMELDEN_FEHLER, ANMELDEN_GESENDET, CODE_FEHLER, pruefeCode, sendeLink, umleitung } from "./zugang";
+import { ANMELDEN_FEHLER, ANMELDEN_GESENDET, CODE_FEHLER, leseLink, pruefeCode, pruefeLink, sendeLink, umleitung } from "./zugang";
+
+const PROJEKT = "https://abc.supabase.co";
+const LINK = `${PROJEKT}/auth/v1/verify?token=hash123&type=magiclink&redirect_to=https%3A%2F%2Fx%2Fauth%2Fcallback`;
+
+test("leseLink: gültiger Link, fremder Host, ohne Token, falscher Typ", () => {
+  assert.deepEqual(leseLink(` ${LINK} `, PROJEKT), { tokenHash: "hash123", type: "magiclink" });
+  assert.deepEqual(leseLink(`${PROJEKT}/auth/v1/verify?token=h&type=email`, PROJEKT), { tokenHash: "h", type: "email" });
+  assert.equal(leseLink(LINK.replace("abc.supabase.co", "evil.example"), PROJEKT), null);
+  assert.equal(leseLink(`${PROJEKT}/auth/v1/verify?type=magiclink`, PROJEKT), null);
+  assert.equal(leseLink(`${PROJEKT}/auth/v1/verify?token=h&type=recovery`, PROJEKT), null);
+  assert.equal(leseLink(`${PROJEKT}/andere/seite?token=h&type=magiclink`, PROJEKT), null);
+  assert.equal(leseLink("kein link", PROJEKT), null);
+});
+
+test("pruefeLink: Erfolg, abgelaufen und ungültig melden gleich", async () => {
+  const aufrufe: unknown[] = [];
+  const mit = (error: unknown) => ({
+    auth: {
+      verifyOtp: async (a: unknown) => {
+        aufrufe.push(a);
+        return { error };
+      },
+    },
+  });
+  assert.equal(await pruefeLink(mit(null), LINK, PROJEKT), null);
+  assert.deepEqual(aufrufe[0], { token_hash: "hash123", type: "magiclink" });
+  assert.equal(await pruefeLink(mit(new Error("otp_expired")), LINK, PROJEKT), CODE_FEHLER);
+  const zahl = aufrufe.length;
+  assert.equal(await pruefeLink(mit(null), "https://evil.example/auth/v1/verify?token=h&type=magiclink", PROJEKT), CODE_FEHLER);
+  assert.equal(aufrufe.length, zahl, "fremde Links erreichen Supabase nicht");
+  const wirft = {
+    auth: {
+      verifyOtp: async () => {
+        throw new Error("x");
+      },
+    },
+  };
+  assert.equal(await pruefeLink(wirft, LINK, PROJEKT), CODE_FEHLER);
+});
 
 test("ohne Sitzung geht es auf /anmelden, außer auf offenen Seiten", () => {
   assert.equal(umleitung(false, "/"), "/anmelden");

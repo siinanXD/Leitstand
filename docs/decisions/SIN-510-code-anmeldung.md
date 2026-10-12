@@ -15,3 +15,7 @@ Supabase → Authentication → Email Templates → „Magic Link“ muss den Co
 ```
 
 Hinweis: Die Länge des Codes (Standard 6) steht unter Authentication → Providers → Email → „Email OTP Length“.
+
+## Nachtrag SIN-524: Link statt Code
+
+Ohne eigenes SMTP enthält die Standard-Mail keinen Code. `/anmelden` nimmt deshalb den kopierten Link („Sign in“ lange drücken → Link kopieren) und legt die Sitzung mit `verifyOtp({ token_hash, type })` an (`leseLink`, `pruefeLink` in `src/lib/zugang.ts`). Erlaubt sind nur Links des eigenen Supabase-Hosts (Pfad `/auth/v1/verify`) und die Typen `magiclink` und `email`; alles andere meldet dasselbe wie ein falscher Code. Das Code-Feld bleibt, ist aber zweitrangig, bis eigenes SMTP (z. B. Resend, Label `sinan`) eingerichtet ist.
