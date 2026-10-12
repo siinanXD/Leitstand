@@ -28,7 +28,10 @@ export type SnapshotRow = {
   pr: number | null;
   /** Optional (SIN-517): offene PRs des Projekts für „warten auf dich“. */
   open_prs: OffenerPr[];
+  /** Optional (SIN-526): Fortschritt „x von y fertig“ (Meilenstein „v1 Grundgerüst“) und neue Ideen („v2 Ideen“). */
+  progress?: Teilstand | null;
 };
+export type Teilstand = { fertig: number; gesamt: number; neueIdeen: number };
 
 export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[] };
 export type Quota = { name: string; used: number; limit: number; schaetzung: boolean };
@@ -70,6 +73,24 @@ export function parseQuotas(raw: unknown): Quota[] {
   });
 }
 
+/** Spalte `progress`: `{done, total, ideas}`, auch als JSON-Text. Unlesbar oder ohne Gesamtzahl: null (nichts raten). */
+export function parseFortschritt(raw: unknown): Teilstand | null {
+  let v = raw;
+  if (typeof v === "string") {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return null;
+    }
+  }
+  const o = obj(v);
+  const zahl = (x: unknown) => (typeof x === "number" && Number.isInteger(x) && x >= 0 ? x : null);
+  const fertig = zahl(o?.done ?? o?.fertig);
+  const gesamt = zahl(o?.total ?? o?.gesamt);
+  if (fertig === null || gesamt === null || gesamt === 0 || fertig > gesamt) return null;
+  return { fertig, gesamt, neueIdeen: zahl(o?.ideas ?? o?.ideen) ?? 0 };
+}
+
 export function parseEvents(raw: unknown): LoopEvent[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((r) => {
@@ -103,6 +124,7 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         minutes: num(o.minutes ?? o.estimate_min),
         pr: num(o.pr),
         open_prs: parseOffenePrs(o.open_prs),
+        progress: parseFortschritt(o.progress),
       },
     ];
   });

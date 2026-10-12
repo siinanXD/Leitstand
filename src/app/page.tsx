@@ -1,240 +1,87 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import type { Pause } from "@/lib/aktionen-client";
+import { useSitzung } from "@/lib/sitzung";
+import { useKosten } from "@/lib/kosten-client";
+import { projektInfo } from "@/lib/projekte";
+import { kontingente, type Quelle } from "@/lib/uebersicht";
+import { fortschritt, heuteFertig, karten, lageSatz, stationen } from "@/lib/uebersicht-einfach";
+import type { Kosten } from "@/lib/kosten/kosten";
 import { pauseSatz } from "@/lib/pause";
-import { nurProjekt } from "@/lib/projekte";
-import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
-import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
-import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "./rahmen";
-import "./uebersicht.css";
-import "./projekte/projekte.css";
+import { Rahmen, type Wartende } from "./rahmen";
+import "./einfach.css";
 
-const KEINE_DATEN = <p className="leer">Keine Daten</p>;
-const SEGMENTE = 20;
+const euro = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
+const prozent = (anteil: number) => `${Math.min(100, Math.round(anteil * 100))}%`;
 
-const euro = (v: number) => `≈${v.toFixed(2).replace(".", ",")} €`;
-const dauer = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
-
-/** Linear-Kennungen führen zu Linear, PRs des Leitstand-Repos zu GitHub; sonst kein Link (nichts raten). */
-function linkFuer(a: Aufgabe, projekt: string | undefined): string | null {
-  if (/^SIN-\d+$/.test(a.ref)) return `https://linear.app/sinan-kahraman/issue/${a.ref}`;
-  if (/^#\d+$/.test(a.ref) && projekt === "leitstand") return `https://github.com/siinanXD/Leitstand/pull/${a.ref.slice(1)}`;
-  return null;
-}
-
-export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; pause?: Pause }) {
-  const satz = heuteSatz(quelle, jetzt);
-  const chips = belegChips(quelle.events, jetzt);
-  const { stufen, grund } = pipelineSchiene(quelle.events, jetzt);
-  const laeuft = inArbeitZeilen(quelle, jetzt);
-  const zahlen = kennzahlen(quelle, jetzt);
-  const aufgaben = aufgabenFuerDich(quelle.snapshot);
-  const quoten = kontingente(quelle.snapshot);
-  const kacheln = aktivitaetKacheln(quelle.events, jetzt);
-  const ereignisse = kacheln.reduce((n, k) => n + k.anzahl, 0);
-  const projektVon = (a: Aufgabe) => quelle.snapshot.find((s) => a.key.startsWith(`${s.project}|`))?.project;
-
+/** Balken mit Text für Screenreader; die Breite kommt aus dem Anteil. */
+function Balken({ anteil, name, rot = false }: { anteil: number; name: string; rot?: boolean }) {
   return (
-    <main className="bento-b1">
-      <section className="tile b1-satz" aria-labelledby="heute" style={{ gridColumn: "1 / -1" }}>
-        <div>
-          <h1 id="heute" className="mono-label">
-            Heute in einem Satz
-          </h1>
-          {pause?.stand?.pausiert && (
-            <p className="satz-text satz-pause" role="status">
-              {pauseSatz(pause.stand.seit)}
-            </p>
-          )}
-          {satz ? <p className="satz-text">{satz.satz}</p> : KEINE_DATEN}
-        </div>
-        {chips.length > 0 && (
-          <ul className="chips" aria-label="Belege">
-            {chips.map((c) => (
-              <li key={c} className="chip mono">
-                {c}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <div className="b1-spalte">
-        <section className="tile b1-kachel" aria-labelledby="pipeline">
-          <h2 id="pipeline" className="mono-label">
-            Pipeline · jetzt
-          </h2>
-          {stufen.length === 0 ? (
-            KEINE_DATEN
-          ) : (
-            <>
-              <ol className="stufen">
-                {stufen.map((s) => (
-                  <li key={s.stage} className={s.zustand === "leer" ? undefined : s.zustand}>
-                    {s.stage}
-                    {s.anzahl > 1 ? `×${s.anzahl}` : ""}
-                    {s.zustand === "rot" && <span className="sr-only"> rot</span>}
-                  </li>
-                ))}
-              </ol>
-              {grund && <p className="grund">{grund}</p>}
-            </>
-          )}
-        </section>
-
-        <section className="tile b1-kachel" aria-labelledby="arbeit">
-          <h2 id="arbeit" className="mono-label">
-            In Arbeit · {laeuft.length}
-          </h2>
-          {laeuft.length === 0 ? (
-            KEINE_DATEN
-          ) : (
-            <ul className="arbeit">
-              {laeuft.map((z) => (
-                <li key={z.key}>
-                  <span className="mono">{z.issue ?? ""}</span>
-                  <span className="titel">{z.titel ?? z.project}</span>
-                  <span className="mono">{z.dauerMin !== null ? dauer(z.dauerMin) : ""}</span>
-                  <span className="mono">{z.kosten !== null ? euro(z.kosten) : ""}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      <div className="b1-spalte">
-        {zahlen.length === 0 ? (
-          <section className="tile b1-kachel" aria-label="Zahlen">
-            {KEINE_DATEN}
-          </section>
-        ) : (
-          <dl className="kennzahlen" aria-label="Zahlen">
-            {zahlen.map((z) => (
-              <div key={z.label} className={z.hervor ? "kennzahl hervor" : "kennzahl"}>
-                <dd>{z.wert}</dd>
-                <dt className="mono-label">{z.label}</dt>
-              </div>
-            ))}
-          </dl>
-        )}
-
-        <div className="b1-reihe">
-          <section className="tile b1-kachel b1-braucht" aria-labelledby="braucht">
-            <h2 id="braucht" className="mono-label">
-              Braucht dich
-            </h2>
-            {aufgaben.length === 0 ? (
-              KEINE_DATEN
-            ) : (
-              <ul className="aufgaben">
-                {aufgaben.map((a) => {
-                  const href = linkFuer(a, projektVon(a));
-                  return (
-                    <li key={a.key}>
-                      <span>{a.titel}</span>
-                      {a.minuten !== null && <span className="mono">{a.minuten} MIN</span>}
-                      {href && (
-                        <a className="mono" href={href} target="_blank" rel="noreferrer" aria-label={`${a.titel} öffnen`}>
-                          ÖFFNEN →
-                        </a>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-
-          <section className="tile b1-kachel" aria-labelledby="kontingente">
-            <h2 id="kontingente" className="mono-label">
-              Kontingente
-            </h2>
-            {quoten.length === 0 ? (
-              KEINE_DATEN
-            ) : (
-              quoten.map((q) => {
-                const anteil = q.used / q.limit;
-                const gefuellt = Math.min(SEGMENTE, Math.round(anteil * SEGMENTE));
-                return (
-                  <div key={q.name} className={anteil >= 1 ? "quote rot" : anteil >= 0.8 ? "quote warn" : "quote"}>
-                    <div className="quote-kopf mono">
-                      <span>{q.schaetzung ? `${q.name} ≈` : q.name}</span>
-                      <span>{q.schaetzung ? "Schätzung" : `${q.used}/${q.limit}`}</span>
-                    </div>
-                    <div
-                      className="segmente"
-                      role="img"
-                      aria-label={`${q.name}${q.schaetzung ? " (Schätzung)" : ""}: ${q.used} von ${q.limit}`}
-                    >
-                      {Array.from({ length: SEGMENTE }, (_, i) => (
-                        <div key={i} className={i < gefuellt ? "voll" : undefined} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </section>
-        </div>
-
-        <section className="tile b1-kachel" aria-labelledby="aktivitaet">
-          <h2 id="aktivitaet" className="mono-label">
-            Aktivität · 24 h · rot = Stillstand
-          </h2>
-          {ereignisse === 0 ? (
-            KEINE_DATEN
-          ) : (
-            <div
-              className="kacheln"
-              role="img"
-              aria-label={`${ereignisse} Ereignisse in 24 Stunden, stündlich: ${kacheln.map((k) => (k.rot ? `${k.anzahl} rot` : k.anzahl)).join(", ")}`}
-            >
-              {kacheln.map((k, i) => (
-                <div key={i} className={k.rot ? "rot" : k.stufe > 0 ? `s${k.stufe}` : undefined} />
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
+    <div className={rot ? "balken rot" : "balken"} role="img" aria-label={`${name}: ${Math.round(anteil * 100)} Prozent`}>
+      <div style={{ width: prozent(anteil) }} />
+    </div>
   );
 }
 
-/** Ganz oben (SIN-517): PRs, die auf Freigabe warten, mit einem Tipp auf „Freigeben“. Ohne wartende PRs keine Leiste. */
-function WartendeLeiste({ wartend }: { wartend: Wartende }) {
-  const { wartende, fehler, freigeben } = wartend;
-  if (wartende.length === 0) return null;
+function Lage({ quelle, jetzt, wartend, laden, pausiert }: { quelle: Quelle; jetzt: Date; wartend: number; laden: string; pausiert: string | null }) {
+  const lage = lageSatz(quelle, wartend, jetzt);
+  const fertig = heuteFertig(quelle, jetzt).length;
+  const gebaut = stationen(quelle, [], jetzt).find((s) => s.id === "gebaut")?.eintraege.length ?? 0;
   return (
-    <section className="tile wartende" aria-labelledby="wartende">
-      <h2 id="wartende" className="mono-label">
-        {wartende.length} {wartende.length === 1 ? "wartet" : "warten"} auf dich
-      </h2>
-      <ul className="aufgaben">
-        {wartende.map((p) => (
-          <li key={p.key} className="wartend-zeile">
-            <div className="wartend-text">
-              <span className="wartend-titel">{p.titel}</span>
-              <span className="grund">{p.grund}</span>
-              <span className="mono">
-                {p.repo} · #{p.nummer}
-              </span>
-              {fehler[p.key] && (
-                <span className="wartend-fehler" role="alert">
-                  {fehler[p.key]}
+    <section className="einfach-lage" aria-labelledby="lage">
+      {pausiert && (
+        <p className="achtung" role="status">
+          {pausiert}
+        </p>
+      )}
+      <h1 id="lage" className={lage?.alarm ? "satz alarm" : "satz"}>
+        {lage ? lage.satz : laden === "fehler" ? "Die Daten konnten nicht geladen werden." : laden === "laedt" ? "Daten werden geladen …" : "Keine Daten"}
+      </h1>
+      {lage && (
+        <p className="unterzeile mono">
+          Heute {fertig} {fertig === 1 ? "Änderung" : "Änderungen"} fertig · {gebaut} {gebaut === 1 ? "wird" : "werden"} gerade gebaut
+        </p>
+      )}
+    </section>
+  );
+}
+
+function MussDuTun({ quelle, wartend }: { quelle: Quelle; wartend: Wartende }) {
+  const liste = karten(quelle, wartend.wartende);
+  if (liste.length === 0) return null;
+  return (
+    <section className="tile einfach-block" aria-labelledby="tun">
+      <div className="kopf-block">
+        <h2 id="tun" className="mono-label">
+          Das musst du tun · {liste.length}
+        </h2>
+        <p className="leer">Ein Tipp genügt. Alles andere erledigt der Loop.</p>
+      </div>
+      <ul className="karten">
+        {liste.map((k) => (
+          <li key={k.key} className="karte">
+            <div className="karte-text">
+              <span className="karte-titel">{k.titel}</span>
+              <span className="leer">{k.warum}</span>
+              <span className="mono-label">{[k.projekt, k.pr && `PR ${k.pr}`, k.minuten !== null && `${k.minuten} MIN`].filter(Boolean).join(" · ")}</span>
+              {wartend.fehler[k.key] && (
+                <span className="fehler" role="alert">
+                  {wartend.fehler[k.key]}
                 </span>
               )}
             </div>
-            {p.url && (
-              <a className="mono" href={p.url} target="_blank" rel="noreferrer" aria-label={`${p.titel} auf GitHub öffnen`}>
-                PR →
-              </a>
-            )}
-            <button type="button" className="knopf aktiv" aria-label={`${p.titel} freigeben`} onClick={() => void freigeben(p)}>
-              Freigeben
-            </button>
+            <div className="karte-knoepfe">
+              {k.wartender && (
+                <button type="button" className="knopf aktiv" aria-label={`${k.titel} freigeben`} onClick={() => void wartend.freigeben(k.wartender!)}>
+                  Freigeben
+                </button>
+              )}
+              {k.ansehen && (
+                <a className="knopf" href={k.ansehen} target="_blank" rel="noreferrer" aria-label={`${k.titel} ansehen`}>
+                  Ansehen →
+                </a>
+              )}
+            </div>
           </li>
         ))}
       </ul>
@@ -242,33 +89,185 @@ function WartendeLeiste({ wartend }: { wartend: Wartende }) {
   );
 }
 
-export default function Home() {
-  const [filter, setFilter] = useState<string | null>(null);
+function Kette({ quelle, wartend, jetzt }: { quelle: Quelle; wartend: Wartende; jetzt: Date }) {
+  const liste = stationen(quelle, wartend.wartende, jetzt);
   return (
-    <Rahmen aktiv="uebersicht">
-      {(quelle, jetzt, wartend, pause) => {
-        const gefiltert: Quelle = { events: nurProjekt(quelle.events, filter), snapshot: nurProjekt(quelle.snapshot, filter) };
-        return (
-          <>
-            <WartendeLeiste wartend={wartend} />
-            <div className="werkzeuge">
-              <ProjektFilter projekte={projekteIn(quelle)} wert={filter} onChange={setFilter} />
+    <section className="tile einfach-block" aria-labelledby="kette">
+      <div className="kopf-block">
+        <h2 id="kette" className="mono-label">
+          Was gerade passiert
+        </h2>
+        <p className="leer">Jede Aufgabe läuft von links nach rechts durch. Der grüne Punkt zeigt, wo gerade ein Agent arbeitet.</p>
+      </div>
+      <ol className="kette">
+        {liste.map((s, i) => (
+          <li key={s.id} className="station" aria-label={s.name}>
+            <div className="station-kopf">
+              <span className="kreis mono" aria-hidden="true">
+                {i + 1}
+              </span>
+              <span className="station-name">{s.name}</span>
+              <span className="leer">{s.hinweis}</span>
             </div>
-            <nav aria-label="Projektseiten">
-              <ul className="projekt-liste">
-                {projekteIn(quelle).map((p) => (
-                  <li key={p.id}>
-                    <Link href={`/projekt/${p.id}`} className="projekt-name">
-                      <span className="marke-projekt" style={{ background: p.farbe }} aria-hidden="true" /> {p.name}
-                    </Link>
+            {s.eintraege.length === 0 ? (
+              <p className="leer">Gerade nichts</p>
+            ) : (
+              <ul className="eintraege">
+                {s.eintraege.map((e) => (
+                  <li key={e.key} className="eintrag">
+                    <span className={e.rot ? "punkt rot" : e.aktiv ? "punkt aktiv" : "punkt"} aria-hidden="true" />
+                    <span className="eintrag-titel">
+                      {e.titel}
+                      {e.aktiv && <span className="sr-only"> (ein Agent arbeitet gerade)</span>}
+                      {e.rot && <span className="sr-only"> (Fehler)</span>}
+                    </span>
+                    <span className="mono-label">
+                      {projektInfo(e.projekt).name}
+                      {e.minuten !== null ? ` · ${e.minuten} MIN` : ""}
+                    </span>
                   </li>
                 ))}
               </ul>
-            </nav>
-            <Bento quelle={gefiltert} jetzt={jetzt} pause={pause} />
-          </>
-        );
-      }}
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function WieWeit({ quelle }: { quelle: Quelle }) {
+  const liste = fortschritt(quelle);
+  return (
+    <section className="tile einfach-block" aria-labelledby="weit">
+      <div className="kopf-block">
+        <h2 id="weit" className="mono-label">
+          Wie weit ist es?
+        </h2>
+        <p className="leer">Fertig heißt: alles aus der Produktbeschreibung steht. Neue Ideen kommen danach nach und nach.</p>
+      </div>
+      {liste.length === 0 ? (
+        <p className="leer">Keine Daten</p>
+      ) : (
+        <ul className="fortschritt">
+          {liste.map((f) => {
+            const name = projektInfo(f.project).name;
+            return (
+              <li key={f.project}>
+                <div className="zeile">
+                  <span>{name}</span>
+                  <span className="mono">
+                    {f.fertig} von {f.gesamt} fertig
+                  </span>
+                </div>
+                <Balken anteil={f.fertig / f.gesamt} name={name} />
+                {f.neueIdeen > 0 && (
+                  <p className="leer">
+                    +{f.neueIdeen} {f.neueIdeen === 1 ? "neue Idee" : "neue Ideen"} · kommen nach und nach
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+const monat = (jetzt: Date) => jetzt.toLocaleDateString("de-DE", { month: "long", timeZone: "Europe/Berlin" });
+
+function WasKostet({ quelle, jetzt, angemeldet }: { quelle: Quelle; jetzt: Date; angemeldet: boolean }) {
+  const stand = useKosten(angemeldet);
+  const kosten: Kosten | null = stand.zustand === "ok" ? stand.kosten : null;
+  const abo = kontingente(quelle.snapshot).filter((q) => q.schaetzung);
+  return (
+    <section className="tile einfach-block" aria-labelledby="kostet">
+      <div className="kopf-block">
+        <h2 id="kostet" className="mono-label">
+          Was kostet das?
+        </h2>
+        <p className="leer">Was die Agenten ausgegeben haben. Feste Abos sind nicht enthalten.</p>
+      </div>
+      {!kosten || kosten.heute === null || kosten.monat === null ? (
+        <p className="leer">{stand.zustand === "laedt" ? "Wird geladen …" : "Keine Daten"}</p>
+      ) : (
+        <>
+          <p className="summe">
+            <span className="mono">{euro(kosten.heute)}</span>
+            <span className="leer">
+              heute · {euro(kosten.monat)} von {euro(kosten.budget).replace(",00", "")} im {monat(jetzt)}
+            </span>
+          </p>
+          <Balken anteil={kosten.monat / kosten.budget} name="Monatsbudget verbraucht" rot={kosten.ampel === "rot"} />
+          <ul className="posten">
+            {kosten.zeilen.map((z) => (
+              <li key={z.art} className="zeile">
+                <span>{z.art}</span>
+                <span className="mono">{z.verfuegbar && z.heute !== null ? euro(z.heute) : "nicht verfügbar"}</span>
+              </li>
+            ))}
+            {abo.map((q) => (
+              <li key={q.name} className="zeile">
+                <span>{q.name}: schon benutzt (Schätzung)</span>
+                <span className="mono">≈ {Math.round((q.used / q.limit) * 100)} %</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+function HeuteFertig({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
+  const liste = heuteFertig(quelle, jetzt);
+  return (
+    <section className="tile einfach-block" aria-labelledby="fertig">
+      <div className="kopf-block">
+        <h2 id="fertig" className="mono-label">
+          Heute fertig geworden
+        </h2>
+        <p className="leer">In einfachen Worten, was jetzt anders ist.</p>
+      </div>
+      {liste.length === 0 ? (
+        <p className="leer">Heute noch nichts fertig.</p>
+      ) : (
+        <ul className="posten">
+          {liste.map((f) => (
+            <li key={f.key} className="zeile">
+              <span>{f.satz}</span>
+              <span className="mono">{f.zeit}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export default function Home() {
+  const sitzung = useSitzung();
+  const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
+  return (
+    <Rahmen aktiv="uebersicht">
+      {(quelle, jetzt, wartend, pause, laden) => (
+        <main className="einfach">
+          <Lage quelle={quelle} jetzt={jetzt} wartend={karten(quelle, wartend.wartende).length} laden={laden} pausiert={pause.stand?.pausiert ? pauseSatz(pause.stand.seit) : null} />
+          <MussDuTun quelle={quelle} wartend={wartend} />
+          <Kette quelle={quelle} wartend={wartend} jetzt={jetzt} />
+          <div className="zwei-spalten">
+            <WieWeit quelle={quelle} />
+            <WasKostet quelle={quelle} jetzt={jetzt} angemeldet={angemeldet} />
+          </div>
+          <HeuteFertig quelle={quelle} jetzt={jetzt} />
+          <p>
+            <Link href="/details" className="knopf">
+              Details ansehen
+            </Link>
+          </p>
+        </main>
+      )}
     </Rahmen>
   );
 }
