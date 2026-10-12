@@ -18,6 +18,8 @@ export type SnapshotRow = {
   /** Optional: Linear-Kennung und Blocker (SIN-305). Fehlen die Spalten, bleibt die Abhängigkeits-Ansicht leer. */
   issue: string | null;
   blocked_by: string[];
+  /** Kontingente aus der Spalte `quotas` (SIN-499). */
+  quotas: Quota[];
 };
 
 export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[] };
@@ -39,6 +41,26 @@ export const BETRIEB = ["STATUS", "DIGEST"];
 
 export const projektKuerzel = (name: string | null): string | null => (name ? (PROJEKT_ALIAS[name.toLowerCase()] ?? name) : null);
 export const stufeKuerzel = (name: string | null): string | null => (name ? (STUFE_ALIAS[name.toUpperCase()] ?? name) : null);
+
+/** `quotas` als Liste [{name, used, limit}], Objekt {name: {used, limit}} oder {name: [used, limit]}; Text wird als JSON gelesen. */
+export function parseQuotas(raw: unknown): Quota[] {
+  let v = raw;
+  if (typeof v === "string") {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return [];
+    }
+  }
+  const o = obj(v);
+  const eintraege: [string | null, unknown][] = Array.isArray(v) ? v.map((x) => [str(obj(x)?.name), x]) : o ? Object.entries(o) : [];
+  return eintraege.flatMap(([name, x]) => {
+    const e = obj(x);
+    const used = Array.isArray(x) ? num(x[0]) : num(e?.used ?? e?.value);
+    const limit = Array.isArray(x) ? num(x[1]) : num(e?.limit ?? e?.max);
+    return name && used !== null && limit !== null && limit > 0 ? [{ name, used, limit, schaetzung: /claude/i.test(name) }] : [];
+  });
+}
 
 export function parseEvents(raw: unknown): LoopEvent[] {
   if (!Array.isArray(raw)) return [];
@@ -68,6 +90,7 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         quota_limit: num(o.quota_limit),
         issue: str(o.issue),
         blocked_by: liste(o.blocked_by),
+        quotas: parseQuotas(o.quotas),
       },
     ];
   });
@@ -112,21 +135,49 @@ const LAEUFT =new Set(["running", "in_progress", "active"]);
 const WARTET = new Set(["waiting", "blocked", "needs_review", "needs_human"]);
 
 export const inArbeit = (s: SnapshotRow[]) => s.filter((r) => r.status && LAEUFT.has(r.status));
+
+const START = new Set([...LAEUFT, "start", "started"]);
+const schluessel = (projekt: string, issue: string) => `${projekt}|${issue}`;
+
+/** Fallback (SIN-499): Issues, deren jüngstes Ereignis ein begonnener WORK-Schritt ist, ohne Abschluss danach. */
+export function inArbeitAusEreignissen(events: LoopEvent[]): SnapshotRow[] {
+  const letzte = new Map<string, LoopEvent>();
+  for (const e of events) {
+    if (!e.project || !e.issue) continue;
+    const k = schluessel(e.project, e.issue);
+    const alt = letzte.get(k);
+    if (!alt || Date.parse(e.created_at) > Date.parse(alt.created_at)) letzte.set(k, e);
+  }
+  return [...letzte.values()]
+    .filter((e) => e.step?.toUpperCase() === "WORK" && e.status && START.has(e.status.toLowerCase()))
+    .map((e) => ({ project: e.project!, stage: e.step, status: "running", title: e.issue, updated_at: e.created_at, quota_name: null, quota_used: null, quota_limit: null, issue: e.issue, blocked_by: [], quotas: [] }));
+}
+
+/** Snapshot zuerst; Issues ohne Snapshot-Zeile kommen aus den Ereignissen der 24 h. */
+export function laufend(q: Quelle, jetzt: Date): SnapshotRow[] {
+  const bekannt = new Set(q.snapshot.flatMap((s) => (s.issue ? [schluessel(s.project, s.issue)] : [])));
+  const ausEreignissen = inArbeitAusEreignissen(letzte24h(q.events, jetzt)).filter((r) => !bekannt.has(schluessel(r.project, r.issue ?? "")));
+  return [...inArbeit(q.snapshot), ...ausEreignissen];
+}
+
+/** Projekte aus Snapshot und allen Ereignissen der 24 h (SIN-499). */
+export const projekteImStand = (q: Quelle, jetzt: Date): string[] => [...new Set([...q.snapshot.map((s) => s.project), ...letzte24h(q.events, jetzt).flatMap((e) => (e.project ? [e.project] : []))])];
 export const brauchtDich = (s: SnapshotRow[]) => s.filter((r) => r.status && WARTET.has(r.status));
 
 export function kontingente(snapshot: SnapshotRow[]): Quota[] {
-  return snapshot.flatMap((s) =>
-    s.quota_name && s.quota_used !== null && s.quota_limit !== null && s.quota_limit > 0
+  return snapshot.flatMap((s) => [
+    ...s.quotas,
+    ...(s.quota_name && s.quota_used !== null && s.quota_limit !== null && s.quota_limit > 0
       ? [{ name: s.quota_name, used: s.quota_used, limit: s.quota_limit, schaetzung: /claude/i.test(s.quota_name) }]
-      : [],
-  );
+      : []),
+  ]);
 }
 
 /** Ein Satz aus echten Zahlen; ohne Daten null. Belege = jüngste Ereignisse. */
 export function heuteSatz(q: Quelle, jetzt: Date): { satz: string; belege: LoopEvent[] } | null {
   const ev = letzte24h(q.events, jetzt);
   if (ev.length === 0 && q.snapshot.length === 0) return null;
-  const projekte = new Set(q.snapshot.map((s) => s.project)).size;
+  const projekte = projekteImStand(q, jetzt).length;
   const teile = [`${ev.length} ${ev.length === 1 ? "Ereignis" : "Ereignisse"} in 24 h`];
   if (projekte > 0) teile.push(`${projekte} ${projekte === 1 ? "Projekt" : "Projekte"} im Stand`);
   const wartet = brauchtDich(q.snapshot).length;
