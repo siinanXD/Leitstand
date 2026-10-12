@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { browserClient } from "@/lib/browser-client";
 import { useSitzung } from "@/lib/sitzung";
-import { ANMELDEN_FEHLER, ANMELDEN_GESENDET, pruefeCode, sendeLink } from "@/lib/zugang";
+import { ANMELDEN_FEHLER, ANMELDEN_GESENDET, pruefeCode, pruefeLink, sendeLink } from "@/lib/zugang";
 import { Kopf } from "../kopf";
 
 export default function Anmelden() {
@@ -13,6 +13,9 @@ export default function Anmelden() {
   const [code, setCode] = useState("");
   const [codeMeldung, setCodeMeldung] = useState<string | null>(null);
   const [prueft, setPrueft] = useState(false);
+  const [einLink, setEinLink] = useState("");
+  const [linkMeldung, setLinkMeldung] = useState<string | null>(null);
+  const [linkPrueft, setLinkPrueft] = useState(false);
   const [email, setEmail] = useState("");
   const [meldung, setMeldung] = useState<string | null>(null);
   const [sendet, setSendet] = useState(false);
@@ -43,6 +46,21 @@ export default function Anmelden() {
     else router.replace("/");
   }
 
+  async function linkPruefen(e: FormEvent) {
+    e.preventDefault();
+    const client = browserClient();
+    const projektUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!client || !projektUrl) {
+      setLinkMeldung(ANMELDEN_FEHLER);
+      return;
+    }
+    setLinkPrueft(true);
+    const fehler = await pruefeLink(client, einLink, projektUrl);
+    setLinkPrueft(false);
+    if (fehler) setLinkMeldung(fehler);
+    else router.replace("/");
+  }
+
   return (
     <>
       <Kopf angemeldet={false} />
@@ -66,6 +84,21 @@ export default function Anmelden() {
           {meldung && (
             <p role="status" className={meldung === ANMELDEN_GESENDET ? "meldung" : "meldung fehler"}>
               {meldung}
+            </p>
+          )}
+          <form onSubmit={linkPruefen} className="formular" aria-labelledby="link-titel">
+            <h2 id="link-titel" className="mono-label">
+              Link aus der Mail einfügen
+            </h2>
+            <label htmlFor="mail-link">In der Mail lange auf „Sign in“ drücken → Link kopieren → hier einfügen</label>
+            <input id="mail-link" name="mail-link" type="text" inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} required value={einLink} onChange={(e) => setEinLink(e.target.value)} />
+            <button type="submit" className="knopf aktiv" disabled={linkPrueft}>
+              Mit Link anmelden
+            </button>
+          </form>
+          {linkMeldung && (
+            <p role="status" className="meldung fehler">
+              {linkMeldung}
             </p>
           )}
           <form onSubmit={codePruefen} className="formular" aria-labelledby="code-titel">
