@@ -45,7 +45,7 @@ const PROJEKT_ALIAS: Record<string, string> = { "content-agent-lernapp": "lernap
 /** Schrittnamen der Loops → Stufe im Leitstand (SIN-482). Schlüssel großgeschrieben. */
 const STUFE_ALIAS: Record<string, string> = { PLANNER: "PLAN", DISPATCH: "QUEUE", WORKER: "WORK", "PR-GATE": "GATE" };
 /** Ereignisse des Betriebs: werden gezeigt, sind aber keine Stufe. */
-export const BETRIEB = ["STATUS", "DIGEST"];
+export const BETRIEB = ["STATUS", "DIGEST", "PAUSE", "IDEE"];
 
 export const projektKuerzel = (name: string | null): string | null => (name ? (PROJEKT_ALIAS[name.toLowerCase()] ?? name) : null);
 export const stufeKuerzel = (name: string | null): string | null => (name ? (STUFE_ALIAS[name.toUpperCase()] ?? name) : null);

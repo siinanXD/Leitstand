@@ -12,6 +12,7 @@
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { LEHREN_ORDNER, leseLehre, workerHinweise } from "../../src/lib/lernen/lernen";
+import { PAUSE_SCHRITT, pauseStand, type PauseStand } from "../../src/lib/pause";
 import { ausLinear, gespiegelteIds, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
@@ -143,7 +144,28 @@ function lehrenHinweise(i: LinearIssue): string {
   }
 }
 
+/** Pause aus dem Leitstand (SIN-530): jüngstes PAUSE-Ereignis in loop_events. Ohne Supabase-Secrets oder bei Lesefehler läuft der Loop weiter. */
+async function pausiert(): Promise<PauseStand> {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { pausiert: false };
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?select=step,status,created_at&step=ilike.${PAUSE_SCHRITT}&order=created_at.desc&limit=20`, {
+      headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    return pauseStand((await res.json()) as Parameters<typeof pauseStand>[0]);
+  } catch (e) {
+    console.log(`::warning::Pausenstand nicht lesbar (${(e as Error).message}), Loop läuft weiter.`);
+    return { pausiert: false };
+  }
+}
+
 async function dispatch() {
+  const pause = await pausiert();
+  if (pause.pausiert) {
+    console.log(`Loop pausiert seit ${pause.seit}. Nichts gestartet.`);
+    await ereignis("dispatch", "uebersprungen");
+    return;
+  }
   await ereignis("dispatch", "start");
   const nodes = await projektIssues();
   const issues = nodes.map(ausLinear);

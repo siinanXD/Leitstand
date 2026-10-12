@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import type { Pause } from "@/lib/aktionen-client";
 import { browserClient } from "@/lib/browser-client";
+import { IdeeFormular } from "./idee-formular";
 
 const REITER = [
   { id: "uebersicht", href: "/", name: "Übersicht" },
@@ -11,7 +13,7 @@ const REITER = [
   { id: "einstellungen", href: "/einstellungen", name: "Einstellungen" },
 ];
 
-export function Kopf({ stand, angemeldet, aktiv = "uebersicht", wartend = 0 }: { stand?: string; angemeldet: boolean; aktiv?: string; wartend?: number }) {
+export function Kopf({ stand, angemeldet, aktiv = "uebersicht", wartend = 0, pause }: { stand?: string; angemeldet: boolean; aktiv?: string; wartend?: number; pause?: Pause }) {
   return (
     <header className="kopf">
       <p className="mono-label marke">Leitstand</p>
@@ -33,12 +35,21 @@ export function Kopf({ stand, angemeldet, aktiv = "uebersicht", wartend = 0 }: {
           </nav>
           {stand && <p className="mono-label live">Live {stand}</p>}
           <div className="kopf-aktionen">
+            <IdeeFormular />
             <button type="button" className="knopf" disabled>
               <span className="mono">⌘K</span> Suche
             </button>
             <button type="button" className="knopf" disabled>
               Planer jetzt
             </button>
+            <button type="button" className="knopf" aria-pressed={pause?.stand?.pausiert === true} disabled={!pause?.stand || pause.laeuft} onClick={() => void pause?.umschalten()}>
+              {pause?.stand?.pausiert ? "Weiter" : "Pause"}
+            </button>
+            {pause?.fehler && (
+              <p className="meldung" role="alert">
+                {pause.fehler}
+              </p>
+            )}
             <button type="button" className="knopf" disabled>
               Notbremse
             </button>
