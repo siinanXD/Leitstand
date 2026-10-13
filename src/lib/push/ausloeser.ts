@@ -2,7 +2,11 @@
 import { BEREICHE, type Bereich } from "../bereiche";
 import type { Nachricht } from "./push";
 
-export type Art = "braucht-dich" | "alarm" | "selbst-behoben";
+export type Art = "braucht-dich" | "alarm" | "selbst-behoben" | "fertig" | "abbruch";
+
+/** Überschrift je Art. „Fertig“ und „Abbruch“ (Sinan 13.10.) folgen den Regeln von „Braucht dich“: tagsüber sofort, nachts gesammelt ab 07:00. */
+const KOPF: Record<Art, string> = { "braucht-dich": "Braucht dich", alarm: "Alarm", "selbst-behoben": "Selbst behoben", fertig: "Fertig und live", abbruch: "Worker abgebrochen" };
+const SOFORT_TAGSUEBER: ReadonlySet<Art> = new Set(["braucht-dich", "fertig", "abbruch"]);
 
 export type Ereignis = {
   /** Stabile Kennung des Vorfalls; dasselbe Ereignis löst nie zweimal aus. */
@@ -62,7 +66,7 @@ const vereinigt = (ereignisse: readonly Ereignis[]): Bereich[] => BEREICHE.filte
 const zweiZeilen = (erste: string, bereiche: readonly Bereich[] | undefined): string => [kurz(erste), bereicheZeile(bereiche)].filter(Boolean).join("\n");
 
 export function nachrichtFuer(e: Ereignis, erinnerung = false): Nachricht {
-  const kopf = e.art === "alarm" ? "Alarm" : "Braucht dich";
+  const kopf = KOPF[e.art];
   return {
     titel: erinnerung ? `Erinnerung: ${kopf}` : kopf,
     text: zweiZeilen(`${[e.projekt, e.kennung].filter(Boolean).join(" ")}: ${e.titel}`, e.bereiche),
@@ -73,7 +77,7 @@ export function nachrichtFuer(e: Ereignis, erinnerung = false): Nachricht {
 function gebuendelt(ereignisse: readonly Ereignis[]): Nachricht {
   const projekte = [...new Set(ereignisse.map((e) => e.projekt))].join(", ");
   return {
-    titel: `Braucht dich (${ereignisse.length})`,
+    titel: `${new Set(ereignisse.map((e) => e.art)).size === 1 ? KOPF[ereignisse[0].art] : "Neues"} (${ereignisse.length})`,
     text: zweiZeilen(`${projekte}: ${ereignisse.map((e) => e.kennung || e.titel).join(", ")}`, vereinigt(ereignisse)),
     url: "/",
   };
@@ -112,13 +116,14 @@ export function plane(ereignisse: readonly Ereignis[], gesendet: Gesendet, jetzt
     neu.push(e.id);
   }
 
-  const braucht = offen.filter((x) => x.art === "braucht-dich");
+  const braucht = offen.filter((x) => SOFORT_TAGSUEBER.has(x.art));
   if (!ruhe) {
     const nachts = braucht.filter((x) => inRuhe(x.zeit));
-    for (const e of braucht.filter((x) => !nachts.includes(x))) {
-      nachrichten.push(nachrichtFuer(e));
-      neu.push(e.id);
-    }
+    // Mehr als drei auf einmal (z. B. erster Lauf nach einer Pause): eine gesammelte Mitteilung statt einer Flut.
+    const tags = braucht.filter((x) => !nachts.includes(x));
+    if (tags.length > 3) nachrichten.push(gebuendelt(tags));
+    else for (const e of tags) nachrichten.push(nachrichtFuer(e));
+    neu.push(...tags.map((e) => e.id));
     if (nachts.length === 1) nachrichten.push(nachrichtFuer(nachts[0]));
     else if (nachts.length > 1) nachrichten.push(gebuendelt(nachts));
     neu.push(...nachts.map((e) => e.id));
@@ -136,7 +141,7 @@ export function plane(ereignisse: readonly Ereignis[], gesendet: Gesendet, jetzt
   const schluessel = auswertungsSchluessel(tag);
   if (stunde === AUSWERTUNG_STUNDE && !gesendet.has(schluessel)) {
     const behoben = offen.filter((x) => x.art === "selbst-behoben");
-    const wartend = braucht.filter((x) => !neu.includes(x.id));
+    const wartend = braucht.filter((x) => x.art === "braucht-dich" && !neu.includes(x.id));
     nachrichten.push(auswertung(behoben, wartend));
     neu.push(schluessel, ...behoben.map((e) => e.id));
   }
@@ -178,4 +183,36 @@ export function stillstandAus(schlangen: readonly Schlange[], jetzt: number): Er
   return schlangen
     .filter((s) => s.startbar > 0 && s.laeuft === 0 && !s.pausiert && s.letztesEreignis != null && jetzt - s.letztesEreignis > LOOP_STILLSTAND_MS)
     .map((s) => ({ id: `stillstand:${s.projekt}:${s.letztesEreignis}`, art: "braucht-dich", projekt: s.name, kennung: "", titel: "Loop steht, obwohl Arbeit bereitliegt", zeit: jetzt, url: "/" }));
+}
+
+/** PR-Titel ohne Präfix und Kennung: „feat(push): Mitteilungen senden (SIN-421)“ → „Mitteilungen senden“. */
+export function menschlich(titel: string): string {
+  const t = titel.replace(/^\w+(\([^)]*\))?!?:\s*/, "").replace(/\s*\(SIN-\d+\)\s*$/, "").trim();
+  return t ? t[0].toUpperCase() + t.slice(1) : titel;
+}
+
+/** Gemergter PR je Repo. Nur `feat` und `fix` zählen als „fertig“, Pflege (chore, docs, ci) nicht. Älter als 6 Stunden: nicht mehr melden. */
+export type GemergterPr = { repo: string; projekt: string; nummer: number; titel: string; gemergt: number };
+export const FERTIG_FENSTER_MS = 6 * 3_600_000;
+export const fertigAus = (prs: readonly GemergterPr[], jetzt: number): Ereignis[] =>
+  prs
+    .filter((p) => /^(feat|fix)(\(|!|:)/.test(p.titel) && jetzt - p.gemergt <= FERTIG_FENSTER_MS)
+    .map((p) => ({ id: `fertig:${p.repo}#${p.nummer}`, art: "fertig", projekt: p.projekt, kennung: "", titel: menschlich(p.titel), zeit: p.gemergt, url: "/" }));
+
+/** Worker-Lauf je Aufgabe. `ergebnis` wie bei GitHub: success, failure, cancelled, skipped. */
+export type WorkerLauf = { repo: string; projekt: string; issue: string; titel: string; ergebnis: string; ende: number };
+export const ABBRUCH_FENSTER_MS = 60 * 60_000;
+
+/** Letzter echter Lauf einer Aufgabe ist gescheitert und liegt unter einer Stunde zurück: einmal am Tag melden, nicht bei jedem Versuch. */
+export function abbruchAus(laeufe: readonly WorkerLauf[], jetzt: number): Ereignis[] {
+  const letzte = new Map<string, WorkerLauf>();
+  for (const l of laeufe) {
+    if (l.ergebnis !== "success" && l.ergebnis !== "failure") continue;
+    const k = `${l.repo}|${l.issue}`;
+    const alt = letzte.get(k);
+    if (!alt || l.ende > alt.ende) letzte.set(k, l);
+  }
+  return [...letzte.values()]
+    .filter((l) => l.ergebnis === "failure" && jetzt - l.ende <= ABBRUCH_FENSTER_MS)
+    .map((l) => ({ id: `abbruch:${l.repo}:${l.issue}:${berlinZeit(l.ende).tag}`, art: "abbruch", projekt: l.projekt, kennung: "", titel: l.titel, zeit: l.ende, url: "/" }));
 }
