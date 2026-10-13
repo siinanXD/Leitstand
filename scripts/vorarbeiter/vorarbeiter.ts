@@ -27,7 +27,7 @@ async function linear<T>(query: string, variables: Record<string, unknown> = {})
 }
 
 const kopf = { apikey: env.SUPABASE_SERVICE_ROLE_KEY ?? "", Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY ?? ""}`, "Content-Type": "application/json" };
-async function supabase(pfad: string, methode: "GET" | "POST" | "DELETE", body?: unknown): Promise<unknown> {
+async function supabase(pfad: string, methode: "GET" | "POST" | "PATCH" | "DELETE", body?: unknown): Promise<unknown> {
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${pfad}`, { method: methode, headers: kopf, body: body ? JSON.stringify(body) : undefined });
   if (!res.ok) throw new Error(`Supabase ${methode} ${pfad.split("?")[0]}: ${res.status}`);
   return methode === "GET" ? res.json() : null;
@@ -57,10 +57,11 @@ async function projektIssues(): Promise<{ issue: LinearIssue; team: string }[]> 
   return d.issues.nodes.map((n) => ({ issue: ausLinear(n), team: n.team.id }));
 }
 
-/** Plan in `loop_snapshot.plan` ablegen: die alte Plan-Zeile fällt weg, eine neue kommt. */
+/** Plan in `loop_snapshot.plan` der Zeile `leitstand` ablegen. `loop_snapshot` hat eine Zeile je Projekt (Schlüssel `project`), keine Titel-Spalte. */
 async function schreibePlan(plan: Plan) {
-  await supabase(`loop_snapshot?project=eq.leitstand&title=eq.Vorarbeiter-Plan`, "DELETE");
-  await supabase("loop_snapshot", "POST", { project: "leitstand", title: "Vorarbeiter-Plan", plan, updated_at: plan.erstellt });
+  const vorhanden = (await supabase("loop_snapshot?select=project&project=eq.leitstand", "GET")) as unknown[];
+  if (vorhanden.length) await supabase("loop_snapshot?project=eq.leitstand", "PATCH", { plan, updated_at: plan.erstellt });
+  else await supabase("loop_snapshot", "POST", { project: "leitstand", quotas: [], queue: {}, open_prs: [], plan, updated_at: plan.erstellt });
   const run = env.GITHUB_RUN_ID;
   await supabase("loop_events", "POST", ereignisZeile("leitstand", run ?? null, run ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${repo}/actions/runs/${run}` : null));
 }
