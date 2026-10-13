@@ -7,7 +7,7 @@
 - Schreibt: Zeile in `ceo_entscheidungen` (nur hinzufügen) und in `loop_events` das Ereignis `step = ceo`, `status = rolle_gestartet`. Eine Spalte `event_type` gibt es in `loop_events` nicht; den Grund trägt `ceo_entscheidungen.ausloeser`.
 - Regeln werden als Felder ausgegeben (`metaErlaubt`: höchstens 1 Loop-/Meta-PR pro Tag, `ideenErlaubt`: v1 fertig und höchstens 1 Idee pro Woche). Der Planer und die Wächter lesen sie noch nicht.
 - Karte „Der Chef sagt“ auf der Übersicht liest die letzte Zeile je Produkt. Fehlt die Tabelle, steht dort „Noch keine Entscheidung“.
-- Migration: `ceo_entscheidungen` in eigenem PR, nach „Freigeben“ von der Lern-App-CI einspielen (siehe `SIN-405-supabase-schemas.md`).
+- Migration: liegt als `docs/ceo/ceo_entscheidungen.sql.vorlage`, nicht unter `supabase/migrations/`, damit sie nicht mit diesem PR live geht. Nach „Freigeben“ als `supabase/migrations/leitstand/<Zeitstempel>_ceo_entscheidungen.sql` in einen eigenen PR verschieben; die Lern-App-CI spielt sie ein (siehe `SIN-405-supabase-schemas.md`).
 
 ## Aufgabe für Sinan (Label `sinan`)
 
