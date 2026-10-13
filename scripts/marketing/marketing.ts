@@ -11,6 +11,7 @@
  * DRY_RUN=1 oder fehlende Supabase-Variablen: nur Ausgabe im Log. Ohne ANTHROPIC_API_KEY bricht der Lauf ab.
  */
 import { readFileSync } from "node:fs";
+import { pruefeWerbemittel } from "../../src/lib/anwalt/anwalt";
 import { ereignisZeile, leseAusgaben, promptFuer, werbemittelZeilen, type Eingabe } from "../../src/lib/marketing/marketing";
 
 const env = process.env;
@@ -45,6 +46,9 @@ async function main() {
     throw new Error("Modellantwort unvollständig, nichts geschrieben");
   }
   const zeilen = werbemittelZeilen(eingabe.produkt, ausgaben, { modell: MODELL, runUrl: env.GITHUB_RUN_URL ?? null });
+  // Anwalt (SIN-552): vor `wartet_auf_freigabe` KI-Kennzeichnung, Fremdmarken, Personendaten prüfen. Anzeigen nennen ihre Plattform.
+  const gruende = zeilen.flatMap((z) => pruefeWerbemittel({ text: z.text_inhalt, kiKennzeichnung: z.ki_kennzeichnung }, ["Google", "Meta", "LinkedIn"]).map((g) => `${z.art}: ${g}`));
+  if (gruende.length) throw new Error(`Anwalt-Prüfung nicht bestanden, nichts geschrieben:\n${gruende.join("\n")}`);
   if (DRY) return console.log(JSON.stringify(zeilen, null, 2));
   await supabase("werbemittel", zeilen);
   await supabase("loop_events", ereignisZeile(eingabe.produkt, true, zeilen.length));
