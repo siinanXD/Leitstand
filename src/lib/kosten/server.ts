@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { mitCache } from "./cache";
 import { berlinTag, leseBudget, leseWochenDeckel,leseLangfuse, lesePipeline, leseWerbemittel, zusammenfuehren, type Kosten } from "./kosten";
 
 const MAX_SEITEN = 20;
@@ -42,6 +43,9 @@ async function ausLangfuse(ab: Date): Promise<unknown[] | null> {
   }
 }
 
+/** Höchstens ein Langfuse-Abruf je 10 Minuten (SIN-544, HTTP 429); bei Fehler gilt bis 1 h der letzte gute Stand. */
+const langfuseGemerkt = mitCache(() => ausLangfuse(ladeAb(new Date())), 10 * 60_000, 60 * 60_000);
+
 /** Kosten heute und im Monat aus allen Quellen. Nur serverseitig. */
 export async function ladeKosten(jetzt = new Date()): Promise<Kosten> {
   const ab = ladeAb(jetzt);
@@ -49,7 +53,7 @@ export async function ladeKosten(jetzt = new Date()): Promise<Kosten> {
   const [pipeline, werbemittel, langfuse] = await Promise.all([
     ausSupabase("pipeline_run_costs", "*", ab),
     ausSupabase("werbemittel", "art,kosten_eur,created_at", ab),
-    ausLangfuse(ab),
+    langfuseGemerkt(),
   ]);
   return zusammenfuehren(
     {

@@ -1,0 +1,52 @@
+# Vorlage für .github/workflows/werkzeuge.yml (SIN-544).
+# Der Worker darf .github/workflows/ nicht ändern: Sinan legt die Datei an (oder hängt den Schritt an waechter.yml).
+# Stündlich, versetzt zum Wächter (Minute 41). Fehlende Secrets machen das Tool rot, nicht den Lauf.
+name: werkzeuge
+
+on:
+  schedule:
+    - cron: "11 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur anzeigen, nichts speichern"
+        type: boolean
+        default: true
+
+concurrency:
+  group: werkzeuge
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  werkzeuge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Werkzeuge prüfen
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_ACCESS_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/werkzeuge/pruefen.ts
