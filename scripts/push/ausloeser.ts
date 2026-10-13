@@ -14,7 +14,7 @@
  * DRY_RUN=1: nur Ausgabe im Log, nichts gesendet oder gespeichert.
  */
 import { createClient } from "@supabase/supabase-js";
-import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_MS, menschlich, plane, stillstandAus, type GemergterPr, type Schlange, type WorkerLauf } from "../../src/lib/push/ausloeser";
+import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, plane, stillstandAus, type GemergterPr, type Schlange, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
 import { sendeAnAlle } from "../../src/lib/push/push";
@@ -102,7 +102,7 @@ async function prLage(jetzt: Date): Promise<{ gemergt: GemergterPr[]; mitPr: Set
     for (const p of offen ?? []) for (const id of p.title.match(/SIN-\d+/g) ?? []) mitPr.add(id);
     for (const p of zu ?? []) {
       const zeit = p.merged_at ? Date.parse(p.merged_at) : NaN;
-      if (!Number.isFinite(zeit) || jetzt.getTime() - zeit > FERTIG_FENSTER_MS) continue;
+      if (!Number.isFinite(zeit) || jetzt.getTime() - zeit > FERTIG_FENSTER_NACHT_MS) continue;
       gemergt.push({ repo, projekt: projektInfo(REPOS[repo].projekt).name, nummer: p.number, titel: p.title, gemergt: zeit });
       for (const id of p.title.match(/SIN-\d+/g) ?? []) mitPr.add(id);
     }
