@@ -1,0 +1,13 @@
+{
+  "rolle": "anwalt",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Keine Funde im PR.",
+  "naechster_schritt": "Keiner.",
+  "kosten_eur": 0,
+  "quellen": ["https://github.com/siinanXD/Leitstand/pull/99"],
+  "ampel": "gruen",
+  "funde": [],
+  "hinweis": "Keine Rechtsberatung."
+}

@@ -1,0 +1,11 @@
+{
+  "rolle": "marketing",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Ein Werbemittel entworfen.",
+  "naechster_schritt": "Anwalt prüft das Werbemittel.",
+  "kosten_eur": 0,
+  "quellen": ["https://github.com/siinanXD/Leitstand/issues/98"],
+  "werbemittel": [{ "art": "anzeige", "titel": "Lernen mit Plan" }]
+}

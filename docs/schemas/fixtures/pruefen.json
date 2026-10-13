@@ -1,0 +1,12 @@
+{
+  "rolle": "pruefen",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Tests grün.",
+  "naechster_schritt": "Automerge, sobald build grün ist.",
+  "kosten_eur": 0,
+  "quellen": ["https://github.com/siinanXD/Leitstand/pull/99"],
+  "ergebnis": "gruen",
+  "pruefungen": [{ "name": "npm test", "ok": true }]
+}

@@ -1,0 +1,15 @@
+{
+  "rolle": "research",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Fixture: je ein Treffer auf GitHub und Hugging Face, Beispieldaten ohne Aussagekraft.",
+  "naechster_schritt": "CEO entscheidet über die Empfehlung.",
+  "kosten_eur": 0,
+  "quellen": ["https://github.com/xyflow/xyflow", "https://huggingface.co/api/models?search=example"],
+  "treffer": [
+    { "quelle": "github", "name": "xyflow/xyflow", "url": "https://github.com/xyflow/xyflow", "lizenz": "MIT", "sterne": 30000, "datum": "2026-10-13" },
+    { "quelle": "huggingface", "name": "example/model", "url": "https://huggingface.co/example/model", "lizenz": "apache-2.0", "sterne": 12, "datum": "2026-10-13" }
+  ],
+  "empfehlung": "anpassen"
+}

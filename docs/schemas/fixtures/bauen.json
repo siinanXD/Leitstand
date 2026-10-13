@@ -1,0 +1,13 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Rollen-Register und Schemas gebaut, PR geöffnet.",
+  "naechster_schritt": "Prüfen läuft auf dem PR.",
+  "kosten_eur": 0,
+  "quellen": ["https://github.com/siinanXD/Leitstand/issues/98"],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/99",
+  "geaendert": ["docs/autonomy/agents.json"]
+}

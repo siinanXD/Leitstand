@@ -1,0 +1,12 @@
+{
+  "rolle": "content",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Drei Lerneinheiten erstellt und vom Richter bewertet.",
+  "naechster_schritt": "Prüfen bewertet die Einheiten.",
+  "kosten_eur": 0.12,
+  "quellen": ["https://github.com/siinanXD/Leitstand/issues/98"],
+  "einheiten": 3,
+  "richter_score": 0.9
+}
