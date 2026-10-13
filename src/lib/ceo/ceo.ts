@@ -12,6 +12,7 @@ export const MIN_STARTBAR = 3;
 export const MAX_STARTBAR = 8;
 /** Schritt und Status in `loop_events`: der Leitstand zeigt daran, dass der CEO lief. Der Grund steht in `ceo_entscheidungen`. */
 export const SCHRITT = "ceo";
+// `loop_events.status` erlaubt nur start|ok|fehler|uebersprungen (Check-Constraint). Der Rollen-Start steht in `grund`.
 export const EREIGNIS = "rolle_gestartet";
 
 export type ProduktLage = {
@@ -64,7 +65,7 @@ export function entscheide(p: ProduktLage): Entscheidung {
 }
 
 /** Zeile für `loop_events`, damit der Leitstand zeigt, dass und wann der CEO lief. */
-export const ereignisZeile = (projekt: string, runId: string | null, runUrl: string | null) => ({ project: projekt, agent: SCHRITT, step: SCHRITT, status: EREIGNIS, issue: null, pr: null, run_id: runId, run_url: runUrl });
+export const ereignisZeile = (projekt: string, runId: string | null, runUrl: string | null) => ({ project: projekt, agent: SCHRITT, step: SCHRITT, status: "ok", grund: EREIGNIS, issue: null, pr: null, run_id: runId, run_url: runUrl });
 
 /** Zeile für `ceo_entscheidungen` (nur hinzufügen). */
 export const entscheidungsZeile = (e: Entscheidung, ausloeser: Ausloeser, issueUrl: string | null) => ({ produkt: e.produkt, entscheidung: e.art, grund: e.grund, ausloeser, dringend: e.dringend, issue_url: issueUrl });
