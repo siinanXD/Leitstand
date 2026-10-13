@@ -182,4 +182,4 @@ export const promptC = (i: LinearIssue) =>
 export const prFuerC = (i: LinearIssue) => ({ branch: `claude/${i.identifier.toLowerCase()}-c`, titel: `docs: ${i.title} (${i.identifier})`, body: `Spur C (Haiku): ${i.title}\n\nPart of ${i.identifier}\n\n## Ausgelassen\nNicht von einem Menschen gelesen, nur Markdown unter \`docs/\`.` });
 
 /** Zeile für `loop_events`: der Plan wurde gemacht. */
-export const ereignisZeile = (projekt: string, runId: string | null, runUrl: string | null) => ({ project: projekt, agent: "vorarbeiter", step: "vorarbeiter", status: "rolle_gestartet", issue: null, pr: null, run_id: runId, run_url: runUrl });
+export const ereignisZeile = (projekt: string, runId: string | null, runUrl: string | null) => ({ project: projekt, agent: "vorarbeiter", step: "vorarbeiter", status: "ok", grund: "rolle_gestartet", issue: null, pr: null, run_id: runId, run_url: runUrl });
