@@ -78,6 +78,11 @@ function MussDuTun({ quelle, wartend }: { quelle: Quelle; wartend: Wartende }) {
                   Freigeben
                 </button>
               )}
+              {k.aufladen && (
+                <a className="knopf aktiv" href={k.aufladen} target="_blank" rel="noreferrer" aria-label={`${k.titel}: Aufladen`}>
+                  Aufladen →
+                </a>
+              )}
               {k.ansehen && (
                 <a className="knopf" href={k.ansehen} target="_blank" rel="noreferrer" aria-label={`${k.titel} ansehen`}>
                   Ansehen →

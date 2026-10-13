@@ -16,6 +16,9 @@ export type Kosten = {
   heute: number | null;
   monat: number | null;
   budget: number;
+  /** Die letzten 7 Tage (SIN-555) gegen den Wochendeckel; null ohne Zahlen. */
+  woche: number | null;
+  wochenDeckel: number;
   /** Monatsverbrauch / Budget (0 bis ∞), null ohne Zahlen. */
   anteil: number | null;
   ampel: Ampel | null;
@@ -26,6 +29,7 @@ export type Kosten = {
 };
 
 export const STANDARD_BUDGET_EUR = 100;
+export const STANDARD_WOCHEN_DECKEL_EUR = 60;
 export const HINWEIS = "Abos nicht enthalten";
 export const ALARM_ANTEIL = 0.2;
 
@@ -42,6 +46,12 @@ const cent = (n: number) => Math.round(n * 100);
 export function leseBudget(wert: string | undefined): number {
   const n = Number((wert ?? "").replace(",", "."));
   return wert && Number.isFinite(n) && n > 0 ? n : STANDARD_BUDGET_EUR;
+}
+
+/** Wochendeckel aus `KOSTEN_WOCHE_EUR`; ungültig oder ≤ 0 ergibt den Standard (60 €). */
+export function leseWochenDeckel(wert: string | undefined): number {
+  const n = Number((wert ?? "").replace(",", "."));
+  return wert && Number.isFinite(n) && n > 0 ? n : STANDARD_WOCHEN_DECKEL_EUR;
 }
 
 /** Ampel am Monatsbalken: grün < 70 %, gelb < 90 %, rot darüber. */
@@ -75,8 +85,10 @@ function zeile(art: string, posten: Posten[], heute: string, monat: string): Zei
 }
 
 /** Führt die Quellen je Kostenart zusammen. Euro mit 2 Stellen; fehlende Quelle bleibt sichtbar als nicht verfügbar. */
-export function zusammenfuehren(q: Quellen, budget = STANDARD_BUDGET_EUR, jetzt = new Date()): Kosten {
+export function zusammenfuehren(q: Quellen, budget = STANDARD_BUDGET_EUR, jetzt = new Date(), wochenDeckel = STANDARD_WOCHEN_DECKEL_EUR): Kosten {
   const heute = berlinTag(jetzt);
+  const wochenStart = berlinTag(new Date(jetzt.getTime() - 6 * 24 * 3_600_000));
+  const letzteWoche: Posten[] = [];
   const monat = heute.slice(0, 7);
   const zeilen: Zeile[] = [];
   const fehlt: string[] = [];
@@ -87,6 +99,7 @@ export function zusammenfuehren(q: Quellen, budget = STANDARD_BUDGET_EUR, jetzt 
       fehlt.push(name);
       return;
     }
+    letzteWoche.push(...quelle.filter((p) => p.tag >= wochenStart && p.tag <= heute));
     const arten = [...new Set(quelle.map((p) => p.art))];
     if (arten.length === 0) zeilen.push(zeile(name, [], heute, monat));
     for (const art of arten) zeilen.push(zeile(art, quelle.filter((p) => p.art === art), heute, monat));
@@ -101,7 +114,8 @@ export function zusammenfuehren(q: Quellen, budget = STANDARD_BUDGET_EUR, jetzt 
   const summe = (f: (z: Zeile) => number | null) => (echte.length ? rund(echte.reduce((s, z) => s + cent(f(z) ?? 0), 0) / 100) : null);
   const m = summe((z) => z.monat);
   const anteil = m === null ? null : m / budget;
-  return { heute: summe((z) => z.heute), monat: m, budget, anteil, ampel: anteil === null ? null : ampel(anteil), zeilen, nichtVerfuegbar: fehlt, hinweis: HINWEIS };
+  const woche = echte.length ? rund(letzteWoche.reduce((s, p) => s + cent(p.eur), 0) / 100) : null;
+  return { heute: summe((z) => z.heute), monat: m, woche, wochenDeckel, budget, anteil, ampel: anteil === null ? null : ampel(anteil), zeilen, nichtVerfuegbar: fehlt, hinweis: HINWEIS };
 }
 
 const zahl = (v: unknown): number | null => (v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));

@@ -1,7 +1,8 @@
 // Ableitungen für die einfache Übersicht nach Figma F1/F2 (SIN-526). Rein; Eingabe sind nur echte Zeilen aus loop_events und loop_snapshot.
 import { REPOS } from "./freigabe";
 import { projektInfo } from "./projekte";
-import { letzte24h, type LoopEvent, type Quelle } from "./uebersicht";
+import { warnungen, type Warnung } from "./kosten/guthaben";
+import { kontingente, letzte24h, type LoopEvent, type Quelle } from "./uebersicht";
 import { aufgabenFuerDich, pipelineSchiene } from "./uebersicht-b1";
 import type { WartenderPr } from "./wartende-prs";
 
@@ -29,10 +30,16 @@ export function lageSatz(q: Quelle, anzahlWartend: number, jetzt: Date): Lage | 
 
 // ------------------------------------------------------------------ Das musst du tun
 
-export type Karte = { key: string; titel: string; warum: string; projekt: string; pr: string | null; minuten: number | null; wartender: WartenderPr | null; ansehen: string | null };
+export type Karte = { key: string; titel: string; warum: string; projekt: string; pr: string | null; minuten: number | null; wartender: WartenderPr | null; ansehen: string | null;
+  /** Link zum Dienst für „Aufladen“ (SIN-555); wir zahlen nie selbst. */
+  aufladen: string | null };
+
+/** Guthaben unter 20 % und Kontingente über 80 % aus dem Snapshot. */
+export const kostenWarnungen = (q: Quelle): Warnung[] => warnungen(q.snapshot.flatMap((s) => s.guthaben ?? []), kontingente(q.snapshot));
 
 /** Wartende Freigaben (mit „Freigeben“) und offene Aufgaben für Sinan (nur „Ansehen“). Je PR einmal. */
 export function karten(q: Quelle, wartende: WartenderPr[]): Karte[] {
+  const kosten = kostenWarnungen(q).map<Karte>((w) => ({ key: w.key, titel: w.titel, warum: w.warum, projekt: "Kosten", pr: null, minuten: null, wartender: null, ansehen: "/kosten", aufladen: w.link }));
   const projektVon = (key: string) => q.snapshot.find((s) => key.startsWith(`${s.project}|`))?.project ?? null;
   const fuerPr = wartende.map<Karte>((p) => ({
     key: p.key,
@@ -43,6 +50,7 @@ export function karten(q: Quelle, wartende: WartenderPr[]): Karte[] {
     minuten: null,
     wartender: p,
     ansehen: p.url,
+    aufladen: null,
   }));
   const bekannt = new Set(wartende.map((p) => `#${p.nummer}`));
   const aufgaben = aufgabenFuerDich(q.snapshot)
@@ -57,10 +65,11 @@ export function karten(q: Quelle, wartende: WartenderPr[]): Karte[] {
         pr: /^#\d+$/.test(a.ref) ? a.ref : null,
         minuten: a.minuten,
         wartender: null,
+        aufladen: null,
         ansehen: /^SIN-\d+$/.test(a.ref) ? `https://linear.app/sinan-kahraman/issue/${a.ref}` : null,
       };
     });
-  return [...fuerPr, ...aufgaben];
+  return [...kosten, ...fuerPr, ...aufgaben];
 }
 
 // ------------------------------------------------------------------ Was gerade passiert
