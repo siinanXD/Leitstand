@@ -31,20 +31,28 @@ async function pruefe(w: Werkzeug): Promise<Pruefung> {
   return bewerte(antworten);
 }
 
-const db = !DRY && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY ? createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } }) : null;
-if (!DRY && !db) throw new Error("SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY fehlen");
+// Kein Top-Level-await: tsx baut dieses Skript als CommonJS (kein "type": "module"), sonst ERR_REQUIRE_ASYNC_MODULE.
+async function main() {
+  const db = !DRY && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY ? createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } }) : null;
+  if (!DRY && !db) throw new Error("SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY fehlen");
 
-let schreibFehler = 0;
-for (const w of WERKZEUGE) {
-  const p = await pruefe(w);
-  console.log(`${DRY ? "[trocken] " : ""}${w.name}: ${p.ok ? "grün" : "rot"}${p.hinweis ? ` (${p.hinweis})` : ""}`);
-  if (!db) continue;
-  const jetzt = new Date().toISOString();
-  // letzte_ok_at nur bei Erfolg setzen: je Zeile einzeln, damit der alte Wert bei Rot stehen bleibt.
-  const { error } = await db.from("leitstand_werkzeug_status").upsert({ id: w.id, ok: p.ok, hinweis: p.hinweis, geprueft_at: jetzt, ...(p.ok ? { letzte_ok_at: jetzt } : {}) });
-  if (error) {
-    schreibFehler++;
-    console.warn(`${w.name}: Schreiben fehlgeschlagen (${error.message})`);
+  let schreibFehler = 0;
+  for (const w of WERKZEUGE) {
+    const p = await pruefe(w);
+    console.log(`${DRY ? "[trocken] " : ""}${w.name}: ${p.ok ? "grün" : "rot"}${p.hinweis ? ` (${p.hinweis})` : ""}`);
+    if (!db) continue;
+    const jetzt = new Date().toISOString();
+    // letzte_ok_at nur bei Erfolg setzen: je Zeile einzeln, damit der alte Wert bei Rot stehen bleibt.
+    const { error } = await db.from("leitstand_werkzeug_status").upsert({ id: w.id, ok: p.ok, hinweis: p.hinweis, geprueft_at: jetzt, ...(p.ok ? { letzte_ok_at: jetzt } : {}) });
+    if (error) {
+      schreibFehler++;
+      console.warn(`${w.name}: Schreiben fehlgeschlagen (${error.message})`);
+    }
   }
+  if (schreibFehler) process.exitCode = 1;
 }
-if (schreibFehler) process.exitCode = 1;
+
+main().catch((e) => {
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});
