@@ -203,8 +203,8 @@ export const fertigAus = (prs: readonly GemergterPr[], jetzt: number): Ereignis[
 export type WorkerLauf = { repo: string; projekt: string; issue: string; titel: string; ergebnis: string; ende: number };
 export const ABBRUCH_FENSTER_MS = 60 * 60_000;
 
-/** Letzter echter Lauf einer Aufgabe ist gescheitert und liegt unter einer Stunde zurück: einmal am Tag melden, nicht bei jedem Versuch. */
-export function abbruchAus(laeufe: readonly WorkerLauf[], jetzt: number): Ereignis[] {
+/** Letzter echter Lauf einer Aufgabe ist gescheitert, liegt unter einer Stunde zurück und es gibt keinen PR dazu: einmal am Tag melden, nicht bei jedem Versuch. */
+export function abbruchAus(laeufe: readonly WorkerLauf[], jetzt: number, mitPr: ReadonlySet<string> = new Set()): Ereignis[] {
   const letzte = new Map<string, WorkerLauf>();
   for (const l of laeufe) {
     if (l.ergebnis !== "success" && l.ergebnis !== "failure") continue;
@@ -213,6 +213,7 @@ export function abbruchAus(laeufe: readonly WorkerLauf[], jetzt: number): Ereign
     if (!alt || l.ende > alt.ende) letzte.set(k, l);
   }
   return [...letzte.values()]
-    .filter((l) => l.ergebnis === "failure" && jetzt - l.ende <= ABBRUCH_FENSTER_MS)
+    // Der Leitstand-Worker meldet manchmal „error“ erst nach dem PR: gibt es für die Aufgabe einen PR, ist nichts abgebrochen.
+    .filter((l) => l.ergebnis === "failure" && jetzt - l.ende <= ABBRUCH_FENSTER_MS && !mitPr.has(l.issue))
     .map((l) => ({ id: `abbruch:${l.repo}:${l.issue}:${berlinZeit(l.ende).tag}`, art: "abbruch", projekt: l.projekt, kennung: "", titel: l.titel, zeit: l.ende, url: "/" }));
 }

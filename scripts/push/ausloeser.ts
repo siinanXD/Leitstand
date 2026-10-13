@@ -57,16 +57,24 @@ async function linearTitel(ids: string[]): Promise<Map<string, string>> {
   return titel;
 }
 
-async function gemergtePrs(jetzt: Date): Promise<GemergterPr[]> {
-  const prs: GemergterPr[] = [];
+/** Gemergte PRs der letzten Stunden und alle Aufgaben-Kennungen, zu denen es einen offenen oder frisch gemergten PR gibt. */
+async function prLage(jetzt: Date): Promise<{ gemergt: GemergterPr[]; mitPr: Set<string> }> {
+  const gemergt: GemergterPr[] = [];
+  const mitPr = new Set<string>();
   for (const repo of Object.keys(REPOS) as RepoName[]) {
-    const liste = await github<{ number: number; title: string; merged_at: string | null }[]>(`repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
-    for (const p of liste ?? []) {
-      const gemergt = p.merged_at ? Date.parse(p.merged_at) : NaN;
-      if (Number.isFinite(gemergt) && jetzt.getTime() - gemergt <= FERTIG_FENSTER_MS) prs.push({ repo, projekt: projektInfo(REPOS[repo].projekt).name, nummer: p.number, titel: p.title, gemergt });
+    const [zu, offen] = await Promise.all([
+      github<{ number: number; title: string; merged_at: string | null }[]>(`repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`),
+      github<{ title: string }[]>(`repos/${repo}/pulls?state=open&per_page=50`),
+    ]);
+    for (const p of offen ?? []) for (const id of p.title.match(/SIN-\d+/g) ?? []) mitPr.add(id);
+    for (const p of zu ?? []) {
+      const zeit = p.merged_at ? Date.parse(p.merged_at) : NaN;
+      if (!Number.isFinite(zeit) || jetzt.getTime() - zeit > FERTIG_FENSTER_MS) continue;
+      gemergt.push({ repo, projekt: projektInfo(REPOS[repo].projekt).name, nummer: p.number, titel: p.title, gemergt: zeit });
+      for (const id of p.title.match(/SIN-\d+/g) ?? []) mitPr.add(id);
     }
   }
-  return prs;
+  return { gemergt, mitPr };
 }
 
 async function workerLaeufe(jetzt: Date): Promise<WorkerLauf[]> {
@@ -132,12 +140,12 @@ async function main() {
     };
   });
 
-  const [prs, laeufe] = await Promise.all([gemergtePrs(jetzt), workerLaeufe(jetzt)]);
+  const [prs, laeufe] = await Promise.all([prLage(jetzt), workerLaeufe(jetzt)]);
   const ereignisse = [
     ...brauchtDichAus(wartend, jetzt.getTime()),
     ...stillstandAus(schlangen, jetzt.getTime()),
-    ...fertigAus(prs, jetzt.getTime()),
-    ...abbruchAus(laeufe, jetzt.getTime()),
+    ...fertigAus(prs.gemergt, jetzt.getTime()),
+    ...abbruchAus(laeufe, jetzt.getTime(), prs.mitPr),
   ];
   const ab = new Date(jetzt.getTime() - MERKEN_TAGE * 24 * 3_600_000).toISOString();
   const { data: rohGesendet, error: fehlerGesendet } = await db.from("leitstand_push_gesendet").select("schluessel").gte("gesendet_at", ab);
