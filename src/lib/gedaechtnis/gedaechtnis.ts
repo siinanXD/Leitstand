@@ -18,7 +18,7 @@ export type Pr = { nummer: number; titel: string; projekt: string; url: string }
 /** `id` ist die Linear-Kennung aus dem Dateinamen in `docs/decisions/`, `url` der Link auf die Datei (kein Inhalt wird kopiert). */
 export type Entscheidung = { id: string; projekt: string; titel: string; url: string };
 export type OffenerPunkt = { titel: string; projekt: string; url: string | null; art: "sinan" | "freigabe" };
-export type Eingabe = { jetzt: Date; produkte: Produkt[]; prs: Pr[]; entscheidungen: Entscheidung[]; offen: OffenerPunkt[]; kostenUsd: number | null; probleme: string[] };
+export type Eingabe = { jetzt: Date; produkte: Produkt[]; prs: Pr[]; entscheidungen: Entscheidung[]; offen: OffenerPunkt[]; kostenUsd: number | null; probleme: string[]; /** Trend-Radar 2 (SIN-575): höchstens 3 Zeilen, kommen aus `gedaechtnisZeilen`. */ trends?: string[] };
 
 export type Dateien = Record<string, string>;
 
@@ -83,7 +83,8 @@ export function produktSeite(p: Produkt, entscheidungen: Entscheidung[], jetzt: 
 export function tagSeite(e: Eingabe): string {
   const tag = tagBerlin(e.jetzt);
   const ids = e.entscheidungen.filter((x) => e.prs.some((p) => p.titel.includes(x.id)));
-  const feste = 6 + 2 + 3 * 2 + 2 + 1; // Kopf, Titel, Abschnittszeilen, Leerzeilen, Fuß: übrig für Listen
+  const trends = (e.trends ?? []).slice(0, 3).map((z) => kurz(z));
+  const feste = 6 + 2 + 3 * 2 + 2 + 1 + (trends.length ? 1 + trends.length : 0); // Kopf, Titel, Abschnittszeilen, Leerzeilen, Fuß, Trends: übrig für Listen
   const platz = MAX_ZEILEN_TAG - feste;
   const je = Math.max(1, Math.floor(platz / 3));
   const kosten = e.kostenUsd === null ? "Kosten: unbekannt" : `Kosten: ${e.kostenUsd.toFixed(2)} US-Dollar (Agenten, ohne Abos)`;
@@ -100,6 +101,7 @@ export function tagSeite(e: Eingabe): string {
     "## Kosten und Probleme",
     kosten,
     ...begrenze(probleme, je),
+    ...(trends.length ? ["## Trends", ...trends] : []),
     "",
     "[[00 Wo stehen wir]]",
   ].join("\n") + "\n";

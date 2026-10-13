@@ -15,6 +15,7 @@ flowchart LR
   hausmeister["Hausmeister"]
   anwalt["Anwalt"]
   gedaechtnis["Gedächtnis"]
+  trend["Trend"]
   ceo --> vorarbeiter
   ceo --> research
   ceo --> visionaer
@@ -40,3 +41,4 @@ Bau-Spuren: Spur A · Claude Max, Spur B · Claude Max, Spur C · API mit Haiku.
 | Hausmeister | alle 20 Merges (merges_seit_hausmeister) | montags 07:00 | Bash, knip |
 | Anwalt | PR ändert Migrationen, Tracking, Prompts mit Nutzerdaten, Rechtstexte oder Werbemittel | monatlich AVV-Abgleich | GitHub |
 | Gedächtnis | nach jedem Merge | täglich 05:50 | GitHub |
+| Trend | sonntags (Bewertung); täglich (Sternzuwachs) | sonntags 04:30, täglich Kurzlauf | GitHub-Suche, Hugging Face Hub API, Release-Seiten, Linear, Supabase |
