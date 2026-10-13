@@ -12,6 +12,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
+import { ladePausenAlle } from "../kontingent/pausen";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { ausLinear, gespiegelteIds, LABEL, type GithubIssue } from "../../src/lib/loop/auswahl";
 import {
@@ -232,9 +233,16 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
   const team = await teamDaten(teamId);
 
   // Hänger vor der Schlange, damit zurückgesetzte Issues nicht doppelt zählen.
-  const haenger = erkenneIssueHaenger(issues, prs, jetzt);
+  const claudePausen = (await ladePausenAlle()).filter((p) => p.dienst === "claude").map((p) => p.erstellt_at);
+  const haenger = erkenneIssueHaenger(issues, prs, jetzt, claudePausen);
   for (const h of haenger) {
-    if (h.art === "zuruecksetzen") {
+    if (h.kontingent) {
+      log(projekt.name, `${h.issue.identifier} scheiterte am Claude-Kontingent → zurück auf Todo`);
+      if (DRY) continue;
+      const todo = team.status("Todo");
+      if (todo) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: todo });
+      await kommentar(h.issue.id, "Wächter: Der Lauf scheiterte am Claude-Kontingent, kein Hänger. Zurück auf Todo, startet nach der Pause von selbst.");
+    } else if (h.art === "zuruecksetzen") {
       log(projekt.name, `${h.issue.identifier} hängt seit über 6 h ohne PR → zurück auf Todo`);
       if (DRY) continue;
       const todo = team.status("Todo");

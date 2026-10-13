@@ -12,7 +12,9 @@
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { LEHREN_ORDNER, leseLehre, workerHinweise } from "../../src/lib/lernen/lernen";
+import { aktivePause, pauseSatz } from "../../src/lib/kontingent/kontingent";
 import { PAUSE_SCHRITT, pauseStand, type PauseStand } from "../../src/lib/pause";
+import { ladeOffenePausen } from "../kontingent/pausen";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { ausLinear, gespiegelteIds, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 
@@ -184,6 +186,13 @@ async function dispatch() {
   const pause = await pausiert();
   if (pause.pausiert) {
     console.log(`Loop pausiert seit ${pause.seit}. Nichts gestartet.`);
+    await ereignis("dispatch", "uebersprungen");
+    return;
+  }
+  // Kontingent (SIN-581): Der Worker braucht Claude. Läuft eine Pause, startet nichts.
+  const claudePause = aktivePause(await ladeOffenePausen(), "claude", new Date());
+  if (claudePause) {
+    console.log(`Nicht gestartet. ${pauseSatz(claudePause, new Date())}`);
     await ereignis("dispatch", "uebersprungen");
     return;
   }
