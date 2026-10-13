@@ -22,6 +22,7 @@ import { supabaseSpeicher, vapidSender } from "../../src/lib/push/server";
 import { projektInfo } from "../../src/lib/projekte";
 import { ladeQuelle, type Lesequelle } from "../../src/lib/supabase";
 import { karten } from "../../src/lib/uebersicht-einfach";
+import { offene } from "../../src/lib/migrationen/migrationen";
 import { wartendePrs } from "../../src/lib/wartende-prs";
 
 const env = process.env;
@@ -156,7 +157,8 @@ async function main() {
   if (geladen.zustand !== "ok") throw new Error("loop_events oder loop_snapshot nicht lesbar");
   const q = geladen.quelle;
 
-  const wartend = karten(q, wartendePrs(q.snapshot)).map((k) => ({ key: k.key, titel: k.titel, projekt: k.projekt || "Leitstand" }));
+  // Fehlende Migrationen gehen als Alarm raus (unten), nicht als „Braucht dich“.
+  const wartend = karten(q, wartendePrs(q.snapshot)).filter((k) => !k.key.startsWith("migration:")).map((k) => ({ key: k.key, titel: k.titel, projekt: k.projekt || "Leitstand" }));
 
   // shortcut: Stillstand nur für Projekte mit `queue` im Snapshot (Lern-App); der Leitstand bekommt seine Schlange mit SIN-572.
   const { data: rohSchlangen, error } = await db.from("loop_snapshot").select("project, queue");
@@ -177,6 +179,7 @@ async function main() {
   const [prs, laeufe] = await Promise.all([prLage(jetzt), workerLaeufe(jetzt)]);
   const ereignisse = [
     ...brauchtDichAus(wartend, jetzt.getTime()),
+    ...offene(q.events).map((m) => ({ id: `alarm:migration:${m.datei}`, art: "alarm" as const, projekt: "Leitstand", kennung: "Datenbank", titel: `${m.datei}: ${m.grund}`, zeit: m.zeit })),
     ...stillstandAus(schlangen, jetzt.getTime()),
     ...fertigAus(prs.gemergt, jetzt.getTime()),
     ...abbruchAus(laeufe, jetzt.getTime(), prs.mitPr),
