@@ -211,3 +211,10 @@ test("Tagsüber mehr als drei auf einmal: eine gesammelte Mitteilung", () => {
   assert.equal(p.nachrichten[0].titel, "Fertig und live (4)");
   assert.deepEqual(p.neu, ["a", "b", "c", "d"]);
 });
+
+test("Abbruch: nicht melden, wenn es zur Aufgabe schon einen PR gibt", () => {
+  const jetzt = utc("2026-10-13T15:40:00Z");
+  const lauf = { repo: "siinanXD/Leitstand", projekt: "Leitstand", issue: "SIN-573", titel: "Visionär", ergebnis: "failure", ende: jetzt - 5 * 60_000 };
+  assert.equal(abbruchAus([lauf], jetzt, new Set(["SIN-573"])).length, 0);
+  assert.equal(abbruchAus([lauf], jetzt, new Set(["SIN-1"])).length, 1);
+});
