@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, inRuhe, plane, spaeter, type Ereignis } from "./ausloeser";
+import { alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, inRuhe, plane, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
 
 const utc = (s: string) => Date.parse(s);
 const e = (id: string, art: Ereignis["art"], zeit: number, extra: Partial<Ereignis> = {}): Ereignis => ({ id, art, projekt: "Leitstand", kennung: "SIN-1", titel: "Freigabe offen", zeit, ...extra });
@@ -137,4 +137,31 @@ test("Später: Erinnerung nach 1 Stunde, einmal", () => {
   assert.equal(p.nachrichten.length, 1);
   assert.equal(p.nachrichten[0].titel, "Erinnerung: Braucht dich");
   assert.equal(plane([ereignis], new Set([...gesendet, ...p.neu]), jetzt + 7200_000, [r]).nachrichten.length, 0);
+});
+
+test("Quellen: Wartendes wird Braucht dich ohne Kennung im Text, gleiche Karte nur einmal", () => {
+  const jetzt = utc("2026-10-13T12:00:00Z");
+  const ereignisse = brauchtDichAus([{ key: "leitstand#108", titel: "PostHog-Prüfung freigeben", projekt: "Leitstand" }], jetzt);
+  const p = plane(ereignisse, new Set(), jetzt);
+  assert.equal(p.nachrichten[0].text, "Leitstand: PostHog-Prüfung freigeben");
+  assert.deepEqual(p.neu, ["braucht:leitstand#108"]);
+  assert.equal(plane(ereignisse, new Set(p.neu), jetzt + 3_600_000).nachrichten.length, 0);
+});
+
+test("Quellen: Stillstand nur mit startbarer Arbeit, ohne Lauf, ohne Pause, nach 30 Minuten", () => {
+  const jetzt = utc("2026-10-13T12:00:00Z");
+  const basis = { projekt: "Content-Agent-Lernapp", name: "Lern-App", startbar: 1, laeuft: 0, pausiert: false, letztesEreignis: jetzt - 31 * 60_000 };
+  assert.equal(stillstandAus([basis], jetzt).length, 1);
+  assert.equal(stillstandAus([basis], jetzt)[0].art, "braucht-dich");
+  assert.equal(stillstandAus([{ ...basis, startbar: 0 }], jetzt).length, 0);
+  assert.equal(stillstandAus([{ ...basis, laeuft: 1 }], jetzt).length, 0);
+  assert.equal(stillstandAus([{ ...basis, pausiert: true }], jetzt).length, 0);
+  assert.equal(stillstandAus([{ ...basis, letztesEreignis: jetzt - 10 * 60_000 }], jetzt).length, 0);
+});
+
+test("Gebündelt ohne Kennung nennt die Titel", () => {
+  const nacht = utc("2026-10-13T01:00:00Z");
+  const ereignisse = brauchtDichAus([{ key: "a", titel: "Clip freigeben", projekt: "Lern-App" }, { key: "b", titel: "Repo anlegen", projekt: "Leitstand" }], nacht);
+  const p = plane(ereignisse, new Set(), utc("2026-10-13T05:00:00Z"));
+  assert.equal(p.nachrichten[0].text, "Lern-App, Leitstand: Clip freigeben, Repo anlegen");
 });
