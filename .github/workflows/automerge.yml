@@ -84,7 +84,13 @@ jobs:
             if (allowed) {
               await gql(`mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) { clientMutationId } }`, { id: pr.node_id })
                 .then(() => core.info(`Auto-Merge an (${risk}).`))
-                .catch((e) => core.warning(`Auto-Merge nicht gesetzt: ${e.message}`));
+                .catch(async (e) => {
+                  // Alle Pflicht-Checks schon grün: GitHub lehnt Auto-Merge ab, also direkt mergen.
+                  if (!/clean status/i.test(e.message)) return core.warning(`Auto-Merge nicht gesetzt: ${e.message}`);
+                  await github.rest.pulls.merge({ ...context.repo, pull_number: pr.number, merge_method: "squash", sha: pr.head.sha })
+                    .then(() => core.info(`Direkt gemergt (${risk}, clean status).`))
+                    .catch((m) => core.warning(`Direkt-Merge fehlgeschlagen: ${m.message}`));
+                });
             } else {
               await gql(`mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }`, { id: pr.node_id })
                 .then(() => core.info(`Auto-Merge aus (${pr.draft ? "Draft" : labels.includes("no-automerge") ? "no-automerge" : "risk:high ohne freigegeben"}).`))
