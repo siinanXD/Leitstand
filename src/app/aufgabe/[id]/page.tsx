@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { ablauf, aufgabeLinks, kopf, parseMeldungen, ZUSTAND_NAME, type Meldung } from "@/lib/aufgabe";
 import { browserClient } from "@/lib/browser-client";
+import { parseNachweis, type Ansicht } from "@/lib/nachweis";
 import { projektInfo } from "@/lib/projekte";
 import { ladeAufgabe, type Lesequelle } from "@/lib/supabase";
 import type { Quelle } from "@/lib/uebersicht";
@@ -40,6 +41,7 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
   const schritte = ablauf(meldungen);
   const letzte: Meldung | undefined = meldungen.at(-1);
   const links = aufgabeLinks(meldungen, quelle.snapshot, issue);
+  const nachweis = parseNachweis(roh, issue);
 
   return (
     <main className="bento-b1 aufgabe-seite">
@@ -91,6 +93,40 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
         </ol>
       </section>
 
+      {nachweis && (
+        <section className="tile einfach-block nachweis" aria-labelledby="geaendert" style={{ gridColumn: "1 / -1" }}>
+          <h2 id="geaendert" className="mono-label">
+            Was sich geändert hat
+          </h2>
+          {nachweis.diff && <p>{nachweis.diff}</p>}
+          <ul className="nachweis-routen" aria-label="Routen">
+            {nachweis.routen.map((r) => (
+              <li key={r.route}>
+                <h3 className="mono">{r.route}</h3>
+                <div className="nachweis-paar">
+                  <Bilder titel="Vorher" route={r.route} a={r.vorher} />
+                  <Bilder titel="Nachher" route={r.route} a={r.nachher} />
+                </div>
+              </li>
+            ))}
+          </ul>
+          {nachweis.clip && (
+            <video controls preload="none" src={nachweis.clip} aria-label="Klickweg als Clip">
+              <a href={nachweis.clip}>Clip öffnen</a>
+            </video>
+          )}
+          {nachweis.dateien.length > 0 && (
+            <ul aria-label="Geänderte Dateien">
+              {nachweis.dateien.map((d) => (
+                <li key={d.datei}>
+                  <span className="mono">{d.datei}</span> <span className="leer">{d.was ?? ""}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       <section className="tile einfach-block" aria-labelledby="gemeldet">
         <h2 id="gemeldet" className="mono-label">
           Zuletzt gemeldet
@@ -133,5 +169,18 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
         </ul>
       </section>
     </main>
+  );
+}
+
+/** Handy zuerst, dann Desktop; eine fehlende Ansicht wird nicht ersetzt. */
+function Bilder({ titel, route, a }: { titel: string; route: string; a: Ansicht }) {
+  return (
+    <figure>
+      <figcaption className="mono-label">{titel}</figcaption>
+      {/* eslint-disable-next-line @next/next/no-img-element -- Nachweise liegen in Supabase Storage, keine Next-Bildoptimierung */}
+      {a.handy ? <img src={a.handy} alt={`${titel}, Handy, ${route}`} loading="lazy" /> : <p className="leer">kein Handy-Bild</p>}
+      {/* eslint-disable-next-line @next/next/no-img-element -- siehe oben */}
+      {a.desktop ? <img src={a.desktop} alt={`${titel}, Desktop, ${route}`} loading="lazy" /> : <p className="leer">kein Desktop-Bild</p>}
+    </figure>
   );
 }
