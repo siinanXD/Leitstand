@@ -1,0 +1,55 @@
+# SIN-576: nach .github/workflows/lernen.yml kopieren (der Worker darf .github/workflows/ nicht ändern). Sinan entscheidet.
+# Montags 05:30 UTC: messen (ohne Modell), Vorwoche nachmessen, höchstens eine Regelzeile mit Haiku vorschlagen (Deckel 1 €).
+# Der Stand (docs/lernen/, eine Regeldatei) geht als PR auf main; automerge.yml setzt risk:medium und mergt nach grünem build.
+# Kein Claude-Kontingent: der Lauf kann nicht daran rot werden.
+name: lernen
+on:
+  schedule:
+    - cron: "30 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur ins Log schreiben (keine Datei, kein PR, kein Ereignis)"
+        type: boolean
+        default: true
+permissions:
+  contents: write
+  pull-requests: write
+concurrency: lernen
+jobs:
+  lernen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/lernen/woche.ts
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VORARBEITER_PREIS_EIN_USD: ${{ vars.VORARBEITER_PREIS_EIN_USD }}
+          VORARBEITER_PREIS_AUS_USD: ${{ vars.VORARBEITER_PREIS_AUS_USD }}
+          KOSTEN_USD_EUR: ${{ vars.KOSTEN_USD_EUR }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '' }}
+      - name: PR mit der Wochenmessung öffnen
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.dry_run }}
+        run: |
+          git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ] && exit 0
+          tag=$(date -u +%G-W%V)
+          branch="lernen/$tag"
+          git config user.name "claude[bot]"
+          git config user.email "claude[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add docs/lernen AGENTS.md docs/skills
+          git commit -m "docs(lernen): Wochenmessung $tag (SIN-576)" -m "Part of SIN-576"
+          git push origin "$branch"
+          gh pr create --head "$branch" --base main --title "docs(lernen): Wochenmessung $tag (SIN-576)" --body "Selbstlern-Schleife: Messung, Nachmessung, höchstens eine Regelzeile. Part of SIN-576."
