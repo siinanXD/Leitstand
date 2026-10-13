@@ -16,6 +16,13 @@ Regeln für alle Agenten in diesem Repo. Sie ersetzen Rückfragen an Sinan. Dies
    - Freigabe / Auswertung: `35:2` / `35:54`
    - Projekt: `15:2`, Deine Aufgaben: `15:1730`; Alle Projekte: `20:6` (Desktop), `21:108` (Handy)
 
+## Design-Regel: Routen ohne Design-Issue (SIN-574)
+
+- **Ohne Design-Issue erlaubt:** neue Route/Seite, die nur aus vorhandenen Komponenten und Tokens besteht. Beleg: Nachweis-Bilder (SIN-561).
+- **Design-Issue nötig:** neue Komponente, neue Farbe/Token, geänderte Navigation.
+- Jede so angelegte Route steht in `docs/design/OFFEN-FIGMA.md` (Route, Datum, PR). Claude zieht sie im Chat wöchentlich in Figma nach und entfernt dann die Zeile. Der Hausmeister (SIN-551) soll Einträge älter als 14 Tage melden.
+- Prüfer-Regel: Jedes neue Skript unter `scripts/` läuft vor dem Merge einmal als Trockenlauf in CI (`DRY_RUN=1`). Begründung: `docs/decisions/SIN-574-routen-ohne-design-issue.md`.
+
 ## Grundsatz
 
 - Der Leitstand zeigt nur echte Daten aus Supabase (`loop_events`, `loop_snapshot`, SIN-303). Keine erfundenen Zahlen, keine Platzhalter-Statistiken.
