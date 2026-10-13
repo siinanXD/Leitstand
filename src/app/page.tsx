@@ -10,6 +10,7 @@ import type { Kosten } from "@/lib/kosten/kosten";
 import { pauseSatz } from "@/lib/pause";
 import { ChefKarte } from "./chef-karte";
 import { GedaechtnisKachel } from "./gedaechtnis-kachel";
+import { WerbungKachel } from "./werbung-kachel";
 import { Rahmen, type Wartende } from "./rahmen";
 import "./einfach.css";
 
@@ -272,6 +273,7 @@ export default function Home() {
           </div>
           <HeuteFertig quelle={quelle} jetzt={jetzt} />
           <ChefKarte angemeldet={angemeldet} />
+          <WerbungKachel angemeldet={angemeldet} />
           <GedaechtnisKachel angemeldet={angemeldet} />
           <p>
             <Link href="/details" className="knopf">
