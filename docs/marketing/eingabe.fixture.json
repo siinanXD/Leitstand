@@ -1,0 +1,7 @@
+{
+  "produkt": "Lern-App",
+  "beschreibung": "Beispiel-Fixture: Lernplattform für IHK-Ausbildung bei Bildungsträgern und im Mittelstand.",
+  "kennzahlen": { "besuche": 400, "demoAnfragen": 3, "abbrueche": 120 },
+  "vorherige": [],
+  "konkurrenz": []
+}

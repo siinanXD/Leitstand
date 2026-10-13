@@ -1,0 +1,10 @@
+-- SIN-550: neue Arten für `werbemittel`. Nur additiv. Nicht unter supabase/migrations/, weil die Tabelle der Lern-App gehört (siehe SIN-405-supabase-schemas.md).
+-- Der Name der bestehenden Prüfregel ist hier nicht verifiziert (kein DB-Zugriff beim Schreiben); vor dem Einspielen gegen die Datenbank prüfen:
+--   select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.werbemittel'::regclass;
+-- Gibt es keine Regel auf `art`, ist dieser Schritt unnötig.
+
+alter table public.werbemittel drop constraint if exists werbemittel_art_check;
+alter table public.werbemittel add constraint werbemittel_art_check check (art in (
+  'tutorial_video', 'werbeclip', 'text_linkedin', 'text_website', 'text_email',
+  'landing_page', 'anzeige', 'lead_magnet', 'clip_auftrag', 'metricool_entwurf'
+));

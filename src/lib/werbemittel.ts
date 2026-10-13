@@ -1,6 +1,6 @@
 // Freigabe von Werbemitteln (SIN-487). Rein: Speicher kommt als Parameter herein, damit Statuswechsel testbar bleiben.
 
-export const ARTEN = ["tutorial_video", "werbeclip", "text_linkedin", "text_website", "text_email"] as const;
+export const ARTEN = ["tutorial_video", "werbeclip", "text_linkedin", "text_website", "text_email", "landing_page", "anzeige", "lead_magnet", "clip_auftrag", "metricool_entwurf"] as const;
 export type Art = (typeof ARTEN)[number];
 export const istArt = (v: unknown): v is Art => typeof v === "string" && (ARTEN as readonly string[]).includes(v);
 
@@ -10,6 +10,11 @@ export const ARTEN_NAME: Record<Art, string> = {
   text_linkedin: "Text · LinkedIn",
   text_website: "Text · Website",
   text_email: "Text · E-Mail",
+  landing_page: "Landing-Page",
+  anzeige: "Anzeige",
+  lead_magnet: "Lead-Magnet",
+  clip_auftrag: "Clip-Auftrag",
+  metricool_entwurf: "Metricool-Entwurf",
 };
 
 export const istVideo = (art: Art): boolean => art === "tutorial_video" || art === "werbeclip";
