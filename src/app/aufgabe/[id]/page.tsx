@@ -9,6 +9,9 @@ import { projektInfo } from "@/lib/projekte";
 import { ladeAufgabe, type Lesequelle } from "@/lib/supabase";
 import type { Quelle } from "@/lib/uebersicht";
 import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
+import { titelVon } from "@/lib/aufgaben";
+import { verlauf } from "@/lib/verlauf";
+import { MitMehr } from "../../mit-mehr";
 import { Rahmen } from "../../rahmen";
 import { ZustandSymbol } from "../../zustand-symbol";
 import "../../bunt.css";
@@ -44,7 +47,17 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
   const letzte: Meldung | undefined = meldungen.at(-1);
   const links = aufgabeLinks(meldungen, quelle.snapshot, issue);
   const nachweis = parseNachweis(roh, issue);
-  const gestartet = meldungen[0] ? zeitInWorten(meldungen[0].zeitpunkt, jetzt) : null;
+  // Titel und Stand aus Linear, Verlauf in Worten aus loop_events (Sinan 13.10.: „Da steht nur ‚Eine Aufgabe‘“).
+  const aufgabe = quelle.aufgaben?.find((a) => a.issue === issue);
+  const rohTitel = titelVon(quelle.aufgaben, issue) ?? k.titel;
+  const titel = rohTitel ? ohneKennungen(rohTitel) : null;
+  const schritteInWorten = verlauf(roh, issue);
+  const start = aufgabe?.gestartet ?? meldungen[0]?.zeitpunkt ?? schritteInWorten[0]?.zeit ?? null;
+  const gestartet = start ? zeitInWorten(start, jetzt) : null;
+  const projekt = aufgabe?.projekt ?? k.projekt;
+  const stand =
+    aufgabe?.status === "fertig" ? `Fertig${aufgabe.fertig ? `, ${zeitInWorten(aufgabe.fertig, jetzt)}` : ""}` : aufgabe?.status === "laeuft" ? "Wird gerade gebaut" : aufgabe?.status === "abgebrochen" ? "Abgebrochen" : aufgabe ? "Wartet, bis sie dran ist" : null;
+  const mitRollen = meldungen.length > 0;
 
   return (
     <main className="einfach bunt aufgabe-seite">
@@ -53,11 +66,37 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
           <Link href="/">Start</Link>
         </p>
         <h1 id="aufgabe" className="karte-titel">
-          {(k.titel && ohneKennungen(k.titel)) || "Eine Aufgabe"}
+          {titel || "Aufgabe ohne Titel"}
         </h1>
-        {k.marke ? <ZustandSymbol art={k.marke} /> : <p className="leer">keine Meldung</p>}
-        <p className="leer">{[k.projekt && projektInfo(k.projekt).name, gestartet && `gestartet ${gestartet}`].filter(Boolean).join(" · ")}</p>
+        {stand ? <p>{stand}</p> : k.marke ? <ZustandSymbol art={k.marke} /> : null}
+        <p className="leer">{[projekt && projektInfo(projekt).name, gestartet && `gestartet ${gestartet}`].filter(Boolean).join(" · ")}</p>
       </section>
+
+      {!mitRollen && (
+        <section className="tile einfach-block gruen" aria-labelledby="passiert">
+          <h2 id="passiert" className="karte-titel">
+            Was ist passiert?
+          </h2>
+          {schritteInWorten.length === 0 ? (
+            <p className="leer">Noch nichts. Die Aufgabe wartet, bis ein Helfer frei ist.</p>
+          ) : (
+            <MitMehr
+              liste={[...schritteInWorten].reverse()}
+              klasse="eintraege"
+              zeile={(v) => (
+                <li key={v.zeit + v.satz} className="eintrag">
+                  <ZustandSymbol art={v.rot ? "kaputt" : v.satz.startsWith("Fertig") ? "fertig" : "laeuft"} nurSymbol />
+                  <span className="eintrag-titel">{v.anzahl > 9 ? `${v.satz} (sehr oft)` : v.anzahl > 1 ? `${v.satz} (${v.anzahl} Mal)` : v.satz}</span>
+                  <span className="mono-label">{zeitInWorten(v.zeit, jetzt)}</span>
+                </li>
+              )}
+            />
+          )}
+        </section>
+      )}
+
+      {mitRollen && (
+        <>
 
       <section className="tile einfach-block gruen" aria-labelledby="ablauf">
         <h2 id="ablauf" className="karte-titel">
@@ -90,6 +129,8 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
           <p className="leer">keine Meldung</p>
         )}
       </section>
+        </>
+      )}
 
       <details className="mehr">
         <summary>Details</summary>

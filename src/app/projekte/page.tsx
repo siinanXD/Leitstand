@@ -14,7 +14,8 @@ import "./projekte.css";
 import "../bunt.css";
 
 /** Stufen der Kette in Worten (SIN-578); unbekannte Stufen zeigen ihren Namen klein geschrieben. */
-const STUFE: Record<string, string> = { PLAN: "Planen", QUEUE: "Warten", WORK: "Bauen", PR: "Prüfen", GATE: "Freigeben", MERGE: "Zusammenführen", DEPLOY: "Veröffentlichen" };
+// Kurze Wörter, damit sieben Glieder auf ein Handy passen (Befund 13.10.: „Zusam-menführ-en“).
+const STUFE: Record<string, string> = { PLAN: "Plan", QUEUE: "Warten", WORK: "Bauen", PR: "Prüfen", GATE: "Dein Ja", MERGE: "Fertig", DEPLOY: "Live" };
 
 /** Produkt nach Figma P4 v2 (SIN-578, 81:173): ein Satz je Produkt, dann Fortschritt, Kette und „Zuletzt geschafft“ als drei Karten, ohne Tabelle. Alles aus loop_events und loop_snapshot. */
 export default function Projekte() {
@@ -37,7 +38,7 @@ export default function Projekte() {
               <h2 id="weit" className="karte-titel">
                 Wie weit sind wir?
               </h2>
-              <ZustandSymbol art="fertig" />
+              <ZustandSymbol art={fortschritt(quelle).length > 0 && fortschritt(quelle).every((w) => w.fertig >= w.gesamt) ? "fertig" : "laeuft"} />
               <WieWeit liste={fortschritt(quelle)} />
             </section>
 

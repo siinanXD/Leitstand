@@ -66,7 +66,7 @@ test("Ohne Snapshot-Zeile: warten, keine Daten (SIN-572)", () => {
   const e = ohneDaten("leitstand", "Leitstand");
   assert.equal(e.art, "warten");
   assert.equal(e.auffuellen, 0);
-  assert.match(e.grund, /Keine Daten/);
+  assert.match(e.grund, /weiß noch zu wenig/);
 });
 
 test("Startbar der Leitstand-Zusammenfassung zählt queue.startable", () => {

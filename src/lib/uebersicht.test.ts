@@ -66,13 +66,13 @@ const fake = (tabellen: Record<string, { data: unknown; error: unknown }>, geseh
     }),
   }) as unknown as Lesequelle;
 
-test("ladeQuelle liest beide Tabellen mit der Sitzung", async () => {
+test("ladeQuelle liest Ereignisse, Snapshot und Aufgaben mit der Sitzung", async () => {
   const gesehen: string[] = [];
   const r = await ladeQuelle(
     fake({ loop_events: { data: [{ created_at: vor(1) }], error: null }, loop_snapshot: { data: [{ project: "a" }], error: null } }, gesehen),
     jetzt,
   );
-  assert.deepEqual(gesehen.sort(), ["loop_events", "loop_snapshot"]);
+  assert.deepEqual(gesehen.sort(), ["leitstand_aufgaben", "loop_events", "loop_snapshot"]);
   assert.equal(r.zustand === "ok" && r.quelle.events.length, 1);
   assert.equal(r.zustand === "ok" && r.quelle.snapshot.length, 1);
 });

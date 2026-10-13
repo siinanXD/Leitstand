@@ -64,6 +64,9 @@ async function anmelden(page: Page) {
       ],
     }),
   );
+  await page.route(`${SUPABASE}/rest/v1/leitstand_aufgaben**`, (route) =>
+    route.fulfill({ json: [{ issue: "SIN-456", titel: "Richter prüft Fakten (SIN-456)", projekt: "leitstand", status: "laeuft", gestartet_at: vor(90), labels: ["claude"] }] }),
+  );
   await page.route(`${SUPABASE}/rest/v1/ceo_entscheidungen**`, (route) => route.fulfill({ json: [{ produkt: "lernapp", entscheidung: "weiter", grund: "Lern-App: Richter wird besser, fertig etwa Montag (SIN-12).", created_at: vor(60) }] }));
 }
 

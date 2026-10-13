@@ -2,7 +2,9 @@
 import { BEREICHE, type Bereich, type BereichZeile } from "./bereiche";
 import { brauchtDich, kontingente, type LoopEvent, type Quelle, type Quota } from "./uebersicht";
 
-const tag = (iso: string | Date) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
+// Ein Formatierer für alle Aufrufe: toLocaleDateString je Ereignis war bei 1.500 Ereignissen pro Render zu langsam (Befund 13.10.).
+const BERLIN_TAG = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" });
+const tag = (iso: string | Date) => BERLIN_TAG.format(new Date(iso));
 
 export const heute = (events: LoopEvent[], jetzt: Date) => events.filter((e) => tag(e.created_at) === tag(jetzt));
 

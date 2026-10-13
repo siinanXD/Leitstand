@@ -479,17 +479,17 @@
 }
 
 /* „Mehr“: aufklappbar, auf dem Handy rechts oben, Inhalt untereinander. */
-.mehr {
+.kopf-mehr {
   position: relative;
   margin-left: auto;
 }
 
-.mehr > summary {
+.kopf-mehr > summary {
   list-style: none;
   cursor: pointer;
 }
 
-.mehr > summary::-webkit-details-marker {
+.kopf-mehr > summary::-webkit-details-marker {
   display: none;
 }
 
@@ -511,6 +511,21 @@
 .technik-reiter {
   display: grid;
   gap: var(--space-8);
+}
+
+/* Menüeintrag mit Erklärung darunter. */
+.mehr-link {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  padding-block: var(--space-8);
+  text-align: left;
+}
+
+.mehr-hinweis {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
 }
 
 @media (min-width: 900px) {

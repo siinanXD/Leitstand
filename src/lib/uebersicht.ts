@@ -1,3 +1,4 @@
+import type { Aufgabe } from "./aufgaben";
 import { parseGuthaben, type Guthaben } from "./kosten/guthaben";
 import { parsePlan, type Plan } from "./vorarbeiter/vorarbeiter";
 import { parseOffenePrs, type OffenerPr } from "./wartende-prs";
@@ -42,7 +43,9 @@ export type SnapshotRow = {
 export type Queue = { todo: number; startable: number; in_progress: number };
 export type Teilstand = { fertig: number; gesamt: number; neueIdeen: number };
 
-export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[] };
+export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[];
+  /** Linear-Aufgaben mit Titel und Stand (leitstand_aufgaben); fehlt die Tabelle, bleibt es leer. */
+  aufgaben?: Aufgabe[] };
 export type Quota = { name: string; used: number; limit: number; schaetzung: boolean };
 
 const str = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
@@ -151,7 +154,8 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         minutes: num(o.minutes ?? o.estimate_min),
         pr: num(o.pr),
         open_prs: parseOffenePrs(o.open_prs),
-        progress: parseFortschritt(o.progress),
+        // Der Status-Lauf der Lern-App schreibt fertig_v1/gesamt_v1/ideen_offen statt progress (Befund 13.10.: überall „Keine Daten“).
+        progress: parseFortschritt(o.progress) ?? parseFortschritt({ done: num(o.fertig_v1), total: num(o.gesamt_v1), ideas: num(o.ideen_offen) ?? 0 }),
         queue: parseQueue(o.queue),
         guthaben: parseGuthaben(o.guthaben),
         plan: parsePlan(o.plan),

@@ -67,7 +67,7 @@ export function startbar(snapshot: SnapshotRow[], projekt: string): number {
 const nenne = (liste: string[]) => liste.slice(0, 2).join(" und ") + (liste.length > 2 ? ` und ${liste.length - 2} weiteres` : "");
 
 /** Fehlt die Snapshot-Zeile eines Produkts, wartet der CEO ehrlich, statt zu raten. */
-export const ohneDaten = (id: string, name: string): Entscheidung => ({ produkt: id, art: "warten", grund: `${name}: Keine Daten, ich kann noch nichts entscheiden.`, auffuellen: 0, dringend: false, metaErlaubt: true, ideenErlaubt: false, bezug: null });
+export const ohneDaten = (id: string, name: string): Entscheidung => ({ produkt: id, art: "warten", grund: `${name}: Ich weiß noch zu wenig, um zu entscheiden.`, auffuellen: 0, dringend: false, metaErlaubt: true, ideenErlaubt: false, bezug: null });
 
 /** Genau eine Entscheidung je Produkt. Reihenfolge: reparieren, fertig, Fokus, Vorrat reicht, warten, weiterbauen. */
 export function entscheide(p: ProduktLage): Entscheidung {
@@ -79,10 +79,10 @@ export function entscheide(p: ProduktLage): Entscheidung {
   if (p.rot) return { ...basis, art: "reparieren", grund: `${p.name}: Ich repariere zuerst ${p.rot}, weil echte Nutzer sonst Fehler sehen.`, auffuellen: 1, dringend: true };
   if (fertig) return { ...basis, art: "fertig", grund: wartetAufVersion ? `${p.name}: Das Grundgerüst steht, ich baue erst mit deinem Go für die nächste Version weiter.` : `${p.name}: Das Grundgerüst steht, ich stoppe und plane die nächste Version.`, auffuellen: 0, dringend: false, visionaer: !wartetAufVersion };
   if (p.fokusBei) return { ...basis, art: "warten", grund: `${p.name}: Der Fokus liegt auf einer Version von ${p.fokusBei}, ich repariere nur.`, auffuellen: 0, dringend: false };
-  if (p.startbar >= MIN_STARTBAR) return { ...basis, art: "weiterbauen", grund: `${p.name}: Genug Arbeit liegt bereit, ich plane nichts Neues.`, auffuellen: 0, dringend: false };
+  if (p.startbar >= MIN_STARTBAR) return { ...basis, art: "weiterbauen", grund: `${p.name}: Es ist genug zu tun, die Helfer bauen weiter.`, auffuellen: 0, dringend: false };
   if (p.startbar === 0 && p.wartetAufSinan.length > 0) return { ...basis, art: "warten", grund: `${p.name}: Ich warte auf dich bei ${nenne(p.wartetAufSinan)}, sonst kann nichts weitergehen.`, auffuellen: 0, dringend: false };
-  const luecke = p.fertig !== null && p.gesamt !== null ? `die nächste Lücke (${p.fertig} von ${p.gesamt} fertig)` : "die nächste Lücke";
-  return { ...basis, art: "weiterbauen", grund: `${p.name}: Es liegt zu wenig bereit, ich plane ${luecke}.`, auffuellen: MAX_STARTBAR - p.startbar, dringend: false };
+  const luecke = p.fertig !== null && p.gesamt !== null ? ` (${p.fertig} von ${p.gesamt} Punkten fertig)` : "";
+  return { ...basis, art: "weiterbauen", grund: `${p.name}: Bald ist nichts mehr zu tun, ich suche die nächsten Aufgaben aus${luecke}.`, auffuellen: MAX_STARTBAR - p.startbar, dringend: false };
 }
 
 /** Zeile für `loop_events`, damit der Leitstand zeigt, dass und wann der CEO lief. */
