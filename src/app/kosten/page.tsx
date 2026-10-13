@@ -5,9 +5,10 @@ import { useKosten } from "@/lib/kosten-client";
 import { einzigartig, GUTHABEN_UNTER, KONTINGENT_UEBER, restAnteil, type Guthaben } from "@/lib/kosten/guthaben";
 import { kontingente } from "@/lib/uebersicht";
 import { Rahmen } from "../rahmen";
-import "../einfach.css";
+import "../bunt.css";
 
 const euro = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
+const monat = (jetzt: Date) => jetzt.toLocaleDateString("de-DE", { month: "long", timeZone: "Europe/Berlin" });
 const QUELLE = { api: "von der API", gerechnet: "gerechnet", schaetzung: "Schätzung" } as const;
 
 function Balken({ anteil, name, rot }: { anteil: number; name: string; rot: boolean }) {
@@ -28,11 +29,48 @@ export default function Kosten() {
   const kosten = stand.zustand === "ok" ? stand.kosten : null;
   return (
     <Rahmen aktiv="kosten">
-      {(quelle) => {
+      {(quelle, jetzt) => {
+        const abo = kontingente(quelle.snapshot).filter((q) => q.schaetzung);
         const guthaben = einzigartig(quelle.snapshot.flatMap((s) => s.guthaben ?? []));
         const frei = kontingente(quelle.snapshot).filter((q) => !q.schaetzung);
         return (
-          <main className="einfach">
+          <main className="einfach bunt">
+            <section className="tile einfach-block" aria-labelledby="heute">
+              <div className="kopf-block">
+                <h1 id="heute" className="mono-label">
+                  Was kostet das?
+                </h1>
+                <p className="leer">Was die Agenten ausgegeben haben. Feste Abos sind nicht enthalten.</p>
+              </div>
+              {kosten && kosten.heute !== null && kosten.monat !== null ? (
+                <>
+                  <p className="summe">
+                    <span className="mono">{euro(kosten.heute)}</span>
+                    <span className="leer">
+                      heute · {euro(kosten.monat)} von {euro(kosten.budget).replace(",00", "")} im {monat(jetzt)}
+                    </span>
+                  </p>
+                  <Balken anteil={kosten.monat / kosten.budget} name="Monatsbudget verbraucht" rot={kosten.ampel === "rot"} />
+                  <ul className="posten">
+                    {kosten.zeilen.map((z) => (
+                      <li key={z.art} className="zeile">
+                        <span>{z.art}</span>
+                        <span className="mono">{z.verfuegbar && z.heute !== null ? euro(z.heute) : "nicht verfügbar"}</span>
+                      </li>
+                    ))}
+                    {abo.map((q) => (
+                      <li key={q.name} className="zeile">
+                        <span>{q.name}: schon benutzt (Schätzung)</span>
+                        <span className="mono">≈ {Math.round((q.used / q.limit) * 100)} %</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="leer">{stand.zustand === "laedt" ? "Wird geladen …" : "Keine Daten"}</p>
+              )}
+            </section>
+
             <section className="tile einfach-block" aria-labelledby="woche">
               <div className="kopf-block">
                 <h1 id="woche" className="mono-label">

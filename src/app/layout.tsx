@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 // Meta-Tag kann kein CSS-Token lesen: Wert = bg/base aus Figma.
-export const viewport: Viewport = { themeColor: "#0c0a09" };
+export const viewport: Viewport = { themeColor: "#fff7ed" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

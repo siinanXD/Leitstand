@@ -17,20 +17,15 @@ const kontrast = (a: string, b: string) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
-test("Text auf Flächen hat mindestens 4,5:1 (WCAG AA)", () => {
-  for (const bg of ["bg-base", "bg-surface", "bg-raised"]) {
+test("Leitstand bunt (SIN-546, SIN-568): Text und weißer Text auf Akzent haben mindestens 4,5:1 (WCAG AA)", () => {
+  for (const bg of ["bg-base", "bg-surface", "bg-raised", "bunt-sonne", "bunt-gruen", "bunt-blau", "bunt-lila", "bunt-pfirsich"]) {
     assert.ok(kontrast(farbe("text-primary"), farbe(bg)) >= 4.5, `text-primary auf ${bg}`);
     assert.ok(kontrast(farbe("text-secondary"), farbe(bg)) >= 4.5, `text-secondary auf ${bg}`);
   }
-  assert.ok(kontrast(farbe("text-primary"), farbe("accent-strong")) >= 4.5, "weißer Text auf accent-strong");
+  for (const bg of ["accent-strong", "accent-primary", "bunt-violett", "status-ok", "status-warn", "status-error"]) assert.ok(kontrast(farbe("bunt-auf-akzent"), farbe(bg)) >= 4.5, `weiß auf ${bg}`);
 });
 
-test("Leitstand bunt (SIN-546): Text und weißer Text auf Akzent haben mindestens 4,5:1", () => {
-  const bunt = readFileSync(new URL("./app/bunt.css", import.meta.url), "utf8");
-  const wert = (name: string) => bunt.match(new RegExp(`--color-${name}:\\s*(#[0-9a-f]{6})`, "i"))?.[1] ?? assert.fail(`Token ${name} fehlt`);
-  for (const bg of ["bg-base", "bg-surface", "bunt-sonne", "bunt-gruen", "bunt-blau", "bunt-lila", "bunt-pfirsich"]) {
-    assert.ok(kontrast(wert("text-primary"), wert(bg)) >= 4.5, `text-primary auf ${bg}`);
-    assert.ok(kontrast(wert("text-secondary"), wert(bg)) >= 4.5, `text-secondary auf ${bg}`);
-  }
-  for (const bg of ["accent-strong", "accent-primary", "bunt-violett", "status-ok", "status-warn", "status-error"]) assert.ok(kontrast(wert("bunt-auf-akzent"), wert(bg)) >= 4.5, `weiß auf ${bg}`);
+test("globals.css hat nur Tokens und Grundregeln: kein Dunkel-Standard, unter 500 Zeilen", () => {
+  assert.ok(css.split("\n").length < 500);
+  assert.ok(!css.includes("prefers-color-scheme"));
 });

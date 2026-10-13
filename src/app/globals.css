@@ -1,24 +1,31 @@
-/* Tokens aus Figma-Datei 7Ti9iVUjUjw3rh9WYhSu9K, Frame „00 Stilblatt“ (get_variable_defs, 08.10.2026). Farben nie als Hex im Code. */
+/* Leitstand bunt (SIN-546, SIN-568): ein Stil für alle Seiten. Tokens aus Figma 7Ti9iVUjUjw3rh9WYhSu9K, Seite „Leitstand bunt“ 59:2 (Modus Hell). Farben nie als Hex im Code, nur hier.
+   Die Komponenten stehen in bunt.css; Ablauf, Freigabe, Übersicht-Details und Aufgabe haben je eine eigene Datei. */
 :root {
-  --color-bg-base: #0c0a09;
-  --color-bg-surface: #1c1917;
-  --color-bg-raised: #292524;
-  --color-border-subtle: #3a3532;
-  --color-text-primary: #fafaf9;
-  --color-text-secondary: #a8a29e;
-  --color-accent-primary: #ea580c;
+  --color-bg-base: #fff7ed;
+  --color-bg-surface: #ffffff;
+  --color-bg-raised: #ffedd5;
+  --color-border-subtle: #e7e5e4;
+  --color-text-primary: #1c1917;
+  --color-text-secondary: #57534e;
+  --color-accent-primary: #b45309;
   --color-accent-strong: #c2410c;
-  --color-accent-soft: #431407;
-  --color-status-ok: #22c55e;
-  --color-status-warn: #f59e0b;
-  --color-status-error: #ef4444;
-  --color-status-info: #38bdf8;
-  /* Projektfarben (SIN-305): nur Streifen/Marke, nie Status. Werte vorläufig, mit Figma „Variante 2026“ D1–D3 abgleichen. */
+  --color-accent-soft: #fef3c7;
+  --color-status-ok: #15803d;
+  --color-status-warn: #b45309;
+  --color-status-error: #b91c1c;
+  --color-status-info: #1d4ed8;
+  --color-bunt-sonne: #fef3c7;
+  --color-bunt-gruen: #dcfce7;
+  --color-bunt-blau: #dbeafe;
+  --color-bunt-lila: #f3e8ff;
+  --color-bunt-pfirsich: #ffedd5;
+  --color-bunt-violett: #6d28d9;
+  --color-bunt-auf-akzent: #ffffff;
+  /* Projektfarben (SIN-305): nur Streifen/Marke, nie Status. */
   --color-projekt-lernapp: #8b5cf6;
   --color-projekt-beleg: #14b8a6;
   --color-projekt-stoerung: #ec4899;
   --color-projekt-leitstand: #84cc16;
-  /* Abstände und Rundung nach docs/design/regeln-2026.md der Lern-App (Leitstand: 2 px, 1-px-Linien). */
   --space-4: 4px;
   --space-8: 8px;
   --space-12: 12px;
@@ -26,7 +33,8 @@
   --space-24: 24px;
   --space-32: 32px;
   --space-48: 48px;
-  --radius-tool: 2px;
+  --radius-bunt: 20px;
+  --radius-tool: var(--radius-bunt);
   --bento-gap: 12px;
   --bento-gap-wide: 16px;
   --bento-line: 1px solid var(--color-border-subtle);
@@ -56,6 +64,10 @@ body {
   color: var(--color-text-secondary);
 }
 
+.mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-accent-primary);
   outline-offset: 2px;
@@ -68,6 +80,110 @@ body {
   }
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Kopf und Reiter */
+.kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-12);
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: var(--bento-line);
+}
+
+.kopf p {
+  margin: 0;
+}
+
+.marke {
+  color: var(--color-text-primary);
+}
+
+.kopf-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-left: auto;
+}
+
+.reiter,
+.filter,
+.werkzeuge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.werkzeuge {
+  max-width: 1440px;
+  margin: var(--space-16) auto 0;
+  padding: 0 var(--space-16);
+}
+
+.hinweis {
+  max-width: 1440px;
+  margin: var(--space-16) auto 0;
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-status-warn);
+  border-radius: var(--radius-tool);
+}
+
+.knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-16);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border: var(--bento-line);
+  border-radius: 999px;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.knopf:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.knopf.aktiv {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+  color: var(--color-bunt-auf-akzent);
+  font-weight: 600;
+}
+
+.knopf.aktiv:disabled {
+  color: var(--color-bunt-auf-akzent);
+  cursor: wait;
+}
+
+.knopf[aria-current="page"],
+.knopf[aria-pressed="true"] {
+  border-color: var(--color-accent-primary);
+}
+
+.marke-projekt {
+  width: var(--space-8);
+  height: var(--space-16);
+  border-radius: var(--radius-tool);
+}
+
+/* Flächen und Listen */
 .bento {
   display: grid;
   gap: var(--bento-gap);
@@ -76,17 +192,17 @@ body {
   margin: 0 auto;
 }
 
-@media (min-width: 900px) {
-  .bento {
-    grid-template-columns: 2fr 1fr;
-    gap: var(--bento-gap-wide);
-    padding: var(--space-32);
-  }
+.seite {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-16);
+  display: grid;
+  gap: var(--space-16);
 }
 
 .tile {
   background: var(--color-bg-surface);
-  border: var(--bento-line);
+  border: 0;
   border-radius: var(--radius-tool);
   padding: var(--space-24);
 }
@@ -102,27 +218,10 @@ body {
   min-height: var(--touch-min);
   padding: 0 var(--space-16);
   background: var(--color-accent-strong);
-  color: var(--color-text-primary);
-  border-radius: var(--radius-tool);
+  color: var(--color-bunt-auf-akzent);
+  border-radius: 999px;
   text-decoration: none;
   font-weight: 600;
-}
-
-.kopf {
-  display: flex;
-  justify-content: space-between;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: var(--space-16) var(--space-16) 0;
-  border-bottom: var(--bento-line);
-}
-
-.hinweis {
-  max-width: 1440px;
-  margin: var(--space-16) auto 0;
-  padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--color-status-warn);
-  border-radius: var(--radius-tool);
 }
 
 .tile.breit {
@@ -138,10 +237,6 @@ body {
   font-size: 24px;
   line-height: 32px;
   margin: 0 0 var(--space-12);
-}
-
-.mono {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 .liste {
@@ -164,9 +259,12 @@ body {
   flex: 1;
   padding: var(--space-12);
   background: var(--color-bg-raised);
-  border: var(--bento-line);
   border-radius: var(--radius-tool);
   display: grid;
+}
+
+.schiene li.belegt {
+  outline: 1px solid var(--color-accent-primary);
 }
 
 .zahl {
@@ -196,79 +294,13 @@ body {
   height: var(--space-8);
   margin-top: var(--space-4);
   background: var(--color-bg-raised);
-  border-radius: var(--radius-tool);
+  border-radius: 999px;
 }
 
 .meter div {
   height: 100%;
   background: var(--color-accent-primary);
-  border-radius: var(--radius-tool);
-}
-
-.balken {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-4);
-  height: 96px;
-}
-
-.balken div {
-  flex: 1;
-  min-height: 2px;
-  background: var(--color-accent-primary);
-  border-radius: var(--radius-tool);
-}
-
-.kopf {
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-  padding-bottom: var(--space-16);
-}
-
-.kopf p {
-  margin: 0;
-}
-
-.marke {
-  color: var(--color-text-primary);
-}
-
-.kopf-aktionen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-  margin-left: auto;
-}
-
-.knopf {
-  min-height: var(--touch-min);
-  padding: 0 var(--space-16);
-  background: var(--color-bg-surface);
-  color: var(--color-text-primary);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-  font: inherit;
-  cursor: pointer;
-}
-
-.knopf:disabled {
-  color: var(--color-text-secondary);
-  cursor: not-allowed;
-}
-
-.knopf.aktiv {
-  background: var(--color-accent-strong);
-  border-color: var(--color-accent-strong);
-  font-weight: 600;
-}
-
-.knopf.aktiv:disabled {
-  cursor: wait;
-}
-
-.schiene li.belegt {
-  border-color: var(--color-accent-primary);
+  border-radius: 999px;
 }
 
 .segmente {
@@ -281,68 +313,17 @@ body {
 .segmente div {
   height: var(--space-8);
   background: var(--color-bg-raised);
-  border-radius: var(--radius-tool);
+  border-radius: 999px;
 }
 
 .segmente div.voll {
   background: var(--color-accent-primary);
 }
 
-.reiter,
-.filter,
-.werkzeuge {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-
-.werkzeuge {
-  max-width: 1440px;
-  margin: var(--space-16) auto 0;
-  padding: 0 var(--space-16);
-}
-
-.reiter .knopf {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-}
-
-.knopf[aria-current="page"],
-.knopf[aria-pressed="true"] {
-  border-color: var(--color-accent-primary);
-}
-
-.knopf {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.marke-projekt {
-  width: var(--space-8);
-  height: var(--space-16);
-  border-radius: var(--radius-tool);
-}
-
-.seite {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: var(--space-16);
-  display: grid;
-  gap: var(--space-16);
-}
-
 .ablauf-flaeche {
   display: grid;
   gap: var(--space-16);
   margin: var(--space-16) 0;
-}
-
-@media (min-width: 900px) {
-  .ablauf-flaeche {
-    grid-template-columns: 3fr 1fr;
-  }
 }
 
 .graph {
@@ -354,7 +335,6 @@ body {
 .panel {
   padding: var(--space-16);
   background: var(--color-bg-raised);
-  border: var(--bento-line);
   border-radius: var(--radius-tool);
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 12px;
@@ -364,780 +344,7 @@ body {
   color: var(--color-text-primary);
 }
 
-/* Ablauf nach Agent (SIN-486): Bahnen untereinander, Knoten umbrechen, kein seitliches Scrollen. */
-.bahnen,
-.bahn-knoten {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.bahnen {
-  display: grid;
-  gap: var(--space-8);
-  min-width: 0;
-}
-
-.bahn {
-  display: grid;
-  gap: var(--space-8);
-  padding: var(--space-12);
-  background: var(--color-bg-surface);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-}
-
-.bahn.laeuft {
-  border-color: var(--color-accent-primary);
-}
-
-.bahn.wartet {
-  border-color: var(--color-status-warn);
-}
-
-.bahn-knoten {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-
-.bahn-knoten-eintrag {
-  padding: var(--space-8) var(--space-12);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 12px;
-  color: var(--color-text-primary);
-}
-
-.bahn-knoten-eintrag.laeuft {
-  border-color: var(--color-accent-primary);
-}
-
-.bahn-knoten-eintrag.wartet {
-  border-color: var(--color-status-warn);
-}
-
-.zeitleiste {
-  display: grid;
-  gap: var(--space-8);
-}
-
-.zeitleiste input {
-  width: 100%;
-  min-height: var(--touch-min);
-  accent-color: var(--color-accent-primary);
-}
-
-/* Ablauf nach Figma D2 (SIN-503): Bahnen mit Namen und Farbstreifen, zweizeilige Knoten, Status-Quadrat. */
-.graph-spalte {
-  display: grid;
-  gap: var(--space-12);
-  min-width: 0;
-}
-
-.graph {
-  display: none;
-  background: var(--color-bg-surface);
-}
-
-.bahn-liste,
-.bahn-karten,
-.legende {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.bahn-liste {
-  display: grid;
-  gap: var(--space-8);
-}
-
-.bahn-eintrag {
-  display: grid;
-  gap: var(--space-8);
-  padding: var(--space-12);
-  background: var(--color-bg-surface);
-  border: var(--bento-line);
-  border-left: 4px solid var(--color-border-subtle);
-  border-radius: var(--radius-tool);
-}
-
-.bahn-karten {
-  display: grid;
-  gap: var(--space-8);
-}
-
-.bahn-name {
-  margin: 0;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.karte,
-.karte-inhalt {
-  display: grid;
-  gap: 4px;
-  align-content: center;
-  width: 100%;
-  min-height: var(--touch-min);
-  padding: var(--space-8) var(--space-12);
-  text-align: left;
-  background: var(--color-bg-base);
-  color: var(--color-text-primary);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 12px;
-}
-
-.karte.laeuft,
-.react-flow__node.knoten.laeuft .karte-inhalt {
-  background: var(--color-accent-soft);
-  border-color: var(--color-accent-primary);
-}
-
-.karte[aria-pressed="true"] {
-  outline: 2px solid var(--color-accent-primary);
-}
-
-.karte-kopf {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.karte-detail {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  overflow-wrap: anywhere;
-}
-
-.signal {
-  display: inline-block;
-  flex: none;
-  width: 8px;
-  height: 8px;
-  background: var(--color-bg-raised);
-}
-
-.signal.ok {
-  background: var(--color-status-ok);
-}
-
-.signal.warn {
-  background: var(--color-status-warn);
-}
-
-.signal.error {
-  background: var(--color-status-error);
-}
-
-.signal.laeuft {
-  background: var(--color-accent-primary);
-}
-
-.legende {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8) var(--space-16);
-  padding: var(--space-8) var(--space-12);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 11px;
-  color: var(--color-text-secondary);
-}
-
-@media (min-width: 900px) {
-  .graph {
-    display: block;
-  }
-
-  .bahn-liste {
-    display: none;
-  }
-
-  .react-flow__node-schritt,
-  .react-flow__node-bahn {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .react-flow__node-bahn {
-    pointer-events: none;
-  }
-
-  .karte-inhalt {
-    height: 100%;
-  }
-
-  .react-flow__node.knoten:focus-visible .karte-inhalt {
-    outline: 2px solid var(--color-accent-primary);
-  }
-
-  .bahn-flaeche {
-    width: 100%;
-    height: 100%;
-    padding: var(--space-8) var(--space-12);
-    background: var(--color-bg-surface);
-    border-left: 4px solid var(--color-border-subtle);
-  }
-
-  .griff.react-flow__handle {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .react-flow__edge.kante .react-flow__edge-path {
-    stroke: var(--color-border-subtle);
-    stroke-width: 1px;
-    stroke-dasharray: 4 4;
-  }
-
-  .react-flow__edge.kante.laeuft .react-flow__edge-path {
-    stroke: var(--color-accent-primary);
-    stroke-width: 2px;
-    stroke-dasharray: none;
-  }
-}
-
-/* Ablauf nach Agent (SIN-505, Figma D4/D5): Agent-Karte 46:78, Kette, Produkt-Bahnen, Detailzeile. */
-.agent-ansicht {
-  display: grid;
-  gap: var(--space-12);
-  min-width: 0;
-  margin: var(--space-16) 0;
-}
-
-.agent-graph {
-  display: none;
-  background: var(--color-bg-surface);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-}
-
-.agent-liste,
-.agent-karten {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.agent-liste {
-  display: grid;
-  gap: var(--space-8);
-}
-
-.agent-lane {
-  display: grid;
-  gap: var(--space-8);
-  padding: var(--space-12);
-  background: var(--color-bg-surface);
-  border: var(--bento-line);
-  border-left: 4px solid var(--color-border-subtle);
-  border-radius: var(--radius-tool);
-}
-
-.agent-karten {
-  display: grid;
-}
-
-/* Handy (D5): Karten untereinander, kurze Verbindungsstriche, orange wo etwas läuft. */
-.agent-karten li + li {
-  display: grid;
-  padding-top: var(--space-16);
-  position: relative;
-}
-
-.agent-karten li + li::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  height: var(--space-16);
-  border-left: 1px dashed var(--color-border-subtle);
-}
-
-.agent-karten li:has(.laeuft)::before,
-.agent-karten li:has(.laeuft) + li::before {
-  border-left: 2px solid var(--color-accent-primary);
-}
-
-.agent-karte {
-  align-content: start;
-  gap: 4px;
-  min-height: 0;
-  text-transform: uppercase;
-}
-
-.agent-karte.error {
-  border-color: var(--color-status-error);
-}
-
-.agent-auftrag,
-.agent-fuss {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  overflow-wrap: anywhere;
-}
-
-.agent-aktuell {
-  font-size: 11px;
-  overflow-wrap: anywhere;
-}
-
-.agent-trenner {
-  height: 1px;
-  background: var(--color-border-subtle);
-}
-
-.agent-budget {
-  display: block;
-  height: 3px;
-  background: var(--color-border-subtle);
-}
-
-.agent-verbraucht {
-  display: block;
-  height: 100%;
-  background: var(--color-text-secondary);
-}
-
-.agent-verbraucht.warn {
-  background: var(--color-status-warn);
-}
-
-.agent-verbraucht.error {
-  background: var(--color-status-error);
-}
-
-.agent-ansicht .signal.leer {
-  background: var(--color-border-subtle);
-}
-
-.agent-hinweis {
-  margin: 0;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 11px;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-}
-
-.agent-detail {
-  min-width: 0;
-}
-
-.agent-felder {
-  display: grid;
-  gap: var(--space-12);
-}
-
-.agent-feld {
-  display: grid;
-  align-content: start;
-  gap: var(--space-8);
-  padding: var(--space-12);
-  background: var(--color-bg-surface);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.agent-feld.laeuft {
-  border-color: var(--color-accent-primary);
-}
-
-.agent-feld p {
-  margin: 0;
-}
-
-.agent-feld .fehler {
-  color: var(--color-status-error);
-}
-
-@media (min-width: 900px) {
-  .agent-graph {
-    display: block;
-  }
-
-  .agent-liste {
-    display: none;
-  }
-
-  .agent-felder {
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  .agent-hinweis {
-    padding: var(--space-16) 0 0 var(--space-12);
-  }
-
-  .agent-karte.react-flow__node,
-  .react-flow__node-agent {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .react-flow__node.knoten.laeuft .agent-karte {
-    background: var(--color-accent-soft);
-    border-color: var(--color-accent-primary);
-  }
-
-  .react-flow__node.knoten.error .agent-karte {
-    border-color: var(--color-status-error);
-  }
-
-  .agent-karte.karte-inhalt {
-    height: 100%;
-  }
-}
-
-.spalten {
-  display: grid;
-  gap: var(--space-16);
-  overflow-x: auto;
-  margin-top: var(--space-16);
-}
-
-.dep {
-  padding: var(--space-12);
-  background: var(--color-bg-raised);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-}
-
-.dep.kritisch {
-  border-color: var(--color-accent-primary);
-}
-
-.anmelden {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: var(--space-32) var(--space-16);
-}
-
-.formular {
-  display: grid;
-  gap: var(--space-12);
-}
-
-.formular input {
-  min-height: var(--touch-min);
-  padding: 0 var(--space-12);
-  background: var(--color-bg-base);
-  color: var(--color-text-primary);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-  font: inherit;
-}
-
-.meldung {
-  margin: var(--space-16) 0 0;
-}
-
-.kopplung {
-  display: grid;
-  gap: var(--space-12);
-  margin-top: var(--space-16);
-}
-
-.kopplung-code {
-  margin: 0;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 2.5rem;
-  letter-spacing: 0.1em;
-}
-
-.meldung a,
-.anmelden .tile a {
-  min-height: var(--touch-min);
-  display: inline-flex;
-  align-items: center;
-}
-
-.meldung.fehler {
-  color: var(--color-status-error);
-}
-
-.meldung a {
-  color: var(--color-text-primary);
-}
-
-@media (max-width: 899px) {
-  .schiene {
-    flex-wrap: wrap;
-  }
-
-  .schiene li {
-    flex: 1 1 96px;
-  }
-}
-
-.freigabe {
-  max-width: 640px;
-}
-
-.aktionen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-
-.aktionen .knopf {
-  text-decoration: none;
-}
-
-.tile.grund {
-  border-color: var(--color-accent-primary);
-}
-
-/* E2 Freigabe und E4 Auswertung (SIN-430), Maße aus Figma 35:2 und 35:54. */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.augenbraue {
-  margin: 0;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-accent-primary);
-}
-
-.freigabe-kopf,
-.auswertung > header {
-  display: grid;
-  gap: var(--space-8);
-}
-
-.freigabe-kopf h1,
-.auswertung h1 {
-  margin: 0;
-  font-size: 28px;
-  line-height: 34px;
-  font-weight: 600;
-}
-
-.freigabe-kopf p {
-  margin: 0;
-}
-
-.merkmale {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-
-.merkmale li {
-  padding: var(--space-4) var(--space-8);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-  font-size: 11px;
-  line-height: 14px;
-  color: var(--color-text-secondary);
-}
-
-.bereiche-kopf {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-8);
-  margin: 0 0 var(--space-8);
-  font-size: 11px;
-}
-
-.bereiche {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.bereiche li {
-  display: flex;
-  gap: 10px;
-  padding: 9px 0;
-  border-bottom: var(--bento-line);
-}
-
-.bereich-icon {
-  flex: none;
-  margin-top: 1px;
-  color: var(--color-text-secondary);
-}
-
-.bereiche li > div {
-  flex: 1;
-  display: grid;
-  gap: 3px;
-}
-
-.bereiche .zeile {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-8);
-  margin: 0;
-  font-size: 11px;
-  line-height: 14px;
-}
-
-.satz-bereich {
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.grund {
-  padding: var(--space-12);
-  border: 1px solid var(--color-accent-primary);
-  border-radius: var(--radius-tool);
-}
-
-.grund p {
-  margin: var(--space-8) 0 0;
-}
-
-.marke-grund {
-  display: inline-block;
-  margin: 0;
-  padding: 2px 6px;
-  border: 1px solid var(--color-accent-primary);
-  border-radius: var(--radius-tool);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 10px;
-  line-height: 13px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-accent-primary);
-}
-
-.aktionen {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
-.aktionen .knopf {
-  justify-content: center;
-  min-height: 48px;
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.aktionen .voll,
-.knopf.voll {
-  grid-column: 1 / -1;
-}
-
-.knopf.voll {
-  justify-content: center;
-  min-height: 48px;
-  text-decoration: none;
-  font-size: 16px;
-}
-
-.fuss {
-  margin: 0;
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.satzfeld {
-  display: grid;
-  gap: var(--space-12);
-  padding: var(--space-16);
-  background: var(--color-bg-surface);
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-}
-
-.satzfeld h2 {
-  margin: 0;
-  font-size: 11px;
-}
-
-.satzfeld .satz {
-  margin: 0;
-  font-size: 18px;
-  line-height: 26px;
-}
-
-.zahlenfeld {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 0;
-  border: var(--bento-line);
-  border-radius: var(--radius-tool);
-}
-
-.zahlenfeld > div {
-  display: grid;
-  gap: var(--space-8);
-  padding: var(--space-16);
-  border-right: var(--bento-line);
-  border-bottom: var(--bento-line);
-}
-
-.zahlenfeld > div:nth-child(2n) {
-  border-right: 0;
-}
-
-.zahlenfeld > div:nth-child(n + 3) {
-  border-bottom: 0;
-}
-
-.zahlenfeld dt {
-  font-size: 11px;
-}
-
-.zahlenfeld dd {
-  margin: 0;
-  font-size: 28px;
-  line-height: 34px;
-  font-weight: 500;
-}
-
-.zahlenfeld dd.akzent {
-  color: var(--color-accent-primary);
-}
-
-.projektzeilen {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.projektzeilen li {
-  padding: var(--space-8) 0 var(--space-8) var(--space-12);
-  border-left: 3px solid var(--color-border-subtle);
-  border-bottom: var(--bento-line);
-}
-
-.projektzeilen p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 18px;
-}
-
+/* Idee-Formular im Kopf */
 .idee {
   position: relative;
 }
@@ -1176,4 +383,16 @@ body {
 
 .satz-pause {
   color: var(--color-accent-primary);
+}
+
+@media (min-width: 900px) {
+  .bento {
+    grid-template-columns: 2fr 1fr;
+    gap: var(--bento-gap-wide);
+    padding: var(--space-32);
+  }
+
+  .ablauf-flaeche {
+    grid-template-columns: 3fr 1fr;
+  }
 }

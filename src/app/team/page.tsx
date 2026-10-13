@@ -2,12 +2,11 @@
 
 import { agentKarte, bahnen } from "@/lib/agenten";
 import { projekteIn, Rahmen } from "../rahmen";
-import "../einfach.css";
 import "../bunt.css";
 
 const ZUSTAND: Record<string, string> = { laeuft: "arbeitet", ok: "erledigt", warn: "wartet", error: "Fehler", leer: "keine Daten" };
 
-/** Team nach Figma T2 (SIN-546, 59:97): ein Helfer je Agent aus dem Register. Zustand und „aktuell“ nur aus loop_events, sonst „keine Daten“. */
+/** Team nach Figma T2 (SIN-546, 59:97): ein Helfer je Agent aus dem Register. Zustand und „aktuell“ nur aus loop_events, sonst „keine Daten“. Das Raster passt auf einen Bildschirm, Auftrag und „aktuell“ klappen beim Antippen auf (SIN-568). */
 export default function Team() {
   return (
     <Rahmen aktiv="team">
@@ -24,16 +23,20 @@ export default function Team() {
             </div>
             <ul className="helfer">
               {karten.map((k) => (
-                <li key={k.id} className="helfer-karte">
-                  <span className={`avatar ${k.signal}`} aria-hidden="true">
-                    {k.name.slice(0, 1)}
-                  </span>
-                  <h2>{k.name}</h2>
-                  <p className="leer">{k.auftrag}</p>
-                  <p>
-                    <span className="sr-only">Zustand: </span>
-                    {ZUSTAND[k.signal]} · {k.aktuell}
-                  </p>
+                <li key={k.id}>
+                  <details className="helfer-karte">
+                    <summary>
+                      <span className={`avatar ${k.signal}`} aria-hidden="true">
+                        {k.name.slice(0, 1)}
+                      </span>
+                      <h2>{k.name}</h2>
+                      <span>{ZUSTAND[k.signal]}</span>
+                    </summary>
+                    <div className="aufklapp-inhalt">
+                      <p className="leer">{k.auftrag}</p>
+                      <p>{k.aktuell}</p>
+                    </div>
+                  </details>
                 </li>
               ))}
             </ul>

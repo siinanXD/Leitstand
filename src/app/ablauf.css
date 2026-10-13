@@ -1,0 +1,537 @@
+/* Ablauf nach Agent (SIN-486): Bahnen untereinander, Knoten umbrechen, kein seitliches Scrollen. */
+.bahnen,
+.bahn-knoten {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bahnen {
+  display: grid;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.bahn {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.bahn.laeuft {
+  border-color: var(--color-accent-primary);
+}
+
+.bahn.wartet {
+  border-color: var(--color-status-warn);
+}
+
+.bahn-knoten {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.bahn-knoten-eintrag {
+  padding: var(--space-8) var(--space-12);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+
+.bahn-knoten-eintrag.laeuft {
+  border-color: var(--color-accent-primary);
+}
+
+.bahn-knoten-eintrag.wartet {
+  border-color: var(--color-status-warn);
+}
+
+.zeitleiste {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.zeitleiste input {
+  width: 100%;
+  min-height: var(--touch-min);
+  accent-color: var(--color-accent-primary);
+}
+
+/* Ablauf nach Figma D2 (SIN-503): Bahnen mit Namen und Farbstreifen, zweizeilige Knoten, Status-Quadrat. */
+.graph-spalte {
+  display: grid;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.graph {
+  display: none;
+  background: var(--color-bg-surface);
+}
+
+.bahn-liste,
+.bahn-karten,
+.legende {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bahn-liste {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.bahn-eintrag {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-left: 4px solid var(--color-border-subtle);
+  border-radius: var(--radius-tool);
+}
+
+.bahn-karten {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.bahn-name {
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.karte,
+.karte-inhalt {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-8) var(--space-12);
+  text-align: left;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.karte.laeuft,
+.react-flow__node.knoten.laeuft .karte-inhalt {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-primary);
+}
+
+.karte[aria-pressed="true"] {
+  outline: 2px solid var(--color-accent-primary);
+}
+
+.karte-kopf {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.karte-detail {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.signal {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--color-bg-raised);
+}
+
+.signal.ok {
+  background: var(--color-status-ok);
+}
+
+.signal.warn {
+  background: var(--color-status-warn);
+}
+
+.signal.error {
+  background: var(--color-status-error);
+}
+
+.signal.laeuft {
+  background: var(--color-accent-primary);
+}
+
+.legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-16);
+  padding: var(--space-8) var(--space-12);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 900px) {
+  .graph {
+    display: block;
+  }
+
+  .bahn-liste {
+    display: none;
+  }
+
+  .react-flow__node-schritt,
+  .react-flow__node-bahn {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .react-flow__node-bahn {
+    pointer-events: none;
+  }
+
+  .karte-inhalt {
+    height: 100%;
+  }
+
+  .react-flow__node.knoten:focus-visible .karte-inhalt {
+    outline: 2px solid var(--color-accent-primary);
+  }
+
+  .bahn-flaeche {
+    width: 100%;
+    height: 100%;
+    padding: var(--space-8) var(--space-12);
+    background: var(--color-bg-surface);
+    border-left: 4px solid var(--color-border-subtle);
+  }
+
+  .griff.react-flow__handle {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .react-flow__edge.kante .react-flow__edge-path {
+    stroke: var(--color-border-subtle);
+    stroke-width: 1px;
+    stroke-dasharray: 4 4;
+  }
+
+  .react-flow__edge.kante.laeuft .react-flow__edge-path {
+    stroke: var(--color-accent-primary);
+    stroke-width: 2px;
+    stroke-dasharray: none;
+  }
+}
+
+/* Ablauf nach Agent (SIN-505, Figma D4/D5): Agent-Karte 46:78, Kette, Produkt-Bahnen, Detailzeile. */
+.agent-ansicht {
+  display: grid;
+  gap: var(--space-12);
+  min-width: 0;
+  margin: var(--space-16) 0;
+}
+
+.agent-graph {
+  display: none;
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.agent-liste,
+.agent-karten {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.agent-liste {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.agent-lane {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-left: 4px solid var(--color-border-subtle);
+  border-radius: var(--radius-tool);
+}
+
+.agent-karten {
+  display: grid;
+}
+
+/* Handy (D5): Karten untereinander, kurze Verbindungsstriche, orange wo etwas läuft. */
+.agent-karten li + li {
+  display: grid;
+  padding-top: var(--space-16);
+  position: relative;
+}
+
+.agent-karten li + li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: var(--space-16);
+  border-left: 1px dashed var(--color-border-subtle);
+}
+
+.agent-karten li:has(.laeuft)::before,
+.agent-karten li:has(.laeuft) + li::before {
+  border-left: 2px solid var(--color-accent-primary);
+}
+
+.agent-karte {
+  align-content: start;
+  gap: 4px;
+  min-height: 0;
+  text-transform: uppercase;
+}
+
+.agent-karte.error {
+  border-color: var(--color-status-error);
+}
+
+.agent-auftrag,
+.agent-fuss {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.agent-aktuell {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.agent-trenner {
+  height: 1px;
+  background: var(--color-border-subtle);
+}
+
+.agent-budget {
+  display: block;
+  height: 3px;
+  background: var(--color-border-subtle);
+}
+
+.agent-verbraucht {
+  display: block;
+  height: 100%;
+  background: var(--color-text-secondary);
+}
+
+.agent-verbraucht.warn {
+  background: var(--color-status-warn);
+}
+
+.agent-verbraucht.error {
+  background: var(--color-status-error);
+}
+
+.agent-ansicht .signal.leer {
+  background: var(--color-border-subtle);
+}
+
+.agent-hinweis {
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.agent-detail {
+  min-width: 0;
+}
+
+.agent-felder {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.agent-feld {
+  display: grid;
+  align-content: start;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.agent-feld.laeuft {
+  border-color: var(--color-accent-primary);
+}
+
+.agent-feld p {
+  margin: 0;
+}
+
+.agent-feld .fehler {
+  color: var(--color-status-error);
+}
+
+@media (min-width: 900px) {
+  .agent-graph {
+    display: block;
+  }
+
+  .agent-liste {
+    display: none;
+  }
+
+  .agent-felder {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .agent-hinweis {
+    padding: var(--space-16) 0 0 var(--space-12);
+  }
+
+  .agent-karte.react-flow__node,
+  .react-flow__node-agent {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .react-flow__node.knoten.laeuft .agent-karte {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent-primary);
+  }
+
+  .react-flow__node.knoten.error .agent-karte {
+    border-color: var(--color-status-error);
+  }
+
+  .agent-karte.karte-inhalt {
+    height: 100%;
+  }
+}
+
+.spalten {
+  display: grid;
+  gap: var(--space-16);
+  overflow-x: auto;
+  margin-top: var(--space-16);
+}
+
+.dep {
+  padding: var(--space-12);
+  background: var(--color-bg-raised);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.dep.kritisch {
+  border-color: var(--color-accent-primary);
+}
+
+.anmelden {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-32) var(--space-16);
+}
+
+.formular {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.formular input {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-12);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font: inherit;
+}
+
+.meldung {
+  margin: var(--space-16) 0 0;
+}
+
+.kopplung {
+  display: grid;
+  gap: var(--space-12);
+  margin-top: var(--space-16);
+}
+
+.kopplung-code {
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 2.5rem;
+  letter-spacing: 0.1em;
+}
+
+.meldung a,
+.anmelden .tile a {
+  min-height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+}
+
+.meldung.fehler {
+  color: var(--color-status-error);
+}
+
+.meldung a {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 899px) {
+  .schiene {
+    flex-wrap: wrap;
+  }
+
+  .schiene li {
+    flex: 1 1 96px;
+  }
+}
+
+.freigabe {
+  max-width: 640px;
+}
+
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.aktionen .knopf {
+  text-decoration: none;
+}
+
+.tile.grund {
+  border-color: var(--color-accent-primary);
+}
+

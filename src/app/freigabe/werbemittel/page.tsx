@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { browserClient } from "@/lib/browser-client";
 import { ARTEN_NAME, istVideo, MAX_GRUND, type Werbemittel } from "@/lib/werbemittel";
 import { Rahmen } from "../../rahmen";
+import "../../freigabe.css";
 
 type Zustand = { art: "laedt" } | { art: "fehler"; text: string } | { art: "ok"; eintraege: Werbemittel[] };
 

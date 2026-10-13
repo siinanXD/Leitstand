@@ -8,6 +8,7 @@ import { nurProjekt } from "@/lib/projekte";
 import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
 import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
 import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "../rahmen";
+import "../freigabe.css";
 import "../uebersicht.css";
 import "../projekte/projekte.css";
 

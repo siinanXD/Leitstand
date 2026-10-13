@@ -6,6 +6,7 @@ import type { BereichZeile } from "@/lib/bereiche";
 import { browserClient } from "@/lib/browser-client";
 import { BereichIcon } from "../bereich-icon";
 import { Rahmen } from "../rahmen";
+import "../freigabe.css";
 
 type Detail = {
   pr: { nummer: number; titel: string; autor: string | null; zweig: string; ziel: string; status: string; entwurf: boolean; url: string; labels: string[] };

@@ -1,117 +1,374 @@
-/* Leitstand bunt (SIN-546): Figma 7Ti9iVUjUjw3rh9WYhSu9K, Seite „Leitstand bunt“ 59:2, Frames S1 59:26, T2 59:97, W3 59:201, P4 59:316 (Modus Hell, 13.10.2026).
-   Gilt nur auf Seiten mit `.bunt`: die bestehenden Tokens bekommen dort die hellen Werte, der Rest der Seite zieht von allein mit. Hex nur hier in den Tokens. */
-:root {
-  --color-bunt-sonne: #fef3c7;
-  --color-bunt-gruen: #dcfce7;
-  --color-bunt-blau: #dbeafe;
-  --color-bunt-lila: #f3e8ff;
-  --color-bunt-pfirsich: #ffedd5;
-  --color-bunt-violett: #6d28d9;
-  --color-bunt-auf-akzent: #ffffff;
-  --radius-bunt: 20px;
+/* Leitstand bunt (SIN-546, SIN-568): Bausteine für Start, Team, Werkzeuge, Produkt, Aufgabe und Kosten. Figma 7Ti9iVUjUjw3rh9WYhSu9K, Seite „Leitstand bunt“ 59:2, Frames S1 59:26, T2 59:97, W3 59:201, P4 59:316.
+   Die Tokens stehen in globals.css. Start, Team, Werkzeuge: eine Bildschirmhöhe (844 px), Details erst beim Antippen. */
+.einfach {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
-body:has(.bunt) {
-  --color-bg-base: #fff7ed;
-  --color-bg-surface: #ffffff;
-  --color-bg-raised: var(--color-bunt-pfirsich);
-  --color-border-subtle: #e7e5e4;
-  --color-text-primary: #1c1917;
-  --color-text-secondary: #57534e;
-  --color-accent-primary: #b45309;
-  --color-accent-strong: #c2410c;
-  --color-accent-soft: var(--color-bunt-sonne);
-  --color-status-ok: #15803d;
-  --color-status-warn: #b45309;
-  --color-status-error: #b91c1c;
-  --color-status-info: #1d4ed8;
-  --radius-tool: var(--radius-bunt);
+.einfach-lage {
+  display: grid;
+  gap: var(--space-4);
 }
 
-body:has(.bunt) .knopf {
-  border-radius: 999px;
-}
-
-body:has(.bunt) .knopf.aktiv {
-  color: var(--color-bunt-auf-akzent);
-}
-
-.bunt .tile {
-  border: 0;
-}
-
-.bunt .punkt {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-}
-
-.bunt .balken {
-  height: 14px;
-  border-radius: 999px;
-  background: var(--color-bunt-pfirsich);
-}
-
-.bunt .balken > div {
-  background: var(--color-accent-strong);
-}
-
-.bunt .karte,
-.bunt .eintrag {
-  background: var(--color-bg-surface);
-  border: 0;
-  border-radius: 16px;
-}
-
-.bunt .einfach-lage .satz {
-  font-size: 30px;
-  line-height: 36px;
+.einfach-lage .satz {
+  margin: 0;
+  font-size: 28px;
+  line-height: 34px;
   font-weight: 700;
 }
 
-.bunt .sonne {
-  background: var(--color-bunt-sonne);
+.einfach-lage .satz.alarm {
+  color: var(--color-status-error);
 }
 
-.bunt .gruen {
-  background: var(--color-bunt-gruen);
+.einfach-lage .achtung {
+  margin: 0;
+  color: var(--color-text-secondary);
 }
 
-.bunt .blau {
-  background: var(--color-bunt-blau);
+.chef-zeile {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text-secondary);
 }
 
-.bunt .lila {
-  background: var(--color-bunt-lila);
+.einfach-fuss {
+  margin: 0;
 }
 
-.bunt .pfirsich {
-  background: var(--color-bunt-pfirsich);
+.einfach-block {
+  display: grid;
+  gap: var(--space-16);
+  align-content: start;
 }
 
-/* Team (T2): Helfer-Karten, Avatar mit Anfangsbuchstabe. Farbe = Zustand, Text steht immer daneben. */
-.helfer {
+.kopf-block {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.kopf-block h1,
+.kopf-block h2,
+.kopf-block p {
+  margin: 0;
+}
+
+/* Aufklappkarte: zu = zwei Zeilen; name="start" lässt nur eine Karte offen. */
+.aufklapp {
+  padding: 0;
+}
+
+.aufklapp summary {
+  display: grid;
+  gap: var(--space-4);
+  align-content: center;
+  min-height: 72px;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-tool);
+  cursor: pointer;
+  list-style: none;
+}
+
+.aufklapp summary::-webkit-details-marker {
+  display: none;
+}
+
+.aufklapp summary::after {
+  content: "▾";
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-16);
+}
+
+.aufklapp {
+  position: relative;
+}
+
+.aufklapp[open] summary::after {
+  content: "▴";
+}
+
+.aufklapp-titel {
+  margin: 0 !important;
+  padding-right: var(--space-24);
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.aufklapp-zeile {
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.aufklapp-inhalt {
+  display: grid;
+  gap: var(--space-12);
+  padding: 0 var(--space-16) var(--space-16);
+}
+
+.karten,
+.eintraege,
+.fortschritt,
+.posten {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: var(--space-12);
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 }
 
-.helfer-karte {
+.karte {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  background: var(--color-bg-surface);
+  border-radius: 16px;
+}
+
+.karte-text {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.karte-titel {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.karte-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.fehler {
+  color: var(--color-status-error);
+}
+
+.kette {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-16);
+}
+
+.station {
   display: grid;
   gap: var(--space-8);
   align-content: start;
-  padding: var(--space-16);
+  min-width: 0;
+  padding-top: var(--space-12);
+  border-top: var(--bento-line);
+}
+
+.station-kopf {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.station-name {
+  font-weight: 600;
+}
+
+.kreis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: var(--bento-line);
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.eintrag {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  column-gap: var(--space-8);
+  align-items: baseline;
+  padding: var(--space-8) var(--space-12);
   background: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
+  border-radius: 16px;
+}
+
+.eintrag .mono-label {
+  grid-column: 2;
+}
+
+.eintrag-titel {
+  overflow-wrap: anywhere;
+}
+
+.punkt {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+}
+
+.punkt.aktiv {
+  background: var(--color-status-ok);
+}
+
+.punkt.rot {
+  background: var(--color-status-error);
+}
+
+.punkt.gelb {
+  background: var(--color-status-warn);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .punkt.aktiv {
+    animation: atmen 2s ease-in-out infinite;
+  }
+}
+
+@keyframes atmen {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.zeile {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.zeile > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.summe {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.summe .mono {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 500;
+}
+
+.balken {
+  height: 14px;
+  background: var(--color-bunt-pfirsich);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.balken > div {
+  height: 100%;
+  background: var(--color-accent-strong);
+}
+
+.balken.rot > div {
+  background: var(--color-status-error);
+}
+
+.sonne {
+  background: var(--color-bunt-sonne);
+}
+
+.gruen {
+  background: var(--color-bunt-gruen);
+}
+
+.blau {
+  background: var(--color-bunt-blau);
+}
+
+.lila {
+  background: var(--color-bunt-lila);
+}
+
+.pfirsich {
+  background: var(--color-bunt-pfirsich);
+}
+
+.kopf-titel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.kopf-titel h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+}
+
+.kopf-titel p {
+  margin: 0;
+  color: var(--color-accent-strong);
+  font-weight: 500;
+}
+
+.gross-prozent {
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+}
+
+/* Team (T2): Raster, Name und Zustand sichtbar, Auftrag und „aktuell“ beim Antippen. Farbe = Zustand, Text steht immer daneben. */
+.helfer {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-8);
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-items: start;
+}
+
+.helfer-karte {
+  background: var(--color-bg-surface);
   border-radius: var(--radius-bunt);
+}
+
+.helfer-karte summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-8);
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: var(--space-8) var(--space-12);
+  cursor: pointer;
+  list-style: none;
+}
+
+.helfer-karte summary::-webkit-details-marker {
+  display: none;
 }
 
 .helfer-karte h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.helfer-karte summary > span:last-child {
+  grid-column: 2;
+  color: var(--color-text-secondary);
+}
+
+.helfer-karte .aufklapp-inhalt {
+  padding: 0 var(--space-12) var(--space-12);
 }
 
 .helfer-karte p {
@@ -120,11 +377,12 @@ body:has(.bunt) .knopf.aktiv {
 }
 
 .avatar {
+  grid-row: span 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--color-text-secondary);
   color: var(--color-bunt-auf-akzent);
@@ -147,27 +405,41 @@ body:has(.bunt) .knopf.aktiv {
   background: var(--color-status-error);
 }
 
-.bunt .kopf-titel {
-  display: grid;
-  gap: var(--space-4);
+/* Werkzeuge: Rot und Gelb offen, Grün eingeklappt. */
+.gruen-zu summary {
+  min-height: var(--touch-min);
+  cursor: pointer;
 }
 
-.bunt .kopf-titel h1 {
-  margin: 0;
-  font-size: 30px;
-  line-height: 36px;
-  font-weight: 700;
+@media (max-width: 899px) {
+  .kopf {
+    padding: var(--space-8) var(--space-16);
+  }
+
+  .kopf .reiter,
+  .kopf .kopf-aktionen {
+    flex-wrap: nowrap;
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+  }
+
+  .kopf .knopf {
+    flex: none;
+  }
 }
 
-.bunt .kopf-titel p {
-  margin: 0;
-  color: var(--color-accent-strong);
-  font-weight: 500;
-}
+@media (min-width: 900px) {
+  .einfach {
+    padding: var(--space-32) var(--space-48);
+  }
 
-.gross-prozent {
-  font-size: 40px;
-  line-height: 48px;
-  font-weight: 700;
-  color: var(--color-accent-strong);
+  .karte {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .kette {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
