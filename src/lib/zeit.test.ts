@@ -7,7 +7,8 @@ const vor = (min: number) => new Date(jetzt.getTime() - min * 60_000).toISOStrin
 
 test("zeitInWorten: Vergangenheit in Worten, nie Minuten", () => {
   assert.equal(zeitInWorten(vor(2), jetzt), "gerade eben");
-  assert.equal(zeitInWorten(vor(30), jetzt), "vor kurzem");
+  assert.equal(zeitInWorten(vor(30), jetzt), "vor einer halben Stunde");
+  assert.equal(zeitInWorten(vor(10), jetzt), "vor ein paar Minuten");
   assert.equal(zeitInWorten(vor(70), jetzt), "vor einer Stunde");
   assert.equal(zeitInWorten(vor(120), jetzt), "vor 2 Stunden");
   assert.equal(zeitInWorten(vor(60 * 13), jetzt), "heute");

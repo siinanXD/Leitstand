@@ -20,7 +20,9 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
   return (
     <Rahmen aktiv="projekte">
       {(quelle) => {
-        const naechstes = alsNaechstes(quelle.snapshot, projekt.id);
+        // Aus Linear: was gerade läuft, dann was als Nächstes dran ist (Befund 13.10.: hier stand nur „Keine Daten“).
+        const ausLinear = (quelle.aufgaben ?? []).filter((a) => a.projekt === projekt.id && (a.status === "laeuft" || (a.status === "offen" && a.labels.includes("claude"))));
+        const naechstes = ausLinear.length > 0 ? [...ausLinear].sort((a, b) => Number(b.status === "laeuft") - Number(a.status === "laeuft")).map((a) => (a.status === "laeuft" ? `Gerade: ${a.titel}` : a.titel)) : alsNaechstes(quelle.snapshot, projekt.id);
         const aufgaben = projektAufgaben(quelle.snapshot, projekt.id);
         const weit = fortschritt(quelle).filter((f) => f.project === projekt.id && f.gesamt > 0);
         return (
@@ -49,7 +51,7 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
               <h2 id="weit" className="karte-titel">
                 Wie weit sind wir?
               </h2>
-              <ZustandSymbol art="fertig" />
+              <ZustandSymbol art={weit.length > 0 && weit.every((w) => w.fertig >= w.gesamt) ? "fertig" : "laeuft"} />
               <WieWeit liste={weit} />
             </section>
 
@@ -59,7 +61,7 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
               </h2>
               <ZustandSymbol art="laeuft" />
               {naechstes.length === 0 ? (
-                <p className="leer">Keine Daten</p>
+                <p className="leer">Gerade ist nichts geplant.</p>
               ) : (
                 <MitMehr
                   liste={naechstes}

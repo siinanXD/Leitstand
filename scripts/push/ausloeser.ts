@@ -16,6 +16,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_MS, menschlich, plane, stillstandAus, type GemergterPr, type Schlange, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
+import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
 import { sendeAnAlle } from "../../src/lib/push/push";
 import { supabaseSpeicher, vapidSender } from "../../src/lib/push/server";
 import { projektInfo } from "../../src/lib/projekte";
@@ -55,6 +56,38 @@ async function linearTitel(ids: string[]): Promise<Map<string, string>> {
     console.log(`::warning::Linear-Titel: ${e instanceof Error ? e.message : e}`);
   }
   return titel;
+}
+
+/**
+ * Titel und Stand der Linear-Aufgaben der letzten 30 Tage nach `leitstand_aufgaben` (Sinan 13.10.: „Da steht nur ‚Eine Aufgabe‘“).
+ * Ohne LINEAR_API_KEY oder bei Fehlern: Warnung, die Mitteilungen laufen trotzdem.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Client ohne erzeugte Typen
+async function aufgabenSpiegeln(db: any): Promise<void> {
+  if (!env.LINEAR_API_KEY) return console.log("::warning::LINEAR_API_KEY fehlt: Aufgabentitel werden nicht gespiegelt.");
+  const seit = new Date(Date.now() - 30 * 24 * 3_600_000).toISOString();
+  const query = `query($seit: DateTimeOrDuration!) { issues(first: 250, orderBy: updatedAt, filter: { updatedAt: { gt: $seit } }) { nodes { identifier title startedAt completedAt canceledAt state { type } project { name } labels { nodes { name } } } } }`;
+  try {
+    const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY }, body: JSON.stringify({ query, variables: { seit } }), signal: AbortSignal.timeout(20_000) });
+    const json = (await res.json()) as { data?: { issues?: { nodes?: { identifier: string; title: string; startedAt: string | null; completedAt: string | null; canceledAt: string | null; state?: { type?: string }; project?: { name?: string } | null; labels?: { nodes?: { name: string }[] } }[] } }; errors?: { message: string }[] };
+    if (json.errors?.length) throw new Error(json.errors[0].message);
+    const zeilen = (json.data?.issues?.nodes ?? []).map((i) => ({
+      issue: i.identifier,
+      titel: i.title,
+      projekt: projektAusLinear(i.project?.name),
+      status: statusAusLinear(i.state?.type),
+      gestartet_at: i.startedAt,
+      fertig_at: i.completedAt ?? i.canceledAt,
+      labels: (i.labels?.nodes ?? []).map((l) => l.name),
+      aktualisiert_at: new Date().toISOString(),
+    }));
+    if (DRY) return console.log(`Aufgaben (Trockenlauf): ${zeilen.length}`);
+    const { error } = await db.from("leitstand_aufgaben").upsert(zeilen as never, { onConflict: "issue" });
+    if (error) throw new Error(error.message);
+    console.log(`Aufgaben gespiegelt: ${zeilen.length}`);
+  } catch (e) {
+    console.log(`::warning::Aufgaben nicht gespiegelt: ${e instanceof Error ? e.message : e}`);
+  }
 }
 
 /** Gemergte PRs der letzten Stunden und alle Aufgaben-Kennungen, zu denen es einen offenen oder frisch gemergten PR gibt. */
@@ -104,6 +137,7 @@ async function main() {
     return;
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
+  await aufgabenSpiegeln(db);
   const speicher = supabaseSpeicher(url, key);
   const abos = await speicher.alle();
   // Ohne Abo nichts als gesendet merken: wer den Schalter einschaltet, bekommt beim nächsten Lauf den aktuellen Stand.

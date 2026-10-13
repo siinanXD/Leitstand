@@ -5,6 +5,11 @@ import { expect, test, type Page } from "@playwright/test";
 const SUPABASE = "http://127.0.0.1:54321";
 const SPEICHER = "sb-127-auth-token";
 
+// Aufgabentitel aus Linear (leitstand_aufgaben): in diesen Tests leer, die Seiten fallen auf die Snapshot-Titel zurück.
+test.beforeEach(async ({ page }) => {
+  await page.route(`${SUPABASE}/rest/v1/leitstand_aufgaben**`, (route) => route.fulfill({ json: [] }));
+});
+
 const axe = (page: Page) => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
 
 test("Anmelden lädt und hat keine axe-Fehler", async ({ page }) => {

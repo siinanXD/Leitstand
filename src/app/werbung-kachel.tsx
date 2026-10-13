@@ -6,7 +6,8 @@ import { browserClient } from "@/lib/browser-client";
 import { wartenSatz } from "@/lib/marketing/marketing";
 
 /** Kachel „Werbung“ (SIN-550): Zahl der Entwürfe, die auf Freigabe warten. Freigeben läuft auf /freigabe/werbemittel. */
-export function WerbungKachel({ angemeldet }: { angemeldet: boolean }) {
+/** Wie viele Werbe-Entwürfe auf Freigabe warten; undefined = lädt, null = nicht ladbar. Auch für die Startseite (Sinan 13.10.: Video nicht mehr zu sehen). */
+export function useWartendeWerbung(angemeldet: boolean): number | null | undefined {
   const [anzahl, setAnzahl] = useState<number | null | undefined>(undefined);
   useEffect(() => {
     const client = browserClient();
@@ -22,6 +23,11 @@ export function WerbungKachel({ angemeldet }: { angemeldet: boolean }) {
       offen = false;
     };
   }, [angemeldet]);
+  return anzahl;
+}
+
+export function WerbungKachel({ angemeldet }: { angemeldet: boolean }) {
+  const anzahl = useWartendeWerbung(angemeldet);
   return (
     <section className="tile einfach-block" aria-labelledby="werbung">
       <div className="kopf-block">
