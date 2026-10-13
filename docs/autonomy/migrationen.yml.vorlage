@@ -1,0 +1,41 @@
+# SIN-592: nach .github/workflows/migrationen.yml kopieren (der Worker darf .github/workflows/ nicht ändern). Sinan entscheidet.
+# Prüft nach jedem Merge auf main und täglich, ob jede Datei unter supabase/migrations/leitstand/ in der Datenbank angekommen ist.
+# Nur lesen: spielt nichts ein. Meldung: loop_events (Schritt migration) → „Braucht dich“; push-ausloeser sendet den Alarm (alle 15 Minuten).
+# Zusätzlich in build.yml (Trockenlauf, Regel SIN-574): `- run: npx tsx scripts/migrationen/pruefen.ts` mit `env: DRY_RUN: "1"` nach `npm test`.
+name: migrationen
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/leitstand/**"]
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur anzeigen, nichts schreiben"
+        type: boolean
+        default: true
+concurrency:
+  group: migrationen
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  migrationen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Migrationen prüfen
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/migrationen/pruefen.ts

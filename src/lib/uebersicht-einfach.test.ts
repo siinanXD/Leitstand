@@ -21,6 +21,18 @@ test("lageSatz: wartet, nichts zu tun, Alarm, keine Daten", () => {
   assert.equal(lageSatz({ events: [], snapshot: [] }, 0, jetzt), null);
 });
 
+test("karten: fehlende Migration steht oben, eingespielte nicht (SIN-592)", () => {
+  const q = { events: ev([
+    { created_at: vor(10), step: "migration", status: "fehlt", issue: "a.sql: Spalte t.x fehlt" },
+    { created_at: vor(10), step: "migration", status: "fehlt", issue: "b.sql: Tabelle u fehlt" },
+    { created_at: vor(2), step: "migration", status: "ok", issue: "b.sql: eingespielt" },
+  ]), snapshot: [] };
+  const liste = karten(q, []);
+  assert.equal(liste.length, 1);
+  assert.equal(liste[0].titel, "Datenbank-Änderung fehlt in Supabase: a.sql");
+  assert.equal(liste[0].warum, "Spalte t.x fehlt");
+});
+
 test("karten: wartende PRs mit Freigeben, Aufgaben nur mit Ansehen, kein PR doppelt", () => {
   const snapshot = parseSnapshot([
     { project: "leitstand", issue: "SIN-5", title: "Frage klären", labels: ["sinan"], status: "waiting", minutes: 2 },

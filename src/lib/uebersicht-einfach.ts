@@ -4,6 +4,7 @@ import { heuteFertigAus, titelVon } from "./aufgaben";
 import { REPOS } from "./freigabe";
 import { projektInfo } from "./projekte";
 import { warnungen, type Warnung } from "./kosten/guthaben";
+import { offene } from "./migrationen/migrationen";
 import { kontingente, letzte24h, type LoopEvent, type Quelle } from "./uebersicht";
 import { aufgabenFuerDich, pipelineSchiene } from "./uebersicht-b1";
 import type { WartenderPr } from "./wartende-prs";
@@ -71,7 +72,9 @@ export function karten(q: Quelle, wartende: WartenderPr[]): Karte[] {
         ansehen: /^SIN-\d+$/.test(a.ref) ? `https://linear.app/sinan-kahraman/issue/${a.ref}` : null,
       };
     });
-  return [...kosten, ...fuerPr, ...aufgaben];
+  // SIN-592: Migration auf main, aber nicht in Supabase.
+  const migrationen = offene(q.events).map<Karte>((m) => ({ key: `migration:${m.datei}`, titel: `Datenbank-Änderung fehlt in Supabase: ${m.datei}`, warum: m.grund, projekt: "Leitstand", pr: null, minuten: null, wartender: null, ansehen: null, aufladen: null }));
+  return [...migrationen, ...kosten, ...fuerPr, ...aufgaben];
 }
 
 // ------------------------------------------------------------------ Was gerade passiert
