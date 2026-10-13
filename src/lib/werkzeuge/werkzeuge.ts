@@ -29,8 +29,9 @@ export const WERKZEUGE: Werkzeug[] = [
     id: "posthog",
     name: "PostHog",
     aufgabe: "Zeigt, wo Lernende abbrechen; Eingabe für „was ist wichtig“.",
-    keys: ["POSTHOG_PERSONAL_API_KEY"],
-    anfragen: (e) => [{ url: `${ohneSchraegstrich(e.POSTHOG_HOST ?? "https://eu.posthog.com")}/api/projects/`, header: { Authorization: `Bearer ${e.POSTHOG_PERSONAL_API_KEY}` } }],
+    keys: ["POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
+    // Projekt-Endpunkt wie in der Lern-App (scripts/autonomy/posthog.mjs); die Projektliste ist für projektgebundene Keys nicht erlaubt.
+    anfragen: (e) => [{ url: `${ohneSchraegstrich(e.POSTHOG_HOST ?? "https://eu.posthog.com")}/api/projects/${encodeURIComponent(e.POSTHOG_PROJECT_ID ?? "")}/`, header: { Authorization: `Bearer ${e.POSTHOG_PERSONAL_API_KEY}` } }],
   },
   {
     id: "langfuse",

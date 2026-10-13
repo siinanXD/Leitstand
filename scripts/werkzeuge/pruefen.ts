@@ -19,7 +19,7 @@ async function pruefe(w: Werkzeug): Promise<Pruefung> {
   const antworten = await Promise.all(
     w.anfragen(env).map(async (a) => {
       try {
-        const res = await fetch(a.url, { method: a.methode ?? "GET", headers: a.header, body: a.body, signal: AbortSignal.timeout(8000) });
+        const res = await fetch(a.url, { method: a.methode ?? "GET", headers: a.header, body: a.body, signal: AbortSignal.timeout(15000) });
         // Linear antwortet bei falschem Key mit 200 und `errors`.
         const fehler = res.ok && a.methode === "POST" ? Boolean(((await res.json()) as { errors?: unknown }).errors) : false;
         return { status: res.status, fehler };
