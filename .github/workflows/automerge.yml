@@ -1,5 +1,11 @@
 # Auto-Merge (Squash) für fertige PRs: GitHub mergt erst, wenn der Pflicht-Check `build` grün ist (Ruleset "main schützen").
-# Ausnahmen: Draft-PRs, Label `no-automerge`, und PRs, die .github/workflows/ ändern (die bleiben für Sinan).
+# Regeln (Sinan, 13.10.2026, wie SIN-547 in der Lern-App):
+#   - Standard: Auto-Merge, auch bei Workflow-Änderungen (Schritte, Skripte, Zeitpläne, bekannte Secrets).
+#   - `risk:high` (wartet auf Label `freigegeben`): Workflow-Rechte erweitert (`permissions` mit write), neues Secret, das kein
+#     Workflow auf main nutzt, `pull_request_target` neu, Drittanbieter-Action außerhalb von actions/* und anthropics/*,
+#     Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), Auth/Middleware, Service-Role-Key im Client.
+#   - Nie: Draft-PRs, Label `no-automerge`.
+# Der Grund steht als Kommentar im PR und im Leitstand (wartende PRs).
 name: automerge
 
 on:
@@ -13,27 +19,74 @@ jobs:
   automerge:
     runs-on: ubuntu-latest
     steps:
-      - name: Auto-Merge einschalten oder ausschalten
+      - name: Risiko bestimmen, Auto-Merge einschalten oder ausschalten
         uses: actions/github-script@v7
-        env:
-          AGENT_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
         with:
           github-token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
             const labels = (pr.labels || []).map((l) => l.name);
-            const files = await github.paginate(github.rest.pulls.listFiles, {
-              ...context.repo, pull_number: pr.number, per_page: 100,
-            });
-            const workflowChange = files.some((f) => f.filename.startsWith(".github/workflows/"));
-            const allowed = !pr.draft && !labels.includes("no-automerge") && !workflowChange;
+            const files = await github.paginate(github.rest.pulls.listFiles, { ...context.repo, pull_number: pr.number, per_page: 100 });
+            const added = (f) => (f.patch || "").split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++")).map((l) => l.slice(1));
+            const gruende = [];
+
+            // Bekannte Secrets: alles, was ein Workflow auf main schon nutzt.
+            let bekannt = new Set();
+            try {
+              const { data: liste } = await github.rest.repos.getContent({ ...context.repo, path: ".github/workflows", ref: "main" });
+              for (const eintrag of Array.isArray(liste) ? liste : []) {
+                const { data } = await github.rest.repos.getContent({ ...context.repo, path: eintrag.path, ref: "main" });
+                const text = Buffer.from(data.content, "base64").toString("utf8");
+                for (const m of text.matchAll(/secrets\.([A-Za-z0-9_]+)/g)) bekannt.add(m[1]);
+              }
+            } catch (e) { core.warning(`Secrets auf main nicht lesbar: ${e.message}`); }
+
+            for (const f of files) {
+              const p = f.filename;
+              const neu = added(f);
+              if (p.startsWith(".github/workflows/")) {
+                for (const l of neu) {
+                  if (/^\s*(contents|pull-requests|issues|actions|packages|id-token|deployments|statuses|checks|security-events|pages|discussions|repository-projects)\s*:\s*write/.test(l)) gruende.push(`Workflow-Recht erweitert in ${p}: ${l.trim()}`);
+                  if (/^\s*pull_request_target\s*:/.test(l)) gruende.push(`pull_request_target neu in ${p}`);
+                  for (const m of l.matchAll(/secrets\.([A-Za-z0-9_]+)/g)) if (m[1] !== "GITHUB_TOKEN" && !bekannt.has(m[1])) gruende.push(`neues Secret ${m[1]} in ${p}`);
+                  const u = l.match(/^\s*-?\s*uses:\s*([^\s@#]+)/);
+                  if (u && !u[1].startsWith("./") && !/^(actions|anthropics|github)\//.test(u[1])) gruende.push(`Drittanbieter-Action ${u[1]} in ${p}`);
+                }
+              }
+              if (/^supabase\/migrations\//.test(p)) {
+                for (const l of neu) {
+                  const s = l.replace(/--.*$/, "");
+                  if (/\b(drop\s+(table|column|schema|policy)|truncate|delete\s+from|alter\s+table\s+\S+\s+(drop|rename))\b/i.test(s)) gruende.push(`Datenverlust in ${p}: ${s.trim().slice(0, 80)}`);
+                }
+              }
+              if (/^src\/(middleware|lib\/auth|lib\/kopplung)\b|^middleware\.ts$/.test(p)) gruende.push(`Auth/Middleware: ${p}`);
+              if (/^src\/(app|components)\//.test(p) && neu.some((l) => /SUPABASE_SERVICE_ROLE_KEY/.test(l))) gruende.push(`Service-Role-Key im Client: ${p}`);
+            }
+
+            const high = gruende.length > 0;
+            const risk = high ? "risk:high" : "risk:medium";
+            const vorhandene = labels.filter((l) => l.startsWith("risk:"));
+            if (!vorhandene.includes(risk)) {
+              for (const alt of vorhandene) await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name: alt }).catch(() => {});
+              await github.rest.issues.addLabels({ ...context.repo, issue_number: pr.number, labels: [risk] }).catch((e) => core.warning(`Label: ${e.message}`));
+            }
+            if (high && !labels.includes("freigegeben")) {
+              const kopf = "<!-- automerge-risiko -->";
+              const body = `${kopf}\n**Wartet auf Sinan (risk:high).** Auto-Merge erst mit Label \`freigegeben\`.\n\n${gruende.map((g) => `- ${g}`).join("\n")}`;
+              const { data: kommentare } = await github.rest.issues.listComments({ ...context.repo, issue_number: pr.number, per_page: 100 });
+              const alt = kommentare.find((k) => (k.body || "").startsWith(kopf));
+              if (alt) await github.rest.issues.updateComment({ ...context.repo, comment_id: alt.id, body });
+              else await github.rest.issues.createComment({ ...context.repo, issue_number: pr.number, body });
+            }
+
+            const allowed = !pr.draft && !labels.includes("no-automerge") && (!high || labels.includes("freigegeben"));
             const gql = github.graphql;
             if (allowed) {
               await gql(`mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) { clientMutationId } }`, { id: pr.node_id })
-                .then(() => core.info("Auto-Merge an."))
+                .then(() => core.info(`Auto-Merge an (${risk}).`))
                 .catch((e) => core.warning(`Auto-Merge nicht gesetzt: ${e.message}`));
             } else {
               await gql(`mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }`, { id: pr.node_id })
-                .then(() => core.info("Auto-Merge aus (Draft, no-automerge oder Workflow-Änderung)."))
+                .then(() => core.info(`Auto-Merge aus (${pr.draft ? "Draft" : labels.includes("no-automerge") ? "no-automerge" : "risk:high ohne freigegeben"}).`))
                 .catch(() => core.info("Auto-Merge war nicht an."));
             }
