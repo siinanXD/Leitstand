@@ -1,4 +1,5 @@
 import { parseGuthaben, type Guthaben } from "./kosten/guthaben";
+import { parsePlan, type Plan } from "./vorarbeiter/vorarbeiter";
 import { parseOffenePrs, type OffenerPr } from "./wartende-prs";
 
 // Reine Ableitungen für die Übersicht. Eingabe sind Zeilen aus loop_events und loop_snapshot (SIN-303); nichts wird erfunden.
@@ -33,6 +34,8 @@ export type SnapshotRow = {
   progress?: Teilstand | null;
   /** Optional (SIN-555): Guthaben je Dienst aus `loop_snapshot.guthaben`. */
   guthaben?: Guthaben[];
+  /** Optional (SIN-553): Plan des Vorarbeiters aus `loop_snapshot.plan`. */
+  plan?: Plan | null;
 };
 export type Teilstand = { fertig: number; gesamt: number; neueIdeen: number };
 
@@ -129,6 +132,7 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         open_prs: parseOffenePrs(o.open_prs),
         progress: parseFortschritt(o.progress),
         guthaben: parseGuthaben(o.guthaben),
+        plan: parsePlan(o.plan),
       },
     ];
   });
