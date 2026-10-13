@@ -1,0 +1,41 @@
+name: hausmeister
+on:
+  schedule:
+    - cron: "0 5 * * 1" # montags 07:00 Berlin (Sommerzeit)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur ins Log schreiben"
+        type: boolean
+        default: true
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+jobs:
+  hausmeister:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsx scripts/hausmeister/hausmeister.ts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+      - name: PR öffnen
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+        run: |
+          git diff --quiet docs/autonomy/HAUSMEISTER.md && exit 0
+          git config user.name "hausmeister[bot]" && git config user.email "hausmeister@users.noreply.github.com"
+          git checkout -b "hausmeister/$(date +%G-W%V)"
+          git add docs/autonomy/HAUSMEISTER.md
+          git commit -m "chore(hausmeister): Wochenliste (SIN-551)" -m "Part of SIN-551"
+          git push origin HEAD
+          gh pr create --base main --title "chore(hausmeister): Wochenliste (SIN-551)" --body "Neue Funde des Hausmeisters, siehe docs/autonomy/HAUSMEISTER.md."
