@@ -181,6 +181,19 @@ test("Fertig: nur feat und fix der letzten 6 Stunden, Titel ohne Präfix und Ken
   assert.equal(menschlich("chore: aufräumen"), "Aufräumen");
 });
 
+test("Fertig: nachts Gemergtes kommt morgens ab 07:00, tagsüber bleibt das 6-Stunden-Fenster (SIN-593)", () => {
+  // 23:29 Berlin = 21:29 UTC; erster Lauf nach der Ruhe 07:04 Berlin = 05:04 UTC (7,5 h später).
+  const pr = { repo: "siinanXD/Leitstand", projekt: "Leitstand", nummer: 139, titel: "feat(kontingent): Pausen mit Reset-Zeit und Wecker (SIN-581)", gemergt: utc("2026-10-13T21:29:00Z") };
+  assert.equal(plane(fertigAus([pr], utc("2026-10-13T23:00:00Z")), new Set(), utc("2026-10-13T23:00:00Z")).nachrichten.length, 0);
+  const morgens = utc("2026-10-14T05:04:00Z");
+  const p = plane(fertigAus([pr], morgens), new Set(), morgens);
+  assert.equal(p.nachrichten.length, 1);
+  assert.match(p.nachrichten[0].text, /Pausen mit Reset-Zeit/);
+  assert.equal(fertigAus([pr], utc("2026-10-14T08:00:00Z")).length, 0);
+  const tags = { ...pr, gemergt: utc("2026-10-13T10:00:00Z") };
+  assert.equal(fertigAus([tags], utc("2026-10-13T17:30:00Z")).length, 0);
+});
+
 test("Abbruch: letzter echter Lauf gescheitert, einmal am Tag, nicht wenn danach einer klappte", () => {
   const jetzt = utc("2026-10-13T15:30:00Z");
   const lauf = (ergebnis: string, min: number, issue = "SIN-456") => ({ repo: "siinanXD/Content-Agent-Lernapp", projekt: "Lern-App", issue, titel: "Richter prüft Fakten", ergebnis, ende: jetzt - min * 60_000 });

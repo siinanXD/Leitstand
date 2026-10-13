@@ -5,6 +5,10 @@ name: push-ausloeser
 on:
   schedule:
     - cron: "4,19,34,49 * * * *"
+  # GitHub lässt geplante Läufe unter Last ausfallen (SIN-593): nach jedem Merge zusätzlich sofort laufen.
+  workflow_run:
+    workflows: [loop-merge, automerge]
+    types: [completed]
   workflow_dispatch:
     inputs:
       dry_run:

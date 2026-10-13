@@ -194,9 +194,13 @@ export function menschlich(titel: string): string {
 /** Gemergter PR je Repo. Nur `feat` und `fix` zählen als „fertig“, Pflege (chore, docs, ci) nicht. Älter als 6 Stunden: nicht mehr melden. */
 export type GemergterPr = { repo: string; projekt: string; nummer: number; titel: string; gemergt: number };
 export const FERTIG_FENSTER_MS = 6 * 3_600_000;
+/** Nachts Gemergtes wartet die Ruhezeit ab (höchstens 9 h) und kommt morgens: dafür gilt ein Fenster von 10 Stunden (SIN-593). */
+export const FERTIG_FENSTER_NACHT_MS = 10 * 3_600_000;
+export const fertigGueltig = (gemergt: number, jetzt: number): boolean =>
+  jetzt - gemergt <= (inRuhe(gemergt) ? FERTIG_FENSTER_NACHT_MS : FERTIG_FENSTER_MS);
 export const fertigAus = (prs: readonly GemergterPr[], jetzt: number): Ereignis[] =>
   prs
-    .filter((p) => /^(feat|fix)(\(|!|:)/.test(p.titel) && jetzt - p.gemergt <= FERTIG_FENSTER_MS)
+    .filter((p) => /^(feat|fix)(\(|!|:)/.test(p.titel) && fertigGueltig(p.gemergt, jetzt))
     .map((p) => ({ id: `fertig:${p.repo}#${p.nummer}`, art: "fertig", projekt: p.projekt, kennung: "", titel: menschlich(p.titel), zeit: p.gemergt, url: "/" }));
 
 /** Worker-Lauf je Aufgabe. `ergebnis` wie bei GitHub: success, failure, cancelled, skipped. */
