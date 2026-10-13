@@ -17,7 +17,7 @@ test("lageSatz: wartet, nichts zu tun, Alarm, keine Daten", () => {
   const rot = { events: ev([{ created_at: vor(5), step: "deploy", status: "failure", issue: "SIN-9" }]), snapshot: [] };
   const alarm = lageSatz(rot, 0, jetzt);
   assert.equal(alarm?.alarm, true);
-  assert.match(alarm?.satz ?? "", /^Achtung: DEPLOY rot/);
+  assert.match(alarm?.satz ?? "", /^Achtung: Etwas ist kaputt\.$/);
   assert.equal(lageSatz({ events: [], snapshot: [] }, 0, jetzt), null);
 });
 
@@ -83,6 +83,6 @@ test("heuteFertig: nur heutige Merges, jüngster zuerst, je Issue einmal", () =>
   ]);
   const snapshot = parseSnapshot([{ project: "leitstand", issue: "SIN-2", title: "Der Kosten-Block steht" }]);
   const liste = heuteFertig({ events, snapshot }, jetzt);
-  assert.deepEqual(liste.map((f) => f.satz), ["Der Kosten-Block steht", "SIN-1 ist fertig"]);
-  assert.match(liste[0].zeit, /^\d\d:\d\d$/);
+  assert.deepEqual(liste.map((f) => f.satz), ["Der Kosten-Block steht", "Eine Aufgabe ist fertig"]);
+  assert.ok(!Number.isNaN(Date.parse(liste[0].zeit)));
 });

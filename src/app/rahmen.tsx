@@ -79,7 +79,7 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
   }
   return (
     <>
-      <Kopf angemeldet aktiv={aktiv} stand={geladen ? uhrzeit(geladen.jetzt.toISOString()) : undefined} wartend={wartende.length} pause={pause} />
+      <Kopf angemeldet aktiv={aktiv} stand={!!geladen} pause={pause} />
       {!geladen && (
         <p className="hinweis" role="status">
           Daten werden geladen …

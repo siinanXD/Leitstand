@@ -23,7 +23,7 @@ const dinge = (n: number) => `${n} ${n === 1 ? "Ding wartet" : "Dinge warten"} a
 export function lageSatz(q: Quelle, anzahlWartend: number, jetzt: Date): Lage | null {
   if (q.events.length === 0 && q.snapshot.length === 0) return null;
   const { grund } = pipelineSchiene(q.events, jetzt);
-  if (grund) return { satz: `Achtung: ${grund}${anzahlWartend > 0 ? ` ${dinge(anzahlWartend)}.` : ""}`, alarm: true };
+  if (grund) return { satz: `Achtung: Etwas ist kaputt.${anzahlWartend > 0 ? ` ${dinge(anzahlWartend)}.` : ""}`, alarm: true };
   if (anzahlWartend > 0) return { satz: `${dinge(anzahlWartend)}. Alles andere läuft von allein.`, alarm: false };
   return { satz: "Nichts zu tun. Alles läuft.", alarm: false };
 }
@@ -83,7 +83,9 @@ export const STATIONEN = [
 ] as const;
 export type StationId = (typeof STATIONEN)[number]["id"];
 
-export type Eintrag = { key: string; titel: string; projekt: string; minuten: number | null; aktiv: boolean; rot: boolean };
+export type Eintrag = { key: string; titel: string; projekt: string; minuten: number | null;
+  /** Beginn in der Station (ISO) für `zeitInWorten()`; null bei „Ist live“ und wartenden PRs (SIN-578). */
+  seit: string | null; aktiv: boolean; rot: boolean };
 export type Station = { id: StationId; name: string; hinweis: string; eintraege: Eintrag[] };
 
 const STATION_VON_STUFE: Record<string, StationId> = { PLAN: "geplant", QUEUE: "geplant", WORK: "gebaut", PR: "geprueft", GATE: "geprueft", MERGE: "live", DEPLOY: "live" };
@@ -115,12 +117,13 @@ export function stationen(q: Quelle, wartende: WartenderPr[], jetzt: Date): Stat
       titel: zeile?.title && zeile.title !== zeile.issue ? zeile.title : (letztes.issue ?? `PR #${letztes.pr}`),
       projekt: letztes.project!,
       minuten: station === "live" ? null : Math.max(0, Math.round((jetzt.getTime() - ersterInStation) / 60_000)),
+      seit: station === "live" ? null : new Date(ersterInStation).toISOString(),
       aktiv: station === "gebaut" && !rot && !!letztes.status && BEGONNEN.test(letztes.status),
       rot,
     });
   }
   for (const p of wartende) {
-    aus.get("wartet")!.push({ key: p.key, titel: p.titel, projekt: REPOS[p.repo].projekt, minuten: null, aktiv: false, rot: false });
+    aus.get("wartet")!.push({ key: p.key, titel: p.titel, projekt: REPOS[p.repo].projekt, minuten: null, seit: null, aktiv: false, rot: false });
   }
   return STATIONEN.map((s) => ({ ...s, eintraege: aus.get(s.id)!.sort((a, b) => (b.minuten ?? -1) - (a.minuten ?? -1)) }));
 }
@@ -140,9 +143,7 @@ export function fortschritt(q: Quelle): Fortschritt[] {
 
 export type Fertig = { key: string; satz: string; zeit: string };
 
-const uhr = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
-
-/** Heute gemergte Issues, jüngste zuerst: ein Satz und die Uhrzeit. Ohne Titel steht die Kennung da. */
+/** Heute gemergte Issues, jüngste zuerst: ein Satz und der Zeitpunkt (ISO, für `zeitInWorten()`). Ohne Titel steht „Eine Aufgabe ist fertig“, nie eine Kennung (SIN-578). */
 export function heuteFertig(q: Quelle, jetzt: Date): Fertig[] {
   const heute = tagBerlin(jetzt);
   const gesehen = new Set<string>();
@@ -156,6 +157,6 @@ export function heuteFertig(q: Quelle, jetzt: Date): Fertig[] {
       if (gesehen.has(key)) return [];
       gesehen.add(key);
       const titel = q.snapshot.find((s) => s.project === e.project && !!e.issue && s.issue === e.issue)?.title;
-      return [{ key, satz: titel && titel !== e.issue ? titel : `${wer} ist fertig`, zeit: uhr(e.created_at) }];
+      return [{ key, satz: titel && titel !== e.issue ? titel : "Eine Aufgabe ist fertig", zeit: e.created_at }];
     });
 }

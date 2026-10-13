@@ -4,40 +4,43 @@ import Link from "next/link";
 import type { Pause } from "@/lib/aktionen-client";
 import { browserClient } from "@/lib/browser-client";
 import { IdeeFormular } from "./idee-formular";
+import { setzeTechnik, useTechnik } from "./technik";
 
+// Im Menü nur die sechs einfachen Seiten (SIN-578); die Aufgabe öffnet man aus einer Karte. Der Rest hinter „Für Technik“.
 const REITER = [
-  { id: "uebersicht", href: "/", name: "Übersicht" },
+  { id: "uebersicht", href: "/", name: "Start" },
   { id: "team", href: "/team", name: "Team" },
-  { id: "projekte", href: "/projekte", name: "Projekte" },
+  { id: "werkzeuge", href: "/werkzeuge", name: "Werkzeuge" },
+  { id: "projekte", href: "/projekte", name: "Produkt" },
+  { id: "kosten", href: "/kosten", name: "Kosten" },
+];
+const TECHNIK = [
+  { id: "details", href: "/details", name: "Details" },
   { id: "ablauf", href: "/ablauf", name: "Ablauf" },
   { id: "abhaengigkeiten", href: "/abhaengigkeiten", name: "Abhängigkeiten" },
-  { id: "kosten", href: "/kosten", name: "Kosten" },
   { id: "auswertung", href: "/auswertung", name: "Auswertung" },
-  { id: "werkzeuge", href: "/werkzeuge", name: "Werkzeuge" },
+  { id: "freigabe", href: "/freigabe", name: "Freigabe" },
   { id: "einstellungen", href: "/einstellungen", name: "Einstellungen" },
 ];
 
-export function Kopf({ stand, angemeldet, aktiv = "uebersicht", wartend = 0, pause }: { stand?: string; angemeldet: boolean; aktiv?: string; wartend?: number; pause?: Pause }) {
+export function Kopf({ stand, angemeldet, aktiv = "uebersicht", pause }: { stand?: boolean; angemeldet: boolean; aktiv?: string; pause?: Pause }) {
+  const technik = useTechnik();
   return (
     <header className="kopf">
       <p className="mono-label marke">Leitstand</p>
       {angemeldet && (
         <>
           <nav aria-label="Reiter" className="reiter">
-            {REITER.map((r) => (
+            {(technik ? [...REITER, ...TECHNIK] : REITER).map((r) => (
               <Link key={r.id} href={r.href} className="knopf" aria-current={r.id === aktiv ? "page" : undefined}>
                 {r.name}
-                {r.id === "uebersicht" && wartend > 0 && (
-                  <span className="mono">
-                    {" "}
-                    ({wartend}
-                    <span className="sr-only"> warten auf dich</span>)
-                  </span>
-                )}
               </Link>
             ))}
+            <label className="knopf technik-schalter">
+              <input type="checkbox" checked={technik} onChange={(e) => setzeTechnik(e.target.checked)} /> Für Technik
+            </label>
           </nav>
-          {stand && <p className="mono-label live">Live {stand}</p>}
+          {stand && <p className="mono-label live">Live</p>}
           <div className="kopf-aktionen">
             <IdeeFormular />
             <button type="button" className="knopf" disabled>

@@ -7,7 +7,8 @@ const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
 const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 export default defineConfig({
-  testDir: "e2e",
+  testDir: ".",
+  testMatch: ["e2e/**/*.spec.ts", "tests/**/*.spec.ts"],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

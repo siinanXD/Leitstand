@@ -1,192 +1,93 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { use } from "react";
 import { projektInfo } from "@/lib/projekte";
-import { alsNaechstes, projektAufgaben, projektBetrieb, projektLinks, projektQuelle, zeitVerteilung } from "@/lib/projektseite";
+import { alsNaechstes, projektAufgaben, projektLinks } from "@/lib/projektseite";
 import { fortschritt } from "@/lib/uebersicht-einfach";
+import { ohneKennungen } from "@/lib/zeit";
+import { ChefZeile } from "../../chef-karte";
+import { WieWeit } from "../../fortschritt-balken";
+import { MitMehr } from "../../mit-mehr";
 import { Rahmen } from "../../rahmen";
-import "../../freigabe.css";
-import "../../uebersicht.css";
-import "../../projekte/projekte.css";
+import { ZustandSymbol } from "../../zustand-symbol";
 import "../../bunt.css";
 
-const NICHT_VERFUEGBAR = <p className="leer">nicht verfügbar</p>;
-
-/** Projektseite nach Figma C1 (Übersicht) und C4 (Deine Aufgaben), SIN-531. Alle Zahlen echt, sonst „nicht verfügbar“. */
+/** Ein Produkt (SIN-578): drei Karten, Fortschritt, als Nächstes, deine Aufgaben. Kennungen und Minuten nur auf der Aufgaben-Seite. */
 export default function ProjektSeite({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const projekt = projektInfo(decodeURIComponent(id));
-  const [gewaehlt, setGewaehlt] = useState<string | null>(null);
-
   return (
     <Rahmen aktiv="projekte">
-      {(quelle, jetzt) => {
-        const mein = projektQuelle(quelle, projekt.id);
+      {(quelle) => {
         const naechstes = alsNaechstes(quelle.snapshot, projekt.id);
-        const zeit = zeitVerteilung(mein.events, jetzt);
-        const betrieb = projektBetrieb(quelle, projekt.id, jetzt);
         const aufgaben = projektAufgaben(quelle.snapshot, projekt.id);
-        const aktiv = aufgaben.find((a) => a.key === gewaehlt) ?? aufgaben[0];
-        const weit = fortschritt(quelle).find((f) => f.project === projekt.id && f.gesamt > 0);
+        const weit = fortschritt(quelle).filter((f) => f.project === projekt.id && f.gesamt > 0);
         return (
-          <main className="bento-b1 projekte-seite bunt">
-            <section className="tile b1-kachel pfirsich" aria-labelledby="weit" style={{ gridColumn: "1 / -1" }}>
-              <h2 id="weit" className="mono-label">
-                Wie weit sind wir?
-              </h2>
-              {weit ? (
-                <>
-                  <p className="gross-prozent">
-                    {Math.round((weit.fertig / weit.gesamt) * 100)} % <span className="leer">von v1 fertig ({weit.fertig} von {weit.gesamt})</span>
-                  </p>
-                  <div className="balken" role="img" aria-label={`${Math.round((weit.fertig / weit.gesamt) * 100)} Prozent fertig`}>
-                    <div style={{ width: `${Math.min(100, (weit.fertig / weit.gesamt) * 100)}%` }} />
-                  </div>
-                </>
-              ) : (
-                NICHT_VERFUEGBAR
-              )}
-            </section>
-
-            <section className="tile b1-satz" aria-labelledby="projekt" style={{ gridColumn: "1 / -1" }}>
-              <h1 id="projekt" className="mono-label">
-                <Link href="/projekte">Alle Projekte</Link> · <span className="marke-projekt" style={{ background: projekt.farbe }} aria-hidden="true" /> {projekt.name}
+          <main className="einfach bunt">
+            <section className="einfach-lage" aria-labelledby="projekt">
+              <h1 id="projekt" className="satz">
+                <Link href="/projekte">Produkte</Link> · <span className="marke-projekt" style={{ background: projekt.farbe }} aria-hidden="true" /> {projekt.name}
               </h1>
+              <ChefZeile angemeldet />
               <ul className="link-leiste" aria-label="Links">
-                {projektLinks(projekt).map((l) => (
-                  <li key={l.art}>
-                    {l.href ? (
-                      <a href={l.href} target="_blank" rel="noreferrer">
-                        {l.name}
-                      </a>
-                    ) : (
-                      <span className="leer">
-                        {l.name}
-                        <span className="sr-only">: nicht verfügbar</span>
-                      </span>
-                    )}
-                  </li>
-                ))}
+                {projektLinks(projekt).flatMap((l) =>
+                  l.href
+                    ? [
+                        <li key={l.art}>
+                          <a href={l.href} target="_blank" rel="noreferrer">
+                            {l.name}
+                          </a>
+                        </li>,
+                      ]
+                    : [],
+                )}
               </ul>
             </section>
 
-            <div className="b1-spalte">
-              <section className="tile b1-kachel" aria-labelledby="naechstes">
-                <h2 id="naechstes" className="mono-label">
-                  Als Nächstes
-                </h2>
-                {naechstes.length === 0 ? (
-                  NICHT_VERFUEGBAR
-                ) : (
-                  <ul className="aufgaben">
-                    {naechstes.map((t) => (
-                      <li key={t}>
-                        <span>{t}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              <section className="tile b1-kachel" aria-labelledby="prognose">
-                <h2 id="prognose" className="mono-label">
-                  Prognose fertig
-                </h2>
-                {NICHT_VERFUEGBAR}
-              </section>
-
-              <section className="tile b1-kachel" aria-labelledby="content">
-                <h2 id="content" className="mono-label">
-                  Content-Stand
-                </h2>
-                <p className="grund">Bewertet, veröffentlicht, Stichprobe</p>
-                {NICHT_VERFUEGBAR}
-              </section>
-            </div>
-
-            <div className="b1-spalte">
-              <section className="tile b1-kachel" aria-labelledby="zeit">
-                <h2 id="zeit" className="mono-label">
-                  Wo die Zeit hingeht · 24 h
-                </h2>
-                {zeit.length === 0 ? (
-                  NICHT_VERFUEGBAR
-                ) : (
-                  <ul className="aufgaben">
-                    {zeit.map((z) => (
-                      <li key={z.stufe}>
-                        <span className="mono">{z.stufe}</span>
-                        <span className="mono">{Math.round(z.anteil * 100)} %</span>
-                        <span className="mono">{z.anzahl}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              <section className="tile b1-kachel" aria-labelledby="betrieb">
-                <h2 id="betrieb" className="mono-label">
-                  Betrieb
-                </h2>
-                {betrieb.stufen.length === 0 ? (
-                  NICHT_VERFUEGBAR
-                ) : (
-                  <>
-                    <ol className="stufen">
-                      {betrieb.stufen.map((s) => (
-                        <li key={s.stage} className={s.zustand === "leer" ? undefined : s.zustand}>
-                          {s.stage}
-                          {s.zustand === "rot" && <span className="sr-only"> rot</span>}
-                        </li>
-                      ))}
-                    </ol>
-                    {betrieb.grund && <p className="grund">{betrieb.grund}</p>}
-                    <p className="mono">
-                      {betrieb.ereignisse24h} Ereignisse · Modellkosten {betrieb.kostenUsd !== null ? `${betrieb.kostenUsd.toFixed(2).replace(".", ",")} $` : "nicht verfügbar"}
-                    </p>
-                  </>
-                )}
-              </section>
-            </div>
-
-            <section className="tile b1-kachel" aria-labelledby="deine" style={{ gridColumn: "1 / -1" }}>
-              <h2 id="deine" className="mono-label">
-                Deine Aufgaben · {aufgaben.length}
+            <section className="tile einfach-block pfirsich" aria-labelledby="weit">
+              <h2 id="weit" className="karte-titel">
+                Wie weit sind wir?
               </h2>
-              {aufgaben.length === 0 ? (
-                <p className="leer">Keine Aufgaben für dich.</p>
+              <ZustandSymbol art="fertig" />
+              <WieWeit liste={weit} />
+            </section>
+
+            <section className="tile einfach-block gruen" aria-labelledby="naechstes">
+              <h2 id="naechstes" className="karte-titel">
+                Als Nächstes
+              </h2>
+              <ZustandSymbol art="laeuft" />
+              {naechstes.length === 0 ? (
+                <p className="leer">Keine Daten</p>
               ) : (
-                <div className="aufgaben-spalten">
-                  <ul className="aufgaben">
-                    {aufgaben.map((a) => (
-                      <li key={a.key}>
-                        <button type="button" className="knopf aufgabe-knopf" aria-pressed={a.key === aktiv?.key} onClick={() => setGewaehlt(a.key)}>
-                          <span>{a.titel}</span>
-                          <span className="mono">{a.ref}</span>
-                          {a.minuten !== null && <span className="mono">{a.minuten} MIN</span>}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  {aktiv && (
-                    <div className="anleitung" aria-live="polite">
-                      <h3 className="mono-label">{aktiv.titel}</h3>
-                      <p className="grund">Für diese Aufgabe ist keine Schritt-für-Schritt-Anleitung hinterlegt. Die Schritte stehen im Linear-Issue.</p>
-                      <p className="grund">Erledigt ist sie erst, wenn der Loop das Label `sinan` nicht mehr findet.</p>
-                      {/^SIN-\d+$/.test(aktiv.ref) && (
-                        <Link className="knopf" href={`/aufgabe/${aktiv.ref}`}>
-                          Ablauf ansehen
-                        </Link>
-                      )}
-                      {aktiv.href && (
-                        <a className="knopf aktiv" href={aktiv.href} target="_blank" rel="noreferrer">
-                          In Linear öffnen
-                        </a>
-                      )}
-                    </div>
+                <MitMehr
+                  liste={naechstes}
+                  klasse="aufgaben"
+                  zeile={(t) => (
+                    <li key={t}>
+                      <span>{ohneKennungen(t)}</span>
+                    </li>
                   )}
-                </div>
+                />
+              )}
+            </section>
+
+            <section className="tile einfach-block sonne" aria-labelledby="deine">
+              <h2 id="deine" className="karte-titel">
+                {aufgaben.length > 0 ? `${aufgaben.length} ${aufgaben.length === 1 ? "Aufgabe wartet" : "Aufgaben warten"} auf dich` : "Nichts wartet auf dich"}
+              </h2>
+              <ZustandSymbol art={aufgaben.length > 0 ? "wartet" : "fertig"} />
+              {aufgaben.length > 0 && (
+                <MitMehr
+                  liste={aufgaben}
+                  klasse="aufgaben"
+                  zeile={(a) => (
+                    <li key={a.key}>
+                      {/^SIN-\d+$/.test(a.ref) ? <Link href={`/aufgabe/${a.ref}`}>{ohneKennungen(a.titel)}</Link> : <span>{ohneKennungen(a.titel)}</span>}
+                    </li>
+                  )}
+                />
               )}
             </section>
           </main>
