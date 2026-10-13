@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import { berlinTag, leseBudget, leseLangfuse, lesePipeline, leseWerbemittel, zusammenfuehren, type Kosten } from "./kosten";
+import { berlinTag, leseBudget, leseWochenDeckel,leseLangfuse, lesePipeline, leseWerbemittel, zusammenfuehren, type Kosten } from "./kosten";
 
 const MAX_SEITEN = 20;
 
-/** Monatsanfang, einen Tag großzügiger, damit durch die Zeitzone kein Randtag fehlt. */
-const ladeAb = (jetzt: Date) => new Date(new Date(berlinTag(jetzt).slice(0, 7) + "-01T00:00:00Z").getTime() - 24 * 3_600_000);
+/** Monatsanfang oder 8 Tage zurück (was früher liegt), damit Zeitzone und Wochenfenster keinen Randtag verlieren. */
+const ladeAb = (jetzt: Date) => new Date(Math.min(new Date(berlinTag(jetzt).slice(0, 7) + "-01T00:00:00Z").getTime() - 24 * 3_600_000, jetzt.getTime() - 8 * 24 * 3_600_000));
 
 async function ausSupabase(tabelle: string, spalten: string, ab: Date): Promise<unknown[] | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -59,5 +59,6 @@ export async function ladeKosten(jetzt = new Date()): Promise<Kosten> {
     },
     leseBudget(process.env.KOSTEN_BUDGET_EUR),
     jetzt,
+    leseWochenDeckel(process.env.KOSTEN_WOCHE_EUR),
   );
 }
