@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Pause } from "@/lib/aktionen-client";
 import { browserClient } from "@/lib/browser-client";
+import { vergiss } from "@/lib/stand-speicher";
 import { IdeeFormular } from "./idee-formular";
 import { setzeTechnik, useTechnik } from "./technik";
 
@@ -66,7 +67,10 @@ export function Kopf({ stand, angemeldet, aktiv = "uebersicht", pause }: { stand
                   {pause.fehler}
                 </p>
               )}
-              <button type="button" className="knopf aktiv" onClick={() => void browserClient()?.auth.signOut()}>
+              <button type="button" className="knopf aktiv" onClick={() => {
+                vergiss();
+                void browserClient()?.auth.signOut();
+              }}>
                 Abmelden
               </button>
             </div>

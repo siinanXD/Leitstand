@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useSitzung } from "@/lib/sitzung";
 import { laufende, type Aufgabe } from "@/lib/aufgaben";
+import type { Zeile } from "@/lib/ceo/ceo";
 import { projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
 import { fortschritt, karten, lageSatz, stationen, type Eintrag, type Karte, type Station, type StationId } from "@/lib/uebersicht-einfach";
@@ -131,7 +132,7 @@ function Ding({ e, station, id, jetzt }: { e: Eintrag; station: string; id: Stat
   );
 }
 
-function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet }: { quelle: Quelle; jetzt: Date; wartend: Wartende; laden: string; pausiert: string | null; angemeldet: boolean }) {
+function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet, chef }: { quelle: Quelle; jetzt: Date; wartend: Wartende; laden: string; pausiert: string | null; angemeldet: boolean; chef: Zeile[] | null }) {
   const werbung = useWartendeWerbung(angemeldet);
   const werbeKarte: Karte[] = werbung
     ? [{ key: "werbung", titel: werbung === 1 ? "Ein Werbe-Entwurf wartet auf dein Ja" : `${werbung} Werbe-Entwürfe warten auf dein Ja`, warum: "Video oder Text ansehen, dann freigeben oder ablehnen.", projekt: "Werbung", pr: null, minuten: null, wartender: null, ansehen: "/freigabe/werbemittel", aufladen: null }]
@@ -153,9 +154,9 @@ function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet }: { quelle
           </p>
         )}
         <h1 id="lage" className={lage?.alarm ? "satz alarm" : "satz"}>
-          {lage ? lage.satz : laden === "fehler" ? "Die Daten konnten nicht geladen werden." : laden === "laedt" ? "Daten werden geladen …" : "Keine Daten"}
+          {lage ? lage.satz : laden === "fehler" ? "Die Daten konnten nicht geladen werden." : "Keine Daten"}
         </h1>
-        <ChefZeile angemeldet={angemeldet} />
+        <ChefZeile angemeldet={angemeldet} zeilen={chef} snapshot={quelle.snapshot} />
       </section>
       <Aufklappkarte
         farbe="sonne"
@@ -186,7 +187,7 @@ export default function Home() {
   const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
   return (
     <Rahmen aktiv="uebersicht">
-      {(quelle, jetzt, wartend, pause, laden) => <Start quelle={quelle} jetzt={jetzt} wartend={wartend} laden={laden} pausiert={pause.stand?.pausiert ? pauseSatz(pause.stand.seit, jetzt) : null} angemeldet={angemeldet} />}
+      {(quelle, jetzt, wartend, pause, laden, chef) => <Start quelle={quelle} jetzt={jetzt} wartend={wartend} laden={laden} pausiert={pause.stand?.pausiert ? pauseSatz(pause.stand.seit, jetzt) : null} angemeldet={angemeldet} chef={chef} />}
     </Rahmen>
   );
 }

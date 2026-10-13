@@ -19,7 +19,7 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
   const projekt = projektInfo(decodeURIComponent(id));
   return (
     <Rahmen aktiv="projekte">
-      {(quelle) => {
+      {(quelle, _jetzt, _wartend, _pause, _laden, chef) => {
         // Aus Linear: was gerade läuft, dann was als Nächstes dran ist (Befund 13.10.: hier stand nur „Keine Daten“).
         const ausLinear = (quelle.aufgaben ?? []).filter((a) => a.projekt === projekt.id && (a.status === "laeuft" || (a.status === "offen" && a.labels.includes("claude"))));
         const naechstes = ausLinear.length > 0 ? [...ausLinear].sort((a, b) => Number(b.status === "laeuft") - Number(a.status === "laeuft")).map((a) => (a.status === "laeuft" ? `Gerade: ${a.titel}` : a.titel)) : alsNaechstes(quelle.snapshot, projekt.id);
@@ -31,7 +31,7 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
               <h1 id="projekt" className="satz">
                 <Link href="/projekte">Produkte</Link> · <span className="marke-projekt" style={{ background: projekt.farbe }} aria-hidden="true" /> {projekt.name}
               </h1>
-              <ChefZeile angemeldet />
+              <ChefZeile angemeldet zeilen={chef} snapshot={quelle.snapshot} />
               <ul className="link-leiste" aria-label="Links">
                 {projektLinks(projekt).flatMap((l) =>
                   l.href

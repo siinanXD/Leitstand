@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SnapshotRow } from "../uebersicht";
-import { entscheide, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, ohneDaten, startbar, type ProduktLage } from "./ceo";
+import { bezugVon, chefSatz, entscheide, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, ohneDaten, startbar, type ProduktLage } from "./ceo";
 import { neueIssueTitel, zaehleHaken } from "./fertig";
 
 const lage: ProduktLage = { id: "lernapp", name: "Lern-App", startbar: 1, fertig: 3, gesamt: 10, rot: null, wartetAufSinan: [], metaPrsHeute: 0, ideenDieseWoche: 0 };
@@ -50,7 +50,7 @@ test("Startbar: Todo mit Label claude, nicht blockiert, nicht zurückgehalten", 
 
 test("Zeilen für Tabelle und Gedächtnis; letzte Entscheidung je Produkt", () => {
   const e = entscheide(lage);
-  assert.deepEqual(entscheidungsZeile(e, "vorrat", null), { produkt: "lernapp", entscheidung: "weiterbauen", grund: e.grund, ausloeser: "vorrat", dringend: false, issue_url: null });
+  assert.deepEqual(entscheidungsZeile(e, "vorrat", null), { produkt: "lernapp", entscheidung: "weiterbauen", grund: e.grund, ausloeser: "vorrat", dringend: false, issue_url: null, bezug: null });
   assert.match(gedaechtnisZeile(e, "2026-10-13"), /^- 2026-10-13 CEO weiterbauen: Lern-App/);
   const l = letzteJeProdukt([
     { produkt: "lernapp", entscheidung: "warten", grund: "alt", created_at: "2026-10-12T06:00:00Z" },
@@ -81,4 +81,27 @@ test("FERTIG.md: leeres Backlog + 3 offene Punkte → 3 Issues, zweiter Lauf kei
   assert.deepEqual(erster, ["Projekt-Karten", "Ablauf-Ansicht", "Freigabe-Seite"]);
   assert.deepEqual(neueIssueTitel(md, erster.map((t) => t.toUpperCase()), 8), []);
   assert.deepEqual(neueIssueTitel(md, [], 2), ["Projekt-Karten", "Ablauf-Ansicht"]);
+});
+
+test("Chef-Satz verfällt mit der Aufgabe (SIN-579)", () => {
+  const z = { produkt: "lernapp", entscheidung: "weiterbauen" as const, grund: "Lern-App: Ich plane die nächste Lücke.", created_at: "2026-10-13T10:00:00Z", bezug: "SIN-264" };
+  const titel = "Richter v2 (SIN-264)";
+  assert.equal(chefSatz(z, "Lern-App", [zeile({ issue: "SIN-264", status: "Done", title: titel })]), "Lern-App: Richter v2 ist fertig. Nächstes kommt gleich.");
+  assert.equal(chefSatz(z, "Lern-App", [zeile({ issue: "SIN-264", status: "In Progress", title: titel })]), z.grund);
+  // Aufgabe nicht mehr in der Liste, andere Zeilen da: fertig. Keine Zeilen je Aufgabe: unverändert.
+  assert.match(chefSatz(z, "Lern-App", [zeile({ issue: "SIN-300" })]), /Die Aufgabe ist fertig/);
+  assert.equal(chefSatz(z, "Lern-App", []), z.grund);
+  // Ohne Bezug bleibt der Satz.
+  assert.equal(chefSatz({ ...z, bezug: null }, "Lern-App", [zeile({ issue: "SIN-264", status: "Done" })]), z.grund);
+});
+
+test("Bezug: was läuft, sonst die erste offene Aufgabe; wird mitgeschrieben und gelesen", () => {
+  const s = [zeile({ issue: "SIN-1", status: "Todo" }), zeile({ issue: "SIN-2", status: "In Progress" }), zeile({ issue: "SIN-3", status: "Done" })];
+  assert.equal(bezugVon(s, "lernapp"), "SIN-2");
+  assert.equal(bezugVon([s[0], s[2]], "lernapp"), "SIN-1");
+  assert.equal(bezugVon(s, "leitstand"), null);
+  const e = entscheide({ ...lage, bezug: "SIN-2" });
+  assert.equal(entscheidungsZeile(e, "vorrat", null).bezug, "SIN-2");
+  assert.equal(letzteJeProdukt([{ produkt: "lernapp", entscheidung: "warten", grund: "x", created_at: "2026-10-13T10:00:00Z", bezug: "SIN-2" }])[0].bezug, "SIN-2");
+  assert.equal(letzteJeProdukt([{ produkt: "lernapp", entscheidung: "warten", grund: "x", created_at: "2026-10-13T10:00:00Z" }])[0].bezug, null);
 });

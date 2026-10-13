@@ -21,7 +21,7 @@ const STUFE: Record<string, string> = { PLAN: "Plan", QUEUE: "Warten", WORK: "Ba
 export default function Projekte() {
   return (
     <Rahmen aktiv="projekte">
-      {(quelle, jetzt) => {
+      {(quelle, jetzt, _wartend, _pause, _laden, chef) => {
         const projekte = alleProjekte([...PROJEKTE.map((p) => p.id), ...projekteIn(quelle).map((p) => p.id)]);
         const zeilen = alleZeilen(quelle, projekte, jetzt).filter((z) => z.kette.length > 0);
         const kaputt = zeilen.some((z) => z.kette.some((s) => s.zustand === "rot"));
@@ -31,7 +31,7 @@ export default function Projekte() {
               <h1 id="alle" className="satz">
                 Meine Produkte
               </h1>
-              <ChefZeile angemeldet />
+              <ChefZeile angemeldet zeilen={chef} snapshot={quelle.snapshot} />
             </section>
 
             <section className="tile einfach-block pfirsich" aria-labelledby="weit">
