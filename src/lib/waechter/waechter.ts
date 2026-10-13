@@ -285,3 +285,20 @@ export function updateText(s: Tagesstand): string {
 /** Update fällig, wenn das letzte älter als 24 Stunden ist (oder fehlt). */
 export const updateFaellig = (letztesUpdateAt: string | null, jetzt: Date) =>
   !letztesUpdateAt || jetzt.getTime() - ms(letztesUpdateAt) >= 24 * STUNDE;
+
+// ------------------------------------------------------------ Snapshot (SIN-572)
+
+/** Der Leitstand schreibt keine Zeile je Issue, sondern eine Zusammenfassung: Schlange, offene PRs, Haken aus `docs/FERTIG.md`. */
+export function leitstandSnapshot(issues: LinearIssue[], prs: PrInfo[], repo: string, haken: { fertig: number; gesamt: number } | null) {
+  const claude = issues.filter((i) => hatLabel(i, LABEL));
+  const todo = claude.filter((i) => i.stateType === "unstarted");
+  const frei = (i: LinearIssue) => !i.blockiertVon.some((b) => b.stateType !== "completed" && b.stateType !== "canceled") && !i.labels.some((l) => NIE_AUTOMATISCH.includes(l.toLowerCase()));
+  return {
+    project: "leitstand",
+    queue: { todo: todo.length, startable: todo.filter(frei).length, in_progress: claude.filter((i) => i.stateType === "started").length },
+    // shortcut: nur claude/-PRs, CI-Grün unbekannt (false), damit „Braucht dich“ nichts Falsches zeigt; bei Bedarf Check-Status mitladen.
+    open_prs: prs.map((p) => ({ repo, nummer: p.number, titel: p.titel, url: `https://github.com/${repo}/pull/${p.number}`, labels: p.labels, entwurf: false, ciGruen: false, grund: null })),
+    progress: haken ? { done: haken.fertig, total: haken.gesamt } : null,
+    quotas: [],
+  };
+}
