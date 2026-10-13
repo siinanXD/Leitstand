@@ -34,9 +34,12 @@ export type SnapshotRow = {
   progress?: Teilstand | null;
   /** Optional (SIN-555): Guthaben je Dienst aus `loop_snapshot.guthaben`. */
   guthaben?: Guthaben[];
+  /** Optional (SIN-572): Schlange als Zusammenfassung, wo kein Issue pro Zeile steht (Leitstand). */
+  queue?: Queue | null;
   /** Optional (SIN-553): Plan des Vorarbeiters aus `loop_snapshot.plan`. */
   plan?: Plan | null;
 };
+export type Queue = { todo: number; startable: number; in_progress: number };
 export type Teilstand = { fertig: number; gesamt: number; neueIdeen: number };
 
 export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[] };
@@ -97,6 +100,24 @@ export function parseFortschritt(raw: unknown): Teilstand | null {
   return { fertig, gesamt, neueIdeen: zahl(o?.ideas ?? o?.ideen) ?? 0 };
 }
 
+/** Spalte `queue`: `{todo, startable, in_progress}`, auch als JSON-Text. Unlesbar: null. */
+export function parseQueue(raw: unknown): Queue | null {
+  let v = raw;
+  if (typeof v === "string") {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return null;
+    }
+  }
+  const o = obj(v);
+  const zahl = (x: unknown) => (typeof x === "number" && Number.isInteger(x) && x >= 0 ? x : null);
+  const todo = zahl(o?.todo);
+  const startable = zahl(o?.startable);
+  const in_progress = zahl(o?.in_progress);
+  return todo === null || startable === null || in_progress === null ? null : { todo, startable, in_progress };
+}
+
 export function parseEvents(raw: unknown): LoopEvent[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((r) => {
@@ -131,6 +152,7 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         pr: num(o.pr),
         open_prs: parseOffenePrs(o.open_prs),
         progress: parseFortschritt(o.progress),
+        queue: parseQueue(o.queue),
         guthaben: parseGuthaben(o.guthaben),
         plan: parsePlan(o.plan),
       },

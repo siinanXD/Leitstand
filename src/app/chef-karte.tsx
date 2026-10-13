@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { browserClient } from "@/lib/browser-client";
 import { letzteJeProdukt, type Zeile } from "@/lib/ceo/ceo";
-import { projektInfo } from "@/lib/projekte";
+import { platzReihenfolge, projektInfo } from "@/lib/projekte";
 
 /** „Der Chef sagt“ (SIN-542, SIN-568): eine Zeile unter dem Titel mit der letzten Entscheidung des CEO-Agenten aus `ceo_entscheidungen`. Ohne Zeilen oder Tabelle: ehrlicher Leerzustand. */
 export function ChefZeile({ angemeldet }: { angemeldet: boolean }) {
@@ -19,11 +19,18 @@ export function ChefZeile({ angemeldet }: { angemeldet: boolean }) {
       offen = false;
     };
   }, [angemeldet]);
-  const neueste = zeilen?.[0];
-  const text = zeilen === undefined ? "Wird geladen …" : neueste ? `${projektInfo(neueste.produkt).name}: ${neueste.grund}` : "Noch keine Entscheidung.";
+  // Eine Zeile je Produkt, Projekte in Bauphase (Leitstand) zuerst.
+  const reihe = platzReihenfolge(zeilen?.map((z) => z.produkt) ?? []);
+  const sortiert = reihe.flatMap((id) => zeilen?.find((z) => z.produkt === id) ?? []);
+  const texte = zeilen === undefined ? ["Wird geladen …"] : sortiert.length ? sortiert.map((z) => (z.grund.startsWith(`${projektInfo(z.produkt).name}:`) ? z.grund : `${projektInfo(z.produkt).name}: ${z.grund}`)) : ["Noch keine Entscheidung."];
   return (
-    <p className="chef-zeile" title={text}>
-      <span className="mono-label">Der Chef sagt</span> {text}
-    </p>
+    <div>
+      {texte.map((text, i) => (
+        <p key={text} className="chef-zeile" title={text}>
+          {i === 0 && <span className="mono-label">Der Chef sagt </span>}
+          {text}
+        </p>
+      ))}
+    </div>
   );
 }

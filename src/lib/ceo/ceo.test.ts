@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SnapshotRow } from "../uebersicht";
-import { entscheide, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, startbar, type ProduktLage } from "./ceo";
+import { entscheide, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, ohneDaten, startbar, type ProduktLage } from "./ceo";
+import { neueIssueTitel, zaehleHaken } from "./fertig";
 
 const lage: ProduktLage = { id: "lernapp", name: "Lern-App", startbar: 1, fertig: 3, gesamt: 10, rot: null, wartetAufSinan: [], metaPrsHeute: 0, ideenDieseWoche: 0 };
 const zeile = (o: Partial<SnapshotRow>): SnapshotRow => ({ project: "lernapp", stage: null, status: "Todo", title: null, updated_at: null, quota_name: null, quota_used: null, quota_limit: null, issue: "SIN-1", blocked_by: [], quotas: [], labels: ["claude"], minutes: null, pr: null, open_prs: [], ...o });
@@ -59,4 +60,25 @@ test("Zeilen für Tabelle und Gedächtnis; letzte Entscheidung je Produkt", () =
   ]);
   assert.deepEqual(l.map((x) => [x.produkt, x.grund]), [["lernapp", "neu"]]);
   assert.deepEqual(letzteJeProdukt(null), []);
+});
+
+test("Ohne Snapshot-Zeile: warten, keine Daten (SIN-572)", () => {
+  const e = ohneDaten("leitstand", "Leitstand");
+  assert.equal(e.art, "warten");
+  assert.equal(e.auffuellen, 0);
+  assert.match(e.grund, /Keine Daten/);
+});
+
+test("Startbar der Leitstand-Zusammenfassung zählt queue.startable", () => {
+  assert.equal(startbar([zeile({ project: "leitstand", issue: null, queue: { todo: 4, startable: 2, in_progress: 1 } })], "leitstand"), 2);
+});
+
+test("FERTIG.md: leeres Backlog + 3 offene Punkte → 3 Issues, zweiter Lauf keins", () => {
+  const md = "# Fertig\n\n- [x] Anmeldung\n- [ ] Projekt-Karten\n- [ ] Ablauf-Ansicht\n* [ ] Freigabe-Seite\n";
+  assert.deepEqual(zaehleHaken(md), { fertig: 1, gesamt: 4 });
+  assert.equal(zaehleHaken("nichts"), null);
+  const erster = neueIssueTitel(md, [], 8);
+  assert.deepEqual(erster, ["Projekt-Karten", "Ablauf-Ansicht", "Freigabe-Seite"]);
+  assert.deepEqual(neueIssueTitel(md, erster.map((t) => t.toUpperCase()), 8), []);
+  assert.deepEqual(neueIssueTitel(md, [], 2), ["Projekt-Karten", "Ablauf-Ansicht"]);
 });

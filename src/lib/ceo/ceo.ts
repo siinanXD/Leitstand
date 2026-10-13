@@ -45,12 +45,18 @@ export type Entscheidung = {
 
 const ZURUECKGEHALTEN = ["sinan", "needs-human", "design"];
 
-/** Wie viele Issues eines Produkts sofort startbar sind: Todo, Label `claude`, nicht blockiert, nicht zurückgehalten. */
+/** Wie viele Issues eines Produkts sofort startbar sind: Todo, Label `claude`, nicht blockiert, nicht zurückgehalten.
+ *  Schreibt ein Produkt nur eine Zusammenfassungszeile (Leitstand, SIN-572), zählt deren `queue.startable`. */
 export function startbar(snapshot: SnapshotRow[], projekt: string): number {
+  const queue = snapshot.find((s) => s.project === projekt && s.queue)?.queue;
+  if (queue) return queue.startable;
   return snapshot.filter((s) => s.project === projekt && s.issue && /^(todo|unstarted)$/i.test(s.status ?? "") && s.labels.includes("claude") && s.blocked_by.length === 0 && !s.labels.some((l) => ZURUECKGEHALTEN.includes(l))).length;
 }
 
 const nenne = (liste: string[]) => liste.slice(0, 2).join(" und ") + (liste.length > 2 ? ` und ${liste.length - 2} weiteres` : "");
+
+/** Fehlt die Snapshot-Zeile eines Produkts, wartet der CEO ehrlich, statt zu raten. */
+export const ohneDaten = (id: string, name: string): Entscheidung => ({ produkt: id, art: "warten", grund: `${name}: Keine Daten, ich kann noch nichts entscheiden.`, auffuellen: 0, dringend: false, metaErlaubt: true, ideenErlaubt: false });
 
 /** Genau eine Entscheidung je Produkt. Reihenfolge: reparieren, fertig, Vorrat reicht, warten, weiterbauen. */
 export function entscheide(p: ProduktLage): Entscheidung {
