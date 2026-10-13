@@ -1,0 +1,59 @@
+# Vorlage für .github/workflows/ceo.yml (SIN-542).
+# Der Worker darf .github/workflows/ nicht ändern: Sinan legt die Datei an.
+#
+# Ereignis löst aus, der Zeitplan ist nur das Sicherheitsnetz:
+#   vorrat       nach jedem Merge (post-merge; bis es ihn gibt: loop-merge). Das Skript schreibt nur, wenn der Vorrat unter 3 liegt.
+#   bereitschaft Änderung in docs/product-readiness.json
+#   rot          von Hand oder durch Live-Check/Sentry (CEO_ROT, siehe Skript)
+#   taeglich     06:00 Berliner Zeit (04:00 UTC im Sommer, 05:00 im Winter: hier 04:00 UTC, die Entscheidung ist tagesgleich)
+name: ceo
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_run:
+    workflows: [loop-merge]
+    types: [completed]
+  push:
+    branches: [main]
+    paths: [docs/product-readiness.json]
+  workflow_dispatch:
+    inputs:
+      ausloeser:
+        description: "vorrat, bereitschaft, rot oder taeglich"
+        default: taeglich
+      rot:
+        description: "Optional: produkt=Grund;produkt=Grund"
+        default: ""
+      dry_run:
+        description: "Nur ins Log schreiben"
+        type: boolean
+        default: true
+
+concurrency:
+  group: ceo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ceo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: CEO entscheidet
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CEO_AUSLOESER: ${{ inputs.ausloeser || (github.event_name == 'schedule' && 'taeglich') || (github.event_name == 'push' && 'bereitschaft') || 'vorrat' }}
+          CEO_ROT: ${{ inputs.rot }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/ceo/ceo.ts
