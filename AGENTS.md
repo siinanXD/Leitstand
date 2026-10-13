@@ -73,3 +73,15 @@ Regeln:
 - `scripts/waechter/waechter.ts` (Netz) und `src/lib/waechter/` (rein, mit Tests): je Linear-Projekt „In Progress“ mit Projekt-Link „GitHub“ Schlange füllen, Hänger reparieren, Tages-Update; neue Projekte einrichten.
 - Workflow: `.github/workflows/waechter.yml` (stündlich, Minute 41, und von Hand). Trockenlauf: von Hand mit `dry_run` oder lokal `DRY_RUN=1`.
 - `AGENT_WORKFLOW_TOKEN` braucht Lese- und Kommentarrechte auf alle aktiven Repos.
+
+## Schlank bauen: Ponytail (Sinan, 13.10.2026)
+
+Für jede Code-Aufgabe gilt zusätzlich `docs/skills/ponytail/SKILL.md` (Stufe **full**, MIT, Quelle im Dateikopf). Kurz:
+
+1. Braucht es das überhaupt? Nichts bauen, was niemand verlangt hat; Weggelassenes in einer Zeile nennen.
+2. Gibt es es schon im Repo (Helfer, Komponente, Muster)? Dann so nutzen wie der Code drumherum.
+3. Sonst Standardbibliothek/Plattform, dann eine vorhandene Abhängigkeit. Keine neue Abhängigkeit für ein paar Zeilen.
+4. Erst dann minimaler neuer Code. Kürzester vollständiger Diff gewinnt; alle betroffenen Aufrufer, Tests und Fixtures werden mitgezogen.
+5. Abkürzung mit bekannter Grenze: Kommentar `shortcut: <Grenze>, <wann ausbauen>`.
+
+Nie gekürzt: Prüfungen an Vertrauensgrenzen, Fehlerbehandlung gegen Datenverlust, Sicherheit, Barrierefreiheit, alles, was im Issue steht. Bei Widerspruch gelten die Regeln dieser Datei (Tests, Entscheidungsdatei, LEHREN.md, Figma). Im PR steht unter `## Ausgelassen` in ein bis zwei Zeilen, was bewusst weggelassen oder nicht geprüft wurde.
