@@ -122,7 +122,8 @@ export function dateien(e: Eingabe): Dateien {
   return out;
 }
 
-const GEHEIMNIS = /(ghp_|gho_|github_pat_|sk-[a-z0-9]|eyJ[a-z0-9_-]{10,}|service_role|bearer\s+[a-z0-9._-]{12,}|-----BEGIN|api[_-]?key\s*[:=])/i;
+// `sk-` nur als OpenAI-Schlüssel (lang), sonst trifft es Wörter wie „task-pr“ oder „risk-gate“ in Dateinamen (SIN-541, Lauf 38384882856).
+const GEHEIMNIS = /(ghp_[a-z0-9]{20,}|gho_[a-z0-9]{20,}|github_pat_[a-z0-9_]{20,}|\bsk-[a-z0-9_-]{20,}|eyJ[a-z0-9_-]{10,}\.[a-z0-9_-]{10,}|service_role|bearer\s+[a-z0-9._-]{20,}|-----BEGIN|api[_-]?key\s*[:=]\s*\S{8,})/i;
 
 /** Pfade, deren Inhalt nach Geheimnis aussieht. Ein Treffer bricht das Schreiben ab. */
 export const mitGeheimnis = (d: Dateien): string[] => Object.entries(d).filter(([, text]) => GEHEIMNIS.test(text)).map(([pfad]) => pfad);
