@@ -17,6 +17,7 @@
     { "id": "marketing", "name": "Marketing", "skill": "docs/skills/marketing/SKILL.md", "aufgabe": "Macht aus Ads, Leads und Metriken Werbemittel.", "ausloeser": ["Fertig-Punkt bestätigt", "Release"], "netz": "montags", "werkzeuge": ["WebFetch", "Supabase"], "ruft": ["anwalt"] },
     { "id": "hausmeister", "name": "Hausmeister", "skill": "docs/skills/hausmeister/SKILL.md", "aufgabe": "Findet toten Code, Dubletten und Müll und räumt auf.", "ausloeser": ["alle 20 Merges (merges_seit_hausmeister)"], "netz": "montags 07:00", "werkzeuge": ["Bash", "knip"], "ruft": [] },
     { "id": "anwalt", "name": "Anwalt", "skill": "docs/skills/anwalt/SKILL.md", "aufgabe": "Prüft DSGVO, KI-Kennzeichnung, Impressum und Werbemittel.", "ausloeser": ["PR ändert Migrationen, Tracking, Prompts mit Nutzerdaten, Rechtstexte oder Werbemittel"], "netz": "monatlich AVV-Abgleich", "werkzeuge": ["GitHub"], "ruft": [] },
-    { "id": "gedaechtnis", "name": "Gedächtnis", "skill": "docs/skills/gedaechtnis/SKILL.md", "aufgabe": "Pflegt den Obsidian-Vault.", "ausloeser": ["nach jedem Merge"], "netz": "täglich 05:50", "werkzeuge": ["GitHub"], "ruft": [] }
+    { "id": "gedaechtnis", "name": "Gedächtnis", "skill": "docs/skills/gedaechtnis/SKILL.md", "aufgabe": "Pflegt den Obsidian-Vault.", "ausloeser": ["nach jedem Merge"], "netz": "täglich 05:50", "werkzeuge": ["GitHub"], "ruft": [] },
+    { "id": "trend", "name": "Trend", "skill": "docs/skills/trend/SKILL.md", "aufgabe": "Erkennt, was gerade durch die Decke geht, und prüft den Nutzen je Produkt.", "ausloeser": ["sonntags (Bewertung)", "täglich (Sternzuwachs)"], "netz": "sonntags 04:30, täglich Kurzlauf", "werkzeuge": ["GitHub-Suche", "Hugging Face Hub API", "Release-Seiten", "Linear", "Supabase"], "ruft": [] }
   ]
 }

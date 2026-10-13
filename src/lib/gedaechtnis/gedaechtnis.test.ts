@@ -45,6 +45,16 @@ test("Tag: höchstens 30 Zeilen, auch mit sehr vielen PRs und Problemen", () => 
   assert.ok(!text.includes("x\ny"));
 });
 
+test("Tag: Trends (SIN-575) als Abschnitt mit höchstens 3 Zeilen, ohne Trends kein Abschnitt", () => {
+  const trends = Array.from({ length: 5 }, (_, i) => `- Repo ${i}: nächste Version (leitstand)`);
+  const prs = Array.from({ length: 60 }, (_, i) => ({ nummer: i, titel: "x", projekt: "leitstand", url: "u" }));
+  const text = dateien({ ...fixture, prs, trends })["Tage/2026-10-13.md"];
+  assert.match(text, /## Trends\n- Repo 0.*\n- Repo 1.*\n- Repo 2.*\n/);
+  assert.ok(!text.includes("Repo 3"));
+  assert.ok(zeilen(text) <= MAX_ZEILEN_TAG);
+  assert.ok(!dateien(fixture)["Tage/2026-10-13.md"].includes("## Trends"));
+});
+
 test("Produktseite zeigt höchstens 10 Entscheidungen; Dateinamen sind sicher", () => {
   const entscheidungen = Array.from({ length: 15 }, (_, i) => ({ id: `SIN-${i}`, projekt: "leitstand", titel: "t", url: "u" }));
   const d = dateien({ ...fixture, entscheidungen, produkte: [{ ...fixture.produkte[1], name: "../Böse/Name" }] });

@@ -1,0 +1,62 @@
+# SIN-575: nach .github/workflows/trend.yml kopieren (der Worker darf .github/workflows/ nicht ändern). Sinan entscheidet.
+# Sonntags 04:30 UTC: messen, mit Haiku bewerten (Deckel 0,50 €), Issues und Kachel. Montag bis Samstag 04:30 UTC: nur Sternzuwachs, kein Modell.
+# Kein Claude-Kontingent: der Lauf kann nicht daran rot werden. Der Stand docs/markt/trends.json geht als PR auf main (Auto-Merge, nur docs/).
+name: trend
+on:
+  schedule:
+    - cron: "30 4 * * 0"
+    - cron: "30 4 * * 1-6"
+  workflow_dispatch:
+    inputs:
+      modus:
+        description: "messen (täglich, ohne Modell) oder woche (mit Bewertung)"
+        type: choice
+        options: [messen, woche]
+        default: messen
+      dry_run:
+        description: "Nur ins Log schreiben (keine Datei, keine Issues)"
+        type: boolean
+        default: true
+permissions:
+  contents: write
+  pull-requests: write
+concurrency: trend
+jobs:
+  trend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/trend/trend.ts
+        env:
+          TREND_MODUS: ${{ inputs.modus || (github.event.schedule == '30 4 * * 0' && 'woche') || 'messen' }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VORARBEITER_PREIS_EIN_USD: ${{ vars.VORARBEITER_PREIS_EIN_USD }}
+          VORARBEITER_PREIS_AUS_USD: ${{ vars.VORARBEITER_PREIS_AUS_USD }}
+          KOSTEN_USD_EUR: ${{ vars.KOSTEN_USD_EUR }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+      - name: PR mit docs/markt/trends.json öffnen
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git diff --quiet docs/markt/trends.json && exit 0
+          tag=$(date -u +%Y-%m-%d)
+          branch="trend/$tag"
+          git config user.name "claude[bot]"
+          git config user.email "claude[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add docs/markt/trends.json
+          git commit -m "docs(trend): Stand $tag (SIN-575)" -m "Part of SIN-575"
+          git push origin "$branch"
+          gh pr create --head "$branch" --base main --title "docs(trend): Stand $tag (SIN-575)" --body "Stand des Trend-Radars 2. Part of SIN-575."
