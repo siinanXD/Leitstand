@@ -418,7 +418,7 @@
 @media (max-width: 899px) {
   .kopf {
     padding: var(--space-8) var(--space-16);
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   /* Leiste unten wie Figma 59:28: feste Spalten, nie breiter als der Bildschirm. */

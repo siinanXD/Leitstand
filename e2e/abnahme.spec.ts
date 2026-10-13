@@ -146,7 +146,9 @@ for (const [groesse, viewport] of GROESSEN) {
             .filter((el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden")
             // Links mitten im Satz sind nach WCAG 2.5.8 ausgenommen.
             .filter((el) => !(el.tagName === "A" && getComputedStyle(el).display === "inline"))
-            .map((el) => ({ el: `${el.tagName.toLowerCase()} „${(el.textContent ?? "").trim().slice(0, 30)}“`, ...el.getBoundingClientRect().toJSON() }))
+            // Ein Kästchen mit Beschriftung zählt mit seiner Beschriftung als Ziel (das Label ist klickbar).
+            .map((el) => ({ el, ziel: el.closest("label") ?? el }))
+            .map(({ el, ziel }) => ({ el: `${el.tagName.toLowerCase()} „${(ziel.textContent ?? "").trim().slice(0, 30)}“`, ...ziel.getBoundingClientRect().toJSON() }))
             .filter((r) => r.width < 43.5 || r.height < 43.5)
             .map((r) => `${r.el} ${Math.round(r.width)}×${Math.round(r.height)}`),
         );
