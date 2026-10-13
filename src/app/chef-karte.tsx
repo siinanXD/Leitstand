@@ -20,7 +20,7 @@ export function ChefKarte({ angemeldet }: { angemeldet: boolean }) {
     };
   }, [angemeldet]);
   return (
-    <section className="tile einfach-block" aria-labelledby="chef">
+    <section className="tile einfach-block lila" aria-labelledby="chef">
       <div className="kopf-block">
         <h2 id="chef" className="mono-label">
           Der Chef sagt

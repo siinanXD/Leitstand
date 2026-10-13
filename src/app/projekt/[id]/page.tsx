@@ -4,9 +4,12 @@ import Link from "next/link";
 import { use, useState } from "react";
 import { projektInfo } from "@/lib/projekte";
 import { alsNaechstes, projektAufgaben, projektBetrieb, projektLinks, projektQuelle, zeitVerteilung } from "@/lib/projektseite";
+import { fortschritt } from "@/lib/uebersicht-einfach";
 import { Rahmen } from "../../rahmen";
 import "../../uebersicht.css";
 import "../../projekte/projekte.css";
+import "../../einfach.css";
+import "../../bunt.css";
 
 const NICHT_VERFUEGBAR = <p className="leer">nicht verfügbar</p>;
 
@@ -25,8 +28,27 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
         const betrieb = projektBetrieb(quelle, projekt.id, jetzt);
         const aufgaben = projektAufgaben(quelle.snapshot, projekt.id);
         const aktiv = aufgaben.find((a) => a.key === gewaehlt) ?? aufgaben[0];
+        const weit = fortschritt(quelle).find((f) => f.project === projekt.id && f.gesamt > 0);
         return (
-          <main className="bento-b1 projekte-seite">
+          <main className="bento-b1 projekte-seite bunt">
+            <section className="tile b1-kachel pfirsich" aria-labelledby="weit" style={{ gridColumn: "1 / -1" }}>
+              <h2 id="weit" className="mono-label">
+                Wie weit sind wir?
+              </h2>
+              {weit ? (
+                <>
+                  <p className="gross-prozent">
+                    {Math.round((weit.fertig / weit.gesamt) * 100)} % <span className="leer">von v1 fertig ({weit.fertig} von {weit.gesamt})</span>
+                  </p>
+                  <div className="balken" role="img" aria-label={`${Math.round((weit.fertig / weit.gesamt) * 100)} Prozent fertig`}>
+                    <div style={{ width: `${Math.min(100, (weit.fertig / weit.gesamt) * 100)}%` }} />
+                  </div>
+                </>
+              ) : (
+                NICHT_VERFUEGBAR
+              )}
+            </section>
+
             <section className="tile b1-satz" aria-labelledby="projekt" style={{ gridColumn: "1 / -1" }}>
               <h1 id="projekt" className="mono-label">
                 <Link href="/projekte">Alle Projekte</Link> · <span className="marke-projekt" style={{ background: projekt.farbe }} aria-hidden="true" /> {projekt.name}

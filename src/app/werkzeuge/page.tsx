@@ -4,6 +4,7 @@ import { useSitzung } from "@/lib/sitzung";
 import { useWerkzeuge } from "@/lib/werkzeuge-client";
 import { Rahmen } from "../rahmen";
 import "../einfach.css";
+import "../bunt.css";
 
 const wann = (iso: string | null) => (iso ? new Date(iso).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }) : "noch nie");
 
@@ -14,8 +15,8 @@ export default function Werkzeuge() {
   return (
     <Rahmen aktiv="werkzeuge">
       {() => (
-        <main className="einfach">
-          <section className="tile einfach-block" aria-labelledby="werkzeuge">
+        <main className="einfach bunt">
+          <section className="tile einfach-block blau" aria-labelledby="werkzeuge">
             <div className="kopf-block">
               <h1 id="werkzeuge" className="mono-label">
                 Werkzeuge

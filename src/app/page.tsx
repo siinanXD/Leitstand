@@ -13,6 +13,7 @@ import { GedaechtnisKachel } from "./gedaechtnis-kachel";
 import { WerbungKachel } from "./werbung-kachel";
 import { Rahmen, type Wartende } from "./rahmen";
 import "./einfach.css";
+import "./bunt.css";
 
 /** Kennung SIN-… aus dem Schlüssel „projekt|SIN-…“; nur dann gibt es eine Ablauf-Seite. */
 const kennungVon = (key: string) => key.split("|")[1]?.match(/^SIN-\d+$/)?.[0] ?? null;
@@ -56,7 +57,7 @@ function MussDuTun({ quelle, wartend }: { quelle: Quelle; wartend: Wartende }) {
   const liste = karten(quelle, wartend.wartende);
   if (liste.length === 0) return null;
   return (
-    <section className="tile einfach-block" aria-labelledby="tun">
+    <section className="tile einfach-block sonne" aria-labelledby="tun">
       <div className="kopf-block">
         <h2 id="tun" className="mono-label">
           Das musst du tun · {liste.length}
@@ -103,7 +104,7 @@ function MussDuTun({ quelle, wartend }: { quelle: Quelle; wartend: Wartende }) {
 function Kette({ quelle, wartend, jetzt }: { quelle: Quelle; wartend: Wartende; jetzt: Date }) {
   const liste = stationen(quelle, wartend.wartende, jetzt);
   return (
-    <section className="tile einfach-block" aria-labelledby="kette">
+    <section className="tile einfach-block gruen" aria-labelledby="kette">
       <div className="kopf-block">
         <h2 id="kette" className="mono-label">
           Was gerade passiert
@@ -150,7 +151,7 @@ function Kette({ quelle, wartend, jetzt }: { quelle: Quelle; wartend: Wartende; 
 function WieWeit({ quelle }: { quelle: Quelle }) {
   const liste = fortschritt(quelle);
   return (
-    <section className="tile einfach-block" aria-labelledby="weit">
+    <section className="tile einfach-block blau" aria-labelledby="weit">
       <div className="kopf-block">
         <h2 id="weit" className="mono-label">
           Wie weit ist es?
@@ -263,7 +264,7 @@ export default function Home() {
   return (
     <Rahmen aktiv="uebersicht">
       {(quelle, jetzt, wartend, pause, laden) => (
-        <main className="einfach">
+        <main className="einfach bunt">
           <Lage quelle={quelle} jetzt={jetzt} wartend={karten(quelle, wartend.wartende).length} laden={laden} pausiert={pause.stand?.pausiert ? pauseSatz(pause.stand.seit) : null} />
           <MussDuTun quelle={quelle} wartend={wartend} />
           <Kette quelle={quelle} wartend={wartend} jetzt={jetzt} />

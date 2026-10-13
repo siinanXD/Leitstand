@@ -7,6 +7,7 @@ import { IdeeFormular } from "./idee-formular";
 
 const REITER = [
   { id: "uebersicht", href: "/", name: "Übersicht" },
+  { id: "team", href: "/team", name: "Team" },
   { id: "projekte", href: "/projekte", name: "Projekte" },
   { id: "ablauf", href: "/ablauf", name: "Ablauf" },
   { id: "abhaengigkeiten", href: "/abhaengigkeiten", name: "Abhängigkeiten" },
