@@ -1,0 +1,141 @@
+/**
+ * Vorarbeiter-Agent (SIN-553). Aufruf aus vorarbeiter.yml (Vorlage: docs/autonomy/vorarbeiter.yml.vorlage), täglich nach dem CEO und nach jedem Merge:
+ *
+ *   npx tsx scripts/vorarbeiter/vorarbeiter.ts
+ *
+ * Liest die offenen Issues des Linear-Projekts „Leitstand“, plant die Spuren A bis C (src/lib/vorarbeiter/vorarbeiter.ts) und schreibt den Plan
+ * in `loop_snapshot.plan`. Spur C baut danach das erste Docs-Issue per API mit Haiku (Deckel 2 € je Tag, Kosten ins Ledger) und öffnet einen PR.
+ * Der Vorarbeiter mergt nie.
+ *
+ * Env: LINEAR_API_KEY, GH_TOKEN (AGENT_WORKFLOW_TOKEN), GITHUB_REPOSITORY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ * für Spur C zusätzlich ANTHROPIC_API_KEY, VORARBEITER_PREIS_EIN_USD und VORARBEITER_PREIS_AUS_USD (USD je Million Token), KOSTEN_USD_EUR.
+ * DRY_RUN=1 oder fehlende Supabase-Variablen: nur Ausgabe im Log, nichts geschrieben, Spur C läuft nicht.
+ */
+import { ausLinear, PROJEKT, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { aufrufKosten, ereignisZeile, ledgerZeile, leseDateien, pfade, plane, prFuerC, promptC, restDeckel, SPUR_C_MODELL, type Plan } from "../../src/lib/vorarbeiter/vorarbeiter";
+
+const env = process.env;
+const DRY = env.DRY_RUN === "1" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY;
+const repo = env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand";
+
+async function linear<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY fehlt");
+  const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY }, body: JSON.stringify({ query, variables }) });
+  const json = (await res.json()) as { data?: T; errors?: unknown };
+  if (!res.ok || json.errors) throw new Error(`Linear: ${res.status} ${JSON.stringify(json.errors ?? "")}`);
+  return json.data as T;
+}
+
+const kopf = { apikey: env.SUPABASE_SERVICE_ROLE_KEY ?? "", Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY ?? ""}`, "Content-Type": "application/json" };
+async function supabase(pfad: string, methode: "GET" | "POST" | "DELETE", body?: unknown): Promise<unknown> {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${pfad}`, { method: methode, headers: kopf, body: body ? JSON.stringify(body) : undefined });
+  if (!res.ok) throw new Error(`Supabase ${methode} ${pfad.split("?")[0]}: ${res.status}`);
+  return methode === "GET" ? res.json() : null;
+}
+
+async function gh<T>(pfad: string, init: { method?: string; body?: unknown } = {}): Promise<T | null> {
+  if (!env.GH_TOKEN) throw new Error("GH_TOKEN fehlt (Secret AGENT_WORKFLOW_TOKEN)");
+  const res = await fetch(`https://api.github.com/repos/${repo}${pfad}`, { method: init.method ?? "GET", headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" }, body: init.body ? JSON.stringify(init.body) : undefined });
+  if (res.status === 404 && !init.method) return null;
+  if (!res.ok) throw new Error(`GitHub ${init.method ?? "GET"} ${pfad}: ${res.status} ${await res.text()}`);
+  return (await res.json()) as T;
+}
+
+type Knoten = Parameters<typeof ausLinear>[0] & { team: { id: string } };
+
+async function projektIssues(): Promise<{ issue: LinearIssue; team: string }[]> {
+  const d = await linear<{ issues: { nodes: Knoten[] } }>(
+    `query($p: String!) {
+      issues(first: 100, filter: { project: { name: { eq: $p } }, state: { type: { in: ["backlog", "unstarted", "started"] } } }) {
+        nodes { id identifier title description priority url createdAt team { id }
+          labels { nodes { name } } state { type }
+          inverseRelations { nodes { type issue { identifier state { type } } } } }
+      }
+    }`,
+    { p: PROJEKT },
+  );
+  return d.issues.nodes.map((n) => ({ issue: ausLinear(n), team: n.team.id }));
+}
+
+/** Plan in `loop_snapshot.plan` ablegen: die alte Plan-Zeile fällt weg, eine neue kommt. */
+async function schreibePlan(plan: Plan) {
+  await supabase(`loop_snapshot?project=eq.leitstand&title=eq.Vorarbeiter-Plan`, "DELETE");
+  await supabase("loop_snapshot", "POST", { project: "leitstand", title: "Vorarbeiter-Plan", plan, updated_at: plan.erstellt });
+  const run = env.GITHUB_RUN_ID;
+  await supabase("loop_events", "POST", ereignisZeile("leitstand", run ?? null, run ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${repo}/actions/runs/${run}` : null));
+}
+
+/** Bisher heute ausgegeben (UTC-Tag) laut Ledger. Zählt alle Posten des Ledgers, also eher zu streng als zu locker. */
+async function heuteAusgegeben(): Promise<number> {
+  const tag = new Date().toISOString().slice(0, 10);
+  const zeilen = (await supabase(`pipeline_run_costs?select=cost_eur&created_at=gte.${tag}T00:00:00Z`, "GET")) as { cost_eur?: number | string }[];
+  return zeilen.reduce((s, z) => s + (Number(z.cost_eur) || 0), 0);
+}
+
+/** Spur C: ein Docs-Issue bauen. Gibt eine Zeile fürs Log zurück. */
+async function baueSpurC(i: LinearIssue, team: string, plan: Plan): Promise<string> {
+  if (!env.ANTHROPIC_API_KEY) return "Spur C: ANTHROPIC_API_KEY fehlt, nichts gebaut.";
+  const preis = { einProMio: Number(env.VORARBEITER_PREIS_EIN_USD), ausProMio: Number(env.VORARBEITER_PREIS_AUS_USD) };
+  const kurs = Number((env.KOSTEN_USD_EUR ?? "").replace(",", "."));
+  if (!(preis.einProMio > 0) || !(preis.ausProMio > 0) || !(kurs > 0)) return "Spur C: Preise oder KOSTEN_USD_EUR fehlen, ohne Kosten wird nicht gebaut.";
+  const rest = restDeckel(await heuteAusgegeben());
+  if (rest <= 0) return "Spur C: Tagesdeckel von 2 € erreicht, pausiert bis morgen.";
+
+  const pr = prFuerC(i);
+  if (await gh(`/git/ref/heads/${pr.branch}`)) return `Spur C: ${i.identifier} hat schon einen Branch, übersprungen.`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ model: SPUR_C_MODELL, max_tokens: 4000, messages: [{ role: "user", content: promptC(i) }] }),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!res.ok) throw new Error(`Modell: ${res.status}`);
+  const antwort = (await res.json()) as { content?: { text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
+  // Kosten zuerst ins Ledger: der Aufruf ist bezahlt, auch wenn die Antwort danach nicht taugt.
+  const eur = aufrufKosten(antwort.usage?.input_tokens ?? 0, antwort.usage?.output_tokens ?? 0, preis, kurs);
+  await supabase("pipeline_run_costs", "POST", ledgerZeile(eur));
+
+  const text = antwort.content?.[0]?.text ?? "";
+  // shortcut: erstes JSON-Objekt der Antwort, bei Mischtext ausbauen auf strukturierte Ausgabe.
+  let dateien;
+  try {
+    dateien = leseDateien(JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)), pfade(i.description));
+  } catch {
+    dateien = null;
+  }
+  if (!dateien) return `Spur C: Antwort für ${i.identifier} unbrauchbar, nichts geschrieben (${eur} € im Ledger).`;
+
+  const main = await gh<{ object: { sha: string } }>("/git/ref/heads/main");
+  await gh("/git/refs", { method: "POST", body: { ref: `refs/heads/${pr.branch}`, sha: main!.object.sha } });
+  for (const d of dateien) {
+    const alt = await gh<{ sha: string }>(`/contents/${d.pfad}?ref=${pr.branch}`);
+    await gh(`/contents/${d.pfad}`, { method: "PUT", body: { message: `docs: ${i.title}\n\nPart of ${i.identifier}`, content: Buffer.from(d.inhalt).toString("base64"), branch: pr.branch, ...(alt ? { sha: alt.sha } : {}) } });
+  }
+  const neu = await gh<{ html_url: string }>("/pulls", { method: "POST", body: { head: pr.branch, base: "main", title: pr.titel, body: pr.body } });
+  // In Progress, damit der Dispatcher das Issue nicht noch einmal an den Worker gibt.
+  const d = await linear<{ team: { states: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { states { nodes { id name } } } }`, { t: team });
+  const status = d.team.states.nodes.find((s) => s.name === "In Progress");
+  if (status) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: i.id, s: status.id });
+  plan.spuren.find((s) => s.id === "C")!.eintraege = plan.spuren.find((s) => s.id === "C")!.eintraege.filter((e) => e.issue !== i.identifier);
+  return `Spur C: ${i.identifier} gebaut, ${eur} € im Ledger, ${neu?.html_url}`;
+}
+
+async function main() {
+  const alle = await projektIssues();
+  const plan = plane(alle.map((a) => a.issue));
+  for (const s of plan.spuren) console.log(`${s.id}: ${s.eintraege.map((e) => `${e.issue} (${e.grund})`).join(" → ") || "leer"}`);
+  for (const w of plan.wartet) console.log(`wartet: ${w.issue} (${w.grund})`);
+  if (DRY) return console.log("Trockenlauf: nichts geschrieben, Spur C läuft nicht.");
+
+  const erstes = plan.spuren.find((s) => s.id === "C")!.eintraege[0];
+  const ziel = erstes && alle.find((a) => a.issue.identifier === erstes.issue);
+  const meldung = ziel ? await baueSpurC(ziel.issue, ziel.team, plan).catch((e: Error) => `Spur C: ${e.message}`) : "Spur C: nichts zu bauen.";
+  await schreibePlan(plan);
+  console.log(meldung);
+}
+
+main().catch((e) => {
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});

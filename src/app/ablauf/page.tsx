@@ -6,7 +6,8 @@ import { useMemo, useState } from "react";
 import { AGENT_LAYOUT, agentGraph, agentKarte, budgetAnteil, kostenText, type AgentKarte, type AgentLane, type Bahn } from "@/lib/agenten";
 import { LAYOUT, graph, protokoll, signalAus, unbekannte, zeitpunkte, type AblaufBahn, type AblaufKnoten } from "@/lib/ablauf";
 import { DISPATCHER_REGEL, nurProjekt, projektInfo } from "@/lib/projekte";
-import type { Quelle } from "@/lib/uebersicht";
+import { inArbeit, type Quelle } from "@/lib/uebersicht";
+import { spurAnzeige } from "@/lib/vorarbeiter/vorarbeiter";
 import { ProjektFilter, Rahmen, projekteIn, uhrzeit } from "../rahmen";
 
 const ZUSTAND_TEXT = { laeuft: "läuft", wartet: "wartet", fertig: "erledigt", leer: "leer" } as const;
@@ -71,6 +72,40 @@ function Legende({ bahnen: liste }: { bahnen: AblaufBahn[] }) {
   );
 }
 
+/** Drei Spuren des Vorarbeiters (SIN-553): was läuft und was als Nächstes kommt. Ohne Plan in `loop_snapshot.plan` entfällt der Block. */
+function Spuren({ snapshot }: { snapshot: Quelle["snapshot"] }) {
+  const plan = snapshot.find((s) => s.plan)?.plan;
+  if (!plan) return null;
+  const laeuft = new Set(inArbeit(snapshot).flatMap((s) => (s.issue ? [s.issue] : [])));
+  return (
+    <section aria-labelledby="spuren-titel">
+      <h2 id="spuren-titel" className="mono-label">
+        Spuren des Vorarbeiters
+      </h2>
+      <ul className="bahn-liste" aria-label="Spuren">
+        {spurAnzeige(plan, laeuft).map((s) => (
+          <li key={s.id} className="bahn-eintrag">
+            <h3 className="bahn-name">{s.name}</h3>
+            <p className="leer">{s.laeuft ? `Läuft: ${s.laeuft.issue} ${s.laeuft.titel}` : "Nichts läuft"}</p>
+            <ul className="liste" aria-label={`Als Nächstes in ${s.name}`}>
+              {s.naechste.length === 0 ? (
+                <li className="leer">Nichts geplant</li>
+              ) : (
+                s.naechste.map((e) => (
+                  <li key={e.issue}>
+                    <span className="mono">{e.issue}</span> {e.titel}
+                  </li>
+                ))
+              )}
+            </ul>
+          </li>
+        ))}
+      </ul>
+      {plan.wartet.length > 0 && <p className="leer">Wartet: {plan.wartet.map((w) => `${w.issue} (${w.grund})`).join("; ")}</p>}
+    </section>
+  );
+}
+
 function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const [filter, setFilter] = useState<string | null>(null);
   const [auswahl, setAuswahl] = useState<string | null>(null);
@@ -126,6 +161,7 @@ function Ablauf({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
         </h1>
         <p className="leer">{DISPATCHER_REGEL}</p>
         <ProjektFilter projekte={alle} wert={filter} onChange={setFilter} />
+        <Spuren snapshot={quelle.snapshot} />
         {fremd.projekte.length + fremd.schritte.length > 0 && (
           <p className="leer" role="status">
             unbekannt: {[...fremd.projekte.map((p) => `Projekt ${p}`), ...fremd.schritte.map((s) => `Schritt ${s}`)].join(", ")}
