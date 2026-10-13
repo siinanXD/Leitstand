@@ -108,7 +108,7 @@ export function planungsIssue(projekt: string): { title: string; description: st
 
 // ------------------------------------------------------------------ Hänger
 
-export type HaengerAktion = { art: "zuruecksetzen" | "needs-human"; issue: WaechterIssue };
+export type HaengerAktion = { art: "zuruecksetzen" | "needs-human"; issue: WaechterIssue; kontingent?: true };
 
 const prGehoertZu = (pr: PrInfo, i: LinearIssue) =>
   pr.titel.includes(i.identifier) || pr.branch.toLowerCase().includes(i.identifier.toLowerCase());
@@ -117,14 +117,19 @@ const prGehoertZu = (pr: PrInfo, i: LinearIssue) =>
  * Issue „In Progress“ seit mehr als 6 Stunden ohne offenen PR: einmal zurück auf Todo, danach needs-human.
  * Nur Loop-Issues (Label `claude`). Epics und Handarbeit (z. B. SIN-242) bleiben „In Progress“.
  */
-export function erkenneIssueHaenger(issues: WaechterIssue[], offenePrs: PrInfo[], jetzt: Date): HaengerAktion[] {
+export function erkenneIssueHaenger(issues: WaechterIssue[], offenePrs: PrInfo[], jetzt: Date, claudePausen: string[] = []): HaengerAktion[] {
   const r: HaengerAktion[] = [];
   for (const i of issues) {
     if (i.stateType !== "started" || !i.startedAt) continue;
     if (!hatLabel(i, LABEL)) continue;
     if (hatLabel(i, "needs-human")) continue;
-    if (jetzt.getTime() - ms(i.startedAt) <= HAENGER_STUNDEN * STUNDE) continue;
     if (offenePrs.some((pr) => prGehoertZu(pr, i))) continue;
+    // Kontingent (SIN-581): Wurde nach dem Start eine Claude-Pause gemeldet, scheiterte der Lauf am Limit: sofort zurück auf Todo, nie needs-human.
+    if (claudePausen.some((at) => ms(at) >= ms(i.startedAt!))) {
+      r.push({ art: "zuruecksetzen", issue: i, kontingent: true });
+      continue;
+    }
+    if (jetzt.getTime() - ms(i.startedAt) <= HAENGER_STUNDEN * STUNDE) continue;
     const schonZurueck = i.kommentare.some((k) => k.includes(MARKER_ZURUECK));
     r.push({ art: schonZurueck ? "needs-human" : "zuruecksetzen", issue: i });
   }

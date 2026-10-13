@@ -106,6 +106,14 @@ test("Hänger: Epic oder Handarbeit ohne Label claude bleibt In Progress", () =>
   assert.deepEqual(erkenneIssueHaenger([epic, sinan], [], jetzt), []);
 });
 
+test("Hänger: Claude-Pause nach dem Start → sofort zurück auf Todo, nie needs-human (SIN-581)", () => {
+  const jung = issue({ identifier: "SIN-1", stateType: "started", startedAt: vor(1), kommentare: [`x ${MARKER_ZURUECK}`] });
+  const a = erkenneIssueHaenger([jung], [], jetzt, [vor(0.5)]);
+  assert.deepEqual(a.map((x) => [x.art, x.kontingent]), [["zuruecksetzen", true]]);
+  assert.equal(erkenneIssueHaenger([jung], [], jetzt, [vor(3)]).length, 0, "Pause vor dem Start zählt nicht");
+  assert.equal(erkenneIssueHaenger([jung], [pr()], jetzt, [vor(0.5)]).length, 0);
+});
+
 test("Hänger: junges Issue, offener PR oder needs-human werden übersprungen", () => {
   const jung = issue({ identifier: "SIN-1", stateType: "started", startedAt: vor(5) });
   const alt = issue({ identifier: "SIN-1", stateType: "started", startedAt: vor(8) });
