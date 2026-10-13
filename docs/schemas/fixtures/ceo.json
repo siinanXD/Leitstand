@@ -1,0 +1,11 @@
+{
+  "rolle": "ceo",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Ein Issue für das Produkt Leitstand angelegt.",
+  "naechster_schritt": "Vorarbeiter plant die Reihenfolge.",
+  "kosten_eur": 0,
+  "quellen": ["https://github.com/siinanXD/Leitstand/issues/98"],
+  "entscheidungen": [{ "produkt": "leitstand", "issue_titel": "Mein Team anzeigen", "begruendung": "Fertig-Punkt ist offen." }]
+}

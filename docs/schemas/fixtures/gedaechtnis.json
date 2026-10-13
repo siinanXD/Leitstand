@@ -1,0 +1,11 @@
+{
+  "rolle": "gedaechtnis",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Eine Notiz im Vault angelegt.",
+  "naechster_schritt": "Keiner.",
+  "kosten_eur": 0,
+  "quellen": ["https://github.com/siinanXD/Leitstand/pull/99"],
+  "notizen": [{ "pfad": "Leitstand/SIN-543.md" }]
+}

@@ -1,0 +1,16 @@
+{
+  "rolle": "vorarbeiter",
+  "issue": "SIN-543",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Ein Issue auf Spur A gelegt, nichts wartet.",
+  "naechster_schritt": "Spur A startet den Bauer.",
+  "kosten_eur": 0,
+  "quellen": ["https://github.com/siinanXD/Leitstand/issues/98"],
+  "spuren": [
+    { "id": "A", "issues": ["SIN-543"] },
+    { "id": "B", "issues": [] },
+    { "id": "C", "issues": [] }
+  ],
+  "wartet": []
+}
