@@ -1,0 +1,51 @@
+name: ceo
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_run:
+    workflows: [loop-merge]
+    types: [completed]
+  push:
+    branches: [main]
+    paths: [docs/product-readiness.json]
+  workflow_dispatch:
+    inputs:
+      ausloeser:
+        description: "vorrat, bereitschaft, rot oder taeglich"
+        default: taeglich
+      rot:
+        description: "Optional: produkt=Grund;produkt=Grund"
+        default: ""
+      dry_run:
+        description: "Nur ins Log schreiben"
+        type: boolean
+        default: true
+
+concurrency:
+  group: ceo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ceo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: CEO entscheidet
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CEO_AUSLOESER: ${{ inputs.ausloeser || (github.event_name == 'schedule' && 'taeglich') || (github.event_name == 'push' && 'bereitschaft') || 'vorrat' }}
+          CEO_ROT: ${{ inputs.rot }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/ceo/ceo.ts

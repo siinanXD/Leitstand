@@ -1,0 +1,30 @@
+name: marketing
+on:
+  schedule:
+    - cron: "17 6 * * 1" # montags
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur ins Log schreiben"
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  marketing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/marketing/marketing.ts
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

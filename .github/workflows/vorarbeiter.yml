@@ -1,0 +1,45 @@
+name: vorarbeiter
+
+on:
+  schedule:
+    - cron: "10 4 * * *" # nach dem CEO (04:00 UTC)
+  workflow_run:
+    workflows: [loop-merge]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur ins Log schreiben"
+        type: boolean
+        default: true
+
+concurrency:
+  group: vorarbeiter
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  vorarbeiter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Vorarbeiter plant
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VORARBEITER_PREIS_EIN_USD: ${{ vars.VORARBEITER_PREIS_EIN_USD }}
+          VORARBEITER_PREIS_AUS_USD: ${{ vars.VORARBEITER_PREIS_AUS_USD }}
+          KOSTEN_USD_EUR: ${{ vars.KOSTEN_USD_EUR }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/vorarbeiter/vorarbeiter.ts
