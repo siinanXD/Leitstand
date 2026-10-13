@@ -8,6 +8,7 @@ import { kontingente, type Quelle } from "@/lib/uebersicht";
 import { fortschritt, heuteFertig, karten, lageSatz, stationen } from "@/lib/uebersicht-einfach";
 import type { Kosten } from "@/lib/kosten/kosten";
 import { pauseSatz } from "@/lib/pause";
+import { GedaechtnisKachel } from "./gedaechtnis-kachel";
 import { Rahmen, type Wartende } from "./rahmen";
 import "./einfach.css";
 
@@ -261,6 +262,7 @@ export default function Home() {
             <WasKostet quelle={quelle} jetzt={jetzt} angemeldet={angemeldet} />
           </div>
           <HeuteFertig quelle={quelle} jetzt={jetzt} />
+          <GedaechtnisKachel angemeldet={angemeldet} />
           <p>
             <Link href="/details" className="knopf">
               Details ansehen
