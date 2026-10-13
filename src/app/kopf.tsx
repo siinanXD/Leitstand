@@ -12,6 +12,7 @@ const REITER = [
   { id: "abhaengigkeiten", href: "/abhaengigkeiten", name: "Abhängigkeiten" },
   { id: "kosten", href: "/kosten", name: "Kosten" },
   { id: "auswertung", href: "/auswertung", name: "Auswertung" },
+  { id: "werkzeuge", href: "/werkzeuge", name: "Werkzeuge" },
   { id: "einstellungen", href: "/einstellungen", name: "Einstellungen" },
 ];
 
