@@ -7,9 +7,9 @@ import { pruefeSchema, type Schema } from "./schema";
 
 const lies = <T>(pfad: string) => JSON.parse(readFileSync(pfad, "utf8")) as T;
 const register = () => lies<Register>("docs/autonomy/agents.json");
-const ROLLEN = ["ceo", "vorarbeiter", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis"];
+const ROLLEN = ["ceo", "visionaer", "vorarbeiter", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis"];
 
-test("docs/schemas hat 10 Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
+test("docs/schemas hat 11 Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
   const schemas = readdirSync("docs/schemas").filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort();
   assert.deepEqual(schemas, [...ROLLEN].sort());
   for (const r of ROLLEN) assert.deepEqual(pruefeSchema(lies(`docs/schemas/fixtures/${r}.json`), lies<Schema>(`docs/schemas/${r}.json`)), [], r);
@@ -34,7 +34,7 @@ test("Prüfer meldet fehlende, falsche und fremde Felder", () => {
   assert.match(pruefeSchema({ ...ok, issue: "543" }, s).join(), /issue: passt nicht/);
 });
 
-test("agents.json: 10 Rollen mit Skill-Datei, Auslöser, Werkzeugen und Schema; Verweise stimmen", () => {
+test("agents.json: 11 Rollen mit Skill-Datei, Auslöser, Werkzeugen und Schema; Verweise stimmen", () => {
   const r = register();
   assert.deepEqual(r.rollen.map((x) => x.id), ROLLEN);
   assert.equal(r.spuren.length, 3);
@@ -46,7 +46,7 @@ test("registerFehler findet unbekannte Verweise und leere Auslöser", () => {
   const r = register();
   r.rollen[0].ruft = ["niemand"];
   r.rollen[1].ausloeser = [];
-  assert.deepEqual(registerFehler(r), ["ceo ruft unbekannte Rolle niemand", "vorarbeiter: kein Auslöser"]);
+  assert.deepEqual(registerFehler(r), ["ceo ruft unbekannte Rolle niemand", "visionaer: kein Auslöser"]);
 });
 
 test("docs/ABLAUF.md passt zu agents.json (sonst: npx tsx scripts/autonomy/ablauf.ts)", () => {

@@ -49,6 +49,15 @@ export function usePause(angemeldet: boolean): Pause {
   return { stand, fehler, laeuft, umschalten };
 }
 
+/** Sinans „go“ für die vorgeschlagene Version über `/api/version`. */
+export async function sendeGo(produkt: string): Promise<boolean> {
+  try {
+    return (await aufruf("/api/version", "POST", { produkt, go: true })).ok;
+  } catch {
+    return false;
+  }
+}
+
 export type IdeeAntwort = { ok: true; meldung: string; kennung: string } | { ok: false; meldung: string };
 
 /** Idee über `/api/idee` anlegen. */

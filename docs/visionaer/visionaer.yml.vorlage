@@ -1,0 +1,65 @@
+# SIN-573: nach .github/workflows/visionaer.yml kopieren (der Worker darf .github/workflows/ nicht ändern). Sinan entscheidet.
+# Der CEO startet den Lauf, wenn er `fertig` meldet (scripts/ceo/ceo.ts, workflow_dispatch). Claude schreibt die Ausgabe nach docs/schemas/visionaer.json,
+# das Skript prüft sie, legt den Linear-Meilenstein an, hängt den Abschnitt an docs/VERSIONEN.md und schreibt VERSION `vorschlag`.
+# Die Version startet erst mit Sinans „go“ auf der Startseite.
+name: visionaer
+on:
+  workflow_dispatch:
+    inputs:
+      produkt:
+        description: "Produkt-Kennung, z. B. leitstand oder lernapp"
+        required: true
+      dry_run:
+        description: "Nur ins Log schreiben"
+        type: boolean
+        default: false
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: visionaer-${{ inputs.produkt }}
+  cancel-in-progress: false
+jobs:
+  visionaer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Visionär plant die nächste Version
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          prompt: |
+            Lies docs/skills/visionaer/SKILL.md und führe sie aus für das Produkt ${{ inputs.produkt }}.
+            Schreibe die Ausgabe nach visionaer-ergebnis.json im Repo-Wurzelverzeichnis (issue: SIN-573). Sonst nichts ändern.
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 30
+            --allowedTools "Read,Write,Bash(gh api:*)"
+      - run: npx tsx scripts/visionaer/visionaer.ts "${{ inputs.produkt }}" visionaer-ergebnis.json
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+      - name: PR mit docs/VERSIONEN.md öffnen
+        if: ${{ !inputs.dry_run }}
+        run: |
+          branch="visionaer/${{ inputs.produkt }}-$(date -u +%Y%m%d)"
+          git config user.name "claude[bot]"
+          git config user.email "claude[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add docs/VERSIONEN.md
+          git commit -m "docs(visionaer): Version vorgeschlagen (SIN-573)" -m "Part of SIN-573"
+          git push origin "$branch"
+          gh pr create --head "$branch" --base main --title "docs(visionaer): Version vorgeschlagen (SIN-573)" --body "Vorschlag des Visionärs. Die Version startet erst mit deinem Go auf der Startseite. Part of SIN-573."
