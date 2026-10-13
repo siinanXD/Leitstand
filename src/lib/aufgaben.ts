@@ -43,9 +43,9 @@ export function parseAufgaben(raw: unknown): Aufgabe[] {
 export const titelVon = (aufgaben: readonly Aufgabe[] | undefined, issue: string | null | undefined): string | null =>
   (issue && aufgaben?.find((a) => a.issue === issue)?.titel) || null;
 
-/** Was gerade in Arbeit ist, jüngster Start zuerst. */
+/** Was die Helfer gerade bauen (Linear „In Arbeit“ mit Label `claude`), jüngster Start zuerst. Sammel-Issues wie SIN-242 stehen dauerhaft auf „In Arbeit“ und zählen nicht. */
 export const laufende = (aufgaben: readonly Aufgabe[] | undefined): Aufgabe[] =>
-  (aufgaben ?? []).filter((a) => a.status === "laeuft").sort((a, b) => Date.parse(b.gestartet ?? "0") - Date.parse(a.gestartet ?? "0"));
+  (aufgaben ?? []).filter((a) => a.status === "laeuft" && a.labels.includes("claude")).sort((a, b) => Date.parse(b.gestartet ?? "0") - Date.parse(a.gestartet ?? "0"));
 
 /** Heute (Berliner Tag) fertig geworden, jüngste zuerst. */
 export function heuteFertigAus(aufgaben: readonly Aufgabe[] | undefined, jetzt: Date): Aufgabe[] {

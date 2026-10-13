@@ -7,11 +7,12 @@ const zeilen = parseAufgaben([
   { issue: "SIN-2", titel: "Leiste unten", projekt: "leitstand", status: "fertig", fertig_at: "2026-10-13T15:30:00Z" },
   { issue: "SIN-3", titel: "Alt", projekt: "leitstand", status: "fertig", fertig_at: "2026-10-12T10:00:00Z" },
   { issue: "SIN-4", titel: "", status: "offen" },
-  { issue: "SIN-5", titel: "Später gestartet", projekt: "leitstand", status: "laeuft", gestartet_at: "2026-10-13T15:00:00Z" },
+  { issue: "SIN-5", titel: "Später gestartet", projekt: "leitstand", status: "laeuft", gestartet_at: "2026-10-13T15:00:00Z", labels: ["claude"] },
+  { issue: "SIN-6", titel: "Sammel-Issue", projekt: "leitstand", status: "laeuft", gestartet_at: "2026-10-13T15:30:00Z" },
 ]);
 
 test("Aufgaben: ohne Titel fällt weg, Titel per Kennung", () => {
-  assert.equal(zeilen.length, 4);
+  assert.equal(zeilen.length, 5);
   assert.equal(titelVon(zeilen, "SIN-1"), "Richter prüft Fakten");
   assert.equal(titelVon(zeilen, "SIN-99"), null);
 });
