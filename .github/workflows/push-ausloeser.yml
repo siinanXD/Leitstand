@@ -1,0 +1,40 @@
+# Push-Mitteilungen senden (SIN-426, SIN-421). Aus docs/push/ausloeser.yml.vorlage, alle 15 Minuten statt stündlich,
+# damit „Braucht dich“ zeitnah kommt. Ruhezeit (22–7 Uhr) und Auswertung (20 Uhr) prüft der Code in Berliner Zeit.
+name: push-ausloeser
+
+on:
+  schedule:
+    - cron: "4,19,34,49 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur ins Log schreiben, nichts senden"
+        type: boolean
+        default: false
+
+concurrency:
+  group: push-ausloeser
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ausloeser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsx scripts/push/ausloeser.ts
+        env:
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || vars.VAPID_SUBJECT }}

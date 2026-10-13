@@ -65,7 +65,7 @@ export function nachrichtFuer(e: Ereignis, erinnerung = false): Nachricht {
   const kopf = e.art === "alarm" ? "Alarm" : "Braucht dich";
   return {
     titel: erinnerung ? `Erinnerung: ${kopf}` : kopf,
-    text: zweiZeilen(`${e.projekt} ${e.kennung}: ${e.titel}`, e.bereiche),
+    text: zweiZeilen(`${[e.projekt, e.kennung].filter(Boolean).join(" ")}: ${e.titel}`, e.bereiche),
     url: e.url ?? "/",
   };
 }
@@ -74,7 +74,7 @@ function gebuendelt(ereignisse: readonly Ereignis[]): Nachricht {
   const projekte = [...new Set(ereignisse.map((e) => e.projekt))].join(", ");
   return {
     titel: `Braucht dich (${ereignisse.length})`,
-    text: zweiZeilen(`${projekte}: ${ereignisse.map((e) => e.kennung).join(", ")}`, vereinigt(ereignisse)),
+    text: zweiZeilen(`${projekte}: ${ereignisse.map((e) => e.kennung || e.titel).join(", ")}`, vereinigt(ereignisse)),
     url: "/",
   };
 }
@@ -158,4 +158,24 @@ export function alarmeAus(lage: Lage, projekt: string, jetzt: number): Ereignis[
   if (lage.letzterLoopLauf != null && jetzt - lage.letzterLoopLauf > LOOP_STILLSTAND_MS)
     alarme.push({ id: `alarm:loop:${lage.letzterLoopLauf}`, art: "alarm", projekt, kennung: "Loop", titel: "steht länger als 30 Minuten", zeit: lage.letzterLoopLauf });
   return alarme;
+}
+
+// ------------------------------------------------------------------ Quellen (SIN-421)
+
+/** Was die Startseite unter „Was brauche ich von dir?“ zeigt, als Ereignis. Ohne Kennung im Text (SIN-578): Projekt und Titel reichen. */
+export type Wartendes = { key: string; titel: string; projekt: string };
+export const brauchtDichAus = (liste: readonly Wartendes[], jetzt: number): Ereignis[] =>
+  liste.map((w) => ({ id: `braucht:${w.key}`, art: "braucht-dich", projekt: w.projekt, kennung: "", titel: w.titel, zeit: jetzt, url: "/" }));
+
+/** Schlange je Projekt aus `loop_snapshot.queue` und das jüngste Ereignis aus `loop_events` (ms). */
+export type Schlange = { projekt: string; name: string; startbar: number; laeuft: number; pausiert: boolean; letztesEreignis: number | null };
+
+/**
+ * Stillstand: Arbeit liegt bereit, nichts läuft, keine Pause, seit über 30 Minuten kein Ereignis.
+ * Als „Braucht dich“, nicht als Alarm: nachts ist ein stehender Loop kein Notfall (Ruhezeit gilt).
+ */
+export function stillstandAus(schlangen: readonly Schlange[], jetzt: number): Ereignis[] {
+  return schlangen
+    .filter((s) => s.startbar > 0 && s.laeuft === 0 && !s.pausiert && s.letztesEreignis != null && jetzt - s.letztesEreignis > LOOP_STILLSTAND_MS)
+    .map((s) => ({ id: `stillstand:${s.projekt}:${s.letztesEreignis}`, art: "braucht-dich", projekt: s.name, kennung: "", titel: "Loop steht, obwohl Arbeit bereitliegt", zeit: jetzt, url: "/" }));
 }
