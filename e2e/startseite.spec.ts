@@ -70,6 +70,7 @@ test("Übersicht mit Beispiel-Daten hat keine axe-Fehler", async ({ page }) => {
       ],
     }),
   );
+  await page.route(`${SUPABASE}/rest/v1/ceo_entscheidungen**`, (route) => route.fulfill({ json: [] }));
   await page.goto("/details");
   await expect(page.getByRole("heading", { name: "Heute in einem Satz" })).toBeVisible();
   await expect(page.getByText("Beispiel-Aufgabe")).toBeVisible();
@@ -90,6 +91,7 @@ test("Start bei 390×844: drei Karten, eingeklappt keine Scrollhöhe über 844 p
   await page.addInitScript(([schluessel, wert]) => localStorage.setItem(schluessel, wert), [SPEICHER, JSON.stringify(sitzung)]);
   await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: [{ id: "1", created_at: new Date(jetzt - 600_000).toISOString(), project: "beispiel", step: "pr", status: "ok", issue: "SIN-1", pr: 1 }] }));
   await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "beispiel", stage: "work", status: "running", title: "Beispiel-Aufgabe" }] }));
+  await page.route(`${SUPABASE}/rest/v1/ceo_entscheidungen**`, (route) => route.fulfill({ json: [] }));
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.locator("details.aufklapp")).toHaveCount(3);
@@ -126,6 +128,7 @@ test("Aufgabe · Ablauf mit 6 Ereignissen hat keine axe-Fehler", async ({ page }
   });
   await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: zeilen }));
   await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "leitstand", issue: "SIN-456", title: "Beispiel-Aufgabe", stage: "work", status: "running" }] }));
+  await page.route(`${SUPABASE}/rest/v1/ceo_entscheidungen**`, (route) => route.fulfill({ json: [] }));
   await page.goto("/aufgabe/SIN-456");
   await expect(page.getByRole("heading", { name: "Beispiel-Aufgabe" })).toBeVisible();
   // Kennung, Werkzeuge und Einzelmeldungen stehen nur eingeklappt unter „Details“ (SIN-578).
