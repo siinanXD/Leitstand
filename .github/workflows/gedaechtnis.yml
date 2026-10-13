@@ -1,0 +1,49 @@
+# Täglich 05:50 UTC und nach jedem Merge (loop-merge) den Obsidian-Vault siinanXD/gedaechtnis nachführen.
+# Das Skript pusht nur bei Änderung. Ohne Zugriff auf das Repo (SIN-540 offen) läuft es als Trockenlauf,
+# legt die Ausgabe als Artefakt ab und bleibt grün.
+name: gedaechtnis
+
+on:
+  schedule:
+    - cron: "50 5 * * *"
+  workflow_run:
+    workflows: [loop-merge]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur schreiben ins Artefakt, nichts pushen"
+        type: boolean
+        default: true
+
+concurrency:
+  group: gedaechtnis
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gedaechtnis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Vault schreiben
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/gedaechtnis/schreiben.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gedaechtnis-ausgabe
+          path: gedaechtnis-ausgabe
+          if-no-files-found: ignore
