@@ -127,7 +127,10 @@ test("Aufgabe · Ablauf mit 6 Ereignissen hat keine axe-Fehler", async ({ page }
   await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: zeilen }));
   await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "leitstand", issue: "SIN-456", title: "Beispiel-Aufgabe", stage: "work", status: "running" }] }));
   await page.goto("/aufgabe/SIN-456");
-  await expect(page.getByRole("heading", { name: /SIN-456/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Beispiel-Aufgabe" })).toBeVisible();
+  // Kennung, Werkzeuge und Einzelmeldungen stehen nur eingeklappt unter „Details“ (SIN-578).
+  await page.getByText("Details", { exact: true }).click();
+  await expect(page.getByText("SIN-456", { exact: true })).toBeVisible();
   await expect(page.getByText("Beispiel pruefer", { exact: true })).toBeVisible();
   await expect(page.getByRole("list", { name: "Werkzeuge Anwalt" })).toBeVisible();
   expect((await axe(page)).violations).toEqual([]);

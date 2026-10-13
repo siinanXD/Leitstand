@@ -1,6 +1,8 @@
 // Pause des Loops (SIN-530). Rein. Der Schalter ist das jüngste `loop_events`-Ereignis mit Schritt PAUSE:
 // Status `pausiert` hält `dispatch` an, Status `weiter` hebt die Pause auf. Kein neuer Speicher, nichts erfunden.
 
+import { zeitInWorten } from "./zeit";
+
 export const PAUSE_SCHRITT = "PAUSE";
 export const PAUSIERT = "pausiert";
 export const WEITER = "weiter";
@@ -26,5 +28,5 @@ export function pauseEingabe(body: unknown): boolean | null {
   return typeof v === "boolean" ? v : null;
 }
 
-/** Text für den Satz oben, Uhrzeit in Berlin. */
-export const pauseSatz = (seit: string) => `Pausiert seit ${new Date(seit).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" })}.`;
+/** Text für den Satz oben, die Zeit in Worten (SIN-578). */
+export const pauseSatz = (seit: string, jetzt = new Date()) => `Pausiert, angehalten ${zeitInWorten(seit, jetzt) ?? "vor einer Weile"}.`;

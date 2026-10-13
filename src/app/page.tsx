@@ -5,33 +5,28 @@ import type { ReactNode } from "react";
 import { useSitzung } from "@/lib/sitzung";
 import { projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
-import { fortschritt, karten, lageSatz, stationen, type Fortschritt, type Karte, type Station } from "@/lib/uebersicht-einfach";
+import { fortschritt, karten, lageSatz, stationen, type Eintrag, type Karte, type Station, type StationId } from "@/lib/uebersicht-einfach";
 import { pauseSatz } from "@/lib/pause";
+import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
 import { ChefZeile } from "./chef-karte";
+import { fertigZeile, WieWeit } from "./fortschritt-balken";
+import { MitMehr } from "./mit-mehr";
 import { Rahmen, type Wartende } from "./rahmen";
+import { ZustandSymbol, type ZustandArt } from "./zustand-symbol";
 import "./bunt.css";
 
-/** Kennung SIN-… aus dem Schlüssel „projekt|SIN-…“; nur dann gibt es eine Ablauf-Seite. */
+/** Kennung SIN-… aus dem Schlüssel „projekt|SIN-…“; nur dann gibt es eine Aufgaben-Seite. */
 const kennungVon = (key: string) => key.split("|")[1]?.match(/^SIN-\d+$/)?.[0] ?? null;
 
-const prozent = (anteil: number) => `${Math.min(100, Math.round(anteil * 100))}%`;
-
-/** Balken mit Text für Screenreader; die Breite kommt aus dem Anteil. */
-function Balken({ anteil, name }: { anteil: number; name: string }) {
-  return (
-    <div className="balken" role="img" aria-label={`${name}: ${Math.round(anteil * 100)} Prozent`}>
-      <div style={{ width: prozent(anteil) }} />
-    </div>
-  );
-}
-
-/** Eine Karte: eingeklappt zwei Zeilen. Gleicher `name` heißt, dass der Browser nur eine Karte offen lässt (SIN-568). */
-function Aufklappkarte({ farbe, titel, zeile, children }: { farbe: string; titel: string; zeile: string; children: ReactNode }) {
+/** Eine Karte: eingeklappt zwei Zeilen, genau ein Zustand. Gleicher `name` heißt, dass der Browser nur eine Karte offen lässt (SIN-568). */
+function Aufklappkarte({ farbe, zustand, titel, zeile, children }: { farbe: string; zustand: ZustandArt; titel: string; zeile: string; children: ReactNode }) {
   return (
     <details name="start" className={`tile aufklapp ${farbe}`}>
       <summary>
         <h2 className="aufklapp-titel">{titel}</h2>
-        <span className="aufklapp-zeile">{zeile}</span>
+        <span className="aufklapp-zeile">
+          <ZustandSymbol art={zustand} nurSymbol /> {zeile}
+        </span>
       </summary>
       <div className="aufklapp-inhalt">{children}</div>
     </details>
@@ -41,13 +36,15 @@ function Aufklappkarte({ farbe, titel, zeile, children }: { farbe: string; titel
 function MussDuTun({ liste, wartend }: { liste: Karte[]; wartend: Wartende }) {
   if (liste.length === 0) return <p className="leer">Gerade nichts. Der Loop arbeitet allein.</p>;
   return (
-    <ul className="karten">
-      {liste.map((k) => (
+    <MitMehr
+      liste={liste}
+      klasse="karten"
+      zeile={(k) => (
         <li key={k.key} className="karte">
           <div className="karte-text">
-            <span className="karte-titel">{k.titel}</span>
-            <span className="leer">{k.warum}</span>
-            <span className="mono-label">{[k.projekt, k.pr && `PR ${k.pr}`, k.minuten !== null && `${k.minuten} MIN`].filter(Boolean).join(" · ")}</span>
+            <span className="karte-titel">{ohneKennungen(k.titel)}</span>
+            <span className="leer">{ohneKennungen(k.warum)}</span>
+            <span className="mono-label">{k.projekt}</span>
             {wartend.fehler[k.key] && (
               <span className="fehler" role="alert">
                 {wartend.fehler[k.key]}
@@ -56,108 +53,70 @@ function MussDuTun({ liste, wartend }: { liste: Karte[]; wartend: Wartende }) {
           </div>
           <div className="karte-knoepfe">
             {k.wartender && (
-              <button type="button" className="knopf aktiv" aria-label={`${k.titel} freigeben`} onClick={() => void wartend.freigeben(k.wartender!)}>
+              <button type="button" className="knopf aktiv" aria-label={`${ohneKennungen(k.titel)} freigeben`} onClick={() => void wartend.freigeben(k.wartender!)}>
                 Freigeben
               </button>
             )}
             {k.aufladen && (
-              <a className="knopf aktiv" href={k.aufladen} target="_blank" rel="noreferrer" aria-label={`${k.titel}: Aufladen`}>
+              <a className="knopf aktiv" href={k.aufladen} target="_blank" rel="noreferrer" aria-label={`${ohneKennungen(k.titel)}: Aufladen`}>
                 Aufladen →
               </a>
             )}
             {k.ansehen && (
-              <a className="knopf" href={k.ansehen} target="_blank" rel="noreferrer" aria-label={`${k.titel} ansehen`}>
+              <a className="knopf" href={k.ansehen} target="_blank" rel="noreferrer" aria-label={`${ohneKennungen(k.titel)} ansehen`}>
                 Ansehen →
               </a>
             )}
           </div>
         </li>
-      ))}
-    </ul>
+      )}
+    />
   );
 }
 
-function Kette({ liste }: { liste: Station[] }) {
-  return (
-    <ol className="kette">
-      {liste.map((s, i) => (
-        <li key={s.id} className="station" aria-label={s.name}>
-          <div className="station-kopf">
-            <span className="kreis mono" aria-hidden="true">
-              {i + 1}
-            </span>
-            <span className="station-name">{s.name}</span>
-            <span className="leer">{s.hinweis}</span>
-          </div>
-          {s.eintraege.length === 0 ? (
-            <p className="leer">Gerade nichts</p>
-          ) : (
-            <ul className="eintraege">
-              {s.eintraege.map((e) => (
-                <li key={e.key} className="eintrag">
-                  <span className={e.rot ? "punkt rot" : e.aktiv ? "punkt aktiv" : "punkt"} aria-hidden="true" />
-                  <span className="eintrag-titel">
-                    {kennungVon(e.key) ? <Link href={`/aufgabe/${kennungVon(e.key)}`}>{e.titel}</Link> : e.titel}
-                    {e.aktiv && <span className="sr-only"> (ein Agent arbeitet gerade)</span>}
-                    {e.rot && <span className="sr-only"> (Fehler)</span>}
-                  </span>
-                  <span className="mono-label">
-                    {projektInfo(e.projekt).name}
-                    {e.minuten !== null ? ` · ${e.minuten} MIN` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function WieWeit({ liste }: { liste: Fortschritt[] }) {
-  if (liste.length === 0) return <p className="leer">Keine Daten</p>;
+/** Ablauf als Kette: fünf Glieder, gefüllt, wo gerade etwas liegt; rot, wo etwas kaputt ist. Darunter höchstens drei Dinge. */
+function Kette({ liste, jetzt }: { liste: Station[]; jetzt: Date }) {
+  const dinge = liste.flatMap((s) => s.eintraege.map((e) => ({ e, station: s.name, id: s.id }))).sort((a, b) => Number(b.e.rot) - Number(a.e.rot) || Number(b.e.aktiv) - Number(a.e.aktiv));
   return (
     <>
-      <p className="leer">Fertig heißt: alles aus der Produktbeschreibung steht. Neue Ideen kommen danach nach und nach.</p>
-      <ul className="fortschritt">
-        {liste.map((f) => {
-          const name = projektInfo(f.project).name;
-          return (
-            <li key={f.project}>
-              <div className="zeile">
-                <span>{name}</span>
-                <span className="mono">
-                  {f.fertig} von {f.gesamt} fertig
-                </span>
-              </div>
-              <Balken anteil={f.fertig / f.gesamt} name={name} />
-              {f.neueIdeen > 0 && (
-                <p className="leer">
-                  +{f.neueIdeen} {f.neueIdeen === 1 ? "neue Idee" : "neue Ideen"} · kommen nach und nach
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <ol className="bild-kette" aria-label="Von links nach rechts durch fünf Stationen">
+        {liste.map((s) => (
+          <li key={s.id}>
+            <span className={s.eintraege.some((e) => e.rot) ? "glied rot" : s.eintraege.length > 0 ? "glied voll" : "glied"} aria-hidden="true" />
+            <span>{s.name}</span>
+            <span className="sr-only">{s.eintraege.some((e) => e.rot) ? ": kaputt" : s.eintraege.length > 0 ? ": belegt" : ": leer"}</span>
+          </li>
+        ))}
+      </ol>
+      {dinge.length === 0 ? (
+        <p className="leer">Gerade nichts</p>
+      ) : (
+        <MitMehr liste={dinge} klasse="eintraege" zeile={({ e, station, id }) => <Ding key={e.key} e={e} station={station} id={id} jetzt={jetzt} />} />
+      )}
     </>
   );
 }
 
-/** Kurzfassung für die zweite Zeile der Karte „Wann fertig?“: das erste Produkt mit Prozent, dazu die Zahl der übrigen. */
-function fertigZeile(liste: Fortschritt[]) {
-  const f = liste.find((x) => x.gesamt > 0);
-  if (!f) return "Keine Daten";
-  const mehr = liste.length - 1;
-  return `${projektInfo(f.project).name} ${Math.round((f.fertig / f.gesamt) * 100)} %${mehr > 0 ? ` · +${mehr} weitere` : ""}`;
+function Ding({ e, station, id, jetzt }: { e: Eintrag; station: string; id: StationId; jetzt: Date }) {
+  const kennung = kennungVon(e.key);
+  const titel = ohneKennungen(e.titel) || "Eine Aufgabe";
+  const seit = e.seit ? zeitInWorten(e.seit, jetzt) : null;
+  return (
+    <li className="eintrag">
+      <ZustandSymbol art={e.rot ? "kaputt" : id === "wartet" ? "wartet" : id === "live" ? "fertig" : "laeuft"} nurSymbol />
+      <span className="eintrag-titel">{kennung ? <Link href={`/aufgabe/${kennung}`}>{titel}</Link> : titel}</span>
+      <span className="mono-label">{[projektInfo(e.projekt).name, station, seit].filter(Boolean).join(" · ")}</span>
+    </li>
+  );
 }
 
 function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet }: { quelle: Quelle; jetzt: Date; wartend: Wartende; laden: string; pausiert: string | null; angemeldet: boolean }) {
   const aufgaben = karten(quelle, wartend.wartende);
   const lage = lageSatz(quelle, aufgaben.length, jetzt);
   const kette = stationen(quelle, wartend.wartende, jetzt);
-  const laufen = kette.flatMap((s) => s.eintraege).filter((e) => e.aktiv).length;
+  const eintraege = kette.flatMap((s) => s.eintraege);
+  const laufen = eintraege.filter((e) => e.aktiv).length;
+  const kaputt = eintraege.some((e) => e.rot);
   const weit = fortschritt(quelle);
   return (
     <main className="einfach bunt">
@@ -172,20 +131,25 @@ function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet }: { quelle
         </h1>
         <ChefZeile angemeldet={angemeldet} />
       </section>
-      <Aufklappkarte farbe="sonne" titel={`Was brauche ich von dir? · ${aufgaben.length}`} zeile={aufgaben[0]?.titel ?? "Nichts, alles läuft"}>
+      <Aufklappkarte
+        farbe="sonne"
+        zustand={aufgaben.length > 0 ? "wartet" : "fertig"}
+        titel={aufgaben.length > 0 ? `${aufgaben.length} ${aufgaben.length === 1 ? "wartet" : "warten"} auf dich` : "Nichts wartet auf dich"}
+        zeile={aufgaben[0] ? ohneKennungen(aufgaben[0].titel) : "Alles läuft"}
+      >
         <MussDuTun liste={aufgaben} wartend={wartend} />
       </Aufklappkarte>
-      <Aufklappkarte farbe="gruen" titel={`Was passiert gerade? · ${laufen} ${laufen === 1 ? "läuft" : "laufen"}`} zeile="Von links nach rechts durch fünf Stationen">
-        <Kette liste={kette} />
+      <Aufklappkarte
+        farbe="gruen"
+        zustand={kaputt ? "kaputt" : laufen > 0 ? "laeuft" : "fertig"}
+        titel={kaputt ? "Etwas ist kaputt" : laufen > 0 ? `${laufen} ${laufen === 1 ? "läuft" : "laufen"} gerade` : "Gerade ruht alles"}
+        zeile="Von links nach rechts durch fünf Stationen"
+      >
+        <Kette liste={kette} jetzt={jetzt} />
       </Aufklappkarte>
-      <Aufklappkarte farbe="blau" titel={`Wann fertig? · ${fertigZeile(weit)}`} zeile="Antippen zeigt alle Produkte">
+      <Aufklappkarte farbe="blau" zustand="fertig" titel="Wie weit sind wir?" zeile={fertigZeile(weit)}>
         <WieWeit liste={weit} />
       </Aufklappkarte>
-      <p className="einfach-fuss">
-        <Link href="/details" className="knopf">
-          Details ansehen
-        </Link>
-      </p>
     </main>
   );
 }
@@ -195,7 +159,7 @@ export default function Home() {
   const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
   return (
     <Rahmen aktiv="uebersicht">
-      {(quelle, jetzt, wartend, pause, laden) => <Start quelle={quelle} jetzt={jetzt} wartend={wartend} laden={laden} pausiert={pause.stand?.pausiert ? pauseSatz(pause.stand.seit) : null} angemeldet={angemeldet} />}
+      {(quelle, jetzt, wartend, pause, laden) => <Start quelle={quelle} jetzt={jetzt} wartend={wartend} laden={laden} pausiert={pause.stand?.pausiert ? pauseSatz(pause.stand.seit, jetzt) : null} angemeldet={angemeldet} />}
     </Rahmen>
   );
 }

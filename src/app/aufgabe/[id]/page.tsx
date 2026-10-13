@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import { ablauf, aufgabeLinks, kopf, parseMeldungen, ZUSTAND_NAME, type Meldung } from "@/lib/aufgabe";
+import { ablauf, aufgabeLinks, kopf, parseMeldungen, type Meldung } from "@/lib/aufgabe";
 import { browserClient } from "@/lib/browser-client";
 import { parseNachweis, type Ansicht } from "@/lib/nachweis";
 import { projektInfo } from "@/lib/projekte";
 import { ladeAufgabe, type Lesequelle } from "@/lib/supabase";
 import type { Quelle } from "@/lib/uebersicht";
+import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
 import { Rahmen } from "../../rahmen";
+import { ZustandSymbol } from "../../zustand-symbol";
 import "../../bunt.css";
 import "../../aufgabe.css";
 
 const euro = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
 
-/** Aufgabe nach Figma A5 (SIN-556): Kopf, Ablauf der Rollen, zuletzt Gemeldetes, Links. Nur Supabase. */
+/** Aufgabe nach Figma A5 v2 (SIN-578, 81:247): Zustand, Ablauf als Kette, zuletzt Gemeldetes. Kennung, Spur, Dauer, Kosten, Links und JSON nur eingeklappt unter „Details“. Nur Supabase. */
 export default function AufgabeSeite({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const issue = decodeURIComponent(id);
@@ -42,115 +44,112 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
   const letzte: Meldung | undefined = meldungen.at(-1);
   const links = aufgabeLinks(meldungen, quelle.snapshot, issue);
   const nachweis = parseNachweis(roh, issue);
+  const gestartet = meldungen[0] ? zeitInWorten(meldungen[0].zeitpunkt, jetzt) : null;
 
   return (
-    <main className="bento-b1 aufgabe-seite">
-      <section className="tile einfach-block" aria-labelledby="aufgabe" style={{ gridColumn: "1 / -1" }}>
-        <div className="kopf-block">
-          <p className="mono-label">
-            <Link href="/">Start</Link>
-          </p>
-          <h1 id="aufgabe" className="karte-titel">
-            <span className="mono">{k.kennung}</span>
-            {k.titel && <> · {k.titel}</>}
-          </h1>
-        </div>
-        <ul className="aufgabe-kopfwerte" aria-label="Eckdaten">
-          <li>{k.marke ? <span className={`zustand ${k.marke}`}>{ZUSTAND_NAME[k.marke]}</span> : <span className="leer">keine Meldung</span>}</li>
-          {k.projekt && <li className="mono">{projektInfo(k.projekt).name}</li>}
-          {k.spur && <li className="mono">Spur {k.spur}</li>}
-          {k.dauerMin !== null && <li className="mono">{k.dauerMin} MIN</li>}
-          {k.kostenEur !== null && <li className="mono">{euro(k.kostenEur)} bisher</li>}
-        </ul>
+    <main className="einfach bunt aufgabe-seite">
+      <section className="tile einfach-block sonne" aria-labelledby="aufgabe">
+        <p className="mono-label">
+          <Link href="/">Start</Link>
+        </p>
+        <h1 id="aufgabe" className="karte-titel">
+          {(k.titel && ohneKennungen(k.titel)) || "Eine Aufgabe"}
+        </h1>
+        {k.marke ? <ZustandSymbol art={k.marke} /> : <p className="leer">keine Meldung</p>}
+        <p className="leer">{[k.projekt && projektInfo(k.projekt).name, gestartet && `gestartet ${gestartet}`].filter(Boolean).join(" · ")}</p>
       </section>
 
-      <section className="tile einfach-block" aria-labelledby="ablauf" style={{ gridColumn: "1 / -1" }}>
-        <h2 id="ablauf" className="mono-label">
+      <section className="tile einfach-block gruen" aria-labelledby="ablauf">
+        <h2 id="ablauf" className="karte-titel">
           Ablauf
         </h2>
-        <ol className="kette">
-          {schritte.map((s, i) => (
-            <li key={s.rolle} className={s.meldung ? "station" : "station grau"}>
-              <div className="station-kopf">
-                <span className="kreis mono" aria-hidden="true">
-                  {i + 1}
-                </span>
-                <span className="station-name">{s.name}</span>
-                <span className={`zustand ${s.zustand}`}>{ZUSTAND_NAME[s.zustand]}</span>
-              </div>
-              <p className={s.meldung?.zusammenfassung ? undefined : "leer"}>{s.satz}</p>
-              {s.werkzeuge.length > 0 && (
-                <ul className="werkzeuge" aria-label={`Werkzeuge ${s.name}`}>
-                  {s.werkzeuge.map((w) => (
-                    <li key={w} className="mono">
-                      {w}
-                    </li>
-                  ))}
-                </ul>
-              )}
+        <ol className="bild-kette">
+          {schritte.map((s) => (
+            <li key={s.rolle} className={s.meldung ? undefined : "grau"}>
+              {s.meldung ? <ZustandSymbol art={s.zustand} nurSymbol /> : <span className="glied" aria-hidden="true" />}
+              <span>{s.name}</span>
+              {!s.meldung && <span className="sr-only">: noch keine Meldung</span>}
             </li>
           ))}
         </ol>
       </section>
 
-      {nachweis && (
-        <section className="tile einfach-block nachweis" aria-labelledby="geaendert" style={{ gridColumn: "1 / -1" }}>
-          <h2 id="geaendert" className="mono-label">
-            Was sich geändert hat
-          </h2>
-          {nachweis.diff && <p>{nachweis.diff}</p>}
-          <ul className="nachweis-routen" aria-label="Routen">
-            {nachweis.routen.map((r) => (
-              <li key={r.route}>
-                <h3 className="mono">{r.route}</h3>
-                <div className="nachweis-paar">
-                  <Bilder titel="Vorher" route={r.route} a={r.vorher} />
-                  <Bilder titel="Nachher" route={r.route} a={r.nachher} />
-                </div>
-              </li>
-            ))}
-          </ul>
-          {nachweis.clip && (
-            <video controls preload="none" src={nachweis.clip} aria-label="Klickweg als Clip">
-              <a href={nachweis.clip}>Clip öffnen</a>
-            </video>
-          )}
-          {nachweis.dateien.length > 0 && (
-            <ul aria-label="Geänderte Dateien">
-              {nachweis.dateien.map((d) => (
-                <li key={d.datei}>
-                  <span className="mono">{d.datei}</span> <span className="leer">{d.was ?? ""}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
-
-      <section className="tile einfach-block" aria-labelledby="gemeldet">
-        <h2 id="gemeldet" className="mono-label">
+      <section className="tile einfach-block blau" aria-labelledby="gemeldet">
+        <h2 id="gemeldet" className="karte-titel">
           Zuletzt gemeldet
         </h2>
         {letzte ? (
           <>
             <p>
-              <span className="station-name">{schritte.find((s) => s.meldung === letzte)?.name}</span> <span className="leer">{letzte.zusammenfassung ?? "keine Meldung"}</span>
+              <span className="station-name">{schritte.find((s) => s.meldung === letzte)?.name}</span> <span className="leer">{ohneKennungen(letzte.zusammenfassung ?? "keine Meldung")}</span>
             </p>
-            {letzte.naechsterSchritt && <p className="mono-label">Nächster Schritt: {letzte.naechsterSchritt}</p>}
-            <details>
-              <summary className="knopf">JSON anzeigen</summary>
-              <pre className="mono json">{JSON.stringify(letzte.roh, null, 2)}</pre>
-            </details>
+            {letzte.naechsterSchritt && <p className="leer">Als Nächstes: {ohneKennungen(letzte.naechsterSchritt)}</p>}
+            <p className="leer">{zeitInWorten(letzte.zeitpunkt, jetzt)}</p>
           </>
         ) : (
           <p className="leer">keine Meldung</p>
         )}
       </section>
 
-      <section className="tile einfach-block" aria-labelledby="links">
-        <h2 id="links" className="mono-label">
-          Links
-        </h2>
+      <details className="mehr">
+        <summary>Details</summary>
+        <ul className="aufgabe-kopfwerte" aria-label="Eckdaten">
+          <li className="mono">{k.kennung}</li>
+          {k.spur && <li className="mono">Spur {k.spur}</li>}
+          {k.dauerMin !== null && <li className="mono">{k.dauerMin} MIN</li>}
+          {k.kostenEur !== null && <li className="mono">{euro(k.kostenEur)} bisher</li>}
+        </ul>
+        {schritte.some((s) => s.werkzeuge.length > 0) &&
+          schritte.map(
+            (s) =>
+              s.werkzeuge.length > 0 && (
+                <ul key={s.rolle} className="werkzeuge" aria-label={`Werkzeuge ${s.name}`}>
+                  {s.werkzeuge.map((w) => (
+                    <li key={w} className="mono">
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              ),
+          )}
+        {schritte.map(
+          (s) =>
+            s.meldung?.zusammenfassung && (
+              <p key={s.rolle}>
+                <span className="station-name">{s.name}</span> <span className="leer">{s.satz}</span>
+              </p>
+            ),
+        )}
+        {nachweis && (
+          <div className="nachweis" aria-label="Was sich geändert hat">
+            {nachweis.diff && <p>{nachweis.diff}</p>}
+            <ul className="nachweis-routen" aria-label="Routen">
+              {nachweis.routen.map((r) => (
+                <li key={r.route}>
+                  <h3 className="mono">{r.route}</h3>
+                  <div className="nachweis-paar">
+                    <Bilder titel="Vorher" route={r.route} a={r.vorher} />
+                    <Bilder titel="Nachher" route={r.route} a={r.nachher} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {nachweis.clip && (
+              <video controls preload="none" src={nachweis.clip} aria-label="Klickweg als Clip">
+                <a href={nachweis.clip}>Clip öffnen</a>
+              </video>
+            )}
+            {nachweis.dateien.length > 0 && (
+              <ul aria-label="Geänderte Dateien">
+                {nachweis.dateien.map((d) => (
+                  <li key={d.datei}>
+                    <span className="mono">{d.datei}</span> <span className="leer">{d.was ?? ""}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         <ul className="link-leiste" aria-label="Links">
           {links.map((l) => (
             <li key={l.name}>
@@ -167,7 +166,13 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
             </li>
           ))}
         </ul>
-      </section>
+        {letzte && (
+          <details>
+            <summary className="knopf">JSON anzeigen</summary>
+            <pre className="mono json">{JSON.stringify(letzte.roh, null, 2)}</pre>
+          </details>
+        )}
+      </details>
     </main>
   );
 }

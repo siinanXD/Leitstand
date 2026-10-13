@@ -21,5 +21,5 @@ test("Eingabe, Zeile und Satz", () => {
   assert.equal(pauseEingabe({ pausiert: "ja" }), null);
   assert.equal(pauseEingabe(null), null);
   assert.deepEqual(pauseZeile(false), { project: "leitstand", step: "PAUSE", status: "weiter", issue: null, pr: null });
-  assert.equal(pauseSatz("2026-10-12T08:05:00Z"), "Pausiert seit 10:05.");
+  assert.equal(pauseSatz("2026-10-12T08:05:00Z", new Date("2026-10-12T10:05:00Z")), "Pausiert, angehalten vor 2 Stunden.");
 });

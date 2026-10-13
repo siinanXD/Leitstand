@@ -1,65 +1,63 @@
 "use client";
 
 import { useSitzung } from "@/lib/sitzung";
+import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
 import { useWerkzeuge } from "@/lib/werkzeuge-client";
 import type { Zeile } from "@/lib/werkzeuge/werkzeuge";
+import { MitMehr } from "../mit-mehr";
 import { Rahmen } from "../rahmen";
+import { ZustandSymbol, type ZustandArt } from "../zustand-symbol";
 import "../bunt.css";
 
-const wann = (iso: string | null) => (iso ? new Date(iso).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }) : "noch nie");
+const GRUPPEN: { art: ZustandArt; farbe: string; titel: string; passt: (z: Zeile) => boolean }[] = [
+  { art: "kaputt", farbe: "pfirsich", titel: "Kaputt", passt: (z) => z.ok === false },
+  { art: "wartet", farbe: "sonne", titel: "Noch nicht geprüft", passt: (z) => z.ok === null },
+  { art: "fertig", farbe: "blau", titel: "Läuft alles", passt: (z) => z.ok === true },
+];
 
-
-function Werkzeug({ z }: { z: Zeile }) {
-  return (
-    <li>
-      <div className="zeile">
-        <span>
-          <span className={z.ok === null ? "punkt gelb" : z.ok ? "punkt aktiv" : "punkt rot"} aria-hidden="true" /> {z.name}
+const werkzeug = (jetzt: Date) =>
+  function Eintrag(z: Zeile) {
+    const zuletzt = z.letzteOkAt ? zeitInWorten(z.letzteOkAt, jetzt) : null;
+    return (
+      <li key={z.id} className="dienst-schmal">
+        <span className="station-name">{z.name}</span>
+        <span className="leer">{ohneKennungen(z.aufgabe)}</span>
+        <span className="leer">
+          {zuletzt ? `Zuletzt verbunden: ${zuletzt}` : "Noch nie verbunden"}
         </span>
-        <span className="mono">{z.ok === null ? "nicht geprüft" : z.ok ? "verbunden" : "gestört"}</span>
-      </div>
-      <p className="leer">{z.aufgabe}</p>
-      <p className="leer">
-        Letzte erfolgreiche Verbindung: <span className="mono">{wann(z.letzteOkAt)}</span>
-        {z.ok === false && z.hinweis ? ` · ${z.hinweis}` : ""}
-      </p>
-    </li>
-  );
-}
+      </li>
+    );
+  };
 
-/** Werkzeuge (SIN-544, SIN-568): rote und gelbe oben, grüne eingeklappt als „N grün“. Status steht für Farbe und Text, nie nur für Farbe. */
+/** Werkzeuge (SIN-544, SIN-578, Figma W3 v2 81:89): drei Karten nach Zustand, je höchstens drei Werkzeuge, Rest hinter „mehr“. Zeit nur in Worten. */
 export default function Werkzeuge() {
   const sitzung = useSitzung();
   const stand = useWerkzeuge(sitzung.zustand === "ok" && sitzung.sitzung !== null);
   return (
     <Rahmen aktiv="werkzeuge">
-      {() => {
+      {(_quelle, jetzt) => {
         const zeilen = stand.zustand === "ok" ? stand.zeilen : [];
-        const gruen = zeilen.filter((z) => z.ok === true);
-        const offen = zeilen.filter((z) => z.ok !== true);
         return (
           <main className="einfach bunt">
-            <section className="tile einfach-block blau" aria-labelledby="werkzeuge">
-              <div className="kopf-block">
-                <h1 id="werkzeuge" className="mono-label">
-                  Werkzeuge
-                </h1>
-                <p className="leer">Stündlich geprüft mit einer lesenden Anfrage je Tool. Fehlt ein Key, steht das Tool auf rot.</p>
-              </div>
-              {stand.zustand !== "ok" ? (
-                <p className="leer">{stand.zustand === "laedt" ? "Wird geladen …" : "Keine Daten"}</p>
-              ) : (
-                <>
-                  {offen.length === 0 ? <p className="leer">Alle Werkzeuge laufen.</p> : <ul className="fortschritt">{offen.map((z) => <Werkzeug key={z.id} z={z} />)}</ul>}
-                  {gruen.length > 0 && (
-                    <details className="gruen-zu">
-                      <summary>{gruen.length} grün</summary>
-                      <ul className="fortschritt">{gruen.map((z) => <Werkzeug key={z.id} z={z} />)}</ul>
-                    </details>
-                  )}
-                </>
-              )}
-            </section>
+            <div className="kopf-titel">
+              <h1>Werkzeuge</h1>
+            </div>
+            {stand.zustand !== "ok" ? (
+              <p className="leer">{stand.zustand === "laedt" ? "Wird geladen …" : "Keine Daten"}</p>
+            ) : (
+              GRUPPEN.map((g) => {
+                const liste = zeilen.filter(g.passt);
+                return liste.length === 0 ? null : (
+                  <section key={g.art} className={`tile einfach-block ${g.farbe}`} aria-labelledby={`werkzeuge-${g.art}`}>
+                    <h2 id={`werkzeuge-${g.art}`} className="karte-titel">
+                      {g.titel}
+                    </h2>
+                    <ZustandSymbol art={g.art} />
+                    <MitMehr liste={liste} klasse="fortschritt" zeile={werkzeug(jetzt)} />
+                  </section>
+                );
+              })
+            )}
           </main>
         );
       }}

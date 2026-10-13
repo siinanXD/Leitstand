@@ -2,6 +2,8 @@
    Die Tokens stehen in globals.css. Start, Team, Werkzeuge: eine Bildschirmhöhe (844 px), Details erst beim Antippen. */
 .einfach {
   display: grid;
+  /* minmax(0, 1fr): sonst macht eine nowrap-Zeile (Chef-Zeile) die Spalte breiter als das Handy. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-12);
   padding: var(--space-16);
   max-width: 1440px;
@@ -10,6 +12,7 @@
 
 .einfach-lage {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
@@ -43,6 +46,7 @@
 
 .einfach-block {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-16);
   align-content: start;
 }
@@ -414,19 +418,78 @@
 @media (max-width: 899px) {
   .kopf {
     padding: var(--space-8) var(--space-16);
-  }
-
-  .kopf .reiter,
-  .kopf .kopf-aktionen {
     flex-wrap: nowrap;
-    width: 100%;
-    margin-left: 0;
-    overflow-x: auto;
   }
 
-  .kopf .knopf {
-    flex: none;
+  /* Leiste unten wie Figma 59:28: feste Spalten, nie breiter als der Bildschirm. */
+  .kopf .reiter {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+    background: var(--color-bg-surface);
+    border-top: 1px solid var(--color-border-subtle);
   }
+
+  .kopf .reiter .knopf {
+    justify-content: center;
+    min-height: 56px;
+    padding: 0 var(--space-4);
+    border: 0;
+    background: transparent;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .kopf .reiter .knopf[aria-current="page"] {
+    color: var(--color-accent-strong);
+    font-weight: 700;
+  }
+
+  /* Platz für die Leiste, damit nichts darunter verschwindet. */
+  body {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
+/* „Mehr“: aufklappbar, auf dem Handy rechts oben, Inhalt untereinander. */
+.mehr {
+  position: relative;
+  margin-left: auto;
+}
+
+.mehr > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.mehr > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mehr-inhalt {
+  position: absolute;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: var(--space-8);
+  min-width: 220px;
+  max-width: calc(100vw - 2 * var(--space-16));
+  margin-top: var(--space-8);
+  padding: var(--space-12);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+}
+
+.technik-reiter {
+  display: grid;
+  gap: var(--space-8);
 }
 
 @media (min-width: 900px) {
@@ -442,4 +505,170 @@
   .kette {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
+}
+
+/* Vier Zustände (SIN-578): Farbe + Form + Wort. Puls nur ohne reduzierte Bewegung. */
+.zustand-symbol {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-weight: 600;
+}
+
+.zustand-symbol.laeuft svg {
+  color: var(--color-status-ok);
+}
+
+.zustand-symbol.wartet svg {
+  color: var(--color-status-warn);
+}
+
+.zustand-symbol.kaputt svg {
+  color: var(--color-status-error);
+}
+
+.zustand-symbol.fertig svg {
+  color: var(--color-status-info);
+}
+
+.zustand-symbol .puls {
+  opacity: 0.35;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zustand-symbol .puls {
+    animation: puls 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes puls {
+  50% {
+    opacity: 0.1;
+    transform: scale(1.12);
+  }
+}
+
+/* Bilder statt Tabellen (SIN-578): Kette, Figuren, Balken mit Figur, Glas. */
+.bild-kette {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.bild-kette li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 12px;
+}
+
+/* Lange Stufennamen („Veröffentlichen“) trennen statt die Karte zu sprengen (Sinan 13.10.: kein seitliches Scrollen). */
+.bild-kette li > span:not(.glied) {
+  max-width: 100%;
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+.bild-kette .glied {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-text-secondary);
+  border-radius: 50%;
+}
+
+.bild-kette .glied.voll {
+  background: var(--color-status-ok);
+  border-color: var(--color-status-ok);
+}
+
+.bild-kette .glied.rot {
+  background: var(--color-status-error);
+  border-color: var(--color-status-error);
+}
+
+.figuren {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+.figuren li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  min-width: 72px;
+  max-width: 96px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.figur-balken {
+  position: relative;
+  padding-top: 28px;
+}
+
+.figur-balken .figur {
+  position: absolute;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  border-radius: 50%;
+  background: var(--color-status-info);
+}
+
+.glas {
+  position: relative;
+  width: 48px;
+  height: 64px;
+  border: 2px solid var(--color-text-secondary);
+  border-radius: 2px 2px 12px 12px;
+  overflow: hidden;
+  flex: none;
+}
+
+.glas > div {
+  position: absolute;
+  inset: auto 0 0;
+  background: var(--color-accent-strong);
+}
+
+.glas.rot > div {
+  background: var(--color-status-error);
+}
+
+.dienst {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-12);
+  align-items: center;
+}
+
+.dienst-schmal {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.mehr summary {
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.technik-schalter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--touch-min);
 }

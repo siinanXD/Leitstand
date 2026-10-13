@@ -8,9 +8,12 @@ import { nurProjekt } from "@/lib/projekte";
 import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
 import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
 import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "../rahmen";
+import { GedaechtnisKachel } from "../gedaechtnis-kachel";
+import { WerbungKachel } from "../werbung-kachel";
 import "../freigabe.css";
 import "../uebersicht.css";
 import "../projekte/projekte.css";
+import "../bunt.css";
 
 const KEINE_DATEN = <p className="leer">Keine Daten</p>;
 const SEGMENTE = 20;
@@ -199,6 +202,10 @@ export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; p
             </div>
           )}
         </section>
+      </div>
+      <div className="einfach bunt" style={{ gridColumn: "1 / -1", padding: 0 }}>
+        <WerbungKachel angemeldet />
+        <GedaechtnisKachel angemeldet />
       </div>
     </main>
   );
