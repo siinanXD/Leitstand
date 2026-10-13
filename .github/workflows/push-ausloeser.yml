@@ -38,3 +38,6 @@ jobs:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || vars.VAPID_SUBJECT }}
+          # Fertig und live, Worker abgebrochen (lesend): gemergte PRs und Worker-Läufe beider Repos, Titel aus Linear.
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}

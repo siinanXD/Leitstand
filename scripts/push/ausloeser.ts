@@ -7,11 +7,15 @@
  * Stillstand der Schlange, entscheidet mit `plane()` (Ruhezeit 22–7 Uhr, Auswertung 20 Uhr), sendet an alle Abos und
  * merkt sich Gesendetes in `leitstand_push_gesendet`. Kein KI-Aufruf.
  *
- * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT.
+ * Dazu (Sinan 13.10.) „Fertig und live“ für gemergte feat/fix-PRs und „Worker abgebrochen“ für gescheiterte Worker-Läufe (GitHub).
+ *
+ * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT,
+ *      GH_TOKEN (AGENT_WORKFLOW_TOKEN, lesend), LINEAR_API_KEY (nur für Titel). Ohne GH_TOKEN entfallen Fertig und Abbruch.
  * DRY_RUN=1: nur Ausgabe im Log, nichts gesendet oder gespeichert.
  */
 import { createClient } from "@supabase/supabase-js";
-import { brauchtDichAus, plane, stillstandAus, type Schlange } from "../../src/lib/push/ausloeser";
+import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_MS, menschlich, plane, stillstandAus, type GemergterPr, type Schlange, type WorkerLauf } from "../../src/lib/push/ausloeser";
+import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { sendeAnAlle } from "../../src/lib/push/push";
 import { supabaseSpeicher, vapidSender } from "../../src/lib/push/server";
 import { projektInfo } from "../../src/lib/projekte";
@@ -22,6 +26,67 @@ import { wartendePrs } from "../../src/lib/wartende-prs";
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
 const MERKEN_TAGE = 14;
+/** Worker-Workflow je Repo: Lern-App `worker.yml`, Leitstand `claude.yml`. */
+const WORKER: Record<RepoName, string> = { "siinanXD/Content-Agent-Lernapp": "worker.yml", "siinanXD/Leitstand": "claude.yml" };
+
+async function github<T>(pfad: string): Promise<T | null> {
+  if (!env.GH_TOKEN) return null;
+  const res = await fetch(`https://api.github.com/${pfad}`, { headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json" }, signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) {
+    console.log(`::warning::GitHub ${pfad.split("?")[0]}: HTTP ${res.status}`);
+    return null;
+  }
+  return (await res.json()) as T;
+}
+
+/** Titel aus Linear für Kennungen wie SIN-456; fehlt der Schlüssel oder klappt es nicht, bleibt der Lauf-Titel. */
+async function linearTitel(ids: string[]): Promise<Map<string, string>> {
+  const titel = new Map<string, string>();
+  if (!env.LINEAR_API_KEY || ids.length === 0) return titel;
+  const query = `{ ${ids.map((id, i) => `a${i}: issue(id: "${id}") { title }`).join(" ")} }`;
+  try {
+    const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY }, body: JSON.stringify({ query }), signal: AbortSignal.timeout(15_000) });
+    const json = (await res.json()) as { data?: Record<string, { title?: string } | null> };
+    ids.forEach((id, i) => {
+      const t = json.data?.[`a${i}`]?.title;
+      if (t) titel.set(id, t);
+    });
+  } catch (e) {
+    console.log(`::warning::Linear-Titel: ${e instanceof Error ? e.message : e}`);
+  }
+  return titel;
+}
+
+async function gemergtePrs(jetzt: Date): Promise<GemergterPr[]> {
+  const prs: GemergterPr[] = [];
+  for (const repo of Object.keys(REPOS) as RepoName[]) {
+    const liste = await github<{ number: number; title: string; merged_at: string | null }[]>(`repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
+    for (const p of liste ?? []) {
+      const gemergt = p.merged_at ? Date.parse(p.merged_at) : NaN;
+      if (Number.isFinite(gemergt) && jetzt.getTime() - gemergt <= FERTIG_FENSTER_MS) prs.push({ repo, projekt: projektInfo(REPOS[repo].projekt).name, nummer: p.number, titel: p.title, gemergt });
+    }
+  }
+  return prs;
+}
+
+async function workerLaeufe(jetzt: Date): Promise<WorkerLauf[]> {
+  const seit = new Date(jetzt.getTime() - 3 * 3_600_000).toISOString();
+  const roh: (Omit<WorkerLauf, "titel"> & { rohTitel: string })[] = [];
+  for (const repo of Object.keys(REPOS) as RepoName[]) {
+    const antwort = await github<{ workflow_runs: { display_title: string; conclusion: string | null; status: string; updated_at: string }[] }>(`repos/${repo}/actions/workflows/${WORKER[repo]}/runs?per_page=50&created=%3E${seit}`);
+    for (const r of antwort?.workflow_runs ?? []) {
+      const issue = r.display_title.match(/SIN-\d+/)?.[0];
+      if (!issue || r.status !== "completed" || !r.conclusion) continue;
+      roh.push({ repo, projekt: projektInfo(REPOS[repo].projekt).name, issue, ergebnis: r.conclusion, ende: Date.parse(r.updated_at), rohTitel: r.display_title });
+    }
+  }
+  const titel = await linearTitel([...new Set(roh.filter((r) => r.ergebnis === "failure").map((r) => r.issue))]);
+  const ersatz = (roh: string) => {
+    const t = menschlich(roh.replace(/^worker\s+/i, "").replace(/^SIN-\d+:\s*/, "")).trim();
+    return !t || /^SIN-\d+$/.test(t) ? "eine Aufgabe" : t;
+  };
+  return roh.map(({ rohTitel, ...r }) => ({ ...r, titel: titel.get(r.issue) ?? ersatz(rohTitel) }));
+}
 
 async function main() {
   const url = env.SUPABASE_URL;
@@ -67,7 +132,13 @@ async function main() {
     };
   });
 
-  const ereignisse = [...brauchtDichAus(wartend, jetzt.getTime()), ...stillstandAus(schlangen, jetzt.getTime())];
+  const [prs, laeufe] = await Promise.all([gemergtePrs(jetzt), workerLaeufe(jetzt)]);
+  const ereignisse = [
+    ...brauchtDichAus(wartend, jetzt.getTime()),
+    ...stillstandAus(schlangen, jetzt.getTime()),
+    ...fertigAus(prs, jetzt.getTime()),
+    ...abbruchAus(laeufe, jetzt.getTime()),
+  ];
   const ab = new Date(jetzt.getTime() - MERKEN_TAGE * 24 * 3_600_000).toISOString();
   const { data: rohGesendet, error: fehlerGesendet } = await db.from("leitstand_push_gesendet").select("schluessel").gte("gesendet_at", ab);
   if (fehlerGesendet) throw new Error(`leitstand_push_gesendet: ${fehlerGesendet.message}`);

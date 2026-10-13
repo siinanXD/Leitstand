@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, inRuhe, plane, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
+import { abbruchAus, alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, fertigAus, inRuhe, menschlich, plane, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
 
 const utc = (s: string) => Date.parse(s);
 const e = (id: string, art: Ereignis["art"], zeit: number, extra: Partial<Ereignis> = {}): Ereignis => ({ id, art, projekt: "Leitstand", kennung: "SIN-1", titel: "Freigabe offen", zeit, ...extra });
@@ -164,4 +164,50 @@ test("Gebündelt ohne Kennung nennt die Titel", () => {
   const ereignisse = brauchtDichAus([{ key: "a", titel: "Clip freigeben", projekt: "Lern-App" }, { key: "b", titel: "Repo anlegen", projekt: "Leitstand" }], nacht);
   const p = plane(ereignisse, new Set(), utc("2026-10-13T05:00:00Z"));
   assert.equal(p.nachrichten[0].text, "Lern-App, Leitstand: Clip freigeben, Repo anlegen");
+});
+
+test("Fertig: nur feat und fix der letzten 6 Stunden, Titel ohne Präfix und Kennung", () => {
+  const jetzt = utc("2026-10-13T15:40:00Z");
+  const prs = [
+    { repo: "siinanXD/Leitstand", projekt: "Leitstand", nummer: 118, titel: "feat(einfach): Leiste unten, nichts scrollt seitlich (SIN-578)", gemergt: utc("2026-10-13T15:29:00Z") },
+    { repo: "siinanXD/Leitstand", projekt: "Leitstand", nummer: 116, titel: "docs(steuerung): Regel (SIN-577)", gemergt: utc("2026-10-13T14:13:00Z") },
+    { repo: "siinanXD/Leitstand", projekt: "Leitstand", nummer: 90, titel: "fix(alt): längst gemeldet (SIN-1)", gemergt: utc("2026-10-13T08:00:00Z") },
+  ];
+  const ereignisse = fertigAus(prs, jetzt);
+  assert.deepEqual(ereignisse.map((e) => e.id), ["fertig:siinanXD/Leitstand#118"]);
+  const p = plane(ereignisse, new Set(), jetzt);
+  assert.equal(p.nachrichten[0].titel, "Fertig und live");
+  assert.equal(p.nachrichten[0].text, "Leitstand: Leiste unten, nichts scrollt seitlich");
+  assert.equal(menschlich("chore: aufräumen"), "Aufräumen");
+});
+
+test("Abbruch: letzter echter Lauf gescheitert, einmal am Tag, nicht wenn danach einer klappte", () => {
+  const jetzt = utc("2026-10-13T15:30:00Z");
+  const lauf = (ergebnis: string, min: number, issue = "SIN-456") => ({ repo: "siinanXD/Content-Agent-Lernapp", projekt: "Lern-App", issue, titel: "Richter prüft Fakten", ergebnis, ende: jetzt - min * 60_000 });
+  assert.equal(abbruchAus([lauf("failure", 20), lauf("failure", 10), lauf("skipped", 5)], jetzt).length, 1);
+  assert.equal(abbruchAus([lauf("failure", 20), lauf("success", 10)], jetzt).length, 0);
+  assert.equal(abbruchAus([lauf("failure", 90)], jetzt).length, 0);
+  const a = abbruchAus([lauf("failure", 20)], jetzt);
+  const b = abbruchAus([lauf("failure", 3)], jetzt);
+  assert.equal(a[0].id, b[0].id);
+  const p = plane(a, new Set(), jetzt);
+  assert.equal(p.nachrichten[0].titel, "Worker abgebrochen");
+  assert.equal(p.nachrichten[0].text, "Lern-App: Richter prüft Fakten");
+});
+
+test("Nachts gesammelt: gemischte Arten heißen „Neues“, Auswertung zählt nur Braucht dich", () => {
+  const nacht = utc("2026-10-13T01:00:00Z");
+  const ereignisse = [e("b1", "braucht-dich", nacht), e("f1", "fertig", nacht, { titel: "Leiste unten", kennung: "" })];
+  assert.equal(plane(ereignisse, new Set(), nacht).nachrichten.length, 0);
+  const p7 = plane(ereignisse, new Set(), utc("2026-10-13T05:00:00Z"));
+  assert.equal(p7.nachrichten[0].titel, "Neues (2)");
+});
+
+test("Tagsüber mehr als drei auf einmal: eine gesammelte Mitteilung", () => {
+  const jetzt = utc("2026-10-13T15:40:00Z");
+  const viele = ["a", "b", "c", "d"].map((id) => e(id, "fertig", jetzt, { kennung: "", titel: `Teil ${id}` }));
+  const p = plane(viele, new Set(), jetzt);
+  assert.equal(p.nachrichten.length, 1);
+  assert.equal(p.nachrichten[0].titel, "Fertig und live (4)");
+  assert.deepEqual(p.neu, ["a", "b", "c", "d"]);
 });
