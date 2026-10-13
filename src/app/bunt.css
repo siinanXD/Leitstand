@@ -418,7 +418,7 @@
 @media (max-width: 899px) {
   .kopf {
     padding: var(--space-8) var(--space-16);
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   /* Leiste unten wie Figma 59:28: feste Spalten, nie breiter als der Bildschirm. */
@@ -455,6 +455,27 @@
   body {
     padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
+}
+
+/* Sehr schmal (etwa 200 % Zoom): fünf Spalten passen nicht, die Reiter stehen untereinander im Fluss. */
+@media (max-width: 320px) {
+  .kopf .reiter {
+    position: static;
+    grid-template-columns: minmax(0, 1fr);
+    flex-basis: 100%;
+  }
+
+  body {
+    padding-bottom: 0;
+  }
+}
+
+/* Link „Start“ auf der Aufgabe: Ziel mindestens 44 px. */
+.aufgabe-seite .mono-label a {
+  display: inline-flex;
+  align-items: center;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
 }
 
 /* „Mehr“: aufklappbar, auf dem Handy rechts oben, Inhalt untereinander. */
@@ -570,6 +591,7 @@
   margin: 0;
   padding: 0;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--space-4);
 }
@@ -578,7 +600,7 @@
   display: grid;
   justify-items: center;
   gap: var(--space-4);
-  flex: 1;
+  flex: 1 1 3rem;
   min-width: 0;
   text-align: center;
   font-size: 12px;

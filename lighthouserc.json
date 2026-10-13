@@ -1,0 +1,18 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "npx next start --hostname 127.0.0.1 --port 43124",
+      "startServerReadyPattern": "Ready",
+      "url": ["http://127.0.0.1:43124/anmelden"],
+      "numberOfRuns": 1,
+      "settings": { "preset": "mobile" }
+    },
+    "assert": {
+      "assertions": {
+        "categories:accessibility": ["error", { "minScore": 0.95 }],
+        "categories:performance": ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["error", { "minScore": 0.95 }]
+      }
+    }
+  }
+}
