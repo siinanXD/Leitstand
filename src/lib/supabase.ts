@@ -1,3 +1,4 @@
+import { letzteJeProdukt, type Zeile } from "./ceo/ceo";
 import { parseEvents, parseSnapshot, type Quelle } from "./uebersicht";
 
 export type Laden = { zustand: "ok"; quelle: Quelle } | { zustand: "fehler" };
@@ -29,6 +30,16 @@ export async function ladeAufgabe(client: Lesequelle, issue: string): Promise<un
   try {
     const r = await alleSeiten((von, bis) => client.from("loop_events").select("*").eq("issue", issue).order("created_at", { ascending: true }).order("id", { ascending: true }).range(von, bis));
     return r.error ? null : r.data;
+  } catch {
+    return null;
+  }
+}
+
+/** Letzte Entscheidung je Produkt aus `ceo_entscheidungen` (SIN-579); Fehler: null. */
+export async function ladeChef(client: Lesequelle): Promise<Zeile[] | null> {
+  try {
+    const r = await client.from("ceo_entscheidungen").select("produkt, entscheidung, grund, created_at, bezug").order("created_at", { ascending: false }).limit(50);
+    return r.error ? null : letzteJeProdukt(r.data);
   } catch {
     return null;
   }

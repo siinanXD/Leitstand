@@ -90,3 +90,13 @@ for (const [seite, pfad] of SEITEN) {
     });
   }
 }
+
+test("Start: zweites Öffnen zeigt sofort Inhalt aus dem Speicher (SIN-579)", async ({ page }) => {
+  await anmelden(page);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 300 });
+  await expect(page.getByText("Wird geladen")).toHaveCount(0);
+  await expect(page.getByText("Sitzung wird geprüft")).toHaveCount(0);
+});

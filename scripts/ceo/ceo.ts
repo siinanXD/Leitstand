@@ -14,7 +14,7 @@
  * DRY_RUN=1 oder fehlende Supabase-Variablen: nur Ausgabe im Log, nichts geschrieben.
  */
 import { readFile } from "node:fs/promises";
-import { AUSLOESER, ereignisZeile, entscheide, entscheidungsZeile, gedaechtnisZeile, ohneDaten, startbar, type Ausloeser, type Entscheidung, type ProduktLage } from "../../src/lib/ceo/ceo";
+import { AUSLOESER, bezugVon, ereignisZeile, entscheide, entscheidungsZeile, gedaechtnisZeile, ohneDaten, startbar, type Ausloeser, type Entscheidung, type ProduktLage } from "../../src/lib/ceo/ceo";
 import { neueIssueTitel } from "../../src/lib/ceo/fertig";
 import { REPOS } from "../../src/lib/freigabe";
 import { PROJEKTE } from "../../src/lib/projekte";
@@ -150,14 +150,13 @@ async function main() {
       ideenDieseWoche: events.filter((e) => e.project === p.id && /^idee$/i.test(e.step ?? "")).length,
       version: versionen.find((v) => v.produkt === p.id)?.status ?? null,
       fokusBei: projektName(fokusVon(versionen, p.id, jetzt)),
+      bezug: bezugVon(snapshot, p.id),
     });
   }
 
   const tag = jetzt.toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
-  // Nach einem Merge oder einer Änderung der Bereitschaftsliste schreibt der CEO nur, wenn er etwas zu planen hat; täglich und bei Rot immer.
-  const schreibenSoll = (e: Entscheidung) => ausloeser === "taeglich" || ausloeser === "rot" || e.auffuellen > 0 || e.art !== "weiterbauen";
+  // Der Satz entsteht bei jedem Lauf (SIN-579), auch wenn nichts zu planen ist: so verfällt er nach jedem Merge, nicht erst am nächsten Morgen.
   for (const e of [...ohne, ...lagen.map(entscheide)]) {
-    if (!schreibenSoll(e)) continue;
     console.log(`${gedaechtnisZeile(e, tag)} (Auslöser: ${ausloeser}, auffüllen: ${e.auffuellen}, Meta: ${e.metaErlaubt ? "ja" : "nein"}, Ideen: ${e.ideenErlaubt ? "ja" : "nein"})`);
     if (DRY) continue;
     const run = env.GITHUB_RUN_ID;

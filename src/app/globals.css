@@ -207,6 +207,20 @@ body {
   padding: var(--space-24);
 }
 
+/* Platzhalter beim Laden (SIN-579): graue Flächen in Kartenform, ohne Bewegung. */
+.platzhalter {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.platzhalter .tile {
+  min-height: 96px;
+  background: var(--color-bg-raised);
+}
+
 .tile h1,
 .tile h2 {
   margin: var(--space-8) 0 var(--space-12);
