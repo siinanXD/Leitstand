@@ -7,7 +7,8 @@
     { "id": "C", "name": "Spur C · API mit Haiku" }
   ],
   "rollen": [
-    { "id": "ceo", "name": "CEO", "skill": "docs/skills/ceo/SKILL.md", "aufgabe": "Entscheidet je Produkt, was als Nächstes gebaut wird.", "ausloeser": ["Schlange unter 3 startbar", "Fertig-Liste ändert sich", "Live-Check rot"], "netz": "täglich 06:00", "werkzeuge": ["Supabase", "Linear", "Gedächtnis"], "ruft": ["vorarbeiter", "research"] },
+    { "id": "ceo", "name": "CEO", "skill": "docs/skills/ceo/SKILL.md", "aufgabe": "Entscheidet je Produkt, was als Nächstes gebaut wird.", "ausloeser": ["Schlange unter 3 startbar", "Fertig-Liste ändert sich", "Live-Check rot"], "netz": "täglich 06:00", "werkzeuge": ["Supabase", "Linear", "Gedächtnis"], "ruft": ["vorarbeiter", "research", "visionaer"] },
+    { "id": "visionaer", "name": "Visionär", "skill": "docs/skills/visionaer/SKILL.md", "aufgabe": "Teilt ein Produkt in Versionen und schlägt die nächste vor.", "ausloeser": ["CEO meldet fertig"], "netz": null, "werkzeuge": ["Linear", "Supabase", "Gedächtnis"], "ruft": [] },
     { "id": "vorarbeiter", "name": "Vorarbeiter", "skill": "docs/skills/vorarbeiter/SKILL.md", "aufgabe": "Plant die Reihenfolge und verteilt auf drei Spuren.", "ausloeser": ["nach jedem Merge", "CEO legt Issues an"], "netz": null, "werkzeuge": ["Linear", "Supabase"], "ruft": ["bauen"] },
     { "id": "research", "name": "Research", "skill": "docs/skills/research/SKILL.md", "aufgabe": "Sucht vor jeder Entscheidung eine fertige Lösung.", "ausloeser": ["vom CEO oder Bauer angefordert"], "netz": null, "werkzeuge": ["WebSearch", "WebFetch", "Context7", "Hugging Face Hub API", "GitHub-Suche"], "ruft": [] },
     { "id": "bauen", "name": "Bauen", "skill": "docs/skills/bauen/SKILL.md", "aufgabe": "Baut Code, Design aus Figma, Content und Video.", "ausloeser": ["Plan des Vorarbeiters"], "netz": null, "werkzeuge": ["Bash", "Context7", "Figma-Skript"], "ruft": ["pruefen", "research"] },

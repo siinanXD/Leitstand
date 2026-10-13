@@ -22,6 +22,7 @@ import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "..
 import { fortschritt } from "../../src/lib/uebersicht-einfach";
 import { aufgabenFuerDich } from "../../src/lib/uebersicht-b1";
 import { wartendePrs } from "../../src/lib/wartende-prs";
+import { fokusVon, standZeile, staende } from "../../src/lib/visionaer/visionaer";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY;
@@ -105,12 +106,26 @@ async function auffuellen(produkt: string, n: number) {
   }
 }
 
+const projektName = (id: string | null) => (id ? (PROJEKTE.find((x) => x.id === id)?.name ?? id) : null);
+
+/** `fertig` (SIN-573): Dispatcher des Produkts stoppen (VERSION `pause`) und den Visionär starten (visionaer.yml). Baut erst weiter, wenn Sinan „go“ gibt. */
+async function visionaerRufen(produkt: string) {
+  console.log(`${DRY ? "[trocken] " : ""}${produkt}: fertig, Dispatcher stoppen und Visionär rufen`);
+  if (DRY) return;
+  await supabase("loop_events", standZeile(produkt, "pause", ""));
+  const res = await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/visionaer.yml/dispatches`, { method: "POST", headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json" }, body: JSON.stringify({ ref: "main", inputs: { produkt } }) });
+  // Der Stand `pause` gilt trotzdem: lieber nichts bauen als ohne Plan weiterlaufen. Fehlt visionaer.yml noch, steht es hier im Log.
+  if (!res.ok) console.log(`::warning::visionaer.yml nicht gestartet (${res.status}).`);
+}
+
 async function main() {
   const jetzt = new Date();
   const snapshot: SnapshotRow[] = !env.SUPABASE_URL ? [] : parseSnapshot(await supabase("loop_snapshot?select=*&limit=200"));
   const events = !env.SUPABASE_URL ? [] : parseEvents(await supabase(`loop_events?select=*&created_at=gte.${new Date(jetzt.getTime() - 7 * TAG).toISOString()}&order=created_at.desc&limit=1000`));
   const letzte24 = events.filter((e) => Date.parse(e.created_at) >= jetzt.getTime() - TAG);
   const stand = new Map(fortschritt({ events: letzte24, snapshot }).map((f) => [f.project, f]));
+  // Versionsstand (SIN-573): jüngstes VERSION-Ereignis je Produkt, ohne 7-Tage-Grenze, denn eine Version dauert länger.
+  const versionen = !env.SUPABASE_URL ? [] : staende(await supabase("loop_events?select=project,step,status,grund,created_at&step=eq.VERSION&order=created_at.desc&limit=200"));
   const aufgaben = aufgabenFuerDich(snapshot);
   const wartend = wartendePrs(snapshot);
 
@@ -133,6 +148,8 @@ async function main() {
       wartetAufSinan: [...aufgaben.filter((a) => ids.has(a.ref)).map((a) => `${a.ref} ${a.titel}`), ...wartend.filter((w) => REPOS[w.repo].projekt === p.id).map((w) => `PR #${w.nummer}`)],
       metaPrsHeute: await metaPrsHeute(p.repo, new Date(jetzt.getTime() - TAG)),
       ideenDieseWoche: events.filter((e) => e.project === p.id && /^idee$/i.test(e.step ?? "")).length,
+      version: versionen.find((v) => v.produkt === p.id)?.status ?? null,
+      fokusBei: projektName(fokusVon(versionen, p.id, jetzt)),
     });
   }
 
@@ -149,6 +166,7 @@ async function main() {
   }
   for (const e of lagen.map(entscheide)) {
     if (e.art === "weiterbauen" && e.auffuellen > 0) await auffuellen(e.produkt, e.auffuellen);
+    if (e.visionaer) await visionaerRufen(e.produkt);
   }
   if (DRY) console.log("Trockenlauf: nichts geschrieben.");
 }

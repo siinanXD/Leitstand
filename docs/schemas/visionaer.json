@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ergebnis der Rolle visionaer",
+  "type": "object",
+  "properties": {
+    "rolle": { "type": "string", "enum": ["visionaer"] },
+    "issue": { "type": "string", "pattern": "^SIN-[0-9]+$" },
+    "zeitpunkt": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$" },
+    "status": { "type": "string", "enum": ["fertig", "blockiert", "braucht_sinan"] },
+    "zusammenfassung": { "type": "string", "minLength": 1 },
+    "naechster_schritt": { "type": "string", "minLength": 1 },
+    "kosten_eur": { "type": "number", "minimum": 0 },
+    "quellen": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "produkt": { "type": "string", "minLength": 1 },
+    "vorschlag": { "type": "string", "enum": ["naechste_version", "pause", "abschliessen"] },
+    "versionen": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "pattern": "^v[0-9]+ \\S" },
+          "ziel": { "type": "string", "minLength": 1 },
+          "fertig_punkte": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "nicht_ziele": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "tage": { "type": "number", "minimum": 1 },
+          "voraussetzung": { "type": "string" },
+          "nur_fehler": { "type": "boolean" },
+          "idee_issues": { "type": "array", "items": { "type": "string", "pattern": "^SIN-[0-9]+$" } }
+        },
+        "required": ["name", "ziel", "fertig_punkte", "nicht_ziele", "tage", "voraussetzung", "nur_fehler", "idee_issues"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["rolle", "issue", "zeitpunkt", "status", "zusammenfassung", "naechster_schritt", "kosten_eur", "quellen", "produkt", "vorschlag", "versionen"],
+  "additionalProperties": false
+}

@@ -28,6 +28,10 @@ export type ProduktLage = {
   /** Loop-/Meta-PRs, die heute schon gemergt wurden. */
   metaPrsHeute: number;
   ideenDieseWoche: number;
+  /** Stand der Version (SIN-573): `go` = Sinan hat eine Version freigegeben. */
+  version?: "pause" | "vorschlag" | "go" | "fertig" | null;
+  /** Anderes Produkt mit freigegebener Version (Fokus-Regel): dieses bekommt nur Reparaturen. */
+  fokusBei?: string | null;
 };
 
 export type Entscheidung = {
@@ -41,6 +45,8 @@ export type Entscheidung = {
   /** Regeln: Meta-Arbeit erlaubt (höchstens 1 pro Tag), Ideen erlaubt (v1 fertig, höchstens 1 pro Woche). */
   metaErlaubt: boolean;
   ideenErlaubt: boolean;
+  /** `fertig` ohne Version in Arbeit: Dispatcher stoppen und den Visionär rufen (SIN-573). */
+  visionaer?: boolean;
 };
 
 const ZURUECKGEHALTEN = ["sinan", "needs-human", "design"];
@@ -58,12 +64,16 @@ const nenne = (liste: string[]) => liste.slice(0, 2).join(" und ") + (liste.leng
 /** Fehlt die Snapshot-Zeile eines Produkts, wartet der CEO ehrlich, statt zu raten. */
 export const ohneDaten = (id: string, name: string): Entscheidung => ({ produkt: id, art: "warten", grund: `${name}: Keine Daten, ich kann noch nichts entscheiden.`, auffuellen: 0, dringend: false, metaErlaubt: true, ideenErlaubt: false });
 
-/** Genau eine Entscheidung je Produkt. Reihenfolge: reparieren, fertig, Vorrat reicht, warten, weiterbauen. */
+/** Genau eine Entscheidung je Produkt. Reihenfolge: reparieren, fertig, Fokus, Vorrat reicht, warten, weiterbauen. */
 export function entscheide(p: ProduktLage): Entscheidung {
   const v1Fertig = p.gesamt !== null && p.gesamt > 0 && p.fertig !== null && p.fertig >= p.gesamt;
   const basis = { produkt: p.id, metaErlaubt: p.metaPrsHeute < 1, ideenErlaubt: v1Fertig && p.ideenDieseWoche < 1 };
+  // Mit freigegebener Version (Sinans „go“) baut das Produkt weiter, auch wenn die alte Liste voll ist.
+  const fertig = v1Fertig && p.version !== "go";
+  const wartetAufVersion = p.version === "pause" || p.version === "vorschlag";
   if (p.rot) return { ...basis, art: "reparieren", grund: `${p.name}: Ich repariere zuerst ${p.rot}, weil echte Nutzer sonst Fehler sehen.`, auffuellen: 1, dringend: true };
-  if (v1Fertig) return { ...basis, art: "fertig", grund: `${p.name}: Das Grundgerüst steht, es gibt nichts Dringendes mehr zu bauen.`, auffuellen: 0, dringend: false };
+  if (fertig) return { ...basis, art: "fertig", grund: wartetAufVersion ? `${p.name}: Das Grundgerüst steht, ich baue erst mit deinem Go für die nächste Version weiter.` : `${p.name}: Das Grundgerüst steht, ich stoppe und plane die nächste Version.`, auffuellen: 0, dringend: false, visionaer: !wartetAufVersion };
+  if (p.fokusBei) return { ...basis, art: "warten", grund: `${p.name}: Der Fokus liegt auf einer Version von ${p.fokusBei}, ich repariere nur.`, auffuellen: 0, dringend: false };
   if (p.startbar >= MIN_STARTBAR) return { ...basis, art: "weiterbauen", grund: `${p.name}: Genug Arbeit liegt bereit, ich plane nichts Neues.`, auffuellen: 0, dringend: false };
   if (p.startbar === 0 && p.wartetAufSinan.length > 0) return { ...basis, art: "warten", grund: `${p.name}: Ich warte auf dich bei ${nenne(p.wartetAufSinan)}, sonst kann nichts weitergehen.`, auffuellen: 0, dringend: false };
   const luecke = p.fertig !== null && p.gesamt !== null ? `die nächste Lücke (${p.fertig} von ${p.gesamt} fertig)` : "die nächste Lücke";

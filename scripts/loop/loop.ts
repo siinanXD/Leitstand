@@ -13,6 +13,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { LEHREN_ORDNER, leseLehre, workerHinweise } from "../../src/lib/lernen/lernen";
 import { PAUSE_SCHRITT, pauseStand, type PauseStand } from "../../src/lib/pause";
+import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { ausLinear, gespiegelteIds, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
@@ -159,7 +160,27 @@ async function pausiert(): Promise<PauseStand> {
   }
 }
 
+/** Version (SIN-573): Meldet der CEO `fertig`, steht der Dispatcher, bis Sinan eine Version freigibt. Wie bei der Pause: nicht lesbar = läuft weiter. */
+async function versionHaelt(): Promise<boolean> {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return false;
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?select=project,step,status,grund,created_at&project=eq.leitstand&step=eq.${VERSION_SCHRITT}&order=created_at.desc&limit=20`, {
+      headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    return haelt(staende(await res.json())[0]);
+  } catch (e) {
+    console.log(`::warning::Versionsstand nicht lesbar (${(e as Error).message}), Loop läuft weiter.`);
+    return false;
+  }
+}
+
 async function dispatch() {
+  if (await versionHaelt()) {
+    console.log("Leitstand wartet auf eine freigegebene Version (CEO: fertig). Nichts gestartet.");
+    await ereignis("dispatch", "uebersprungen");
+    return;
+  }
   const pause = await pausiert();
   if (pause.pausiert) {
     console.log(`Loop pausiert seit ${pause.seit}. Nichts gestartet.`);

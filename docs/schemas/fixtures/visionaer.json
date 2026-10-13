@@ -1,0 +1,24 @@
+{
+  "rolle": "visionaer",
+  "issue": "SIN-573",
+  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "status": "braucht_sinan",
+  "zusammenfassung": "Lern-App v1 ist fertig, Vorschlag v2 Prüfungsmodus.",
+  "naechster_schritt": "Sinan gibt v2 frei (Go).",
+  "kosten_eur": 0,
+  "quellen": ["docs/PRODUCT.md"],
+  "produkt": "lernapp",
+  "vorschlag": "naechste_version",
+  "versionen": [
+    {
+      "name": "v2 Prüfungsmodus",
+      "ziel": "Azubis üben unter Prüfungsbedingungen.",
+      "fertig_punkte": ["Prüfung mit Zeitlimit starten", "Ergebnis mit Auswertung je Thema", "Fehlerliste zum Wiederholen"],
+      "nicht_ziele": ["Gruppenfunktionen"],
+      "tage": 12,
+      "voraussetzung": "v1 fertig",
+      "nur_fehler": false,
+      "idee_issues": ["SIN-500"]
+    }
+  ]
+}
