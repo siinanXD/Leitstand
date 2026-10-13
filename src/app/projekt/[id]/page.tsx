@@ -19,7 +19,7 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
   const projekt = projektInfo(decodeURIComponent(id));
   return (
     <Rahmen aktiv="projekte">
-      {(quelle) => {
+      {(quelle, _jetzt, _wartend, _pause, _laden, chef) => {
         const naechstes = alsNaechstes(quelle.snapshot, projekt.id);
         const aufgaben = projektAufgaben(quelle.snapshot, projekt.id);
         const weit = fortschritt(quelle).filter((f) => f.project === projekt.id && f.gesamt > 0);
@@ -29,7 +29,7 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
               <h1 id="projekt" className="satz">
                 <Link href="/projekte">Produkte</Link> · <span className="marke-projekt" style={{ background: projekt.farbe }} aria-hidden="true" /> {projekt.name}
               </h1>
-              <ChefZeile angemeldet />
+              <ChefZeile angemeldet zeilen={chef} snapshot={quelle.snapshot} />
               <ul className="link-leiste" aria-label="Links">
                 {projektLinks(projekt).flatMap((l) =>
                   l.href

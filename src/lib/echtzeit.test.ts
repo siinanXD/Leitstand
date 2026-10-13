@@ -13,8 +13,9 @@ function mock() {
   let entfernt = 0;
   const kanal = {
     on(_art: "postgres_changes", f: unknown, r: (n: { new: unknown }) => void) {
-      filter = f;
-      rueckruf = r;
+      // Der erste Hörer gehört loop_events; die weiteren (Snapshot, Chef) testet der eigene Test unten.
+      filter ??= f;
+      rueckruf ??= r;
       return kanal;
     },
     subscribe: () => kanal,
@@ -39,6 +40,28 @@ test("neuer loop_events-Eintrag wandert ohne Neuladen in die richtige Station", 
 
   abmelden();
   assert.equal(m.entfernt(), 1);
+});
+
+test("Änderungen an loop_snapshot und ceo_entscheidungen melden sich zum Neuladen (SIN-579)", () => {
+  const filter: unknown[] = [];
+  const rueckrufe: ((n: { new: unknown }) => void)[] = [];
+  const kanal = {
+    on(_art: "postgres_changes", f: unknown, r: (n: { new: unknown }) => void) {
+      filter.push(f);
+      rueckrufe.push(r);
+      return kanal;
+    },
+    subscribe: () => kanal,
+  };
+  const gemeldet: string[] = [];
+  hoereAufEreignisse({ channel: () => kanal, removeChannel: () => undefined }, () => undefined, (t) => gemeldet.push(t));
+  assert.deepEqual(filter.slice(1), [
+    { event: "UPDATE", schema: "public", table: "loop_snapshot" },
+    { event: "INSERT", schema: "public", table: "ceo_entscheidungen" },
+  ]);
+  rueckrufe[1]({ new: {} });
+  rueckrufe[2]({ new: {} });
+  assert.deepEqual(gemeldet, ["loop_snapshot", "ceo_entscheidungen"]);
 });
 
 test("Doppelte id und unlesbare Zeilen ändern nichts", () => {
