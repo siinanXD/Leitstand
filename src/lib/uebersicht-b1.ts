@@ -1,4 +1,5 @@
 // Ableitungen für die Übersicht nach Figma B1/B2 (SIN-509). Rein; Eingabe sind nur echte Zeilen aus loop_events und loop_snapshot.
+import { berlinerTag } from "./berlin";
 import { STUFEN, brauchtDich, laufend, letzte24h, type LoopEvent, type Quelle, type SnapshotRow } from "./uebersicht";
 
 const ROT = /fail|error|abort|crash|red|rot|stuck|timeout/i;
@@ -10,7 +11,7 @@ const taktKey = (p: string, i: string) => `${p}|${i}`;
 const neuesterZuerst = (a: LoopEvent, b: LoopEvent) => zeit(b.created_at) - zeit(a.created_at);
 
 export const uhrzeitBerlin = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
-const tagBerlin = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
+const tagBerlin = (d: Date) => berlinerTag(d);
 
 export type StufeZustand = "ok" | "laufend" | "rot" | "leer";
 export type SchienenStufe = { stage: string; zustand: StufeZustand; anzahl: number };

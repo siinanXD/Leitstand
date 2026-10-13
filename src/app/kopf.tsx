@@ -15,13 +15,16 @@ const REITER = [
   { id: "projekte", href: "/projekte", name: "Produkt" },
   { id: "kosten", href: "/kosten", name: "Kosten" },
 ];
+// Unter „Mehr“ steht zu jeder Seite ein Satz, was man dort findet (Sinan 13.10.: „Die Reiter sind unaussagekräftig“).
+const IMMER = [
+  { id: "freigabe", href: "/freigabe", name: "Freigaben", hinweis: "Was dein Ja braucht: Code und Werbung" },
+  { id: "einstellungen", href: "/einstellungen", name: "Einstellungen", hinweis: "Mitteilungen aufs Handy" },
+];
 const TECHNIK = [
-  { id: "details", href: "/details", name: "Details" },
-  { id: "ablauf", href: "/ablauf", name: "Ablauf" },
-  { id: "abhaengigkeiten", href: "/abhaengigkeiten", name: "Abhängigkeiten" },
-  { id: "auswertung", href: "/auswertung", name: "Auswertung" },
-  { id: "freigabe", href: "/freigabe", name: "Freigabe" },
-  { id: "einstellungen", href: "/einstellungen", name: "Einstellungen" },
+  { id: "details", href: "/details", name: "Alles auf einer Seite", hinweis: "Die ausführliche Übersicht mit allen Zahlen" },
+  { id: "ablauf", href: "/ablauf", name: "Wer macht was", hinweis: "Jeder Helfer und woran er gerade sitzt" },
+  { id: "abhaengigkeiten", href: "/abhaengigkeiten", name: "Was worauf wartet", hinweis: "Aufgaben, die erst nach anderen starten" },
+  { id: "auswertung", href: "/auswertung", name: "Tagesbilanz", hinweis: "Was heute geschafft und repariert wurde" },
 ];
 
 export function Kopf({ stand, angemeldet, aktiv = "uebersicht", pause }: { stand?: boolean; angemeldet: boolean; aktiv?: string; pause?: Pause }) {
@@ -41,21 +44,20 @@ export function Kopf({ stand, angemeldet, aktiv = "uebersicht", pause }: { stand
           </nav>
           {stand && <p className="mono-label live">Live</p>}
           {/* Alles andere hinter „Mehr“ (SIN-578, Sinan 13.10.: kein seitliches Scrollen). Knöpfe ohne Funktion sind raus. */}
-          <details className="mehr">
+          <details className="kopf-mehr">
             <summary className="knopf">Mehr</summary>
             <div className="mehr-inhalt">
+              <nav aria-label="Weitere Seiten" className="technik-reiter">
+                {[...IMMER, ...(technik ? TECHNIK : [])].map((r) => (
+                  <Link key={r.id} href={r.href} className="knopf mehr-link" aria-current={r.id === aktiv ? "page" : undefined}>
+                    <span>{r.name}</span>
+                    <span className="mehr-hinweis">{r.hinweis}</span>
+                  </Link>
+                ))}
+              </nav>
               <label className="knopf technik-schalter">
-                <input type="checkbox" checked={technik} onChange={(e) => setzeTechnik(e.target.checked)} /> Für Technik
+                <input type="checkbox" checked={technik} onChange={(e) => setzeTechnik(e.target.checked)} /> Mehr Seiten für Technik zeigen
               </label>
-              {technik && (
-                <nav aria-label="Für Technik" className="technik-reiter">
-                  {TECHNIK.map((r) => (
-                    <Link key={r.id} href={r.href} className="knopf" aria-current={r.id === aktiv ? "page" : undefined}>
-                      {r.name}
-                    </Link>
-                  ))}
-                </nav>
-              )}
               <IdeeFormular />
               <button type="button" className="knopf" aria-pressed={pause?.stand?.pausiert === true} disabled={!pause?.stand || pause.laeuft} onClick={() => void pause?.umschalten()}>
                 {pause?.stand?.pausiert ? "Weiter" : "Pause"}
@@ -64,11 +66,6 @@ export function Kopf({ stand, angemeldet, aktiv = "uebersicht", pause }: { stand
                 <p className="meldung" role="alert">
                   {pause.fehler}
                 </p>
-              )}
-              {!technik && (
-                <Link href="/einstellungen" className="knopf" aria-current={aktiv === "einstellungen" ? "page" : undefined}>
-                  Einstellungen
-                </Link>
               )}
               <button type="button" className="knopf aktiv" onClick={() => {
                 vergiss();

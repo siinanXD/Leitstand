@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useSitzung } from "@/lib/sitzung";
+import { laufende, type Aufgabe } from "@/lib/aufgaben";
 import type { Zeile } from "@/lib/ceo/ceo";
 import { projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
@@ -14,6 +15,7 @@ import { fertigZeile, WieWeit } from "./fortschritt-balken";
 import { MitMehr } from "./mit-mehr";
 import { Rahmen, type Wartende } from "./rahmen";
 import { ZustandSymbol, type ZustandArt } from "./zustand-symbol";
+import { useWartendeWerbung } from "./werbung-kachel";
 import "./bunt.css";
 
 /** Kennung SIN-… aus dem Schlüssel „projekt|SIN-…“; nur dann gibt es eine Aufgaben-Seite. */
@@ -64,7 +66,7 @@ function MussDuTun({ liste, wartend }: { liste: Karte[]; wartend: Wartende }) {
               </a>
             )}
             {k.ansehen && (
-              <a className="knopf" href={k.ansehen} target="_blank" rel="noreferrer" aria-label={`${ohneKennungen(k.titel)} ansehen`}>
+              <a className="knopf" href={k.ansehen} target={k.ansehen.startsWith("/") ? undefined : "_blank"} rel="noreferrer" aria-label={`${ohneKennungen(k.titel)} ansehen`}>
                 Ansehen →
               </a>
             )}
@@ -77,10 +79,11 @@ function MussDuTun({ liste, wartend }: { liste: Karte[]; wartend: Wartende }) {
 
 /** Ablauf als Kette: fünf Glieder, gefüllt, wo gerade etwas liegt; rot, wo etwas kaputt ist. Darunter höchstens drei Dinge. */
 function Kette({ liste, jetzt }: { liste: Station[]; jetzt: Date }) {
-  const dinge = liste.flatMap((s) => s.eintraege.map((e) => ({ e, station: s.name, id: s.id }))).sort((a, b) => Number(b.e.rot) - Number(a.e.rot) || Number(b.e.aktiv) - Number(a.e.aktiv));
+  // Nur was kaputt ist, steht als Zeile darunter; alles andere zeigt die Kette (Sinan 13.10.: lange Listen mit „Eine Aufgabe“ sagen nichts).
+  const dinge = liste.flatMap((s) => s.eintraege.filter((e) => e.rot).map((e) => ({ e, station: s.name, id: s.id })));
   return (
     <>
-      <ol className="bild-kette" aria-label="Von links nach rechts durch fünf Stationen">
+      <ol className="bild-kette" aria-label="Der Weg einer Aufgabe: geplant, gebaut, geprüft, wartet auf dich, live">
         {liste.map((s) => (
           <li key={s.id}>
             <span className={s.eintraege.some((e) => e.rot) ? "glied rot" : s.eintraege.length > 0 ? "glied voll" : "glied"} aria-hidden="true" />
@@ -89,12 +92,30 @@ function Kette({ liste, jetzt }: { liste: Station[]; jetzt: Date }) {
           </li>
         ))}
       </ol>
-      {dinge.length === 0 ? (
-        <p className="leer">Gerade nichts</p>
-      ) : (
+      {dinge.length === 0 ? null : (
         <MitMehr liste={dinge} klasse="eintraege" zeile={({ e, station, id }) => <Ding key={e.key} e={e} station={station} id={id} jetzt={jetzt} />} />
       )}
     </>
+  );
+}
+
+/** Was gerade gebaut wird, aus Linear („In Arbeit“): Titel, Produkt, seit wann. */
+function InArbeit({ liste, jetzt }: { liste: Aufgabe[]; jetzt: Date }) {
+  if (liste.length === 0) return <p className="leer">Gerade arbeitet niemand. Neue Aufgaben startet der Loop von selbst.</p>;
+  return (
+    <MitMehr
+      liste={liste}
+      klasse="eintraege"
+      zeile={(a) => (
+        <li key={a.issue} className="eintrag">
+          <ZustandSymbol art="laeuft" nurSymbol />
+          <span className="eintrag-titel">
+            <Link href={`/aufgabe/${a.issue}`}>{ohneKennungen(a.titel)}</Link>
+          </span>
+          <span className="mono-label">{[a.projekt ? projektInfo(a.projekt).name : null, a.gestartet ? `gestartet ${zeitInWorten(a.gestartet, jetzt)}` : null].filter(Boolean).join(" · ")}</span>
+        </li>
+      )}
+    />
   );
 }
 
@@ -112,11 +133,16 @@ function Ding({ e, station, id, jetzt }: { e: Eintrag; station: string; id: Stat
 }
 
 function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet, chef }: { quelle: Quelle; jetzt: Date; wartend: Wartende; laden: string; pausiert: string | null; angemeldet: boolean; chef: Zeile[] | null }) {
-  const aufgaben = karten(quelle, wartend.wartende);
+  const werbung = useWartendeWerbung(angemeldet);
+  const werbeKarte: Karte[] = werbung
+    ? [{ key: "werbung", titel: werbung === 1 ? "Ein Werbe-Entwurf wartet auf dein Ja" : `${werbung} Werbe-Entwürfe warten auf dein Ja`, warum: "Video oder Text ansehen, dann freigeben oder ablehnen.", projekt: "Werbung", pr: null, minuten: null, wartender: null, ansehen: "/freigabe/werbemittel", aufladen: null }]
+    : [];
+  const aufgaben = [...werbeKarte, ...karten(quelle, wartend.wartende)];
   const lage = lageSatz(quelle, aufgaben.length, jetzt);
   const kette = stationen(quelle, wartend.wartende, jetzt);
   const eintraege = kette.flatMap((s) => s.eintraege);
-  const laufen = eintraege.filter((e) => e.aktiv).length;
+  const inArbeit = laufende(quelle.aufgaben);
+  const laufen = inArbeit.length || eintraege.filter((e) => e.aktiv).length;
   const kaputt = eintraege.some((e) => e.rot);
   const weit = fortschritt(quelle);
   return (
@@ -144,11 +170,12 @@ function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet, chef }: { 
         farbe="gruen"
         zustand={kaputt ? "kaputt" : laufen > 0 ? "laeuft" : "fertig"}
         titel={kaputt ? "Etwas ist kaputt" : laufen > 0 ? `${laufen} ${laufen === 1 ? "läuft" : "laufen"} gerade` : "Gerade ruht alles"}
-        zeile="Von links nach rechts durch fünf Stationen"
+        zeile={inArbeit[0] ? `${inArbeit[0].projekt ? `${projektInfo(inArbeit[0].projekt).name}: ` : ""}${ohneKennungen(inArbeit[0].titel)}` : kaputt ? "Tippen zeigt, was hakt" : "Gerade arbeitet niemand"}
       >
+        <InArbeit liste={inArbeit} jetzt={jetzt} />
         <Kette liste={kette} jetzt={jetzt} />
       </Aufklappkarte>
-      <Aufklappkarte farbe="blau" zustand="fertig" titel="Wie weit sind wir?" zeile={fertigZeile(weit)}>
+      <Aufklappkarte farbe="blau" zustand={weit.length > 0 && weit.every((w) => w.fertig >= w.gesamt) ? "fertig" : "laeuft"} titel="Wie weit sind wir?" zeile={fertigZeile(weit)}>
         <WieWeit liste={weit} />
       </Aufklappkarte>
     </main>

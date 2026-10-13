@@ -1,3 +1,4 @@
+import { parseAufgaben } from "./aufgaben";
 import { letzteJeProdukt, type Zeile } from "./ceo/ceo";
 import { parseEvents, parseSnapshot, type Quelle } from "./uebersicht";
 
@@ -50,12 +51,18 @@ export async function ladeQuelle(client: Lesequelle, jetzt = new Date()): Promis
   const ab = new Date(jetzt.getTime() - 24 * 3_600_000).toISOString();
   try {
     const snapshotAnfrage = client.from("loop_snapshot").select("*").limit(200);
-    const [events, snapshot] = await Promise.all([
+    const [events, snapshot, aufgaben] = await Promise.all([
       alleSeiten((von, bis) => client.from("loop_events").select("*").gte("created_at", ab).order("created_at", { ascending: false }).order("id", { ascending: false }).range(von, bis)),
       snapshotAnfrage,
+      // Ohne Tabelle oder bei Fehler: keine Titel, die Seite läuft trotzdem.
+      // Höchstens 4 s warten: die Titel sind Zugabe, die Seite darf an ihnen nie hängen.
+      Promise.race([
+        Promise.resolve(client.from("leitstand_aufgaben").select("*").limit(500)).catch(() => ({ data: [], error: null })),
+        new Promise<{ data: unknown; error: unknown }>((fertig) => setTimeout(() => fertig({ data: [], error: "Zeitlimit" }), 4_000)),
+      ]),
     ]);
     if (events.error || snapshot.error) return { zustand: "fehler" };
-    return { zustand: "ok", quelle: { events: parseEvents(events.data), snapshot: parseSnapshot(snapshot.data) } };
+    return { zustand: "ok", quelle: { events: parseEvents(events.data), snapshot: parseSnapshot(snapshot.data), aufgaben: !aufgaben || aufgaben.error ? [] : parseAufgaben(aufgaben.data) } };
   } catch {
     return { zustand: "fehler" };
   }

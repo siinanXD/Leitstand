@@ -7,6 +7,8 @@ import type { BereichZeile } from "@/lib/bereiche";
 import { browserClient } from "@/lib/browser-client";
 import { REPOS } from "@/lib/freigabe";
 import { projektInfo } from "@/lib/projekte";
+import { heuteFertigAus } from "@/lib/aufgaben";
+import { ohneKennungen } from "@/lib/zeit";
 import type { Quelle } from "@/lib/uebersicht";
 import { Rahmen } from "../rahmen";
 import "../freigabe.css";
@@ -54,6 +56,7 @@ function Inhalt({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   const satz = auswertungSatz(quelle, jetzt);
   const z = zahlen(quelle, jetzt);
   const { projekte, anzahl, je } = useBereiche(quelle, jetzt);
+  const fertigHeute = heuteFertigAus(quelle.aufgaben, jetzt);
   const feld = (name: string, wert: string | number, akzent = false) => (
     <div key={name}>
       <dt className="mono-label">{name}</dt>
@@ -64,8 +67,8 @@ function Inhalt({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
   return (
     <main className="seite auswertung">
       <header>
-        <p className="augenbraue">Tages-Auswertung</p>
-        <h1>Auswertung heute</h1>
+        <p className="augenbraue">Tagesbilanz</p>
+        <h1>Was heute geschafft wurde</h1>
       </header>
 
       <section className="satzfeld" aria-labelledby="heute">
@@ -75,12 +78,12 @@ function Inhalt({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
         {satz ? (
           <>
             <p className="satz">{satz.satz}</p>
-            {satz.belege.length > 0 && (
-              <ul className="merkmale" aria-label="Belege">
-                {satz.belege.map((b) => (
-                  <li key={`${b.project}#${b.pr}`} className="mono">
-                    #{b.pr}
-                    {b.selbstBehoben && " · selbst behoben"}
+            {/* Titel statt PR-Nummern (Sinan 13.10.: „#131 #129 …“ sagt nichts). */}
+            {fertigHeute.length > 0 && (
+              <ul className="merkmale" aria-label="Heute fertig">
+                {fertigHeute.map((a) => (
+                  <li key={a.issue}>
+                    <Link href={`/aufgabe/${a.issue}`}>{ohneKennungen(a.titel)}</Link>
                   </li>
                 ))}
               </ul>
@@ -131,8 +134,8 @@ function Inhalt({ quelle, jetzt }: { quelle: Quelle; jetzt: Date }) {
         )}
       </section>
 
-      <Link className="knopf aktiv voll" href="/">
-        Freigabe ansehen
+      <Link className="knopf aktiv voll" href="/freigabe">
+        Freigaben ansehen
       </Link>
       <p className="leer fuss">Zahlen aus loop_events. Das Claude-Kontingent ist eine Schätzung.</p>
     </main>

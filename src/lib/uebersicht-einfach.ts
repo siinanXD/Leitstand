@@ -1,4 +1,6 @@
 // Ableitungen für die einfache Übersicht nach Figma F1/F2 (SIN-526). Rein; Eingabe sind nur echte Zeilen aus loop_events und loop_snapshot.
+import { berlinerTag } from "./berlin";
+import { heuteFertigAus, titelVon } from "./aufgaben";
 import { REPOS } from "./freigabe";
 import { projektInfo } from "./projekte";
 import { warnungen, type Warnung } from "./kosten/guthaben";
@@ -10,7 +12,7 @@ const ROT = /fail|error|abort|crash|red|rot|stuck|timeout/i;
 const BEGONNEN = /^(start|started|running|in_progress|active)$/i;
 
 const zeit = (iso: string) => Date.parse(iso);
-const tagBerlin = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
+const tagBerlin = (d: Date) => berlinerTag(d);
 const neuesterZuerst = (a: LoopEvent, b: LoopEvent) => zeit(b.created_at) - zeit(a.created_at);
 
 // ------------------------------------------------------------------ Lage in einem Satz
@@ -114,7 +116,7 @@ export function stationen(q: Quelle, wartende: WartenderPr[], jetzt: Date): Stat
     const zeile = q.snapshot.find((s) => s.project === letztes.project && !!letztes.issue && s.issue === letztes.issue);
     aus.get(station)!.push({
       key,
-      titel: zeile?.title && zeile.title !== zeile.issue ? zeile.title : (letztes.issue ?? `PR #${letztes.pr}`),
+      titel: titelVon(q.aufgaben, letztes.issue) ?? (zeile?.title && zeile.title !== zeile.issue ? zeile.title : (letztes.issue ?? `PR #${letztes.pr}`)),
       projekt: letztes.project!,
       minuten: station === "live" ? null : Math.max(0, Math.round((jetzt.getTime() - ersterInStation) / 60_000)),
       seit: station === "live" ? null : new Date(ersterInStation).toISOString(),
@@ -145,6 +147,9 @@ export type Fertig = { key: string; satz: string; zeit: string };
 
 /** Heute gemergte Issues, jüngste zuerst: ein Satz und der Zeitpunkt (ISO, für `zeitInWorten()`). Ohne Titel steht „Eine Aufgabe ist fertig“, nie eine Kennung (SIN-578). */
 export function heuteFertig(q: Quelle, jetzt: Date): Fertig[] {
+  // Linear weiß am besten, was heute fertig wurde und wann (Sinan 13.10.: Zeiten stimmten nicht).
+  const ausLinear = heuteFertigAus(q.aufgaben, jetzt);
+  if (ausLinear.length > 0) return ausLinear.map((a) => ({ key: `${a.projekt ?? ""}|${a.issue}`, satz: a.titel, zeit: a.fertig! }));
   const heute = tagBerlin(jetzt);
   const gesehen = new Set<string>();
   return [...q.events]
@@ -156,7 +161,7 @@ export function heuteFertig(q: Quelle, jetzt: Date): Fertig[] {
       const key = `${e.project}|${wer}`;
       if (gesehen.has(key)) return [];
       gesehen.add(key);
-      const titel = q.snapshot.find((s) => s.project === e.project && !!e.issue && s.issue === e.issue)?.title;
+      const titel = titelVon(q.aufgaben, e.issue) ?? q.snapshot.find((s) => s.project === e.project && !!e.issue && s.issue === e.issue)?.title;
       return [{ key, satz: titel && titel !== e.issue ? titel : "Eine Aufgabe ist fertig", zeit: e.created_at }];
     });
 }

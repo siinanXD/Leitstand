@@ -31,6 +31,16 @@ function Glas({ anteil, name, rot }: { anteil: number; name: string; rot: boolea
 const rest = (g: Guthaben) => (g.einheit === "€" ? `${euro(g.wert)} übrig` : `${g.wert.toLocaleString("de-DE")} ${g.einheit} übrig`);
 
 /** Kosten nach Figma K6 v2 (SIN-578, 85:48): Glas für die Woche, je Dienst eine schmale Zeile mit Balken und Rest in Worten (Ausnahme zu „höchstens drei“, Sinan 13.10.). Nur echte Daten. */
+/** Einheit zum Kontingent aus dem Namen, damit „29 von 500“ nicht nackt dasteht (Sinan 13.10.). */
+function einheit(name: string): string {
+  if (/größe|speicher|mb/i.test(name)) return "MB";
+  if (/deploy/i.test(name)) return "Deploys";
+  if (/fehler/i.test(name)) return "Fehler";
+  if (/projekt/i.test(name)) return "Projekte";
+  if (/unit|einheit/i.test(name)) return "Einheiten";
+  return "";
+}
+
 export default function Kosten() {
   const sitzung = useSitzung();
   const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
@@ -100,7 +110,7 @@ export default function Kosten() {
                       <span className="zeile">
                         <span>{q.name}</span>
                         <span>
-                          {q.used.toLocaleString("de-DE")} von {q.limit.toLocaleString("de-DE")} benutzt
+                          {q.used.toLocaleString("de-DE")} von {q.limit.toLocaleString("de-DE")} {einheit(q.name) ? `${einheit(q.name)} ` : ""}benutzt
                         </span>
                       </span>
                       <Balken anteil={q.used / q.limit} name={`${q.name}: benutzt`} rot={q.used / q.limit > KONTINGENT_UEBER} />
