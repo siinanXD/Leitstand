@@ -54,7 +54,10 @@ test("Produktseite zeigt höchstens 10 Entscheidungen; Dateinamen sind sicher", 
 
 test("Geheimnisse werden erkannt, normale Seiten nicht", () => {
   assert.deepEqual(mitGeheimnis(dateien(fixture)), []);
-  assert.deepEqual(mitGeheimnis({ "a.md": "token ghp_abcdef", "b.md": "alles gut" }), ["a.md"]);
+  assert.deepEqual(mitGeheimnis({ "a.md": "token ghp_abcdefghijklmnopqrstuvwxyz1234", "b.md": "alles gut" }), ["a.md"]);
+  // Wörter mit „sk-“ oder „api-key“ ohne Wert sind keine Geheimnisse (Dateinamen wie SIN-397-run-task-pr.md).
+  assert.deepEqual(mitGeheimnis({ "c.md": "https://github.com/x/y/blob/main/docs/decisions/SIN-397-run-task-pr.md risk-gate api-key fehlt" }), []);
+  assert.deepEqual(mitGeheimnis({ "d.md": "sk-proj-abcdefghijklmnopqrstuvwxyz0123456789" }), ["d.md"]);
 });
 
 test("Berliner Tag und Kachel-Satz", () => {
