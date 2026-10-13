@@ -3,7 +3,7 @@ import { parseEvents, parseSnapshot, type Quelle } from "./uebersicht";
 export type Laden = { zustand: "ok"; quelle: Quelle } | { zustand: "fehler" };
 
 type Antwort = PromiseLike<{ data: unknown; error: unknown }>;
-type Kette = Antwort & { gte(spalte: string, wert: string): Kette; order(spalte: string, opt: { ascending: boolean }): Kette; limit(n: number): Kette; range(von: number, bis: number): Kette };
+type Kette = Antwort & { eq(spalte: string, wert: string): Kette; gte(spalte: string, wert: string): Kette; order(spalte: string, opt: { ascending: boolean }): Kette; limit(n: number): Kette; range(von: number, bis: number): Kette };
 
 /** Der Teil des Supabase-Clients, den die Datenschicht braucht (für Tests ersetzbar). */
 export type Lesequelle = { from(tabelle: string): { select(spalten: string): Kette } };
@@ -22,6 +22,16 @@ async function alleSeiten(seite: (von: number, bis: number) => Kette): Promise<{
     if (zeilen.length < SEITE) break;
   }
   return { data: alle, error: null };
+}
+
+/** Alle Ereignisse einer Aufgabe (SIN-556); `parseMeldungen` liest die Rollen aus `payload`. Nur Supabase, kein GitHub. */
+export async function ladeAufgabe(client: Lesequelle, issue: string): Promise<unknown[] | null> {
+  try {
+    const r = await alleSeiten((von, bis) => client.from("loop_events").select("*").eq("issue", issue).order("created_at", { ascending: true }).order("id", { ascending: true }).range(von, bis));
+    return r.error ? null : r.data;
+  } catch {
+    return null;
+  }
 }
 
 /** Lesen mit der Sitzung des Nutzers; RLS (`leitstand_nutzer`) entscheidet, was ankommt. */

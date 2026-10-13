@@ -152,6 +152,11 @@ export default function ProjektSeite({ params }: { params: Promise<{ id: string 
                       <h3 className="mono-label">{aktiv.titel}</h3>
                       <p className="grund">Für diese Aufgabe ist keine Schritt-für-Schritt-Anleitung hinterlegt. Die Schritte stehen im Linear-Issue.</p>
                       <p className="grund">Erledigt ist sie erst, wenn der Loop das Label `sinan` nicht mehr findet.</p>
+                      {/^SIN-\d+$/.test(aktiv.ref) && (
+                        <Link className="knopf" href={`/aufgabe/${aktiv.ref}`}>
+                          Ablauf ansehen
+                        </Link>
+                      )}
                       {aktiv.href && (
                         <a className="knopf aktiv" href={aktiv.href} target="_blank" rel="noreferrer">
                           In Linear öffnen

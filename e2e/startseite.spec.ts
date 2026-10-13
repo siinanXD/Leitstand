@@ -75,3 +75,36 @@ test("Übersicht mit Beispiel-Daten hat keine axe-Fehler", async ({ page }) => {
   await expect(page.getByText("Beispiel-Aufgabe")).toBeVisible();
   expect((await axe(page)).violations).toEqual([]);
 });
+
+test("Aufgabe · Ablauf mit 6 Ereignissen hat keine axe-Fehler", async ({ page }) => {
+  const jetzt = Date.now();
+  const sitzung = {
+    access_token: "test",
+    refresh_token: "test",
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: Math.floor(jetzt / 1000) + 3600,
+    user: { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", email: "test@example.org", app_metadata: {}, user_metadata: {}, created_at: new Date(jetzt).toISOString() },
+  };
+  await page.addInitScript(([schluessel, wert]) => localStorage.setItem(schluessel, wert), [SPEICHER, JSON.stringify(sitzung)]);
+  const rollen = ["ceo", "vorarbeiter", "forscher", "bauer", "pruefer", "anwalt"];
+  const zeilen = rollen.map((rolle, i) => {
+    const zeitpunkt = new Date(jetzt - (6 - i) * 600_000).toISOString();
+    return {
+      id: String(i),
+      created_at: zeitpunkt,
+      project: "leitstand",
+      step: "rolle",
+      status: "ok",
+      issue: "SIN-456",
+      payload: { rolle, issue: "SIN-456", zeitpunkt, status: i === 5 ? "running" : "ok", zusammenfassung: `Beispiel ${rolle}`, werkzeuge: ["Read", "Edit"], kosten_eur: 0.25 },
+    };
+  });
+  await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: zeilen }));
+  await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "leitstand", issue: "SIN-456", title: "Beispiel-Aufgabe", stage: "work", status: "running" }] }));
+  await page.goto("/aufgabe/SIN-456");
+  await expect(page.getByRole("heading", { name: /SIN-456/ })).toBeVisible();
+  await expect(page.getByText("Beispiel pruefer", { exact: true })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Werkzeuge Anwalt" })).toBeVisible();
+  expect((await axe(page)).violations).toEqual([]);
+});
