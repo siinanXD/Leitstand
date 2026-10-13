@@ -30,40 +30,50 @@ export function Kopf({ stand, angemeldet, aktiv = "uebersicht", pause }: { stand
       <p className="mono-label marke">Leitstand</p>
       {angemeldet && (
         <>
+          {/* Handy: feste Leiste unten (Figma 59:28); Desktop: Reiter oben. */}
           <nav aria-label="Reiter" className="reiter">
-            {(technik ? [...REITER, ...TECHNIK] : REITER).map((r) => (
+            {REITER.map((r) => (
               <Link key={r.id} href={r.href} className="knopf" aria-current={r.id === aktiv ? "page" : undefined}>
                 {r.name}
               </Link>
             ))}
-            <label className="knopf technik-schalter">
-              <input type="checkbox" checked={technik} onChange={(e) => setzeTechnik(e.target.checked)} /> Für Technik
-            </label>
           </nav>
           {stand && <p className="mono-label live">Live</p>}
-          <div className="kopf-aktionen">
-            <IdeeFormular />
-            <button type="button" className="knopf" disabled>
-              <span className="mono">⌘K</span> Suche
-            </button>
-            <button type="button" className="knopf" disabled>
-              Planer jetzt
-            </button>
-            <button type="button" className="knopf" aria-pressed={pause?.stand?.pausiert === true} disabled={!pause?.stand || pause.laeuft} onClick={() => void pause?.umschalten()}>
-              {pause?.stand?.pausiert ? "Weiter" : "Pause"}
-            </button>
-            {pause?.fehler && (
-              <p className="meldung" role="alert">
-                {pause.fehler}
-              </p>
-            )}
-            <button type="button" className="knopf" disabled>
-              Notbremse
-            </button>
-            <button type="button" className="knopf aktiv" onClick={() => void browserClient()?.auth.signOut()}>
-              Abmelden
-            </button>
-          </div>
+          {/* Alles andere hinter „Mehr“ (SIN-578, Sinan 13.10.: kein seitliches Scrollen). Knöpfe ohne Funktion sind raus. */}
+          <details className="mehr">
+            <summary className="knopf">Mehr</summary>
+            <div className="mehr-inhalt">
+              <label className="knopf technik-schalter">
+                <input type="checkbox" checked={technik} onChange={(e) => setzeTechnik(e.target.checked)} /> Für Technik
+              </label>
+              {technik && (
+                <nav aria-label="Für Technik" className="technik-reiter">
+                  {TECHNIK.map((r) => (
+                    <Link key={r.id} href={r.href} className="knopf" aria-current={r.id === aktiv ? "page" : undefined}>
+                      {r.name}
+                    </Link>
+                  ))}
+                </nav>
+              )}
+              <IdeeFormular />
+              <button type="button" className="knopf" aria-pressed={pause?.stand?.pausiert === true} disabled={!pause?.stand || pause.laeuft} onClick={() => void pause?.umschalten()}>
+                {pause?.stand?.pausiert ? "Weiter" : "Pause"}
+              </button>
+              {pause?.fehler && (
+                <p className="meldung" role="alert">
+                  {pause.fehler}
+                </p>
+              )}
+              {!technik && (
+                <Link href="/einstellungen" className="knopf" aria-current={aktiv === "einstellungen" ? "page" : undefined}>
+                  Einstellungen
+                </Link>
+              )}
+              <button type="button" className="knopf aktiv" onClick={() => void browserClient()?.auth.signOut()}>
+                Abmelden
+              </button>
+            </div>
+          </details>
         </>
       )}
     </header>

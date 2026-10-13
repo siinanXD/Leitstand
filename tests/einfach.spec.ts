@@ -74,11 +74,19 @@ for (const [seite, pfad] of SEITEN) {
       await anmelden(page);
       await page.goto(pfad);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      await expect(page.getByText("Daten werden geladen")).toBeHidden();
+      await expect(page.getByText("Daten werden geladen")).toHaveCount(0);
       const text = await page.locator("body").innerText();
       for (const [name, muster] of VERBOTEN) expect(text.match(muster)?.[0] ?? null, `${name} auf ${pfad}`).toBeNull();
       await expect(page.locator("table")).toHaveCount(0);
       await expect(page.locator("details.aufklapp")).toHaveCount(pfad === "/" ? 3 : 0);
+      // Sinan 13.10.: auf dem Handy nichts, das seitlich scrollt (Seite und einzelne Bereiche).
+      const breit = await page.evaluate(() => {
+        const w = document.documentElement.clientWidth;
+        const zuBreit = [...document.querySelectorAll<HTMLElement>("body *")].filter((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== "hidden" && getComputedStyle(el).overflowX !== "visible");
+        return { seite: document.documentElement.scrollWidth - w, bereiche: zuBreit.map((el) => el.className || el.tagName) };
+      });
+      expect(breit.seite, `Seite scrollt seitlich auf ${pfad}`).toBeLessThanOrEqual(0);
+      expect(breit.bereiche, `Bereich scrollt seitlich auf ${pfad}`).toEqual([]);
     });
   }
 }
