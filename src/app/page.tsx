@@ -13,7 +13,10 @@ import { GedaechtnisKachel } from "./gedaechtnis-kachel";
 import { Rahmen, type Wartende } from "./rahmen";
 import "./einfach.css";
 
-const euro = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
+/** Kennung SIN-… aus dem Schlüssel „projekt|SIN-…“; nur dann gibt es eine Ablauf-Seite. */
+const kennungVon = (key: string) => key.split("|")[1]?.match(/^SIN-\d+$/)?.[0] ?? null;
+
+const euro =(v: number) => `${v.toFixed(2).replace(".", ",")} €`;
 const prozent = (anteil: number) => `${Math.min(100, Math.round(anteil * 100))}%`;
 
 /** Balken mit Text für Screenreader; die Breite kommt aus dem Anteil. */
@@ -124,7 +127,7 @@ function Kette({ quelle, wartend, jetzt }: { quelle: Quelle; wartend: Wartende; 
                   <li key={e.key} className="eintrag">
                     <span className={e.rot ? "punkt rot" : e.aktiv ? "punkt aktiv" : "punkt"} aria-hidden="true" />
                     <span className="eintrag-titel">
-                      {e.titel}
+                      {kennungVon(e.key) ? <Link href={`/aufgabe/${kennungVon(e.key)}`}>{e.titel}</Link> : e.titel}
                       {e.aktiv && <span className="sr-only"> (ein Agent arbeitet gerade)</span>}
                       {e.rot && <span className="sr-only"> (Fehler)</span>}
                     </span>
