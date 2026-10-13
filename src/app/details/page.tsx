@@ -9,6 +9,7 @@ import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
 import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
 import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "../rahmen";
 import { GedaechtnisKachel } from "../gedaechtnis-kachel";
+import { GelerntKachel } from "../gelernt-kachel";
 import { TrendsKachel } from "../trends-kachel";
 import { WerbungKachel } from "../werbung-kachel";
 import "../freigabe.css";
@@ -208,6 +209,7 @@ export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; p
         <WerbungKachel angemeldet />
         <GedaechtnisKachel angemeldet />
         <TrendsKachel angemeldet />
+        <GelerntKachel angemeldet />
       </div>
     </main>
   );

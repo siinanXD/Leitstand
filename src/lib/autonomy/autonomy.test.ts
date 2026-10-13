@@ -9,8 +9,9 @@ const lies = <T>(pfad: string) => JSON.parse(readFileSync(pfad, "utf8")) as T;
 const register = () => lies<Register>("docs/autonomy/agents.json");
 const ROLLEN = ["ceo", "visionaer", "vorarbeiter", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis", "trend"];
 
-test("docs/schemas hat 12 Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
-  const schemas = readdirSync("docs/schemas").filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort();
+test("docs/schemas hat 12 Rollen-Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
+  // `lernen` (SIN-576) ist das Schema der Wochenmessung, keine Rolle; es wird in schleife.test.ts geprüft.
+  const schemas = readdirSync("docs/schemas").filter((f) => f.endsWith(".json") && f !== "lernen.json").map((f) => f.slice(0, -5)).sort();
   assert.deepEqual(schemas, [...ROLLEN].sort());
   for (const r of ROLLEN) assert.deepEqual(pruefeSchema(lies(`docs/schemas/fixtures/${r}.json`), lies<Schema>(`docs/schemas/${r}.json`)), [], r);
 });
