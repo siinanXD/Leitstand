@@ -457,6 +457,27 @@
   }
 }
 
+/* Sehr schmal (etwa 200 % Zoom): fünf Spalten passen nicht, die Reiter stehen untereinander im Fluss. */
+@media (max-width: 320px) {
+  .kopf .reiter {
+    position: static;
+    grid-template-columns: minmax(0, 1fr);
+    flex-basis: 100%;
+  }
+
+  body {
+    padding-bottom: 0;
+  }
+}
+
+/* Link „Start“ auf der Aufgabe: Ziel mindestens 44 px. */
+.aufgabe-seite .mono-label a {
+  display: inline-flex;
+  align-items: center;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+}
+
 /* „Mehr“: aufklappbar, auf dem Handy rechts oben, Inhalt untereinander. */
 .mehr {
   position: relative;

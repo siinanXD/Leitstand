@@ -177,7 +177,7 @@ test.describe("Skalierbarkeit", () => {
       const probleme = await page.evaluate(() => {
         const breite = document.documentElement.clientWidth;
         const abgeschnitten = [...document.querySelectorAll<HTMLElement>("body *")]
-          .filter((el) => el.children.length === 0 && el.textContent?.trim() && el.getClientRects().length > 0)
+          .filter((el) => el.children.length === 0 && el.textContent?.trim() && el.getClientRects().length > 0 && !el.closest(".sr-only"))
           .filter((el) => {
             const stil = getComputedStyle(el);
             return (stil.overflow !== "visible" && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)) || el.getBoundingClientRect().right > breite + 1;
