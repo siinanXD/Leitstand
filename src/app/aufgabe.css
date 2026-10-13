@@ -67,6 +67,34 @@
   overflow-wrap: anywhere;
 }
 
+.nachweis-routen {
+  display: flex;
+  gap: var(--space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.nachweis-routen > li {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+}
+
+.nachweis-paar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-8);
+}
+
+.nachweis-paar img,
+.nachweis video {
+  max-width: 100%;
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
 details summary {
   cursor: pointer;
   min-height: 44px;
