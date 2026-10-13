@@ -4,8 +4,13 @@ import Link from "next/link";
 import { PROJEKTE, alleProjekte } from "@/lib/projekte";
 import { alleZeilen, projekteSatz } from "@/lib/projektseite";
 import { projekteIn, Rahmen } from "../rahmen";
+import { GedaechtnisKachel } from "../gedaechtnis-kachel";
+import { HeuteFertig } from "../fertig-karte";
+import { WerbungKachel } from "../werbung-kachel";
+import "../freigabe.css";
 import "../uebersicht.css";
 import "./projekte.css";
+import "../bunt.css";
 
 const NICHT_VERFUEGBAR = <span className="leer">nicht verfügbar</span>;
 
@@ -99,6 +104,12 @@ export default function Projekte() {
                 </table>
               </div>
             </section>
+
+            <div className="einfach bunt" style={{ gridColumn: "1 / -1", padding: 0 }}>
+              <HeuteFertig quelle={quelle} jetzt={jetzt} />
+              <WerbungKachel angemeldet />
+              <GedaechtnisKachel angemeldet />
+            </div>
           </main>
         );
       }}

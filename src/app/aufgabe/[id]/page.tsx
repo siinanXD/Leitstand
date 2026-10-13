@@ -9,7 +9,7 @@ import { projektInfo } from "@/lib/projekte";
 import { ladeAufgabe, type Lesequelle } from "@/lib/supabase";
 import type { Quelle } from "@/lib/uebersicht";
 import { Rahmen } from "../../rahmen";
-import "../../einfach.css";
+import "../../bunt.css";
 import "../../aufgabe.css";
 
 const euro = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;

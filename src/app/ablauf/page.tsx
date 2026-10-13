@@ -9,6 +9,7 @@ import { DISPATCHER_REGEL, nurProjekt, projektInfo } from "@/lib/projekte";
 import { inArbeit, type Quelle } from "@/lib/uebersicht";
 import { spurAnzeige } from "@/lib/vorarbeiter/vorarbeiter";
 import { ProjektFilter, Rahmen, projekteIn, uhrzeit } from "../rahmen";
+import "../ablauf.css";
 
 const ZUSTAND_TEXT = { laeuft: "läuft", wartet: "wartet", fertig: "erledigt", leer: "leer" } as const;
 

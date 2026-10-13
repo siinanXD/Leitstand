@@ -76,6 +76,30 @@ test("Übersicht mit Beispiel-Daten hat keine axe-Fehler", async ({ page }) => {
   expect((await axe(page)).violations).toEqual([]);
 });
 
+test("Start bei 390×844: drei Karten, eingeklappt keine Scrollhöhe über 844 px, nur eine Karte offen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const jetzt = Date.now();
+  const sitzung = {
+    access_token: "test",
+    refresh_token: "test",
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: Math.floor(jetzt / 1000) + 3600,
+    user: { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", email: "test@example.org", app_metadata: {}, user_metadata: {}, created_at: new Date(jetzt).toISOString() },
+  };
+  await page.addInitScript(([schluessel, wert]) => localStorage.setItem(schluessel, wert), [SPEICHER, JSON.stringify(sitzung)]);
+  await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: [{ id: "1", created_at: new Date(jetzt - 600_000).toISOString(), project: "beispiel", step: "pr", status: "ok", issue: "SIN-1", pr: 1 }] }));
+  await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "beispiel", stage: "work", status: "running", title: "Beispiel-Aufgabe" }] }));
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.locator("details.aufklapp")).toHaveCount(3);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(844);
+  expect((await axe(page)).violations).toEqual([]);
+  await page.locator("details.aufklapp summary").nth(0).click();
+  await page.locator("details.aufklapp summary").nth(1).click();
+  await expect(page.locator("details.aufklapp[open]")).toHaveCount(1);
+});
+
 test("Aufgabe · Ablauf mit 6 Ereignissen hat keine axe-Fehler", async ({ page }) => {
   const jetzt = Date.now();
   const sitzung = {

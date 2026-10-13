@@ -5,8 +5,8 @@ import { browserClient } from "@/lib/browser-client";
 import { letzteJeProdukt, type Zeile } from "@/lib/ceo/ceo";
 import { projektInfo } from "@/lib/projekte";
 
-/** Karte „Der Chef sagt“ (SIN-542): die letzte Entscheidung des CEO-Agenten je Produkt, aus `ceo_entscheidungen`. Ohne Zeilen oder Tabelle: ehrlicher Leerzustand. */
-export function ChefKarte({ angemeldet }: { angemeldet: boolean }) {
+/** „Der Chef sagt“ (SIN-542, SIN-568): eine Zeile unter dem Titel mit der letzten Entscheidung des CEO-Agenten aus `ceo_entscheidungen`. Ohne Zeilen oder Tabelle: ehrlicher Leerzustand. */
+export function ChefZeile({ angemeldet }: { angemeldet: boolean }) {
   const [zeilen, setZeilen] = useState<Zeile[] | null | undefined>(undefined);
   useEffect(() => {
     const client = browserClient();
@@ -19,28 +19,11 @@ export function ChefKarte({ angemeldet }: { angemeldet: boolean }) {
       offen = false;
     };
   }, [angemeldet]);
+  const neueste = zeilen?.[0];
+  const text = zeilen === undefined ? "Wird geladen …" : neueste ? `${projektInfo(neueste.produkt).name}: ${neueste.grund}` : "Noch keine Entscheidung.";
   return (
-    <section className="tile einfach-block lila" aria-labelledby="chef">
-      <div className="kopf-block">
-        <h2 id="chef" className="mono-label">
-          Der Chef sagt
-        </h2>
-        <p className="leer">Was als Nächstes passiert und warum.</p>
-      </div>
-      {zeilen === undefined ? (
-        <p className="leer">Wird geladen …</p>
-      ) : !zeilen || zeilen.length === 0 ? (
-        <p className="leer">Noch keine Entscheidung.</p>
-      ) : (
-        <ul className="posten">
-          {zeilen.map((z) => (
-            <li key={z.produkt} className="zeile">
-              <span>{z.grund}</span>
-              <span className="mono">{projektInfo(z.produkt).name}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <p className="chef-zeile" title={text}>
+      <span className="mono-label">Der Chef sagt</span> {text}
+    </p>
   );
 }

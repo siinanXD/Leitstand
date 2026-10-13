@@ -6,9 +6,9 @@ import { projektInfo } from "@/lib/projekte";
 import { alsNaechstes, projektAufgaben, projektBetrieb, projektLinks, projektQuelle, zeitVerteilung } from "@/lib/projektseite";
 import { fortschritt } from "@/lib/uebersicht-einfach";
 import { Rahmen } from "../../rahmen";
+import "../../freigabe.css";
 import "../../uebersicht.css";
 import "../../projekte/projekte.css";
-import "../../einfach.css";
 import "../../bunt.css";
 
 const NICHT_VERFUEGBAR = <p className="leer">nicht verfügbar</p>;

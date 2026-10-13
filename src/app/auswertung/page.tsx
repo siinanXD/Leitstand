@@ -9,6 +9,7 @@ import { REPOS } from "@/lib/freigabe";
 import { projektInfo } from "@/lib/projekte";
 import type { Quelle } from "@/lib/uebersicht";
 import { Rahmen } from "../rahmen";
+import "../freigabe.css";
 
 const KEINE_DATEN = <p className="leer">Keine Daten</p>;
 const REPO_VON_PROJEKT = Object.fromEntries(Object.entries(REPOS).map(([repo, v]) => [v.projekt, repo]));
