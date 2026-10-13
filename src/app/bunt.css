@@ -1,0 +1,173 @@
+/* Leitstand bunt (SIN-546): Figma 7Ti9iVUjUjw3rh9WYhSu9K, Seite „Leitstand bunt“ 59:2, Frames S1 59:26, T2 59:97, W3 59:201, P4 59:316 (Modus Hell, 13.10.2026).
+   Gilt nur auf Seiten mit `.bunt`: die bestehenden Tokens bekommen dort die hellen Werte, der Rest der Seite zieht von allein mit. Hex nur hier in den Tokens. */
+:root {
+  --color-bunt-sonne: #fef3c7;
+  --color-bunt-gruen: #dcfce7;
+  --color-bunt-blau: #dbeafe;
+  --color-bunt-lila: #f3e8ff;
+  --color-bunt-pfirsich: #ffedd5;
+  --color-bunt-violett: #6d28d9;
+  --color-bunt-auf-akzent: #ffffff;
+  --radius-bunt: 20px;
+}
+
+body:has(.bunt) {
+  --color-bg-base: #fff7ed;
+  --color-bg-surface: #ffffff;
+  --color-bg-raised: var(--color-bunt-pfirsich);
+  --color-border-subtle: #e7e5e4;
+  --color-text-primary: #1c1917;
+  --color-text-secondary: #57534e;
+  --color-accent-primary: #b45309;
+  --color-accent-strong: #c2410c;
+  --color-accent-soft: var(--color-bunt-sonne);
+  --color-status-ok: #15803d;
+  --color-status-warn: #b45309;
+  --color-status-error: #b91c1c;
+  --color-status-info: #1d4ed8;
+  --radius-tool: var(--radius-bunt);
+}
+
+body:has(.bunt) .knopf {
+  border-radius: 999px;
+}
+
+body:has(.bunt) .knopf.aktiv {
+  color: var(--color-bunt-auf-akzent);
+}
+
+.bunt .tile {
+  border: 0;
+}
+
+.bunt .punkt {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.bunt .balken {
+  height: 14px;
+  border-radius: 999px;
+  background: var(--color-bunt-pfirsich);
+}
+
+.bunt .balken > div {
+  background: var(--color-accent-strong);
+}
+
+.bunt .karte,
+.bunt .eintrag {
+  background: var(--color-bg-surface);
+  border: 0;
+  border-radius: 16px;
+}
+
+.bunt .einfach-lage .satz {
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+}
+
+.bunt .sonne {
+  background: var(--color-bunt-sonne);
+}
+
+.bunt .gruen {
+  background: var(--color-bunt-gruen);
+}
+
+.bunt .blau {
+  background: var(--color-bunt-blau);
+}
+
+.bunt .lila {
+  background: var(--color-bunt-lila);
+}
+
+.bunt .pfirsich {
+  background: var(--color-bunt-pfirsich);
+}
+
+/* Team (T2): Helfer-Karten, Avatar mit Anfangsbuchstabe. Farbe = Zustand, Text steht immer daneben. */
+.helfer {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-12);
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.helfer-karte {
+  display: grid;
+  gap: var(--space-8);
+  align-content: start;
+  padding: var(--space-16);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-bunt);
+}
+
+.helfer-karte h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.helfer-karte p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+  color: var(--color-bunt-auf-akzent);
+  font-weight: 700;
+}
+
+.avatar.laeuft {
+  background: var(--color-bunt-violett);
+}
+
+.avatar.ok {
+  background: var(--color-status-ok);
+}
+
+.avatar.warn {
+  background: var(--color-status-warn);
+}
+
+.avatar.error {
+  background: var(--color-status-error);
+}
+
+.bunt .kopf-titel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.bunt .kopf-titel h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+}
+
+.bunt .kopf-titel p {
+  margin: 0;
+  color: var(--color-accent-strong);
+  font-weight: 500;
+}
+
+.gross-prozent {
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+}
