@@ -1,0 +1,5 @@
+# Schutz vor Selbstumbau (SIN-624): Agenten dürfen Workflows und das Gate nicht ohne Sinans Review ändern.
+# Wirkt erst mit Ruleset "Require review from Code Owners" auf main, siehe docs/decisions/SIN-624-codeowner-pflicht.md.
+/.github/workflows/ @siinanXD
+/.github/CODEOWNERS @siinanXD
+/scripts/loop/risiko.mjs @siinanXD
