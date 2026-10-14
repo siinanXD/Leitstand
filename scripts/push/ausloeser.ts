@@ -14,6 +14,7 @@
  * DRY_RUN=1: nur Ausgabe im Log, nichts gesendet oder gespeichert.
  */
 import { createClient } from "@supabase/supabase-js";
+import { alarmeAus } from "../../src/lib/abnahme/abnahme";
 import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, plane, stillstandAus, type GemergterPr, type Schlange, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
@@ -180,6 +181,7 @@ async function main() {
   const ereignisse = [
     ...brauchtDichAus(wartend, jetzt.getTime()),
     ...offene(q.events).map((m) => ({ id: `alarm:migration:${m.datei}`, art: "alarm" as const, projekt: "Leitstand", kennung: "Datenbank", titel: `${m.datei}: ${m.grund}`, zeit: m.zeit })),
+    ...alarmeAus(q.events, jetzt.getTime()),
     ...stillstandAus(schlangen, jetzt.getTime()),
     ...fertigAus(prs.gemergt, jetzt.getTime()),
     ...abbruchAus(laeufe, jetzt.getTime(), prs.mitPr),

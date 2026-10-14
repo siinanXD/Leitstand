@@ -4,3 +4,4 @@ Routen, die ohne Design-Issue aus vorhandenen Komponenten und Tokens entstanden 
 
 | Route | Datum | PR |
 | --- | --- | --- |
+| /abnahme „Läuft es wirklich?“ (Menüpunkt unter „Mehr“ für Technik) | 2026-10-14 | SIN-626 |
