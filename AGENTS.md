@@ -67,6 +67,13 @@ Regeln:
 - Ereignisse landen in `loop_events` mit Projekt `leitstand`, sobald die Secrets `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` im Repo stehen. Ohne sie gibt es nur eine Warnung im Log.
 - Logik in `src/lib/loop/auswahl.ts` (rein, mit Tests), Netz in `scripts/loop/loop.ts`.
 
+## Done heißt live (SIN-616)
+
+- Ein Linear-Issue darf nur auf „Done“, wenn die Funktion läuft (Workflow aktiv, Migration angewendet, Secret gesetzt), nicht nur, wenn Code oder eine `.vorlage` gemergt ist.
+- Bleibt etwas für Sinan (Workflow-Datei, Migration einspielen, Secret), legt der Worker dafür ein Linear-Issue mit Label `sinan` an und verlinkt es im PR. Das Original bleibt bis dahin „In Review“. Fehlt `LINEAR_API_KEY`, steht die Aufgabe im PR unter `## Aufgabe für Sinan`.
+- Fehlende Secrets bündelt der Worker in ein einziges `sinan`-Issue (bis SIN-611 sie aus Infisical holt).
+- Workflow-Dateien ändert nur ein Lauf mit `AGENT_WORKFLOW_TOKEN` (Workflows RW). Das App-Token des Workers darf es nicht; dann bleibt die `.vorlage` mit Aufgabe für Sinan.
+
 ## Steuerung nur im Leitstand (SIN-577)
 
 Neue Steuerlogik (Rollen, Auslöser, Planung, Messung, Kosten) entsteht nur im Leitstand, mit `produkt` als Parameter. Ein Produkt-Repo bekommt keine neuen Workflows außer Bauen, Testen, Deployen und Produkt-Pipelines. Der Anwalt/Prüfer markiert PRs, die das verletzen, mit `no-automerge`. Begründung und Umzugsplan: `docs/decisions/SIN-577-steuerung-im-leitstand.md`.
