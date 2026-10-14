@@ -1,5 +1,5 @@
 /**
- * Vorarbeiter-Agent (SIN-553). Aufruf aus vorarbeiter.yml (Vorlage: docs/autonomy/vorarbeiter.yml.vorlage), täglich nach dem CEO und nach jedem Merge:
+ * Vorarbeiter-Agent (SIN-553). Aufruf aus vorarbeiter.yml (.github/workflows/vorarbeiter.yml), täglich nach dem CEO und nach jedem Merge:
  *
  *   npx tsx scripts/vorarbeiter/vorarbeiter.ts
  *

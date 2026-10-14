@@ -1,5 +1,5 @@
 /**
- * Markt-Agent (SIN-554). Aufruf aus markt.yml (Vorlage: docs/markt/markt.yml.vorlage), am 1. des Monats, nach dem Suchlauf:
+ * Markt-Agent (SIN-554). Aufruf aus markt.yml (.github/workflows/markt.yml), am 1. des Monats, nach dem Suchlauf:
  *
  *   npx tsx scripts/markt/markt.ts
  *

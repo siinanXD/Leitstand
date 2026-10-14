@@ -1,5 +1,5 @@
 /**
- * Stand-Agent (SIN-508). Aufruf aus stand.yml (Vorlage: docs/stand/stand.yml.vorlage):
+ * Stand-Agent (SIN-508). Aufruf aus stand.yml (.github/workflows/stand.yml):
  *
  *   npx tsx scripts/stand/pruefen.ts
  *

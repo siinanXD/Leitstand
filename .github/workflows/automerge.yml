@@ -3,7 +3,7 @@
 #   - Standard: Auto-Merge, auch bei Workflow-Änderungen (Schritte, Skripte, Zeitpläne, bekannte Secrets).
 #   - `risk:high` (wartet auf Label `freigegeben`): Workflow-Rechte erweitert (`permissions` mit write), neues Secret, das kein
 #     Workflow auf main nutzt, `pull_request_target` neu, Drittanbieter-Action außerhalb von actions/* und anthropics/*,
-#     Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), Auth/Middleware, Service-Role-Key im Client.
+#     Änderung am Gate selbst (automerge.yml), Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), Auth/Middleware, Service-Role-Key im Client.
 #   - Nie: Draft-PRs, Label `no-automerge`.
 # Der Grund steht als Kommentar im PR und im Leitstand (wartende PRs).
 name: automerge
@@ -44,6 +44,7 @@ jobs:
             for (const f of files) {
               const p = f.filename;
               const neu = added(f);
+              if (p === ".github/workflows/automerge.yml") gruende.push("Gate selbst geändert (automerge.yml)");
               if (p.startsWith(".github/workflows/")) {
                 for (const l of neu) {
                   if (/^\s*(contents|pull-requests|issues|actions|packages|id-token|deployments|statuses|checks|security-events|pages|discussions|repository-projects)\s*:\s*write/.test(l)) gruende.push(`Workflow-Recht erweitert in ${p}: ${l.trim()}`);

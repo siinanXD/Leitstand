@@ -1,5 +1,5 @@
 /**
- * Gedächtnis-Agent (SIN-541). Aufruf aus gedaechtnis.yml (Vorlage: docs/gedaechtnis/gedaechtnis.yml.vorlage):
+ * Gedächtnis-Agent (SIN-541). Aufruf aus gedaechtnis.yml (.github/workflows/gedaechtnis.yml):
  *
  *   npx tsx scripts/gedaechtnis/schreiben.ts
  *

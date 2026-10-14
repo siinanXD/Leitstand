@@ -1,5 +1,5 @@
 /**
- * Selbstlern-Schleife (SIN-576). Aufruf montags 05:30 aus lernen.yml (Vorlage: docs/lernen/lernen.yml.vorlage):
+ * Selbstlern-Schleife (SIN-576). Aufruf montags 05:30 aus lernen.yml (.github/workflows/lernen.yml):
  *
  *   npx tsx scripts/lernen/woche.ts
  *

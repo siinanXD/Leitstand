@@ -1,4 +1,4 @@
-# SIN-592: nach .github/workflows/migrationen.yml kopieren (der Worker darf .github/workflows/ nicht ändern). Sinan entscheidet.
+# SIN-592: aus der Vorlage übernommen (SIN-616).
 # Prüft nach jedem Merge auf main und täglich, ob jede Datei unter supabase/migrations/leitstand/ in der Datenbank angekommen ist.
 # Nur lesen: spielt nichts ein. Meldung: loop_events (Schritt migration) → „Braucht dich“; push-ausloeser sendet den Alarm (alle 15 Minuten).
 # Zusätzlich in build.yml (Trockenlauf, Regel SIN-574): `- run: npx tsx scripts/migrationen/pruefen.ts` mit `env: DRY_RUN: "1"` nach `npm test`.

@@ -1,4 +1,4 @@
-# SIN-576: nach .github/workflows/lernen.yml kopieren (der Worker darf .github/workflows/ nicht ändern). Sinan entscheidet.
+# SIN-576: aus der Vorlage übernommen (SIN-616).
 # Montags 05:30 UTC: messen (ohne Modell), Vorwoche nachmessen, höchstens eine Regelzeile mit Haiku vorschlagen (Deckel 1 €).
 # Der Stand (docs/lernen/, eine Regeldatei) geht als PR auf main; automerge.yml setzt risk:medium und mergt nach grünem build.
 # Kein Claude-Kontingent: der Lauf kann nicht daran rot werden.

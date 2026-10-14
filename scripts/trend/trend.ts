@@ -1,5 +1,5 @@
 /**
- * Trend-Radar 2 (SIN-575). Aufruf aus trend.yml (Vorlage: docs/trend/trend.yml.vorlage):
+ * Trend-Radar 2 (SIN-575). Aufruf aus trend.yml (.github/workflows/trend.yml):
  *
  *   TREND_MODUS=messen npx tsx scripts/trend/trend.ts   # täglich: nur Sternzuwachs, ohne Modell
  *   TREND_MODUS=woche  npx tsx scripts/trend/trend.ts   # sonntags: messen, mit Haiku bewerten, Issues, Kachel

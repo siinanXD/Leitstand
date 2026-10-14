@@ -1,4 +1,4 @@
-# SIN-573: nach .github/workflows/visionaer.yml kopieren (der Worker darf .github/workflows/ nicht ändern). Sinan entscheidet.
+# SIN-573: aus der Vorlage übernommen (SIN-616).
 # Der CEO startet den Lauf, wenn er `fertig` meldet (scripts/ceo/ceo.ts, workflow_dispatch). Claude schreibt die Ausgabe nach docs/schemas/visionaer.json,
 # das Skript prüft sie, legt den Linear-Meilenstein an, hängt den Abschnitt an docs/VERSIONEN.md und schreibt VERSION `vorschlag`.
 # Die Version startet erst mit Sinans „go“ auf der Startseite.

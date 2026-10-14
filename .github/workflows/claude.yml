@@ -1,6 +1,7 @@
 # Claude baut Leitstand-Issues (SIN-304, SIN-305, ...). Schlanke Fassung des Loops der Lern-App.
 # Auslöser: Label "claude" auf einem Issue oder @claude in Kommentaren (nur Nutzer mit Schreibrechten).
 # Läuft mit AGENT_WORKFLOW_TOKEN, damit PRs Folge-Workflows (build) auslösen. Ohne das Secret scheitert der Lauf sofort.
+# Claude darf damit auch .github/workflows/ pushen; automerge setzt risk:high nur bei erweiterten Rechten (SIN-616, wie SIN-234/SIN-252 der Lern-App).
 name: Claude
 
 on:
@@ -30,6 +31,8 @@ jobs:
       GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
       # Figma nur lesen (SIN-428): npx tsx scripts/figma.ts --node <ID> / --bild <ID>. Fehlt das Secret: „nicht verfügbar“.
       FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_ACCESS_TOKEN }}
+      # Folge-Aufgaben für Sinan als Linear-Issue mit Label sinan (Regel „Done heißt live“, SIN-616).
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
     permissions:
       contents: write
       pull-requests: write
@@ -56,5 +59,5 @@ jobs:
           claude_args: |
             --model claude-sonnet-5-5
             --max-turns 60
-            --allowedTools "Bash(git fetch:*),Bash(git merge:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx tsc:*),Bash(npx vitest:*),Bash(npx eslint:*),Bash(node --check:*),Bash(npx tsx scripts/figma.ts:*)"
-            --append-system-prompt "Wurdest du auf einem Issue ausgelöst und hast Commits auf deinen Branch gepusht, öffne den PR selbst: gh pr create --head <Branch> --base main --title <Titel> --body <Text>. Kein Draft. Titel als Conventional Commit mit Linear-ID, z. B. feat(uebersicht): Projekt-Karten (SIN-304). Body beginnt mit 'Closes #<Issue-Nummer>' und nennt in einem Satz, was sich ändert. Lies zuerst AGENTS.md. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test. Kein Playwright, kein Docker. Committe nie node_modules oder Build-Ausgaben. Nie selbst mergen, nie Labels setzen oder entfernen. Höchstens 3 Reparaturrunden pro PR."
+            --allowedTools "Bash(git fetch:*),Bash(git merge:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx tsc:*),Bash(npx vitest:*),Bash(npx eslint:*),Bash(node --check:*),Bash(npx tsx scripts/figma.ts:*),Bash(curl -sS https://api.linear.app/graphql:*)"
+            --append-system-prompt "Wurdest du auf einem Issue ausgelöst und hast Commits auf deinen Branch gepusht, öffne den PR selbst: gh pr create --head <Branch> --base main --title <Titel> --body <Text>. Kein Draft. Titel als Conventional Commit mit Linear-ID, z. B. feat(uebersicht): Projekt-Karten (SIN-304). Body beginnt mit 'Closes #<Issue-Nummer>' und nennt in einem Satz, was sich ändert. Lies zuerst AGENTS.md. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test. Kein Playwright, kein Docker. Committe nie node_modules oder Build-Ausgaben. Nie selbst mergen, nie Labels setzen oder entfernen. Höchstens 3 Reparaturrunden pro PR. Workflow-Dateien unter .github/workflows/ darfst du ändern (keine .vorlage mehr anlegen). Done heißt live: Bleibt etwas für Sinan (Secret, Migration einspielen), lege ein Linear-Issue mit Label sinan per curl -sS https://api.linear.app/graphql an (Header Authorization: $LINEAR_API_KEY) und verlinke es im PR; fehlt der Key, schreib es unter '## Aufgabe für Sinan' in den PR."

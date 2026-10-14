@@ -72,7 +72,8 @@ Regeln:
 - Ein Linear-Issue darf nur auf „Done“, wenn die Funktion läuft (Workflow aktiv, Migration angewendet, Secret gesetzt), nicht nur, wenn Code oder eine `.vorlage` gemergt ist.
 - Bleibt etwas für Sinan (Workflow-Datei, Migration einspielen, Secret), legt der Worker dafür ein Linear-Issue mit Label `sinan` an und verlinkt es im PR. Das Original bleibt bis dahin „In Review“. Fehlt `LINEAR_API_KEY`, steht die Aufgabe im PR unter `## Aufgabe für Sinan`.
 - Fehlende Secrets bündelt der Worker in ein einziges `sinan`-Issue (bis SIN-611 sie aus Infisical holt).
-- Workflow-Dateien ändert nur ein Lauf mit `AGENT_WORKFLOW_TOKEN` (Workflows RW). Das App-Token des Workers darf es nicht; dann bleibt die `.vorlage` mit Aufgabe für Sinan.
+- Der Worker läuft mit `AGENT_WORKFLOW_TOKEN` (Workflows RW) und ändert `.github/workflows/` selbst, keine neuen `.vorlage`-Dateien. `automerge.yml` setzt `risk:high` nur bei Rechte-Erweiterungen, neuen Secrets, neuen Drittanbieter-Actions oder Änderungen am Gate (wie SIN-234/SIN-252 der Lern-App).
+- Der Worker legt `sinan`-Issues mit `LINEAR_API_KEY` selbst an (Linear-GraphQL per `curl`).
 
 ## Steuerung nur im Leitstand (SIN-577)
 

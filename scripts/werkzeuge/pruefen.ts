@@ -1,5 +1,5 @@
 /**
- * Werkzeug-Prüfung (SIN-544). Aufruf (Vorlage: docs/werkzeuge/werkzeuge.yml.vorlage):
+ * Werkzeug-Prüfung (SIN-544). Aufruf (.github/workflows/werkzeuge.yml):
  *
  *   npx tsx scripts/werkzeuge/pruefen.ts
  *

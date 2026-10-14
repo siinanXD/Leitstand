@@ -1,5 +1,5 @@
 /**
- * Anwalt-Agent (SIN-552). Aufruf aus anwalt.yml (Vorlage: docs/autonomy/anwalt.yml.vorlage):
+ * Anwalt-Agent (SIN-552). Aufruf aus anwalt.yml (.github/workflows/anwalt.yml):
  *
  *   npx tsx scripts/anwalt/anwalt.ts <Basis-Ref>   PR prüfen: Diff gegen Basis-Ref, schreibt Kommentar nach anwalt-kommentar.md
  *   npx tsx scripts/anwalt/anwalt.ts --avv         monatlicher Abgleich docs/recht/AVV.md gegen package.json, Workflows, Skripte
