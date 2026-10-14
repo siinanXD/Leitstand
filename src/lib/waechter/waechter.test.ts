@@ -7,6 +7,7 @@ import {
   gesundheit,
   kommtAlsNeuInFrage,
   kurzfassung,
+  leitstandSnapshot,
   MARKER_ZURUECK,
   planeSchlange,
   pruefeNeuesProjekt,
@@ -187,4 +188,13 @@ test("Tagesupdate: Gruppen, Gesundheit, Fälligkeit", () => {
   assert.equal(updateFaellig(vor(25), jetzt), true);
   assert.equal(updateFaellig(vor(5), jetzt), false);
   assert.equal(updateFaellig(null, jetzt), true);
+});
+
+test("leitstandSnapshot: Spalten wie loop_snapshot (fertig_v1/gesamt_v1, kein progress)", () => {
+  const z = leitstandSnapshot([issue({ identifier: "SIN-1" }), issue({ identifier: "SIN-2", stateType: "started" })], [], "siinanXD/Leitstand", { fertig: 3, gesamt: 10 });
+  assert.deepEqual(z.queue, { todo: 1, startable: 1, in_progress: 1 });
+  assert.equal(z.fertig_v1, 3);
+  assert.equal(z.gesamt_v1, 10);
+  assert.equal("progress" in z, false);
+  assert.equal(leitstandSnapshot([], [], "r", null).fertig_v1, null);
 });
