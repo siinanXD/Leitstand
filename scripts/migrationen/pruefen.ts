@@ -1,5 +1,5 @@
 /**
- * Migrations-Prüfung (SIN-592). Aufruf (Vorlage: docs/autonomy/migrationen.yml.vorlage):
+ * Migrations-Prüfung (SIN-592). Aufruf (.github/workflows/migrationen.yml):
  *
  *   npx tsx scripts/migrationen/pruefen.ts
  *

@@ -1,5 +1,5 @@
 /**
- * Hausmeister (SIN-551). Aufruf aus hausmeister.yml (Vorlage: docs/autonomy/hausmeister.yml.vorlage), montags:
+ * Hausmeister (SIN-551). Aufruf aus hausmeister.yml (.github/workflows/hausmeister.yml), montags:
  *
  *   npx tsx scripts/hausmeister/hausmeister.ts
  *

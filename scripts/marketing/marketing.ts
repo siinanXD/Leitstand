@@ -1,5 +1,5 @@
 /**
- * Marketing-Agent (SIN-550). Aufruf aus marketing.yml (Vorlage: docs/marketing/marketing.yml.vorlage), montags:
+ * Marketing-Agent (SIN-550). Aufruf aus marketing.yml (.github/workflows/marketing.yml), montags:
  *
  *   npx tsx scripts/marketing/marketing.ts
  *

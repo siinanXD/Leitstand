@@ -1,4 +1,4 @@
-# SIN-575: nach .github/workflows/trend.yml kopieren (der Worker darf .github/workflows/ nicht ändern). Sinan entscheidet.
+# SIN-575: aus der Vorlage übernommen (SIN-616).
 # Sonntags 04:30 UTC: messen, mit Haiku bewerten (Deckel 0,50 €), Issues und Kachel. Montag bis Samstag 04:30 UTC: nur Sternzuwachs, kein Modell.
 # Kein Claude-Kontingent: der Lauf kann nicht daran rot werden. Der Stand docs/markt/trends.json geht als PR auf main (Auto-Merge, nur docs/).
 name: trend

@@ -1,5 +1,5 @@
 /**
- * CEO-Agent (SIN-542). Aufruf aus ceo.yml (Vorlage: docs/ceo/ceo.yml.vorlage):
+ * CEO-Agent (SIN-542). Aufruf aus ceo.yml (.github/workflows/ceo.yml):
  *
  *   CEO_AUSLOESER=vorrat|bereitschaft|rot|taeglich npx tsx scripts/ceo/ceo.ts
  *

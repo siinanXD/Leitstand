@@ -1,5 +1,5 @@
 /**
- * Visionär (SIN-573), zweiter Teil nach dem KI-Lauf. Aufruf aus visionaer.yml (Vorlage: docs/visionaer/visionaer.yml.vorlage):
+ * Visionär (SIN-573), zweiter Teil nach dem KI-Lauf. Aufruf aus visionaer.yml (.github/workflows/visionaer.yml):
  *
  *   npx tsx scripts/visionaer/visionaer.ts <produkt> <datei>
  *
