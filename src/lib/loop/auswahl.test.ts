@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, gespiegelteIds, issueText, linearId, marker, nachruecken, reparatur, waehle, type LinearIssue } from "./auswahl";
+import { ausLinear, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, reparatur, waehle, type LinearIssue } from "./auswahl";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
   id: o.identifier,
@@ -48,6 +48,26 @@ test("waehle: laufende Issues zählen gegen das Limit", () => {
   const issues = [issue({ identifier: "SIN-1", stateType: "started" }), issue({ identifier: "SIN-2" })];
   assert.deepEqual(waehle(issues, new Set(), 1), []);
   assert.deepEqual(waehle(issues, new Set(), 2).map((i) => i.identifier), ["SIN-2"]);
+});
+
+test("laufende: Hänger ohne PR nach 6 h belegt keinen Platz mehr (SIN-654)", () => {
+  const jetzt = new Date("2026-10-14T21:00:00Z");
+  const haenger = issue({ identifier: "SIN-611", stateType: "started", startedAt: "2026-10-14T13:43:00Z" });
+  const jung = issue({ identifier: "SIN-612", stateType: "started", startedAt: "2026-10-14T18:00:00Z" });
+  const todo = issue({ identifier: "SIN-623" });
+  assert.deepEqual(laufende([haenger, jung], { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-612"]);
+  assert.equal(laufende([haenger], { jetzt, offenePrs: [{ titel: "feat(x): y (SIN-611)", branch: "claude/a" }] }).length, 1, "offener PR hält den Platz");
+  assert.equal(laufende([haenger], { jetzt, offenePrs: [{ titel: "ohne", branch: "claude/sin-611" }] }).length, 1, "Branch zählt auch");
+  assert.equal(laufende([haenger]).length, 1, "ohne Belegung wie bisher");
+  assert.deepEqual(waehle([haenger, todo], new Set(), 1, { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-623"]);
+  assert.deepEqual(waehle([haenger, todo], new Set(), 1), []);
+});
+
+test("grundNichtsStartbar: nie leer, nennt belegte Plätze oder fehlende Todo-Issues (SIN-654)", () => {
+  const laeuft = issue({ identifier: "SIN-611", stateType: "started" });
+  assert.equal(grundNichtsStartbar([laeuft, issue({ identifier: "SIN-623" })], new Set(), 1), "kein_platz: SIN-611 läuft (max 1)");
+  assert.match(grundNichtsStartbar([], new Set(), 1), /^keine_todo: kein Todo-Issue/);
+  assert.match(grundNichtsStartbar([issue({ identifier: "SIN-7" })], new Set(["SIN-7"]), 1), /^keine_todo: 1 Todo-Issue/);
 });
 
 test("issueText enthält Markierung, Link und Branch-Regel", () => {

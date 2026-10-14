@@ -49,14 +49,16 @@ export async function markiereGeweckt(id: number): Promise<void> {
 }
 
 /** Ereignis in loop_events (Projekt `leitstand`). Das Wort steht im Schritt: `kontingent` mit Status `pause`, `wieder-da` oder `uebersprungen`. */
-export async function ereignis(status: "pause" | "wieder-da" | "uebersprungen"): Promise<void> {
+export async function ereignis(status: "uebersprungen", grund: string): Promise<void>;
+export async function ereignis(status: "pause" | "wieder-da"): Promise<void>;
+export async function ereignis(status: "pause" | "wieder-da" | "uebersprungen", grund?: string): Promise<void> {
   if (!hatSupabase() || DRY()) return;
   const repo = env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand";
   const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : null;
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
     method: "POST",
     headers: kopf(),
-    body: JSON.stringify({ project: "leitstand", step: "kontingent", status, issue: null, pr: null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
+    body: JSON.stringify({ project: "leitstand", step: "kontingent", status, grund: grund ?? null, issue: null, pr: null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
   }).catch((e: Error) => ({ ok: false, status: 0, text: async () => e.message }));
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
 }

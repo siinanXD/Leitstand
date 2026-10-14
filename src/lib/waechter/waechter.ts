@@ -2,11 +2,11 @@
  * Projekt-Wächter (SIN-419): reine Funktionen, kein Netz.
  * Das Skript scripts/waechter/waechter.ts holt Daten aus Linear und GitHub und führt die geplanten Aktionen aus.
  */
-import { LABEL, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, type LinearIssue } from "../loop/auswahl";
+import { HAENGER_STUNDEN, LABEL, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, type LinearIssue } from "../loop/auswahl";
 
 export const PLANUNG_TITEL = "Nächste Schritte planen";
 export const EINRICHTEN_TITEL = "Projekt einrichten";
-export const HAENGER_STUNDEN = 6;
+export { HAENGER_STUNDEN };
 export const CI_WARTE_MINUTEN = 30;
 export const NEU_TAGE = 7;
 export const LINK_TITEL = ["github", "github repo"];

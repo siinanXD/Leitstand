@@ -46,7 +46,7 @@ async function pruefen() {
     const p = aktivePause(pausen, d, jetzt);
     if (!p) continue;
     console.log(`Nicht gestartet. ${pauseSatz(p, jetzt)}`);
-    await ereignis("uebersprungen");
+    await ereignis("uebersprungen", `${d}_pause: ${pauseSatz(p, jetzt)}`);
     process.exit(3);
   }
 }

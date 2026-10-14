@@ -6,6 +6,8 @@
 export const PROJEKT = "Leitstand";
 export const LABEL = "claude";
 export const MAX_REPARATUR = 3;
+/** Ab hier gilt ein Issue „In Progress“ ohne offenen PR als Hänger (gleiche Grenze wie der Wächter, SIN-419). */
+export const HAENGER_STUNDEN = 6;
 
 export type LinearIssue = {
   id: string;
@@ -17,11 +19,17 @@ export type LinearIssue = {
   createdAt: string;
   labels: string[];
   stateType: string;
+  /** Wann das Issue auf „In Progress“ ging (Linear `startedAt`). */
+  startedAt?: string | null;
   /** Issues, die dieses Issue blockieren, mit ihrem Status-Typ. */
   blockiertVon: { identifier: string; stateType: string }[];
 };
 
 export type GithubIssue = { number: number; body: string | null; state: string };
+/** Offener PR, nur Titel und Branch (zum Zuordnen zu einem Linear-Issue). */
+export type OffenerPr = { titel: string; branch: string };
+/** Ohne Angabe zählt jedes laufende Issue (altes Verhalten). */
+export type Belegung = { jetzt: Date; offenePrs: OffenerPr[] };
 
 const ERLEDIGT = new Set(["completed", "canceled"]);
 
@@ -53,11 +61,30 @@ const rang = (p: number) => (p > 0 ? p : 5);
  * Welche Issues jetzt gestartet werden: Todo, Label `claude`, nicht blockiert, noch nicht gespiegelt.
  * Laufende (In Progress mit Label `claude`) zählen gegen `max`.
  */
-export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: number): LinearIssue[] {
-  const laufend = issues.filter((i) => i.stateType === "started" && hatLabel(i)).length;
-  const frei = Math.max(0, max - laufend);
+const prGehoertZu = (pr: OffenerPr, i: LinearIssue) =>
+  pr.titel.includes(i.identifier) || pr.branch.toLowerCase().includes(i.identifier.toLowerCase());
+
+/**
+ * Laufende Issues, die einen Platz belegen: „In Progress“ mit Label `claude`. Mit `belegung` zählt ein Hänger nicht
+ * (SIN-654): ohne offenen PR und länger als HAENGER_STUNDEN gestartet, z. B. weil der Worker mit Blocker aufgab.
+ * Sonst blockiert so ein Issue den einzigen Platz, bis der Wächter es zurücksetzt.
+ */
+export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssue[] {
+  return issues.filter((i) => {
+    if (i.stateType !== "started" || !hatLabel(i)) return false;
+    if (!belegung || !i.startedAt) return true;
+    if (belegung.offenePrs.some((pr) => prGehoertZu(pr, i))) return true;
+    return belegung.jetzt.getTime() - Date.parse(i.startedAt) <= HAENGER_STUNDEN * 3_600_000;
+  });
+}
+
+const startbar = (i: LinearIssue, gespiegelt: Set<string>) =>
+  i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier);
+
+export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung): LinearIssue[] {
+  const frei = Math.max(0, max - laufende(issues, belegung).length);
   return issues
-    .filter((i) => i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier))
+    .filter((i) => startbar(i, gespiegelt))
     .sort((a, b) => rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt))
     .slice(0, frei);
 }
@@ -69,11 +96,9 @@ export const NIE_AUTOMATISCH = ["design", "sinan", "needs-human"];
  * Nachrücken (SIN-417): Ist kein Todo-Issue mit Label `claude` startbar und noch ein Platz frei, rückt das
  * wichtigste Backlog-Issue nach (höchste Priorität, dann ältestes). Nie mit Label aus NIE_AUTOMATISCH, nie blockiert.
  */
-export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max: number): LinearIssue | null {
-  const laufend = issues.filter((i) => i.stateType === "started" && hatLabel(i)).length;
-  if (laufend >= max) return null;
-  const wartend = issues.filter((i) => i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier));
-  if (wartend.length) return null;
+export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung): LinearIssue | null {
+  if (laufende(issues, belegung).length >= max) return null;
+  if (issues.some((i) => startbar(i, gespiegelt))) return null;
   const kandidaten = issues
     .filter((i) => i.stateType === "backlog" && !offenBlockiert(i))
     .filter((i) => !i.labels.some((l) => NIE_AUTOMATISCH.includes(l.toLowerCase())))
@@ -100,6 +125,18 @@ export function issueText(i: LinearIssue, hinweise = ""): { title: string; body:
   };
 }
 
+/**
+ * Grund für `dispatch uebersprungen`, wenn nichts startbar ist (SIN-654): belegte Plätze mit Kennungen,
+ * sonst keine startbaren Todo-Issues. Nie leer.
+ */
+export function grundNichtsStartbar(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung): string {
+  const belegt = laufende(issues, belegung);
+  if (belegt.length >= max) return `kein_platz: ${belegt.map((i) => i.identifier).join(", ")} läuft (max ${max})`;
+  const wartend = issues.filter((i) => i.stateType === "unstarted" && hatLabel(i));
+  if (!wartend.length) return "keine_todo: kein Todo-Issue mit Label claude und kein Backlog-Issue zum Nachrücken";
+  return `keine_todo: ${wartend.length} Todo-Issue(s) mit Label claude, alle blockiert oder schon gespiegelt`;
+}
+
 /** Nächster Schritt der Reparatur nach rotem `build`: nächste Runde oder Stopp. */
 export function reparatur(labels: string[]): { runde: number } | { stopp: true } {
   const runden = labels.map((l) => /^repair:(\d+)$/.exec(l)).filter(Boolean).map((m) => Number(m![1]));
@@ -117,6 +154,7 @@ export function ausLinear(node: {
   priority?: number | null;
   url: string;
   createdAt: string;
+  startedAt?: string | null;
   labels?: { nodes: { name: string }[] };
   state: { type: string };
   inverseRelations?: { nodes: { type: string; issue: { identifier: string; state: { type: string } } }[] };
@@ -129,6 +167,7 @@ export function ausLinear(node: {
     priority: node.priority ?? 0,
     url: node.url,
     createdAt: node.createdAt,
+    startedAt: node.startedAt ?? null,
     labels: (node.labels?.nodes ?? []).map((l) => l.name),
     stateType: node.state.type,
     blockiertVon: (node.inverseRelations?.nodes ?? [])

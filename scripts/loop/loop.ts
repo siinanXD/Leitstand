@@ -16,7 +16,7 @@ import { aktivePause, pauseSatz } from "../../src/lib/kontingent/kontingent";
 import { PAUSE_SCHRITT, pauseStand, type PauseStand } from "../../src/lib/pause";
 import { ladeOffenePausen } from "../kontingent/pausen";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
-import { ausLinear, gespiegelteIds, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -55,7 +55,12 @@ async function gh<T>(path: string, init: { method?: string; body?: unknown } = {
 }
 
 /** Ein Ereignis in loop_events (SIN-303). Fehler werden nur gemeldet. */
-async function ereignis(step: string, status: "start" | "ok" | "fehler" | "uebersprungen", extra: { issue?: string; pr?: number } = {}) {
+type Extra = { issue?: string; pr?: number; grund?: string };
+/** `uebersprungen` braucht immer einen Grund (SIN-654), sonst ist im Leitstand nicht erkennbar, warum nichts lief. */
+async function ereignis(step: string, status: "uebersprungen", extra: Extra & { grund: string }): Promise<void>;
+async function ereignis(step: string, status: "start" | "ok" | "fehler", extra?: Extra): Promise<void>;
+async function ereignis(step: string, status: "start" | "ok" | "fehler" | "uebersprungen", extra: Extra = {}) {
+  if (extra.grund) console.log(`${step}/${status}: ${extra.grund}`);
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     console.log(`::warning::Kein loop_event (${step}/${status}): SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt.`);
     return;
@@ -70,7 +75,7 @@ async function ereignis(step: string, status: "start" | "ok" | "fehler" | "ueber
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({ project: "leitstand", step, status, issue: extra.issue ?? null, pr: extra.pr ?? null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
+    body: JSON.stringify({ project: "leitstand", step, status, grund: extra.grund ?? null, issue: extra.issue ?? null, pr: extra.pr ?? null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
   }).catch((e: Error) => ({ ok: false, status: 0, text: async () => e.message }));
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
 }
@@ -81,7 +86,7 @@ async function projektIssues(): Promise<Node[]> {
   const d = await linear<{ issues: { nodes: Node[] } }>(
     `query($p: String!) {
       issues(first: 100, filter: { project: { name: { eq: $p } }, state: { type: { in: ["backlog", "unstarted", "started"] } } }) {
-        nodes { id identifier title description priority url createdAt team { id }
+        nodes { id identifier title description priority url createdAt startedAt team { id }
           labels { nodes { name } } state { type }
           inverseRelations { nodes { type issue { identifier state { type } } } } }
       }
@@ -180,41 +185,44 @@ async function versionHaelt(): Promise<boolean> {
 async function dispatch() {
   if (await versionHaelt()) {
     console.log("Leitstand wartet auf eine freigegebene Version (CEO: fertig). Nichts gestartet.");
-    await ereignis("dispatch", "uebersprungen");
+    await ereignis("dispatch", "uebersprungen", { grund: "version_haelt: CEO meldet fertig, keine Version freigegeben" });
     return;
   }
   const pause = await pausiert();
   if (pause.pausiert) {
     console.log(`Loop pausiert seit ${pause.seit}. Nichts gestartet.`);
-    await ereignis("dispatch", "uebersprungen");
+    await ereignis("dispatch", "uebersprungen", { grund: `pause: seit ${pause.seit}` });
     return;
   }
   // Kontingent (SIN-581): Der Worker braucht Claude. Läuft eine Pause, startet nichts.
   const claudePause = aktivePause(await ladeOffenePausen(), "claude", new Date());
   if (claudePause) {
     console.log(`Nicht gestartet. ${pauseSatz(claudePause, new Date())}`);
-    await ereignis("dispatch", "uebersprungen");
+    await ereignis("dispatch", "uebersprungen", { grund: `claude_pause: ${pauseSatz(claudePause, new Date())}` });
     return;
   }
   await ereignis("dispatch", "start");
   const nodes = await projektIssues();
   const issues = nodes.map(ausLinear);
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=all&per_page=100`);
+  const prs = await gh<{ title: string; head: { ref: string } }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
+  const belegung: Belegung = { jetzt: new Date(), offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref })) };
   const max = Number(env.LOOP_MAX_PARALLEL ?? 1);
   const gespiegelt = gespiegelteIds(ghIssues);
-  let wahl = waehle(issues, gespiegelt, max);
+  let wahl = waehle(issues, gespiegelt, max, belegung);
   if (!wahl.length) {
-    const naechstes = nachruecken(issues, gespiegelt, max);
+    const naechstes = nachruecken(issues, gespiegelt, max, belegung);
     if (naechstes) {
       const node = nodes.find((n) => n.id === naechstes.id)!;
       await rueckeNach(naechstes, node.team.id);
       const befoerdert: LinearIssue = { ...naechstes, stateType: "unstarted", labels: [...naechstes.labels, LABEL] };
-      wahl = waehle([...issues.filter((i) => i.id !== naechstes.id), befoerdert], gespiegelt, max);
+      wahl = waehle([...issues.filter((i) => i.id !== naechstes.id), befoerdert], gespiegelt, max, belegung);
     }
   }
   if (!wahl.length) {
-    console.log("Nichts zu starten (keine freien Plätze oder keine Todo-Issues mit Label claude).");
-    await ereignis("dispatch", "uebersprungen");
+    const grund = grundNichtsStartbar(issues, gespiegelt, max, belegung);
+    console.log(`Nichts zu starten. ${grund}`);
+    await ereignis("dispatch", "uebersprungen", { grund });
     return;
   }
   for (const i of wahl) {
