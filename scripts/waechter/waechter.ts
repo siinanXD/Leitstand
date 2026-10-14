@@ -205,18 +205,20 @@ async function ladePrs(repo: string): Promise<PrInfo[]> {
   return r;
 }
 
-/** Eigene Zeile `leitstand` in loop_snapshot (SIN-572): neue Zusammenfassung schreiben, ältere (ohne Issue) löschen. Ohne Supabase-Secrets nur Warnung. */
+/** Eigene Zeile `leitstand` in loop_snapshot (SIN-572): Upsert auf `project`, `plan` des Vorarbeiters bleibt. Ohne Supabase-Secrets nur Warnung. */
 async function schreibeSnapshot(zeile: ReturnType<typeof leitstandSnapshot>) {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     console.log("::warning::Kein loop_snapshot: SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt.");
     return;
   }
-  const kopf = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json" };
-  const url = `${env.SUPABASE_URL}/rest/v1/loop_snapshot`;
-  const alt = await fetch(`${url}?project=eq.leitstand&issue=is.null`, { method: "DELETE", headers: kopf });
-  if (!alt.ok) throw new Error(`loop_snapshot aufräumen: ${alt.status}`);
-  const neu = await fetch(url, { method: "POST", headers: kopf, body: JSON.stringify(zeile) });
-  if (!neu.ok) throw new Error(`loop_snapshot schreiben: ${neu.status}`);
+  const kopf = {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    "Content-Type": "application/json",
+    Prefer: "resolution=merge-duplicates",
+  };
+  const neu = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_snapshot?on_conflict=project`, { method: "POST", headers: kopf, body: JSON.stringify(zeile) });
+  if (!neu.ok) throw new Error(`loop_snapshot schreiben: ${neu.status} ${await neu.text()}`);
 }
 
 async function ghIssuesGespiegelt(repo: string): Promise<Set<string>> {
@@ -301,7 +303,8 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
     log(projekt.name, "Schlange ok");
   }
 
-  if (repo === PROJEKTE.find((x) => x.id === "leitstand")?.repo) {
+  // Linear-Link und PROJEKTE unterscheiden sich in der Schreibweise (siinanxd/leitstand vs. siinanXD/Leitstand).
+  if (repo.toLowerCase() === PROJEKTE.find((x) => x.id === "leitstand")?.repo?.toLowerCase()) {
     const haken = await readFile("docs/FERTIG.md", "utf8").then(zaehleHaken, () => null);
     const zeile = leitstandSnapshot(issues, prs, repo, haken);
     log(projekt.name, `Snapshot: ${JSON.stringify(zeile.queue)}, fertig ${haken ? `${haken.fertig} von ${haken.gesamt}` : "unbekannt"}`);

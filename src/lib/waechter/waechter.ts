@@ -303,7 +303,10 @@ export function leitstandSnapshot(issues: LinearIssue[], prs: PrInfo[], repo: st
     queue: { todo: todo.length, startable: todo.filter(frei).length, in_progress: claude.filter((i) => i.stateType === "started").length },
     // shortcut: nur claude/-PRs, CI-Grün unbekannt (false), damit „Braucht dich“ nichts Falsches zeigt; bei Bedarf Check-Status mitladen.
     open_prs: prs.map((p) => ({ repo, nummer: p.number, titel: p.titel, url: `https://github.com/${repo}/pull/${p.number}`, labels: p.labels, entwurf: false, ciGruen: false, grund: null })),
-    progress: haken ? { done: haken.fertig, total: haken.gesamt } : null,
+    // Spalten wie beim Status-Lauf der Lern-App (loop_snapshot hat kein `progress`).
+    fertig_v1: haken?.fertig ?? null,
+    gesamt_v1: haken?.gesamt ?? null,
     quotas: [],
+    updated_at: new Date().toISOString(),
   };
 }
