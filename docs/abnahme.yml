@@ -376,3 +376,9 @@
   art: datei
   pfad: src/lib/projekte.ts
   enthaelt: sjcode-website
+- id: leitstand-readme
+  produkt: leitstand
+  titel: Das README zeigt das Architektur-Diagramm
+  art: datei
+  pfad: README.md
+  enthaelt: docs/architecture.svg
