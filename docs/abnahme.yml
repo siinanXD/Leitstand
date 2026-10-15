@@ -345,3 +345,10 @@
   art: datei
   pfad: src/lib/loop/auswahl.ts
   enthaelt: wartetAufSinan
+# Planer: Lern-App-Anstoß mit Cooldown (SIN-700)
+- id: leitstand-planer-anstoss-cooldown
+  produkt: leitstand
+  titel: Der Planer stößt den Lern-App-Planer höchstens alle 2 Stunden an
+  art: datei
+  pfad: src/lib/vorarbeiter/vorarbeiter.ts
+  enthaelt: anstossEntscheidung

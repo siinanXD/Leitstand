@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abbruchAus, alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, fertigAus, inRuhe, menschlich, plane, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
+import { abbruchAus, alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, fertigAus, inRuhe, menschlich, planerOhneTodosAus, plane, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
 
 const utc = (s: string) => Date.parse(s);
 const e = (id: string, art: Ereignis["art"], zeit: number, extra: Partial<Ereignis> = {}): Ereignis => ({ id, art, projekt: "Leitstand", kennung: "SIN-1", titel: "Freigabe offen", zeit, ...extra });
@@ -162,6 +162,13 @@ test("Quellen: Stillstand nur mit startbarer Arbeit, ohne Lauf, ohne Pause, nach
   assert.equal(stillstandAus([{ ...basis, laeuft: 1 }], jetzt).length, 0);
   assert.equal(stillstandAus([{ ...basis, pausiert: true }], jetzt).length, 0);
   assert.equal(stillstandAus([{ ...basis, letztesEreignis: jetzt - 10 * 60_000 }], jetzt).length, 0);
+});
+
+test("Planer ohne startbare Todos: Braucht dich nur für Vorfälle der letzten 24 Stunden", () => {
+  const jetzt = utc("2026-10-15T16:00:00Z");
+  const v = { projekt: "lernapp", name: "Lern-App", zeit: jetzt - 3_600_000 };
+  assert.equal(planerOhneTodosAus([v], jetzt)[0].art, "braucht-dich");
+  assert.equal(planerOhneTodosAus([{ ...v, zeit: jetzt - 25 * 3_600_000 }], jetzt).length, 0);
 });
 
 test("Gebündelt ohne Kennung nennt die Titel", () => {

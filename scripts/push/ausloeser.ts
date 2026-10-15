@@ -15,9 +15,10 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { alarmeAus } from "../../src/lib/abnahme/abnahme";
-import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, plane, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
+import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
+import { OHNE_TODOS_SCHRITT } from "../../src/lib/vorarbeiter/vorarbeiter";
 import { sendeAnAlle } from "../../src/lib/push/push";
 import { supabaseSpeicher, vapidSender } from "../../src/lib/push/server";
 import { projektInfo } from "../../src/lib/projekte";
@@ -194,6 +195,7 @@ async function main() {
     ...alarmeAus(q.events, jetzt.getTime()),
     ...pausenAlarme(q.events as unknown as RollenEreignis[], jetzt.getTime()),
     ...stillstandAus(schlangen, jetzt.getTime()),
+    ...planerOhneTodosAus(q.events.filter((e) => e.step === OHNE_TODOS_SCHRITT).map((e) => ({ projekt: e.project ?? "", name: projektInfo(e.project ?? "").name, zeit: Date.parse(e.created_at) })), jetzt.getTime()),
     ...fertigAus(prs.gemergt, jetzt.getTime()),
     ...abbruchAus(laeufe, jetzt.getTime(), prs.mitPr),
   ];

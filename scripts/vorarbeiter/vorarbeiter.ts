@@ -19,7 +19,7 @@ import { pruefeDubletten } from "../../src/lib/ceo/fertig";
 import { ausLinear, PROJEKT, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { parseSnapshot } from "../../src/lib/uebersicht";
-import { aufrufKosten, ereignisZeile, ledgerZeile, leseDateien, pfade, plane, prFuerC, promptC, restDeckel, SPUR_C_MODELL, type Plan } from "../../src/lib/vorarbeiter/vorarbeiter";
+import { ANSTOSS_FENSTER_MS, ANSTOSS_SCHRITT, anstossEntscheidung, anstossZeile, aufrufKosten, ereignisZeile, ledgerZeile, leseDateien, OHNE_TODOS_SCHRITT, pfade, plane, prFuerC, promptC, restDeckel, SPUR_C_MODELL, type Plan } from "../../src/lib/vorarbeiter/vorarbeiter";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY;
@@ -162,12 +162,28 @@ async function legeLeitstandIssuesAn(n: number) {
   }
 }
 
-/** Lern-App: ihr Planer (planner.yml, mit eigener Dubletten-Prüfung) wird angestoßen. */
+/** Lern-App: ihr Planer (planner.yml, mit eigener Dubletten-Prüfung) wird angestoßen, höchstens alle 2 h (SIN-700).
+ *  Liefert er nach 2 Anstößen in 24 h immer noch nichts Startbares, wird nicht weiter angestoßen, sondern ein Vorfall gemeldet (Push an Sinan). */
 async function stosseLernappPlanerAn() {
+  const jetzt = Date.now();
+  const ab = new Date(jetzt - ANSTOSS_FENSTER_MS).toISOString();
+  const schritte = `${ANSTOSS_SCHRITT},${OHNE_TODOS_SCHRITT}`;
+  const zeilen = (DRY ? [] : await supabase(`loop_events?select=step,created_at&project=eq.lernapp&step=in.(${schritte})&created_at=gte.${ab}`, "GET")) as { step: string; created_at: string }[];
+  const zeit = (schritt: string) => zeilen.filter((z) => z.step === schritt).map((z) => Date.parse(z.created_at));
+  const entscheidung = anstossEntscheidung(zeit(ANSTOSS_SCHRITT), jetzt);
+  const run = env.GITHUB_RUN_ID ?? null;
+  const url = run ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${repo}/actions/runs/${run}` : null;
+  if (entscheidung === "cooldown") return console.log("lernapp: Planer vor weniger als 2 h angestoßen, kein neuer Anstoß.");
+  if (entscheidung === "ohne-todos") {
+    console.log("lernapp: Planer liefert keine startbaren Todos, kein weiterer Anstoß.");
+    if (!DRY && !zeit(OHNE_TODOS_SCHRITT).length) await supabase("loop_events", "POST", anstossZeile(OHNE_TODOS_SCHRITT, run, url));
+    return;
+  }
   console.log(`${DRY ? "[trocken] " : ""}lernapp: Planer anstoßen (planner.yml, dry_run=false)`);
   if (DRY || !LERNAPP_REPO) return;
   const res = await fetch(`https://api.github.com/repos/${LERNAPP_REPO}/actions/workflows/planner.yml/dispatches`, { method: "POST", headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json" }, body: JSON.stringify({ ref: "main", inputs: { dry_run: "false" } }) });
   if (!res.ok) throw new Error(`planner.yml anstoßen: ${res.status}`);
+  await supabase("loop_events", "POST", anstossZeile(ANSTOSS_SCHRITT, run, url));
 }
 
 /** Unter 3 startbaren Issues je Produkt: auffüllen. Ohne Supabase-Zugang fehlt der Snapshot, dann bleibt es beim Log. */

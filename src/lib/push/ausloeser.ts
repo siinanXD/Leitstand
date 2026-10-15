@@ -186,6 +186,13 @@ export function stillstandAus(schlangen: readonly Schlange[], jetzt: number): Er
     .map((s) => ({ id: `stillstand:${s.projekt}:${s.letztesEreignis}`, art: "braucht-dich", projekt: s.name, kennung: "", titel: "Loop steht, obwohl Arbeit bereitliegt", zeit: jetzt, url: "/" }));
 }
 
+/** Planer-Anstöße ohne startbare Todos (SIN-700): „Braucht dich“, solange der Vorfall in den letzten 24 Stunden liegt. */
+export type PlanerVorfall = { projekt: string; name: string; zeit: number };
+export const planerOhneTodosAus = (vorfaelle: readonly PlanerVorfall[], jetzt: number): Ereignis[] =>
+  vorfaelle
+    .filter((v) => jetzt - v.zeit < 24 * 3_600_000)
+    .map((v) => ({ id: `planer-ohne-todos:${v.projekt}:${v.zeit}`, art: "braucht-dich", projekt: v.name, kennung: "", titel: "Planer liefert keine startbaren Todos", zeit: v.zeit, url: "/" }));
+
 /** PR-Titel ohne Präfix und Kennung: „feat(push): Mitteilungen senden (SIN-421)“ → „Mitteilungen senden“. */
 export function menschlich(titel: string): string {
   const t = titel.replace(/^\w+(\([^)]*\))?!?:\s*/, "").replace(/\s*\(SIN-\d+\)\s*$/, "").trim();
