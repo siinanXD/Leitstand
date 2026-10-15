@@ -33,7 +33,7 @@ function Noten({ jetzt }: { jetzt: Date }) {
           <li key={r.id}>
             <strong>{r.name}</strong>
             <span className="note">{r.note === null ? "Keine Note" : `Note ${r.note}`}</span>
-            <span title={`${r.kennzahl} (Ziel ${r.ziel})`}>{r.pausiert ? "Pausiert, 14 Tage ohne Wirkung" : !r.laeuft ? "Läuft nicht" : `Ziel ${r.ziel}`}</span>
+            <span title={`${r.kennzahl} (Ziel ${r.ziel})`}>{r.pausiert ? (r.grund ?? "Pausiert") : !r.laeuft ? "Läuft nicht" : `Ziel ${r.ziel}`}</span>
             <span>{r.kosten7d === null ? "Kosten unbekannt" : `${euro(r.kosten7d)} diese Woche`}</span>
             <span>{r.letzterLauf ? `Letzter Lauf ${zeitInWorten(r.letzterLauf, jetzt) ?? "früher"}` : "Noch kein Lauf"}</span>
             {r.pausiert && (

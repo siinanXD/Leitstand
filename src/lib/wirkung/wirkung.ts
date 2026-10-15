@@ -10,6 +10,11 @@ export const WOCHE_MS = 7 * 24 * 3_600_000;
 /** Vor diesem Tag schrieb keine Rolle Wirkung; die 14 Tage zählen erst ab hier (sonst pausierten alle Rollen am ersten Tag). */
 export const WIRKUNG_AB = Date.parse("2026-10-15T00:00:00Z");
 
+/** SIN-627 Fokus: bis die Lern-App v1 steht, ruhen diese Rollen (Zeitplan aus, `workflow_dispatch` bleibt). Der Knopf „Wieder anschalten“ hebt es auf. */
+export const FOKUS_AB = Date.parse("2026-10-14T00:00:00Z");
+export const FOKUS_PAUSE: readonly string[] = ["marketing", "trend", "visionaer"];
+export const FOKUS_GRUND = "pausiert bis MAF v1";
+
 export type RollenEreignis = { agent: string | null; step: string | null; status: string | null; created_at: string; wirkung?: number | null; cost?: number | null; grund?: string | null };
 export type Rolle = { id: string; name: string };
 
@@ -25,6 +30,8 @@ export type RollenStand = {
   note: number | null;
   kosten7d: number | null;
   pausiert: boolean;
+  /** Warum die Rolle ruht; null, wenn sie läuft. */
+  grund: string | null;
 };
 
 const zeit = (e: RollenEreignis) => Date.parse(e.created_at);
@@ -35,10 +42,12 @@ const istPause = (e: RollenEreignis) => e.step?.toUpperCase() === PAUSE_SCHRITT;
 export const note = (wirkung: number): number => 1 + Math.round((1 - Math.min(1, Math.max(0, wirkung))) * 5);
 
 /** Jüngstes Pause-Ereignis der Rolle entscheidet; fehlt es, läuft die Rolle. */
-function pausiert(eigene: RollenEreignis[]): boolean {
+function pausiert(id: string, eigene: RollenEreignis[]): string | null {
+  const fokus = FOKUS_PAUSE.includes(id);
   let jung: RollenEreignis | null = null;
-  for (const e of eigene) if (istPause(e) && (!jung || zeit(e) > zeit(jung))) jung = e;
-  return jung?.status === "uebersprungen";
+  for (const e of eigene) if (istPause(e) && (!fokus || zeit(e) >= FOKUS_AB) && (!jung || zeit(e) > zeit(jung))) jung = e;
+  if (!jung) return fokus ? FOKUS_GRUND : null;
+  return jung.status === "uebersprungen" ? (jung.grund ?? "pausiert") : null;
 }
 
 export function rollenStand(rollen: readonly Rolle[], events: readonly RollenEreignis[], jetzt: number): RollenStand[] {
@@ -49,6 +58,7 @@ export function rollenStand(rollen: readonly Rolle[], events: readonly RollenEre
     const woche = laeufe.filter((e) => jetzt - zeit(e) <= WOCHE_MS);
     const werte = woche.map((e) => e.wirkung).filter(istZahl);
     const kosten = woche.map((e) => e.cost).filter(istZahl);
+    const grund = pausiert(r.id, eigene);
     const wirkung = werte.length > 0 ? werte.reduce((s, v) => s + v, 0) / werte.length : null;
     return {
       id: r.id,
@@ -58,7 +68,8 @@ export function rollenStand(rollen: readonly Rolle[], events: readonly RollenEre
       wirkung,
       note: wirkung === null ? null : note(wirkung),
       kosten7d: kosten.length > 0 ? kosten.reduce((s, v) => s + v, 0) : null,
-      pausiert: pausiert(eigene),
+      pausiert: grund !== null,
+      grund,
     };
   });
 }
