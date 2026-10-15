@@ -16,6 +16,8 @@ import { ladePausenAlle } from "../kontingent/pausen";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { ausLinear, gespiegelteIds, LABEL, type GithubIssue } from "../../src/lib/loop/auswahl";
 import {
+  entscheidungenAusKommentaren,
+  entscheidungsText,
   erkenneIssueHaenger,
   erkennePrHaenger,
   erledigtSeit,
@@ -359,9 +361,30 @@ async function neuesProjekt(p: { projekt: Projekt; teamId: string }) {
   }
 }
 
+/** SIN-651: „Entscheidung:“-Kommentare in Linear → Label `entschieden` und Antwort als PR-Kommentar. Einmal je PR (Label verhindert Wiederholung). */
+async function uebernehmeEntscheidungen() {
+  const d = await linear<{ comments: { nodes: { body: string }[] } }>(
+    `query { comments(first: 100, orderBy: createdAt, filter: { body: { startsWith: "Entscheidung:" } }) { nodes { body } } }`,
+  );
+  for (const e of entscheidungenAusKommentaren(d.comments.nodes.map((c) => c.body))) {
+    const pr = await gh<{ labels: { name: string }[] }>(`/repos/${e.repo}/issues/${e.nummer}`);
+    if (pr.labels.some((l) => l.name === "entschieden")) continue;
+    log(e.repo, `PR #${e.nummer}: Entscheidung aus Linear → Label entschieden`);
+    if (DRY) continue;
+    await gh(`/repos/${e.repo}/issues/${e.nummer}/labels`, { method: "POST", body: { labels: ["entschieden"] } });
+    await gh(`/repos/${e.repo}/issues/${e.nummer}/comments`, { method: "POST", body: { body: entscheidungsText(e) } });
+  }
+}
+
 async function main() {
   const alle = await ladeProjekte();
   let fehler = 0;
+  try {
+    await uebernehmeEntscheidungen();
+  } catch (e) {
+    fehler++;
+    console.log(`::error::Entscheidungen: ${(e as Error).message}`);
+  }
   for (const p of alle) {
     const name = p.projekt.name;
     try {

@@ -6,7 +6,7 @@ import { projektInfo } from "./projekte";
 import { warnungen, type Warnung } from "./kosten/guthaben";
 import { offene } from "./migrationen/migrationen";
 import { kontingente, letzte24h, type LoopEvent, type Quelle } from "./uebersicht";
-import { aufgabenFuerDich, pipelineSchiene } from "./uebersicht-b1";
+import { aufgabenFuerDich, linearLink, pipelineSchiene } from "./uebersicht-b1";
 import type { WartenderPr } from "./wartende-prs";
 
 const ROT = /fail|error|abort|crash|red|rot|stuck|timeout/i;
@@ -69,7 +69,7 @@ export function karten(q: Quelle, wartende: WartenderPr[]): Karte[] {
         minuten: a.minuten,
         wartender: null,
         aufladen: null,
-        ansehen: /^SIN-\d+$/.test(a.ref) ? `https://linear.app/sinan-kahraman/issue/${a.ref}` : null,
+        ansehen: linearLink(a),
       };
     });
   // SIN-592: Migration auf main, aber nicht in Supabase.

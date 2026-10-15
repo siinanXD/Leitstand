@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene } from "./uebersicht-b1";
+import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, linearLink, pipelineSchiene } from "./uebersicht-b1";
 import { parseEvents, parseSnapshot } from "./uebersicht";
 
 const jetzt = new Date("2026-10-12T12:00:00Z");
@@ -87,4 +87,10 @@ test("inArbeitZeilen: Snapshot-Zeile ohne Issue bleibt sichtbar", () => {
   assert.equal(z.length, 1);
   assert.equal(z[0].issue, null);
   assert.equal(z[0].titel, "Beispiel-Aufgabe");
+});
+
+test("linearLink: Kennung der Aufgabe, sonst aus dem PR-Titel (SIN-651)", () => {
+  assert.equal(linearLink({ ref: "SIN-1", titel: "x" }), "https://linear.app/sinan-kahraman/issue/SIN-1");
+  assert.equal(linearLink({ ref: "#350", titel: "docs(kosten): Beleg (SIN-588)" }), "https://linear.app/sinan-kahraman/issue/SIN-588");
+  assert.equal(linearLink({ ref: "#350", titel: "ohne Kennung" }), null);
 });

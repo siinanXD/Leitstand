@@ -2,6 +2,7 @@
  * Projekt-Wächter (SIN-419): reine Funktionen, kein Netz.
  * Das Skript scripts/waechter/waechter.ts holt Daten aus Linear und GitHub und führt die geplanten Aktionen aus.
  */
+import { istRepo, type RepoName } from "../freigabe";
 import { HAENGER_STUNDEN, LABEL, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, type LinearIssue } from "../loop/auswahl";
 
 export const PLANUNG_TITEL = "Nächste Schritte planen";
@@ -295,6 +296,32 @@ export function updateText(s: Tagesstand): string {
 /** Update fällig, wenn das letzte älter als 24 Stunden ist (oder fehlt). */
 export const updateFaellig = (letztesUpdateAt: string | null, jetzt: Date) =>
   !letztesUpdateAt || jetzt.getTime() - ms(letztesUpdateAt) >= 24 * STUNDE;
+
+// ------------------------------------------------------------ Entscheidungen aus Linear (SIN-651)
+
+export type Entscheidung = { repo: RepoName; nummer: number; antwort: string };
+
+/**
+ * Linear-Kommentare, die mit `Entscheidung:` beginnen und `owner/repo#nr` nennen (auch als Markdown-Link-Text).
+ * Nur Repos aus `REPOS` (der Wächter-Token fasst nichts anderes an). Je PR zählt der jüngste Kommentar, `kommentare` jüngster zuerst.
+ */
+export function entscheidungenAusKommentaren(kommentare: string[]): Entscheidung[] {
+  const r = new Map<string, Entscheidung>();
+  for (const body of kommentare) {
+    const text = body.trim();
+    if (!/^Entscheidung:/i.test(text)) continue;
+    const antwort = text.replace(/^Entscheidung:\s*/i, "");
+    for (const m of text.matchAll(/([\w.-]+\/[\w.-]+)#(\d+)/g)) {
+      const repo = m[1];
+      if (!istRepo(repo)) continue;
+      const key = `${repo}#${m[2]}`;
+      if (!r.has(key)) r.set(key, { repo, nummer: Number(m[2]), antwort });
+    }
+  }
+  return [...r.values()];
+}
+
+export const entscheidungsText = (e: Entscheidung) => `Entscheidung aus Linear (übernommen vom Wächter, SIN-651): ${e.antwort}`;
 
 // ------------------------------------------------------------ Snapshot (SIN-572)
 
