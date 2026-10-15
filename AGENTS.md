@@ -67,6 +67,10 @@ Regeln:
 - Ereignisse landen in `loop_events` mit Projekt `leitstand`, sobald die Secrets `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` im Repo stehen. Ohne sie gibt es nur eine Warnung im Log.
 - Logik in `src/lib/loop/auswahl.ts` (rein, mit Tests), Netz in `scripts/loop/loop.ts`.
 
+## Qualitätsstandard (SIN-641)
+
+`docs/STANDARD.md` ist Pflicht für Worker, Prüfer und Testnutzer: Note 1, kein Agent-Slop. Verbotene Muster stehen in `src/lib/standard/muster.ts`.
+
 ## Done heißt live (SIN-616)
 
 - Ein Linear-Issue darf nur auf „Done“, wenn die Funktion läuft (Workflow aktiv, Migration angewendet, Secret gesetzt), nicht nur, wenn Code oder eine `.vorlage` gemergt ist.

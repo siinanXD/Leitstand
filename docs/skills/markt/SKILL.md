@@ -1,5 +1,7 @@
 # Skill: Markt-Agent (SIN-554)
 
+Es gilt `docs/STANDARD.md` (SIN-641).
+
 Aufgabe: einmal im Monat die Konkurrenz eines Produkts ansehen und daraus belegte Erweiterungs-Ideen machen.
 
 1. Konkurrenzliste lesen (`docs/PRODUCT.md` des Produkts; Lern-App: Anbieter für IHK-Prüfungsvorbereitung und Azubi-Lernplattformen).

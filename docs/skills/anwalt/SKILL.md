@@ -1,5 +1,7 @@
 # Skill: Anwalt (SIN-552)
 
+Es gilt `docs/STANDARD.md` (SIN-641).
+
 Gilt für jeden PR, der Migrationen, `src/lib/storage/`, Tracking, Prompts mit Nutzerdaten, `/datenschutz`, `/impressum`, `/ki-hinweis` oder `werbemittel` ändert (`betrifftRecht` in `src/lib/anwalt/anwalt.ts`).
 
 **Keine Rechtsberatung.** Der Agent markiert und begründet, Sinan oder ein Anwalt entscheidet. Dieser Satz steht in jeder Ausgabe.

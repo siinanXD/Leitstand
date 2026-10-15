@@ -288,3 +288,16 @@
   rest: loop_events?step=eq.pruefer&status=eq.ok&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 10080
+# Qualitätsstandard (SIN-641)
+- id: leitstand-standard
+  produkt: leitstand
+  titel: Der Qualitätsstandard mit Liste verbotener Muster steht im Repo
+  art: datei
+  pfad: docs/STANDARD.md
+  enthaelt: Verbotene Muster
+- id: leitstand-standard-muster
+  produkt: leitstand
+  titel: Die maschinelle Mustersuche ist im Repo
+  art: datei
+  pfad: src/lib/standard/muster.ts
+  enthaelt: findeMuster
