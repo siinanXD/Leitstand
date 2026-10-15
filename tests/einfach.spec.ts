@@ -79,7 +79,7 @@ for (const [seite, pfad] of SEITEN) {
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await expect(page.getByText("Daten werden geladen")).toHaveCount(0);
       // SIN-659: „Stand: hh:mm“ und „seit hh:mm Uhr“ (Warnung) sind gewollt; jede andere Uhrzeit bleibt verboten.
-      const text = (await page.locator("body").innerText()).replace(/(Stand: |seit )\d{1,2}:\d{2}/g, "$1");
+      const text = (await page.locator("body").innerText()).replace(/(Stand: |seit )\d{1,2}:\d{2}/gi, "$1");
       for (const [name, muster] of VERBOTEN) expect(text.match(muster)?.[0] ?? null, `${name} auf ${pfad}`).toBeNull();
       await expect(page.locator("table")).toHaveCount(0);
       await expect(page.locator("details.aufklapp")).toHaveCount(pfad === "/" ? 3 : 0);
