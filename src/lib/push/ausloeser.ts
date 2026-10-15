@@ -186,6 +186,12 @@ export function stillstandAus(schlangen: readonly Schlange[], jetzt: number): Er
     .map((s) => ({ id: `stillstand:${s.projekt}:${s.letztesEreignis}`, art: "braucht-dich", projekt: s.name, kennung: "", titel: "Loop steht, obwohl Arbeit bereitliegt", zeit: jetzt, url: "/" }));
 }
 
+/** Rolle außerhalb ihres Takts (SIN-736, `docs/autonomy/rollen.json`): nur periodische Rollen lösen Alarm aus, Hinweise nicht. */
+export const rollenStillstandAus = (befunde: readonly { rolle: string; urteil: string; alterH: number | null }[], projekt: string, jetzt: number): Ereignis[] =>
+  befunde
+    .filter((b) => b.urteil === "alarm" && b.alterH != null)
+    .map((b) => ({ id: `alarm:rolle:${b.rolle}:${Math.floor(jetzt / 86_400_000)}`, art: "alarm", projekt, kennung: b.rolle, titel: `Rolle ${b.rolle} lief seit ${Math.round(b.alterH!)} Stunden nicht`, zeit: jetzt }));
+
 /** Planer-Anstöße ohne startbare Todos (SIN-700): „Braucht dich“, solange der Vorfall in den letzten 24 Stunden liegt. */
 export type PlanerVorfall = { projekt: string; name: string; zeit: number };
 export const planerOhneTodosAus = (vorfaelle: readonly PlanerVorfall[], jetzt: number): Ereignis[] =>

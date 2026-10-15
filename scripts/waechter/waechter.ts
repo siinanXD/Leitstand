@@ -313,7 +313,7 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
   // Linear-Link und PROJEKTE unterscheiden sich in der Schreibweise (siinanxd/leitstand vs. siinanXD/Leitstand).
   if (repo.toLowerCase() === PROJEKTE.find((x) => x.id === "leitstand")?.repo?.toLowerCase()) {
     const haken = await readFile("docs/FERTIG.md", "utf8").then(zaehleHaken, () => null);
-    const zeile = leitstandSnapshot(issues, prs, repo, haken);
+    const zeile = leitstandSnapshot(issues, prs, repo, haken, gespiegelt);
     log(projekt.name, `Snapshot: ${JSON.stringify(zeile.queue)}, fertig ${haken ? `${haken.fertig} von ${haken.gesamt}` : "unbekannt"}`);
     if (!DRY) await schreibeSnapshot(zeile);
   }

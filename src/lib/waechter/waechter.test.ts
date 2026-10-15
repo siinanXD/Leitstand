@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { waehle } from "../loop/auswahl";
 import {
   entscheidungenAusKommentaren,
   entscheidungsText,
@@ -193,17 +194,31 @@ test("Tagesupdate: Gruppen, Gesundheit, Fälligkeit", () => {
 });
 
 test("leitstandSnapshot: Spalten wie loop_snapshot (fertig_v1/gesamt_v1, kein progress)", () => {
-  const z = leitstandSnapshot([issue({ identifier: "SIN-1" }), issue({ identifier: "SIN-2", stateType: "started" })], [], "siinanXD/Leitstand", { fertig: 3, gesamt: 10 });
+  const z = leitstandSnapshot([issue({ identifier: "SIN-1" }), issue({ identifier: "SIN-2", stateType: "started" })], [], "siinanXD/Leitstand", { fertig: 3, gesamt: 10 }, new Set());
   assert.deepEqual(z.queue, { todo: 1, startable: 1, in_progress: 1 });
   assert.equal(z.fertig_v1, 3);
   assert.equal(z.gesamt_v1, 10);
   assert.equal("progress" in z, false);
-  assert.equal(leitstandSnapshot([], [], "r", null).fertig_v1, null);
+  assert.equal(leitstandSnapshot([], [], "r", null, new Set()).fertig_v1, null);
 });
 
 test("leitstandSnapshot: gemergter risk:high-PR bleibt nicht in open_prs (SIN-699)", () => {
-  const z = leitstandSnapshot([], [pr({ number: 184, labels: ["risk:high"], gemergtAt: "2026-10-15T15:14:00Z" }), pr({ number: 201 })], "r", null);
+  const z = leitstandSnapshot([], [pr({ number: 184, labels: ["risk:high"], gemergtAt: "2026-10-15T15:14:00Z" }), pr({ number: 201 })], "r", null, new Set());
   assert.deepEqual(z.open_prs.map((p) => p.nummer), [201]);
+});
+
+test("leitstandSnapshot und waehle zählen dasselbe (SIN-736, 3 Konstellationen)", () => {
+  const todo = (identifier: string, o: Partial<WaechterIssue> = {}) => issue({ identifier, labels: ["claude"], stateType: "unstarted", ...o });
+  const konstellationen: { issues: WaechterIssue[]; gespiegelt: Set<string>; erwartet: number }[] = [
+    { issues: [todo("SIN-1"), todo("SIN-2")], gespiegelt: new Set(), erwartet: 2 },
+    { issues: [todo("SIN-1"), todo("SIN-2")], gespiegelt: new Set(["SIN-2"]), erwartet: 1 },
+    { issues: [todo("SIN-1", { blockiertVon: [{ identifier: "SIN-9", stateType: "started" }] }), todo("SIN-2", { labels: ["claude", "sinan"] }), todo("SIN-3", { labels: [] })], gespiegelt: new Set(), erwartet: 1 },
+  ];
+  for (const k of konstellationen) {
+    const startable = leitstandSnapshot(k.issues, [], "r", null, k.gespiegelt).queue.startable;
+    assert.equal(startable, k.erwartet);
+    assert.equal(waehle(k.issues, k.gespiegelt, 99).length, startable);
+  }
 });
 
 test("Entscheidung: im Linear-Kommentar führt zu Label und PR-Kommentar (SIN-651)", () => {

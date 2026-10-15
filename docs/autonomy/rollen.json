@@ -1,0 +1,31 @@
+{
+  "stand": "2026-10-15",
+  "quelle": "SIN-736 (Fehlalarm SIN-704)",
+  "hinweis": "takt: 15min | stuendlich | 2h | taeglich | woechentlich | monatlich = Alarm nach grenze_h; ereignis = nur Hinweis; aus = keine Prüfung. schritt = Name in loop_events (step oder agent), alias = alte Namen.",
+  "rollen": [
+    { "schritt": "abnahme", "takt": "stuendlich", "grenze_h": 3, "alias": [] },
+    { "schritt": "anwalt", "takt": "monatlich", "grenze_h": 792, "alias": [] },
+    { "schritt": "automerge", "takt": "ereignis", "grenze_h": 24, "alias": ["merge"] },
+    { "schritt": "build", "takt": "ereignis", "grenze_h": 24, "alias": [] },
+    { "schritt": "ceo", "takt": "taeglich", "grenze_h": 26, "alias": [] },
+    { "schritt": "claude", "takt": "ereignis", "grenze_h": 24, "alias": ["worker", "work"] },
+    { "schritt": "dispatch", "takt": "2h", "grenze_h": 5, "alias": [] },
+    { "schritt": "gedaechtnis", "takt": "taeglich", "grenze_h": 26, "alias": [] },
+    { "schritt": "hausmeister", "takt": "woechentlich", "grenze_h": 192, "alias": [] },
+    { "schritt": "lernen", "takt": "woechentlich", "grenze_h": 192, "alias": [] },
+    { "schritt": "loop-merge", "takt": "ereignis", "grenze_h": 24, "alias": [] },
+    { "schritt": "marketing", "takt": "aus", "grenze_h": 0, "alias": [] },
+    { "schritt": "markt", "takt": "monatlich", "grenze_h": 792, "alias": [] },
+    { "schritt": "migrationen", "takt": "taeglich", "grenze_h": 26, "alias": ["migration"] },
+    { "schritt": "planer", "takt": "ereignis", "grenze_h": 6, "alias": ["vorarbeiter", "plan"] },
+    { "schritt": "pruefer", "takt": "ereignis", "grenze_h": 24, "alias": ["pr-gate"] },
+    { "schritt": "push-ausloeser", "takt": "15min", "grenze_h": 1, "alias": [] },
+    { "schritt": "repair", "takt": "ereignis", "grenze_h": 24, "alias": [] },
+    { "schritt": "stand", "takt": "taeglich", "grenze_h": 26, "alias": [] },
+    { "schritt": "trend", "takt": "ereignis", "grenze_h": 24, "alias": [] },
+    { "schritt": "visionaer", "takt": "ereignis", "grenze_h": 24, "alias": [] },
+    { "schritt": "waechter", "takt": "stuendlich", "grenze_h": 3, "alias": [] },
+    { "schritt": "werkzeuge", "takt": "stuendlich", "grenze_h": 3, "alias": [] },
+    { "schritt": "wirkung", "takt": "taeglich", "grenze_h": 26, "alias": [] }
+  ]
+}

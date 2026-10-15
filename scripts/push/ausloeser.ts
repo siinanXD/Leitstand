@@ -15,7 +15,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { alarmeAus } from "../../src/lib/abnahme/abnahme";
-import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
+import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, rollenStillstandAus, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
 import { OHNE_TODOS_SCHRITT } from "../../src/lib/vorarbeiter/vorarbeiter";
@@ -27,6 +27,7 @@ import { karten } from "../../src/lib/uebersicht-einfach";
 import { offene } from "../../src/lib/migrationen/migrationen";
 import { wartendePrs } from "../../src/lib/wartende-prs";
 import { EINSTELLUNG, pushStunde, pushVorbereiten } from "../../src/lib/wochencheck/wochencheck";
+import { pruefeRollen } from "../../src/lib/autonomy/rollen";
 import { pausenAlarme, type RollenEreignis } from "../../src/lib/wirkung/wirkung";
 
 const env = process.env;
@@ -195,6 +196,7 @@ async function main() {
     ...alarmeAus(q.events, jetzt.getTime()),
     ...pausenAlarme(q.events as unknown as RollenEreignis[], jetzt.getTime()),
     ...stillstandAus(schlangen, jetzt.getTime()),
+    ...rollenStillstandAus(pruefeRollen(q.events, jetzt.getTime()), "Leitstand", jetzt.getTime()),
     ...planerOhneTodosAus(q.events.filter((e) => e.step === OHNE_TODOS_SCHRITT).map((e) => ({ projekt: e.project ?? "", name: projektInfo(e.project ?? "").name, zeit: Date.parse(e.created_at) })), jetzt.getTime()),
     ...fertigAus(prs.gemergt, jetzt.getTime()),
     ...abbruchAus(laeufe, jetzt.getTime(), prs.mitPr),
