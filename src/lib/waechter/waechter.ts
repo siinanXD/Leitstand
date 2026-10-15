@@ -3,7 +3,7 @@
  * Das Skript scripts/waechter/waechter.ts holt Daten aus Linear und GitHub und führt die geplanten Aktionen aus.
  */
 import { istRepo, type RepoName } from "../freigabe";
-import { HAENGER_STUNDEN, LABEL, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, type LinearIssue } from "../loop/auswahl";
+import { HAENGER_STUNDEN, LABEL, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, startbare, type LinearIssue } from "../loop/auswahl";
 
 export const PLANUNG_TITEL = "Nächste Schritte planen";
 export const EINRICHTEN_TITEL = "Projekt einrichten";
@@ -328,13 +328,12 @@ export const entscheidungsText = (e: Entscheidung) => `Entscheidung aus Linear (
 // ------------------------------------------------------------ Snapshot (SIN-572)
 
 /** Der Leitstand schreibt keine Zeile je Issue, sondern eine Zusammenfassung: Schlange, offene PRs, Haken aus `docs/FERTIG.md`. */
-export function leitstandSnapshot(issues: LinearIssue[], prs: PrInfo[], repo: string, haken: { fertig: number; gesamt: number } | null) {
+export function leitstandSnapshot(issues: LinearIssue[], prs: PrInfo[], repo: string, haken: { fertig: number; gesamt: number } | null, gespiegelt: Set<string>) {
   const claude = issues.filter((i) => hatLabel(i, LABEL));
   const todo = claude.filter((i) => i.stateType === "unstarted");
-  const frei = (i: LinearIssue) => !i.blockiertVon.some((b) => b.stateType !== "completed" && b.stateType !== "canceled") && !i.labels.some((l) => NIE_AUTOMATISCH.includes(l.toLowerCase()));
   return {
     project: "leitstand",
-    queue: { todo: todo.length, startable: todo.filter(frei).length, in_progress: claude.filter((i) => i.stateType === "started").length },
+    queue: { todo: todo.length, startable: startbare(issues, gespiegelt).length, in_progress: claude.filter((i) => i.stateType === "started").length },
     // shortcut: nur claude/-PRs. CI-Status und Entwurf kommen aus GitHub (SIN-635); Migrations-PRs tragen zusätzlich das Label `migration`.
     open_prs: prs.filter((p) => !p.gemergtAt).map((p) => ({ repo, nummer: p.number, titel: p.titel, url: `https://github.com/${repo}/pull/${p.number}`, labels: p.migration ? [...p.labels, "migration"] : p.labels, entwurf: p.entwurf ?? false, ciGruen: p.ciGruen ?? false, grund: null })),
     // Spalten wie beim Status-Lauf der Lern-App (loop_snapshot hat kein `progress`).

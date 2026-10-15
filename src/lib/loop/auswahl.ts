@@ -88,11 +88,13 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
 const startbar = (i: LinearIssue, gespiegelt: Set<string>) =>
   i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier);
 
+/** Startbare Todo-Issues, genau wie `waehle` sie sieht (SIN-736): Dispatcher und `loop_snapshot.queue.startable` zählen damit dasselbe. */
+export const startbare = (issues: LinearIssue[], gespiegelt: Set<string>): LinearIssue[] => issues.filter((i) => startbar(i, gespiegelt));
+
 /** `rest`: geschätzter Claude-Rest in Prozent (SIN-633). Reihenfolge nach Stufe, dann Priorität; bei knappem Rest fällt weg, was nicht passt. */
 export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung, rest: number | null = null): LinearIssue[] {
   const frei = Math.max(0, max - laufende(issues, belegung).length);
-  const geordnet = issues
-    .filter((i) => startbar(i, gespiegelt))
+  const geordnet = startbare(issues, gespiegelt)
     .sort((a, b) => stufe(a.labels) - stufe(b.labels) || rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt));
   return passend(geordnet, rest).slice(0, frei);
 }
