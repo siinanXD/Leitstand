@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SnapshotRow } from "../uebersicht";
 import { bezugVon, chefSatz, entscheide, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, luecke, ohneDaten, startbar, type ProduktLage } from "./ceo";
-import { neueIssueTitel, zaehleHaken } from "./fertig";
+import { gleicheAbsicht, neueIssueTitel, pruefeDubletten, zaehleHaken } from "./fertig";
 
 const lage: ProduktLage = { id: "lernapp", name: "Lern-App", startbar: 1, fertig: 3, gesamt: 10, rot: null, wartetAufSinan: [], metaPrsHeute: 0, ideenDieseWoche: 0 };
 const zeile = (o: Partial<SnapshotRow>): SnapshotRow => ({ project: "lernapp", stage: null, status: "Todo", title: null, updated_at: null, quota_name: null, quota_used: null, quota_limit: null, issue: "SIN-1", blocked_by: [], quotas: [], labels: ["claude"], minutes: null, pr: null, open_prs: [], ...o });
@@ -88,6 +88,14 @@ test("FERTIG.md: leeres Backlog + 3 offene Punkte → 3 Issues, zweiter Lauf kei
   assert.deepEqual(erster, ["Projekt-Karten", "Ablauf-Ansicht", "Freigabe-Seite"]);
   assert.deepEqual(neueIssueTitel(md, erster.map((t) => t.toUpperCase()), 8), []);
   assert.deepEqual(neueIssueTitel(md, [], 2), ["Projekt-Karten", "Ablauf-Ansicht"]);
+});
+
+test("Dubletten-Prüfung (SIN-613): gleiche Absicht, anderer Titel → kein neues Issue, höchstens 3 je Lauf", () => {
+  const md = "- [ ] Screenreader-Test der Kernrouten dokumentieren\n- [ ] Ablauf-Ansicht\n- [ ] A1x\n- [ ] B2x\n- [ ] C3x\n- [ ] D4x\n";
+  const r = pruefeDubletten(md, ["Manueller Screenreader-Test der Kernrouten dokumentieren"], 8);
+  assert.deepEqual(r.uebersprungen, [{ titel: "Screenreader-Test der Kernrouten dokumentieren", vorhanden: "Manueller Screenreader-Test der Kernrouten dokumentieren" }]);
+  assert.equal(r.neu.length, 3);
+  assert.equal(gleicheAbsicht("Ablauf-Ansicht", "Projekt-Karten"), false);
 });
 
 test("Chef-Satz verfällt mit der Aufgabe (SIN-579)", () => {
