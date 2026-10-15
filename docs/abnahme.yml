@@ -97,6 +97,13 @@
   art: datei
   pfad: src/lib/gedaechtnis/gedaechtnis.ts
   enthaelt: Quelle nicht erreichbar
+- id: gedaechtnis-index
+  produkt: gedaechtnis
+  titel: Der Vault hat einen Katalog (index.md) und ein Protokoll (SIN-615)
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: index.md
+  enthaelt: "# Index"
 
 # Lern-App
 - id: lernapp-snapshot

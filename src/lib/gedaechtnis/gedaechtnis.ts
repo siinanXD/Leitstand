@@ -40,7 +40,8 @@ const dateiname = (text: string): string => text.replace(/[\\/:*?"<>|#^[\]]+/g, 
 
 const slug = (id: string): string => id.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-const kopf = (typ: string, produkt: string, datum: string): string[] => ["---", `typ: ${typ}`, `produkt: ${produkt}`, `datum: ${datum}`, `quelle: ${QUELLE}`, "---"];
+/** Pflicht-Eigenschaften jeder Notiz (SIN-615), Reihenfolge wie `PFLICHT` in `vault.ts`. */
+export const kopf = (typ: string, produkt: string, datum: string, status: string, beschreibung: string, quelle = QUELLE): string[] => ["---", `typ: ${typ}`, `produkt: ${produkt}`, `status: ${status}`, `datum: ${datum}`, `quelle: ${quelle}`, `beschreibung: ${kurz(beschreibung, 120)}`, "---"];
 
 /** Beim Liste kürzen: Rest als eine Zeile, damit die Zeilengrenze hält. */
 function begrenze(zeilen: string[], max: number): string[] {
@@ -53,9 +54,9 @@ const auflistung = (liste: string[] | null, leer: string): string => (liste === 
 
 /** Immer oben: je Produkt genau 3 Zeilen (Stand, was läuft, was Sinan tun muss). Wird jedes Mal komplett neu geschrieben. */
 export function uebersicht(e: Eingabe): string {
-  const maxProdukte = Math.floor((MAX_ZEILEN_UEBERSICHT - 8) / 3);
+  const maxProdukte = Math.floor((MAX_ZEILEN_UEBERSICHT - 11) / 3);
   const sichtbar = e.produkte.slice(0, maxProdukte);
-  const zeilen = [...kopf("uebersicht", "alle", tagBerlin(e.jetzt)), "# Wo stehen wir", ""];
+  const zeilen = [...kopf("uebersicht", "alle", tagBerlin(e.jetzt), "aktuell", "Stand aller Produkte auf einen Blick"), "# Wo stehen wir", ""];
   for (const p of sichtbar) {
     zeilen.push(
       `**[[Produkte/${dateiname(p.name)}|${kurz(p.name, 30)}]]** · ${stand(p)} #produkt/${slug(p.id)}`,
@@ -72,7 +73,7 @@ export function uebersicht(e: Eingabe): string {
 export function produktSeite(p: Produkt, entscheidungen: Entscheidung[], jetzt: Date): string {
   const meine = entscheidungen.filter((x) => x.projekt === p.id).slice(0, MAX_ENTSCHEIDUNGEN);
   return [
-    ...kopf("produkt", p.id, tagBerlin(jetzt)),
+    ...kopf("produkt", p.id, tagBerlin(jetzt), "aktuell", `Ziel, Stand und Entscheidungen zu ${p.name}`),
     `# ${kurz(p.name, 40)} #produkt/${slug(p.id)}`,
     "",
     `**Ziel:** ${p.ziel ? kurz(p.ziel, 200) : "nicht hinterlegt"}`,
@@ -91,7 +92,7 @@ export function tagSeite(e: Eingabe): string {
   const ids = e.entscheidungen.filter((x) => (e.prs ?? []).some((p) => p.titel.includes(x.id)));
   const trends = (e.trends ?? []).slice(0, 3).map((z) => kurz(z));
   const ceo = (e.ceo ?? []).slice(0, 4).map((z) => kurz(z));
-  const feste = 6 + 2 + 4 * 2 + 2 + 1 + (trends.length ? 1 + trends.length : 0) + (ceo.length ? 1 + ceo.length : 0); // Kopf, Titel, Abschnittszeilen, Leerzeilen, Fuß, Trends: übrig für Listen
+  const feste = 8 + 2 + 4 * 2 + 2 + 1 + (trends.length ? 1 + trends.length : 0) + (ceo.length ? 1 + ceo.length : 0); // Kopf, Titel, Abschnittszeilen, Leerzeilen, Fuß, Trends: übrig für Listen
   const platz = MAX_ZEILEN_TAG - feste;
   const je = Math.max(1, Math.floor(platz / 4));
   const kosten = e.kostenUsd === null ? "Kosten: unbekannt" : `Kosten: ${e.kostenUsd.toFixed(2)} US-Dollar (Agenten, ohne Abos)`;
@@ -100,7 +101,7 @@ export function tagSeite(e: Eingabe): string {
   const erledigt = e.erledigt == null ? [`${NICHT_ERREICHBAR} (Linear)`] : e.erledigt.length === 0 ? ["Nichts."] : e.erledigt.map((x) => `- ${x.id} ${kurz(x.titel)}`);
   const probleme = e.probleme.length === 0 ? ["Keine."] : e.probleme.map((t) => `- ${kurz(t)}`);
   return [
-    ...kopf("tag", "alle", tag),
+    ...kopf("tag", "alle", tag, "fertig", `Gebaut, entschieden und Kosten am ${tag}`),
     `# ${tag}`,
     "## Gebaut",
     ...begrenze(gebaut, je),
@@ -122,7 +123,7 @@ export function tagSeite(e: Eingabe): string {
 export const ceoZeilen = (zeilen: { produkt: string; entscheidung: string; grund: string }[]): string[] => zeilen.map((z) => `- ${z.produkt}: ${z.entscheidung}. ${z.grund}`);
 
 export function entscheidungSeite(x: Entscheidung, jetzt: Date): string {
-  return [...kopf("entscheidung", x.projekt, tagBerlin(jetzt)), `# ${x.id}: ${kurz(x.titel)}`, "", `Entscheidungsdatei: ${x.url}`, "", `[[Produkte/${dateiname(x.projekt)}]]`].join("\n") + "\n";
+  return [...kopf("entscheidung", x.projekt, tagBerlin(jetzt), "gilt", x.titel), `# ${x.id}: ${kurz(x.titel)}`, "", `Entscheidungsdatei: ${x.url}`, "", `[[Produkte/${dateiname(x.projekt)}]]`].join("\n") + "\n";
 }
 
 /** Linear zuerst (hat den Link); Snapshot-Punkte mit gleicher Kennung (SIN-123) zählen nicht doppelt. */
@@ -138,7 +139,7 @@ export function offenSeite(e: Eingabe): string {
   const fehlt = (e.fehlt ?? []).filter((q) => q !== "GitHub");
   const hinweis = fehlt.length ? [`${NICHT_ERREICHBAR}: ${fehlt.join(", ")}. Die Liste kann unvollständig sein.`] : [];
   const liste = e.offen.length === 0 && !hinweis.length ? ["Nichts offen."] : [...e.offen.map(zeile), ...hinweis];
-  return [...kopf("offen", "alle", tagBerlin(e.jetzt)), "# Offen", "", ...liste, "", "[[00 Wo stehen wir]]"].join("\n") + "\n";
+  return [...kopf("offen", "alle", tagBerlin(e.jetzt), "aktuell", "Was Sinan tun oder freigeben muss"), "# Offen", "", ...liste, "", "[[00 Wo stehen wir]]"].join("\n") + "\n";
 }
 
 /** Alle Dateien des Vaults: Pfad → Inhalt. */

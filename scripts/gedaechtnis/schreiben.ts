@@ -7,14 +7,14 @@
  * und schreibt Markdown für den privaten Obsidian-Vault siinanXD/gedaechtnis. Pusht nur, wenn sich etwas geändert hat.
  * Kein KI-Aufruf, keine Rohdaten oder Traces. Legt nie ein öffentliches Repo an und ändert nie Token-Rechte.
  *
- * Gesprächs-Eingang (SIN-612): Linear-Issues mit Label `gedaechtnis` werden Notizen unter Eingang/ und nach dem Push mit Link geschlossen.
+ * Gesprächs-Eingang (SIN-612): Linear-Issues mit Label `gedaechtnis` werden Notizen unter Gespräche/ und nach dem Push mit Link geschlossen.
  *
  * Env: GH_TOKEN (AGENT_WORKFLOW_TOKEN), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, LINEAR_API_KEY (optional, ohne ihn entfällt der Eingang).
  * Ohne Zugriff auf das Repo (SIN-540 offen) oder mit DRY_RUN=1: Trockenlauf, Ausgabe in GEDAECHTNIS_AUSGABE (Standard gedaechtnis-ausgabe/),
  * Status `braucht_sinan`, Lauf bleibt grün.
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { readFile } from "node:fs/promises";
@@ -22,6 +22,7 @@ import { letzteJeProdukt } from "../../src/lib/ceo/ceo";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
 import { EINGANG_LABEL, eingangDateien, schlussKommentar, zuSchliessen, type EingangIssue } from "../../src/lib/gedaechtnis/eingang";
 import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, vereinige, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type Erledigt, type OffenerPunkt, type Pr, type Quelle } from "../../src/lib/gedaechtnis/gedaechtnis";
+import { abschliessen } from "../../src/lib/gedaechtnis/vault";
 import { PROJEKTE, alleProjekte } from "../../src/lib/projekte";
 import { gedaechtnisZeilen, type Fund } from "../../src/lib/trend/trend";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
@@ -269,12 +270,28 @@ const git = (cwd: string, ...args: string[]) => {
   }
 };
 
-/** Klont den Vault, schreibt die Dateien, pusht bei Änderung. Gibt zurück, ob gepusht wurde. */
+/** Alle Markdown-Notizen des Vaults (ohne .git, .obsidian). */
+function liesVault(dir: string): Dateien {
+  const out: Dateien = {};
+  for (const p of readdirSync(dir, { recursive: true, encoding: "utf8" })) if (p.endsWith(".md") && !/^\.|\/\./.test(p)) out[p] = readFileSync(join(dir, p), "utf8");
+  return out;
+}
+
+/** Klont den Vault, schreibt die Dateien samt Index, Protokoll und Wochen-Check, pusht bei Änderung. Gibt zurück, ob gepusht wurde. */
 function pushe(d: Dateien, jetzt: Date): boolean {
   const dir = mkdtempSync(join(tmpdir(), "gedaechtnis-"));
   try {
     git(dir, "clone", "--depth", "1", `https://github.com/${VAULT_REPO}.git`, ".");
-    schreibeLokal(dir, d);
+    // Einsortieren (SIN-615): Notizen des alten Ordners Eingang/ liegen künftig unter Gespräche/.
+    if (existsSync(join(dir, "Eingang"))) {
+      mkdirSync(join(dir, "Gespräche"), { recursive: true });
+      for (const f of readdirSync(join(dir, "Eingang"))) renameSync(join(dir, "Eingang", f), join(dir, "Gespräche", f));
+      rmSync(join(dir, "Eingang"), { recursive: true, force: true });
+    }
+    const { dateien: alle } = abschliessen(liesVault(dir), d, jetzt, env.WOCHEN_CHECK === "1");
+    const treffer = mitGeheimnis(alle);
+    if (treffer.length) throw new Error(`Abbruch: Inhalt sieht nach Geheimnis aus in ${treffer.join(", ")}. Nichts geschrieben.`);
+    schreibeLokal(dir, alle);
     git(dir, "add", "-A");
     if (!git(dir, "status", "--porcelain").trim()) return false;
     git(dir, "-c", "user.name=gedaechtnis-agent", "-c", "user.email=gedaechtnis-agent@users.noreply.github.com", "commit", "-m", `Stand ${jetzt.toISOString().slice(0, 10)}`);
@@ -299,8 +316,14 @@ async function main() {
   }
   const zugriff = !DRY && (await vaultDa());
   if (!zugriff) {
-    schreibeLokal(AUSGABE, d);
-    console.log(`status: braucht_sinan\nTrockenlauf${DRY ? "" : ` (kein Zugriff auf ${VAULT_REPO}, SIN-540 offen)`}: ${Object.keys(d).length} Dateien nach ${AUSGABE}/.`);
+    const { dateien: alle, befunde } = abschliessen({}, d, jetzt, env.WOCHEN_CHECK === "1");
+    const geheim = mitGeheimnis(alle);
+    if (geheim.length) {
+      console.error(`Abbruch: Inhalt sieht nach Geheimnis aus in ${geheim.join(", ")}. Nichts geschrieben.`);
+      process.exit(1);
+    }
+    schreibeLokal(AUSGABE, alle);
+    console.log(`status: braucht_sinan\nTrockenlauf${DRY ? "" : ` (kein Zugriff auf ${VAULT_REPO}, SIN-540 offen)`}: ${Object.keys(alle).length} Dateien nach ${AUSGABE}/${befunde ? `, Wochen-Check: ${befunde.length} Befunde` : ""}.`);
     return;
   }
   const gepusht = pushe(d, jetzt);
