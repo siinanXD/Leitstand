@@ -358,3 +358,21 @@
   art: datei
   pfad: docs/autonomy/agents.json
   enthaelt: '"id": "botadvisor"'
+# SJCODE Website (SIN-118)
+- id: sjcode-website-live
+  produkt: sjcode-website
+  titel: sjcode.de antwortet
+  art: http
+  url: https://sjcode.de
+- id: sjcode-website-vertrag
+  produkt: sjcode-website
+  titel: Das Repo hat einen Vertrag für Agenten (AGENTS.md)
+  art: github
+  repo: siinanXD/SJCODE-website
+  pfad: AGENTS.md
+- id: sjcode-website-registriert
+  produkt: leitstand
+  titel: SJCODE Website ist im Leitstand als Produkt registriert
+  art: datei
+  pfad: src/lib/projekte.ts
+  enthaelt: sjcode-website
