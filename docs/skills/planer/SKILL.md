@@ -2,7 +2,7 @@
 
 Aufgabe: eine Planer-Rolle für beide Repos. Liest die Fertig-Liste (`docs/FERTIG.md` bzw. `product-readiness.json`), die Abnahme-Proben, Fehlergründe und den Gesprächs-Eingang aus dem Gedächtnis, legt Issues an, legt Reihenfolge und Spur fest (A, B = Claude Max, C = API mit Haiku). Auslöser, Netz und Werkzeuge stehen in `docs/autonomy/agents.json`.
 
-1. Vor jedem neuen Issue die Dubletten-Prüfung (SIN-613): Titel gegen alle Linear-Issues des Projekts, auch erledigte und abgebrochene. Gleicher Titel (Groß-/Kleinschreibung egal) wird nie noch einmal angelegt.
+1. Vor jedem neuen Issue die Dubletten-Prüfung (SIN-613): Titel gegen alle Linear-Issues des Projekts, auch erledigte und abgebrochene. Gleiche Absicht (ähnliche Stichwörter, nicht nur gleicher Titel) wird nie noch einmal angelegt; höchstens ein Kommentar am vorhandenen Issue. Höchstens 3 neue Ideen-Issues je Projekt und Lauf. Übersprungene Dubletten stehen im Lauf-Log.
 2. Lege Issues an, wenn weniger als 3 startbar sind (`luecke` in `src/lib/ceo/ceo.ts`). Der CEO legt kein Issue an.
 3. Reihenfolge und Spuren: `src/lib/vorarbeiter/vorarbeiter.ts` (Name aus der Zeit vor SIN-636, Entscheidung in `docs/decisions/SIN-553-vorarbeiter.md`).
 4. Größe (SIN-638): Schneide Issues auf höchstens ca. 300 geänderte Zeilen oder 1 Bereich (Frontend, Backend, Content, Infra). Größere zerlegst du vorher in Unter-Issues; dasselbe nach 2 roten Worker-Läufen (Ursache und Vorschlag stehen im Kommentar des Workers).

@@ -15,7 +15,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { luecke, startbar } from "../../src/lib/ceo/ceo";
-import { neueIssueTitel } from "../../src/lib/ceo/fertig";
+import { pruefeDubletten } from "../../src/lib/ceo/fertig";
 import { ausLinear, PROJEKT, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { parseSnapshot } from "../../src/lib/uebersicht";
@@ -135,11 +135,11 @@ const MEILENSTEIN = "v1 Grundgerüst";
 const LERNAPP_REPO = PROJEKTE.find((x) => x.id === "lernapp")?.repo;
 
 /** Leitstand: bis zu n Issues aus den offenen Punkten in docs/FERTIG.md (Backlog, Label claude, Meilenstein „v1 Grundgerüst“); der Dispatcher rückt nach.
- *  Dubletten-Prüfung (SIN-613) gegen alle Titel des Projekts, auch erledigte, sonst käme ein gebauter, noch offener Punkt zurück.
+ *  Dubletten-Prüfung (SIN-613) auf gleiche Absicht gegen alle Titel des Projekts, auch erledigte, höchstens 3 neue je Lauf, sonst käme ein gebauter, noch offener Punkt zurück.
  *  shortcut: nur die jüngsten 250 Issues werden verglichen, bei mehr Issues im Projekt seitenweise lesen. */
 async function legeLeitstandIssuesAn(n: number) {
   const md = await readFile("docs/FERTIG.md", "utf8").catch(() => "");
-  if (DRY || !env.LINEAR_API_KEY) return console.log(`[trocken] leitstand: bis zu ${n} Issues aus FERTIG.md: ${neueIssueTitel(md, [], n).join(" | ") || "keine offenen Punkte"}`);
+  if (DRY || !env.LINEAR_API_KEY) return console.log(`[trocken] leitstand: bis zu ${n} Issues aus FERTIG.md: ${pruefeDubletten(md, [], n).neu.join(" | ") || "keine offenen Punkte"}`);
   const d = await linear<{ projects: { nodes: { id: string; teams: { nodes: { id: string }[] }; projectMilestones: { nodes: { id: string; name: string }[] }; issues: { nodes: { title: string }[] } }[] } }>(
     `query($p: String!) { projects(filter: { name: { eq: $p } }) { nodes { id teams(first: 1) { nodes { id } } projectMilestones(first: 20) { nodes { id name } }
       issues(first: 250) { nodes { title } } } } }`,
@@ -148,7 +148,8 @@ async function legeLeitstandIssuesAn(n: number) {
   const projekt = d.projects.nodes[0];
   const teamId = projekt?.teams.nodes[0]?.id;
   if (!projekt || !teamId) throw new Error(`Linear-Projekt „${PROJEKT}“ nicht gefunden`);
-  const titel = neueIssueTitel(md, projekt.issues.nodes.map((i) => i.title), n);
+  const { neu: titel, uebersprungen } = pruefeDubletten(md, projekt.issues.nodes.map((i) => i.title), n);
+  for (const u of uebersprungen) console.log(`leitstand: Dublette übersprungen: „${u.titel}“ ≈ „${u.vorhanden}“`);
   if (!titel.length) return console.log("leitstand: keine neuen Punkte in docs/FERTIG.md");
   const t = await linear<{ team: { states: { nodes: { id: string; name: string }[] }; labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { states { nodes { id name } } labels(first: 250) { nodes { id name } } } }`, { t: teamId });
   const stateId = t.team.states.nodes.find((s) => s.name === "Backlog")?.id;
