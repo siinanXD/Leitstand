@@ -273,3 +273,10 @@
   art: datei
   pfad: src/lib/wirkung/wirkung.ts
   enthaelt: FOKUS_PAUSE
+- id: leitstand-kennzahlen
+  produkt: leitstand
+  titel: Die drei Kennzahlen haben Wochenwerte (SIN-630)
+  art: db
+  rest: kennzahlen_woche?select=aktualisiert_at&order=aktualisiert_at.desc&limit=1
+  zeitfeld: aktualisiert_at
+  max_alter_min: 10080
