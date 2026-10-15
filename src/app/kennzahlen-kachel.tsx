@@ -38,7 +38,7 @@ export function KennzahlenKachel({ angemeldet, jetzt }: { angemeldet: boolean; j
         Was zählt (8 Wochen)
       </h2>
       {zeilen === undefined ? (
-        <p className="leer">Wird geladen …</p>
+        <p className="leer">Zahlen werden gelesen …</p>
       ) : reihen === null ? (
         <p className="leer">Nicht lesbar</p>
       ) : (
