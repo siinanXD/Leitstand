@@ -307,3 +307,10 @@
   art: datei
   pfad: scripts/waechter/waechter.ts
   enthaelt: uebernehmeEntscheidungen
+# Leitstand 2.0 (SIN-660)
+- id: leitstand-abgleich-figma
+  produkt: leitstand
+  titel: Die Zuordnung Seite zu Figma-Frame liegt im Repo
+  art: datei
+  pfad: docs/design/ABGLEICH-SIN-660.md
+  enthaelt: Figma-Frame
