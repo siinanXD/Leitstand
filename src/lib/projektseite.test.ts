@@ -16,6 +16,12 @@ test("Links: feste Reihenfolge, nur Bekanntes hat eine Adresse", () => {
   assert.equal(projektLinks(PROJEKTE.find((p) => p.id === "beleg")!).find((l) => l.art === "github")?.href, null);
 });
 
+test("Projekte: SJCODE Website ist registriert (SIN-118)", () => {
+  const p = PROJEKTE.find((x) => x.id === "sjcode-website")!;
+  assert.equal(p.repo, "siinanXD/SJCODE-website");
+  assert.equal(projektLinks(p).find((l) => l.art === "app")?.href, "https://sjcode.de");
+});
+
 test("Aufgaben: Label sinan, nur das Projekt, Linear-Link", () => {
   const a = projektAufgaben([snap({ issue: "SIN-9", title: "Token setzen", labels: ["sinan"], minutes: 5 }), snap({ project: "lernapp", issue: "SIN-8", labels: ["sinan"] }), snap({ issue: "SIN-7", labels: [] })], "leitstand");
   assert.equal(a.length, 1);
@@ -47,6 +53,6 @@ test("Alle Projekte: Zeilen, Phase ohne Daten leer, Satz", () => {
   assert.equal(l.prs, 1);
   assert.equal(l.brauchtDich, 1);
   assert.equal(z.find((x) => x.projekt.id === "beleg")!.phase, null);
-  assert.equal(projekteSatz(z), "4 Projekte, 1 Worker arbeitet, 1 Aufgabe wartet auf dich.");
+  assert.equal(projekteSatz(z), "5 Projekte, 1 Worker arbeitet, 1 Aufgabe wartet auf dich.");
   assert.equal(projekteSatz([]), null);
 });
