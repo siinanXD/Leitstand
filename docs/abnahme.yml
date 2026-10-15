@@ -288,6 +288,12 @@
   rest: loop_events?step=eq.pruefer&status=eq.ok&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 10080
+- id: leitstand-pruefer-rueckfall
+  produkt: leitstand
+  titel: Der Prüfer fällt bei leerem Codex-Kontingent auf Claude zurück (SIN-696)
+  art: datei
+  pfad: scripts/pruefer/pruefer.ts
+  enthaelt: pruefeMitRueckfall
 # Qualitätsstandard (SIN-641)
 - id: leitstand-standard
   produkt: leitstand
