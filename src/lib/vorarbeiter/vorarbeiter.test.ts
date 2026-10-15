@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { LinearIssue } from "../loop/auswahl";
-import { aufrufKosten, gemeinsam, ledgerZeile, leseDateien, parsePlan, pfade, plane, restDeckel, spurAnzeige, spurCTauglich, stellen } from "./vorarbeiter";
+import { anstossEntscheidung, aufrufKosten, gemeinsam, ledgerZeile, leseDateien, parsePlan, pfade, plane, restDeckel, spurAnzeige, spurCTauglich, stellen } from "./vorarbeiter";
 
 const issue = (n: number, o: Partial<LinearIssue> & { text?: string } = {}): LinearIssue => ({
   id: `id-${n}`,
@@ -84,6 +84,16 @@ test("Anzeige: was läuft und was als Nächstes kommt; Plan übersteht JSON", ()
   assert.equal(a[2].laeuft, null);
   assert.equal(parsePlan("kaputt"), null);
   assert.equal(parsePlan({ spuren: 1 }), null);
+});
+
+test("Lern-App-Planer: frischer Anstoß → kein zweiter; nach 2 h erneut; zwei erfolglose in 24 h → Vorfall", () => {
+  const jetzt = Date.parse("2026-10-15T16:00:00Z");
+  const vor = (min: number) => jetzt - min * 60_000;
+  assert.equal(anstossEntscheidung([], jetzt), "anstossen");
+  assert.equal(anstossEntscheidung([vor(5)], jetzt), "cooldown");
+  assert.equal(anstossEntscheidung([vor(121)], jetzt), "anstossen");
+  assert.equal(anstossEntscheidung([vor(121), vor(300)], jetzt), "ohne-todos");
+  assert.equal(anstossEntscheidung([vor(121), vor(25 * 60)], jetzt), "anstossen");
 });
 
 test("Kosten von Spur C: Euro, Deckel 2 €, Ledger-Zeile", () => {

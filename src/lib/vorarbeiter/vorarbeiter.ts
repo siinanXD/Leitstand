@@ -183,3 +183,37 @@ export const prFuerC = (i: LinearIssue) => ({ branch: `claude/${i.identifier.toL
 
 /** Zeile für `loop_events`: der Plan wurde gemacht. */
 export const ereignisZeile = (projekt: string, runId: string | null, runUrl: string | null) => ({ project: projekt, agent: "planer", step: "planer", status: "ok", grund: "rolle_gestartet", issue: null, pr: null, run_id: runId, run_url: runUrl });
+
+// ------------------------------------------------------------------ Lern-App-Planer anstoßen (SIN-700)
+
+/** Schritte in `loop_events` (Projekt `lernapp`): Merker je Anstoß und der Vorfall „Planer liefert keine startbaren Todos“. */
+export const ANSTOSS_SCHRITT = "planer-anstoss";
+export const OHNE_TODOS_SCHRITT = "planer-ohne-todos";
+export const ANSTOSS_COOLDOWN_MS = 2 * 3_600_000;
+export const ANSTOSS_FENSTER_MS = 24 * 3_600_000;
+/** So viele Anstöße ohne startbare Todos, dann ist es ein Vorfall. */
+export const ANSTOSS_VERSUCHE = 2;
+
+/**
+ * Ob der Lern-App-Planer jetzt angestoßen wird. Aufgerufen nur bei Lücke in der Schlange.
+ * `cooldown`: letzter Anstoß jünger als 2 h. `ohne-todos`: schon 2 Anstöße in 24 h und die Schlange ist immer noch leer,
+ * der Planer legt dann nur Backlog-Ideen an. Dann nicht weiter anstoßen, sondern Sinan melden.
+ */
+export function anstossEntscheidung(anstoesse: readonly number[], jetzt: number): "anstossen" | "cooldown" | "ohne-todos" {
+  if (anstoesse.some((t) => jetzt - t < ANSTOSS_COOLDOWN_MS)) return "cooldown";
+  if (anstoesse.filter((t) => jetzt - t < ANSTOSS_FENSTER_MS).length >= ANSTOSS_VERSUCHE) return "ohne-todos";
+  return "anstossen";
+}
+
+/** Zeile für `loop_events`: der Merker eines Anstoßes oder der Vorfall. */
+export const anstossZeile = (schritt: typeof ANSTOSS_SCHRITT | typeof OHNE_TODOS_SCHRITT, runId: string | null, runUrl: string | null) => ({
+  project: "lernapp",
+  agent: "planer",
+  step: schritt,
+  status: schritt === OHNE_TODOS_SCHRITT ? "fehler" : "ok",
+  grund: schritt === OHNE_TODOS_SCHRITT ? "planer_ohne_todos: Lern-App-Planer liefert nur Backlog-Ideen, keine startbaren Todos" : "planer_angestossen",
+  issue: null,
+  pr: null,
+  run_id: runId,
+  run_url: runUrl,
+});
