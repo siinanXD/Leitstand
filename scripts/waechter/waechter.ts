@@ -184,10 +184,11 @@ async function ladePrs(repo: string): Promise<PrInfo[]> {
   const r: PrInfo[] = [];
   for (const p of prs) {
     if (!p.head.ref.startsWith("claude/")) continue;
-    const [commit, checks, kommentare] = await Promise.all([
+    const [commit, checks, kommentare, dateien] = await Promise.all([
       gh<{ commit: { committer: { date: string } } }>(`/repos/${repo}/commits/${p.head.sha}`),
       gh<{ check_runs: { name: string; conclusion: string | null; html_url: string }[] }>(`/repos/${repo}/commits/${p.head.sha}/check-runs?per_page=50`),
       gh<{ body: string; created_at: string }[]>(`/repos/${repo}/issues/${p.number}/comments?per_page=100`),
+      gh<{ filename: string }[]>(`/repos/${repo}/pulls/${p.number}/files?per_page=100`),
     ]);
     const rot = checks.check_runs.find((c) => c.name === "build" && c.conclusion === "failure");
     const bitten = kommentare.filter((c) => /@claude/.test(c.body) && /Runde \d+ von/.test(c.body)).map((c) => c.created_at);
@@ -197,6 +198,9 @@ async function ladePrs(repo: string): Promise<PrInfo[]> {
       branch: p.head.ref,
       labels: p.labels.map((l) => l.name),
       ciRot: !!rot,
+      ciGruen: checks.check_runs.some((c) => c.name === "build" && c.conclusion === "success"),
+      entwurf: p.draft,
+      migration: dateien.some((f) => f.filename.startsWith("supabase/migrations/")),
       runUrl: rot?.html_url ?? null,
       letzterCommitAt: commit.commit.committer.date,
       letzteReparaturAt: bitten.sort().at(-1) ?? null,

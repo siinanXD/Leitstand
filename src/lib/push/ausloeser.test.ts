@@ -66,6 +66,11 @@ test("Regel 3: Auswertung nicht doppelt bei zwei Läufen in derselben Stunde", (
   assert.equal(plane([], new Set(erst.neu), jetzt + 20 * 60_000).nachrichten.length, 0);
 });
 
+test("Regel 3: Fällt der Lauf um 20 Uhr aus, kommt die Auswertung um 21 Uhr, nie in der Ruhe (SIN-635)", () => {
+  assert.equal(plane([], new Set(), utc("2026-07-10T19:05:00Z")).nachrichten.length, 1); // 21:05 MESZ
+  assert.equal(plane([], new Set(), utc("2026-07-10T20:05:00Z")).nachrichten.length, 0); // 22:05 MESZ
+});
+
 test("Zeitumstellung: 20:00 Berlin im Sommer (18 UTC) und Winter (19 UTC)", () => {
   assert.equal(berlinZeit(utc("2026-07-10T18:30:00Z")).stunde, 20);
   assert.equal(berlinZeit(utc("2026-07-10T19:30:00Z")).stunde, 21);

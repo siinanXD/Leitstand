@@ -139,7 +139,8 @@ export function plane(ereignisse: readonly Ereignis[], gesendet: Gesendet, jetzt
 
   const { tag, stunde } = berlinZeit(jetzt);
   const schluessel = auswertungsSchluessel(tag);
-  if (stunde === AUSWERTUNG_STUNDE && !gesendet.has(schluessel)) {
+  // Ab 20 Uhr bis zur Ruhe: fällt der Lauf um 20 Uhr aus, kommt sie beim nächsten (SIN-635). Der Tagesschlüssel verhindert Doppeltes.
+  if (stunde >= AUSWERTUNG_STUNDE && !ruhe && !gesendet.has(schluessel)) {
     const behoben = offen.filter((x) => x.art === "selbst-behoben");
     const wartend = braucht.filter((x) => x.art === "braucht-dich" && !neu.includes(x.id));
     nachrichten.push(auswertung(behoben, wartend));
@@ -168,9 +169,9 @@ export function alarmeAus(lage: Lage, projekt: string, jetzt: number): Ereignis[
 // ------------------------------------------------------------------ Quellen (SIN-421)
 
 /** Was die Startseite unter „Was brauche ich von dir?“ zeigt, als Ereignis. Ohne Kennung im Text (SIN-578): Projekt und Titel reichen. */
-export type Wartendes = { key: string; titel: string; projekt: string };
+export type Wartendes = { key: string; titel: string; projekt: string; url?: string };
 export const brauchtDichAus = (liste: readonly Wartendes[], jetzt: number): Ereignis[] =>
-  liste.map((w) => ({ id: `braucht:${w.key}`, art: "braucht-dich", projekt: w.projekt, kennung: "", titel: w.titel, zeit: jetzt, url: "/" }));
+  liste.map((w) => ({ id: `braucht:${w.key}`, art: "braucht-dich", projekt: w.projekt, kennung: "", titel: w.titel, zeit: jetzt, url: w.url ?? "/" }));
 
 /** Schlange je Projekt aus `loop_snapshot.queue` und das jüngste Ereignis aus `loop_events` (ms). */
 export type Schlange = { projekt: string; name: string; startbar: number; laeuft: number; pausiert: boolean; letztesEreignis: number | null };

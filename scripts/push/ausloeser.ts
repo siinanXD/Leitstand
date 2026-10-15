@@ -15,7 +15,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { alarmeAus } from "../../src/lib/abnahme/abnahme";
-import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, plane, stillstandAus, type GemergterPr, type Schlange, type WorkerLauf } from "../../src/lib/push/ausloeser";
+import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, plane, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
 import { sendeAnAlle } from "../../src/lib/push/push";
@@ -159,7 +159,15 @@ async function main() {
   const q = geladen.quelle;
 
   // Fehlende Migrationen gehen als Alarm raus (unten), nicht als „Braucht dich“.
-  const wartend = karten(q, wartendePrs(q.snapshot)).filter((k) => !k.key.startsWith("migration:")).map((k) => ({ key: k.key, titel: k.titel, projekt: k.projekt || "Leitstand" }));
+  // Freigaben öffnen mit einem Tipp die Freigabe-Seite (SIN-635); der Grund steht im Satz, damit klar ist, was zu tun ist.
+  const wartend: Wartendes[] = karten(q, wartendePrs(q.snapshot))
+    .filter((k) => !k.key.startsWith("migration:"))
+    .map((k) => (k.wartender ? { key: k.key, titel: `${k.titel}: ${k.warum} Bitte freigeben.`, projekt: k.projekt || "Leitstand", url: "/freigabe" } : { key: k.key, titel: k.titel, projekt: k.projekt || "Leitstand" }));
+  // Neue Linear-Aufgaben mit Label `sinan` (aus dem Spiegel oben), die noch offen sind.
+  const { data: sinanAufgaben, error: fehlerSinan } = await db.from("leitstand_aufgaben").select("issue, titel, status").contains("labels", ["sinan"]).in("status", ["offen", "laeuft"]);
+  if (fehlerSinan) console.log(`::warning::sinan-Aufgaben nicht lesbar: ${fehlerSinan.message}`);
+  for (const a of (sinanAufgaben ?? []) as { issue: string; titel: string }[])
+    if (!wartend.some((w) => w.key === a.issue)) wartend.push({ key: a.issue, titel: `${a.issue} ${a.titel}: wartet auf dich`, projekt: "Leitstand", url: `https://linear.app/sinan-kahraman/issue/${a.issue}` });
 
   // shortcut: Stillstand nur für Projekte mit `queue` im Snapshot (Lern-App); der Leitstand bekommt seine Schlange mit SIN-572.
   const { data: rohSchlangen, error } = await db.from("loop_snapshot").select("project, queue");

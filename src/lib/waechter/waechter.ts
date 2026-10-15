@@ -45,6 +45,11 @@ export type PrInfo = {
   branch: string;
   labels: string[];
   ciRot: boolean;
+  /** `build` ist bei GitHub erfolgreich durchgelaufen (SIN-635). */
+  ciGruen?: boolean;
+  entwurf?: boolean;
+  /** Der PR ändert `supabase/migrations/`. */
+  migration?: boolean;
   runUrl: string | null;
   letzterCommitAt: string;
   /** Zeitpunkt des letzten Reparatur-Kommentars (`@claude` mit „Runde“) im PR. */
@@ -301,8 +306,8 @@ export function leitstandSnapshot(issues: LinearIssue[], prs: PrInfo[], repo: st
   return {
     project: "leitstand",
     queue: { todo: todo.length, startable: todo.filter(frei).length, in_progress: claude.filter((i) => i.stateType === "started").length },
-    // shortcut: nur claude/-PRs, CI-Grün unbekannt (false), damit „Braucht dich“ nichts Falsches zeigt; bei Bedarf Check-Status mitladen.
-    open_prs: prs.map((p) => ({ repo, nummer: p.number, titel: p.titel, url: `https://github.com/${repo}/pull/${p.number}`, labels: p.labels, entwurf: false, ciGruen: false, grund: null })),
+    // shortcut: nur claude/-PRs. CI-Status und Entwurf kommen aus GitHub (SIN-635); Migrations-PRs tragen zusätzlich das Label `migration`.
+    open_prs: prs.map((p) => ({ repo, nummer: p.number, titel: p.titel, url: `https://github.com/${repo}/pull/${p.number}`, labels: p.migration ? [...p.labels, "migration"] : p.labels, entwurf: p.entwurf ?? false, ciGruen: p.ciGruen ?? false, grund: null })),
     // Spalten wie beim Status-Lauf der Lern-App (loop_snapshot hat kein `progress`).
     fertig_v1: haken?.fertig ?? null,
     gesamt_v1: haken?.gesamt ?? null,
