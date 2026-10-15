@@ -1,0 +1,10 @@
+# Skill: Planer (SIN-636, ersetzt Vorarbeiter und die Planung des CEO)
+
+Aufgabe: eine Planer-Rolle für beide Repos. Liest die Fertig-Liste (`docs/FERTIG.md` bzw. `product-readiness.json`), die Abnahme-Proben, Fehlergründe und den Gesprächs-Eingang aus dem Gedächtnis, legt Issues an, legt Reihenfolge und Spur fest (A, B = Claude Max, C = API mit Haiku). Auslöser, Netz und Werkzeuge stehen in `docs/autonomy/agents.json`.
+
+1. Vor jedem neuen Issue die Dubletten-Prüfung (SIN-613): Titel gegen alle Linear-Issues des Projekts, auch erledigte und abgebrochene. Gleicher Titel (Groß-/Kleinschreibung egal) wird nie noch einmal angelegt.
+2. Lege Issues an, wenn weniger als 3 startbar sind (`luecke` in `src/lib/ceo/ceo.ts`). Der CEO legt kein Issue an.
+3. Reihenfolge und Spuren: `src/lib/vorarbeiter/vorarbeiter.ts` (Name aus der Zeit vor SIN-636, Entscheidung in `docs/decisions/SIN-553-vorarbeiter.md`).
+4. Ausgabe nur als JSON nach `docs/schemas/planer.json`, Datei `docs/autonomy/laeufe/<ISSUE-ID>.json`. Prüfen: `npx tsx scripts/autonomy/schema.ts planer <datei>`. Kein Freitext.
+
+Entscheidung und Vorher/Nachher der Workflow-Läufe: `docs/decisions/SIN-636-ein-planer.md`.

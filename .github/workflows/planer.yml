@@ -1,11 +1,16 @@
-name: vorarbeiter
+name: planer
 
+# SIN-636: ein Planer statt CEO + Vorarbeiter + Planer. Ereignisgesteuert (Merge, Fertig-Liste geändert, Abnahme-Lauf, Rest-Schlange) plus täglich 06:00 (04:00 UTC).
+# Legt Issues an (Dubletten-Prüfung gegen alle Linear-Titel), plant Reihenfolge und Spuren. Der CEO entscheidet nur weiterbauen | warten | fertig.
 on:
   schedule:
-    - cron: "10 4 * * *" # nach dem CEO (04:00 UTC)
+    - cron: "0 4 * * *" # vor dem CEO (04:10 UTC)
   workflow_run:
-    workflows: [loop-merge]
+    workflows: [loop-merge, abnahme]
     types: [completed]
+  push:
+    branches: [main]
+    paths: [docs/FERTIG.md]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -14,14 +19,14 @@ on:
         default: true
 
 concurrency:
-  group: vorarbeiter
+  group: planer
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  vorarbeiter:
+  planer:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -31,7 +36,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - name: Vorarbeiter plant
+      - name: Planer plant
         env:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}

@@ -7,7 +7,7 @@ import { pruefeSchema, type Schema } from "./schema";
 
 const lies = <T>(pfad: string) => JSON.parse(readFileSync(pfad, "utf8")) as T;
 const register = () => lies<Register>("docs/autonomy/agents.json");
-const ROLLEN = ["ceo", "visionaer", "vorarbeiter", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis", "trend"];
+const ROLLEN = ["ceo", "visionaer", "planer", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis", "trend"];
 
 test("docs/schemas hat 12 Rollen-Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
   // `lernen` (SIN-576) ist das Schema der Wochenmessung, keine Rolle; es wird in schleife.test.ts geprüft.

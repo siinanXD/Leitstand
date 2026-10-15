@@ -24,11 +24,11 @@ test("Fertig-Liste 100 %: CEO sagt fertig und ruft den Visionär; mit Go baut er
 });
 
 test("Rot geht vor fertig; Fokus beschränkt andere Produkte auf Reparaturen", () => {
-  assert.equal(entscheide({ ...fertigLage, rot: "Sentry" }).art, "reparieren");
+  assert.equal(entscheide({ ...fertigLage, rot: "Sentry" }).art, "weiterbauen");
   const fokus = entscheide({ ...fertigLage, fertig: 3, fokusBei: "leitstand" });
   assert.equal(fokus.art, "warten");
   assert.equal(fokus.auffuellen, 0);
-  assert.equal(entscheide({ ...fertigLage, fertig: 3, rot: "Sentry", fokusBei: "leitstand" }).art, "reparieren");
+  assert.equal(entscheide({ ...fertigLage, fertig: 3, rot: "Sentry", fokusBei: "leitstand" }).art, "weiterbauen");
 });
 
 test("Stand: jüngstes VERSION-Ereignis je Produkt; Dispatcher hält bei pause und vorschlag", () => {

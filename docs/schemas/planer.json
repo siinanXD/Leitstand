@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Ergebnis der Rolle vorarbeiter",
+  "title": "Ergebnis der Rolle planer",
   "type": "object",
   "properties": {
-    "rolle": { "type": "string", "enum": ["vorarbeiter"] },
+    "rolle": { "type": "string", "enum": ["planer"] },
     "issue": { "type": "string", "pattern": "^SIN-[0-9]+$" },
     "zeitpunkt": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$" },
     "status": { "type": "string", "enum": ["fertig", "blockiert", "braucht_sinan"] },
@@ -11,6 +11,7 @@
     "naechster_schritt": { "type": "string", "minLength": 1 },
     "kosten_eur": { "type": "number", "minimum": 0 },
     "quellen": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "angelegt": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "spuren": {
       "type": "array",
       "items": {
@@ -22,6 +23,6 @@
     },
     "wartet": { "type": "array", "items": { "type": "string", "minLength": 1 } }
   },
-  "required": ["rolle", "issue", "zeitpunkt", "status", "zusammenfassung", "naechster_schritt", "kosten_eur", "quellen", "spuren", "wartet"],
+  "required": ["rolle", "issue", "zeitpunkt", "status", "zusammenfassung", "naechster_schritt", "kosten_eur", "quellen", "angelegt", "spuren", "wartet"],
   "additionalProperties": false
 }

@@ -1,8 +1,10 @@
 /**
- * Vorarbeiter-Agent (SIN-553). Aufruf aus vorarbeiter.yml (.github/workflows/vorarbeiter.yml), täglich nach dem CEO und nach jedem Merge:
+ * Planer (SIN-636; der Pfad stammt vom Vorarbeiter, SIN-553, der im Planer aufgegangen ist). Aufruf aus planer.yml (.github/workflows/planer.yml):
+ * täglich 04:00 UTC vor dem CEO, nach jedem Merge, bei geänderter docs/FERTIG.md und nach dem Abnahme-Lauf:
  *
  *   npx tsx scripts/vorarbeiter/vorarbeiter.ts
  *
+ * Legt zuerst fehlende Issues an (unter 3 startbar: Leitstand aus docs/FERTIG.md, Lern-App über deren planner.yml; Dubletten-Prüfung gegen alle Titel).
  * Liest die offenen Issues des Linear-Projekts „Leitstand“, plant die Spuren A bis C (src/lib/vorarbeiter/vorarbeiter.ts) und schreibt den Plan
  * in `loop_snapshot.plan`. Spur C baut danach das erste Docs-Issue per API mit Haiku (Deckel 2 € je Tag, Kosten ins Ledger) und öffnet einen PR.
  * Der Vorarbeiter mergt nie.
@@ -11,7 +13,12 @@
  * für Spur C zusätzlich ANTHROPIC_API_KEY, VORARBEITER_PREIS_EIN_USD und VORARBEITER_PREIS_AUS_USD (USD je Million Token), KOSTEN_USD_EUR.
  * DRY_RUN=1 oder fehlende Supabase-Variablen: nur Ausgabe im Log, nichts geschrieben, Spur C läuft nicht.
  */
+import { readFile } from "node:fs/promises";
+import { luecke, startbar } from "../../src/lib/ceo/ceo";
+import { neueIssueTitel } from "../../src/lib/ceo/fertig";
 import { ausLinear, PROJEKT, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { PROJEKTE } from "../../src/lib/projekte";
+import { parseSnapshot } from "../../src/lib/uebersicht";
 import { aufrufKosten, ereignisZeile, ledgerZeile, leseDateien, pfade, plane, prFuerC, promptC, restDeckel, SPUR_C_MODELL, type Plan } from "../../src/lib/vorarbeiter/vorarbeiter";
 
 const env = process.env;
@@ -122,11 +129,62 @@ async function baueSpurC(i: LinearIssue, team: string, plan: Plan): Promise<stri
   return `Spur C: ${i.identifier} gebaut, ${eur} € im Ledger, ${neu?.html_url}`;
 }
 
+// ------------------------------------------------------------------ Issues anlegen (SIN-636, vorher beim CEO)
+
+const MEILENSTEIN = "v1 Grundgerüst";
+const LERNAPP_REPO = PROJEKTE.find((x) => x.id === "lernapp")?.repo;
+
+/** Leitstand: bis zu n Issues aus den offenen Punkten in docs/FERTIG.md (Backlog, Label claude, Meilenstein „v1 Grundgerüst“); der Dispatcher rückt nach.
+ *  Dubletten-Prüfung (SIN-613) gegen alle Titel des Projekts, auch erledigte, sonst käme ein gebauter, noch offener Punkt zurück.
+ *  shortcut: nur die jüngsten 250 Issues werden verglichen, bei mehr Issues im Projekt seitenweise lesen. */
+async function legeLeitstandIssuesAn(n: number) {
+  const md = await readFile("docs/FERTIG.md", "utf8").catch(() => "");
+  if (DRY || !env.LINEAR_API_KEY) return console.log(`[trocken] leitstand: bis zu ${n} Issues aus FERTIG.md: ${neueIssueTitel(md, [], n).join(" | ") || "keine offenen Punkte"}`);
+  const d = await linear<{ projects: { nodes: { id: string; teams: { nodes: { id: string }[] }; projectMilestones: { nodes: { id: string; name: string }[] }; issues: { nodes: { title: string }[] } }[] } }>(
+    `query($p: String!) { projects(filter: { name: { eq: $p } }) { nodes { id teams(first: 1) { nodes { id } } projectMilestones(first: 20) { nodes { id name } }
+      issues(first: 250) { nodes { title } } } } }`,
+    { p: PROJEKT },
+  );
+  const projekt = d.projects.nodes[0];
+  const teamId = projekt?.teams.nodes[0]?.id;
+  if (!projekt || !teamId) throw new Error(`Linear-Projekt „${PROJEKT}“ nicht gefunden`);
+  const titel = neueIssueTitel(md, projekt.issues.nodes.map((i) => i.title), n);
+  if (!titel.length) return console.log("leitstand: keine neuen Punkte in docs/FERTIG.md");
+  const t = await linear<{ team: { states: { nodes: { id: string; name: string }[] }; labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { states { nodes { id name } } labels(first: 250) { nodes { id name } } } }`, { t: teamId });
+  const stateId = t.team.states.nodes.find((s) => s.name === "Backlog")?.id;
+  const labelId = t.team.labels.nodes.find((l) => l.name.toLowerCase() === "claude")?.id;
+  if (!stateId || !labelId) throw new Error("Status „Backlog“ oder Label „claude“ in Linear nicht gefunden");
+  const meilensteinId = projekt.projectMilestones.nodes.find((m) => m.name === MEILENSTEIN)?.id;
+  for (const title of titel) {
+    await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, description: "Offener Punkt aus docs/FERTIG.md (angelegt vom Planer, SIN-636).", labelIds: [labelId], stateId } });
+    console.log(`leitstand: Issue angelegt: ${title}`);
+  }
+}
+
+/** Lern-App: ihr Planer (planner.yml, mit eigener Dubletten-Prüfung) wird angestoßen. */
+async function stosseLernappPlanerAn() {
+  console.log(`${DRY ? "[trocken] " : ""}lernapp: Planer anstoßen (planner.yml, dry_run=false)`);
+  if (DRY || !LERNAPP_REPO) return;
+  const res = await fetch(`https://api.github.com/repos/${LERNAPP_REPO}/actions/workflows/planner.yml/dispatches`, { method: "POST", headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json" }, body: JSON.stringify({ ref: "main", inputs: { dry_run: "false" } }) });
+  if (!res.ok) throw new Error(`planner.yml anstoßen: ${res.status}`);
+}
+
+/** Unter 3 startbaren Issues je Produkt: auffüllen. Ohne Supabase-Zugang fehlt der Snapshot, dann bleibt es beim Log. */
+async function fuelleAuf() {
+  if (!env.SUPABASE_URL) return console.log("Auffüllen: SUPABASE_URL fehlt, Schlange unbekannt, nichts angelegt.");
+  const snapshot = parseSnapshot(await supabase("loop_snapshot?select=*&limit=200", "GET"));
+  const leitstand = luecke(startbar(snapshot, "leitstand"));
+  if (leitstand > 0) await legeLeitstandIssuesAn(leitstand);
+  if (luecke(startbar(snapshot, "lernapp")) > 0) await stosseLernappPlanerAn();
+}
+
 async function main() {
   const alle = await projektIssues();
   const plan = plane(alle.map((a) => a.issue));
   for (const s of plan.spuren) console.log(`${s.id}: ${s.eintraege.map((e) => `${e.issue} (${e.grund})`).join(" → ") || "leer"}`);
   for (const w of plan.wartet) console.log(`wartet: ${w.issue} (${w.grund})`);
+  // Erst anlegen, dann planen: neue Issues stehen im Plan des nächsten Laufs (Merge oder täglich), nicht in diesem.
+  await fuelleAuf();
   if (DRY) return console.log("Trockenlauf: nichts geschrieben, Spur C läuft nicht.");
 
   const erstes = plan.spuren.find((s) => s.id === "C")!.eintraege[0];

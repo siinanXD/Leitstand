@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MAX_ZEILEN_TAG, MAX_ZEILEN_UEBERSICHT, aktualisiertSatz, dateien, mitGeheimnis, tagBerlin, type Eingabe } from "./gedaechtnis";
+import { MAX_ZEILEN_TAG, MAX_ZEILEN_UEBERSICHT, aktualisiertSatz, ceoZeilen, dateien, mitGeheimnis, tagBerlin, type Eingabe } from "./gedaechtnis";
 
 const jetzt = new Date("2026-10-13T04:00:00Z");
 const zeilen = (t: string) => t.trimEnd().split("\n").length;
@@ -53,6 +53,15 @@ test("Tag: Trends (SIN-575) als Abschnitt mit höchstens 3 Zeilen, ohne Trends k
   assert.ok(!text.includes("Repo 3"));
   assert.ok(zeilen(text) <= MAX_ZEILEN_TAG);
   assert.ok(!dateien(fixture)["Tage/2026-10-13.md"].includes("## Trends"));
+});
+
+test("Tag: CEO-Entscheidung je Produkt (SIN-636) als Abschnitt, ohne CEO kein Abschnitt", () => {
+  const ceo = ceoZeilen([{ produkt: "leitstand", entscheidung: "weiterbauen", grund: "Fertig-Punkte sind offen." }, { produkt: "lernapp", entscheidung: "warten", grund: "Freigabe fehlt." }]);
+  const prs = Array.from({ length: 60 }, (_, i) => ({ nummer: i, titel: "x", projekt: "leitstand", url: "u" }));
+  const text = dateien({ ...fixture, prs, ceo })["Tage/2026-10-13.md"];
+  assert.match(text, /## CEO\n- leitstand: weiterbauen\. Fertig-Punkte sind offen\.\n- lernapp: warten\. Freigabe fehlt\.\n/);
+  assert.ok(zeilen(text) <= MAX_ZEILEN_TAG);
+  assert.ok(!dateien(fixture)["Tage/2026-10-13.md"].includes("## CEO"));
 });
 
 test("Produktseite zeigt höchstens 10 Entscheidungen; Dateinamen sind sicher", () => {
