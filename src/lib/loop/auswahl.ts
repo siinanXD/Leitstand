@@ -3,7 +3,9 @@
  * Kein Netz hier. Die Skripte unter scripts/loop/ rufen GitHub und Linear und geben die Daten hier hinein.
  */
 
-export const PROJEKT = "Leitstand";
+import { passend, stufe } from "../kontingent/prioritaet";
+
+export const PROJEKT ="Leitstand";
 export const LABEL = "claude";
 export const MAX_REPARATUR = 3;
 /** Ab hier gilt ein Issue „In Progress“ ohne offenen PR als Hänger (gleiche Grenze wie der Wächter, SIN-419). */
@@ -81,12 +83,13 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
 const startbar = (i: LinearIssue, gespiegelt: Set<string>) =>
   i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier);
 
-export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung): LinearIssue[] {
+/** `rest`: geschätzter Claude-Rest in Prozent (SIN-633). Reihenfolge nach Stufe, dann Priorität; bei knappem Rest fällt weg, was nicht passt. */
+export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung, rest: number | null = null): LinearIssue[] {
   const frei = Math.max(0, max - laufende(issues, belegung).length);
-  return issues
+  const geordnet = issues
     .filter((i) => startbar(i, gespiegelt))
-    .sort((a, b) => rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt))
-    .slice(0, frei);
+    .sort((a, b) => stufe(a.labels) - stufe(b.labels) || rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt));
+  return passend(geordnet, rest).slice(0, frei);
 }
 
 /** Labels, mit denen ein Backlog-Issue nie automatisch nachrückt (Design zuerst, Aufgabe für Sinan, Stopp). */

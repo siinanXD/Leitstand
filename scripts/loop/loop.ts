@@ -14,7 +14,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { LEHREN_ORDNER, leseLehre, workerHinweise } from "../../src/lib/lernen/lernen";
 import { aktivePause, pauseSatz } from "../../src/lib/kontingent/kontingent";
 import { PAUSE_SCHRITT, pauseStand, type PauseStand } from "../../src/lib/pause";
-import { ladeOffenePausen } from "../kontingent/pausen";
+import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
+import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { ausLinear, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
@@ -202,6 +203,9 @@ async function dispatch() {
     await ereignis("dispatch", "uebersprungen", { grund: `claude_pause: ${pauseSatz(claudePause, new Date())}` });
     return;
   }
+  // SIN-633: Unter dem Puffer pausiert der Loop, bei knappem Rest laufen nur Stufe 1–2.
+  const rest = await ladeClaudeRest();
+  if (rest !== null && knappSatz(rest)) console.log(knappSatz(rest));
   await ereignis("dispatch", "start");
   const nodes = await projektIssues();
   const issues = nodes.map(ausLinear);
@@ -210,14 +214,14 @@ async function dispatch() {
   const belegung: Belegung = { jetzt: new Date(), offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref })) };
   const max = Number(env.LOOP_MAX_PARALLEL ?? 1);
   const gespiegelt = gespiegelteIds(ghIssues);
-  let wahl = waehle(issues, gespiegelt, max, belegung);
+  let wahl = waehle(issues, gespiegelt, max, belegung, rest);
   if (!wahl.length) {
     const naechstes = nachruecken(issues, gespiegelt, max, belegung);
     if (naechstes) {
       const node = nodes.find((n) => n.id === naechstes.id)!;
       await rueckeNach(naechstes, node.team.id);
       const befoerdert: LinearIssue = { ...naechstes, stateType: "unstarted", labels: [...naechstes.labels, LABEL] };
-      wahl = waehle([...issues.filter((i) => i.id !== naechstes.id), befoerdert], gespiegelt, max, belegung);
+      wahl = waehle([...issues.filter((i) => i.id !== naechstes.id), befoerdert], gespiegelt, max, belegung, rest);
     }
   }
   if (!wahl.length) {

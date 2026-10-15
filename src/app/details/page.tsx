@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Pause } from "@/lib/aktionen-client";
+import { knappSatz, restProzent } from "@/lib/kontingent/prioritaet";
 import { pauseSatz } from "@/lib/pause";
 import { nurProjekt } from "@/lib/projekte";
 import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
@@ -54,6 +55,11 @@ export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; p
           {pause?.stand?.pausiert && (
             <p className="satz-text satz-pause" role="status">
               {pauseSatz(pause.stand.seit)}
+            </p>
+          )}
+          {knappSatz(restProzent(quoten)) && (
+            <p className="satz-text satz-pause" role="status">
+              {knappSatz(restProzent(quoten))}
             </p>
           )}
           {satz ? <p className="satz-text">{satz.satz}</p> : KEINE_DATEN}

@@ -326,3 +326,9 @@
   art: db
   rest: leitstand_wochencheck?select=tag&limit=1
   mindestens: 0
+- id: leitstand-kontingent-prioritaet
+  produkt: leitstand
+  titel: Die Kontingent-Prioritäten sind im Dispatcher
+  art: datei
+  pfad: src/lib/kontingent/prioritaet.ts
+  enthaelt: hoechsteStufe
