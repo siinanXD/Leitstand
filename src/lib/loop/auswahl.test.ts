@@ -50,6 +50,17 @@ test("waehle: laufende Issues zählen gegen das Limit", () => {
   assert.deepEqual(waehle(issues, new Set(), 2).map((i) => i.identifier), ["SIN-2"]);
 });
 
+test("laufende: PR wartet auf Sinan (risk:high) gibt den Platz frei (SIN-678)", () => {
+  const jetzt = new Date("2026-10-15T08:00:00Z");
+  const lauf = issue({ identifier: "SIN-637", stateType: "started", startedAt: "2026-10-15T00:30:00Z" });
+  const todo = issue({ identifier: "SIN-700" });
+  const pr = (labels: string[]) => ({ titel: "feat(wirkung): x (SIN-637)", branch: "claude/sin-637", labels });
+  assert.equal(laufende([lauf], { jetzt, offenePrs: [pr(["risk:high", "migration"])] }).length, 0);
+  assert.equal(laufende([lauf], { jetzt, offenePrs: [pr(["risk:high", "freigegeben"])] }).length, 1, "freigegeben läuft weiter");
+  assert.equal(laufende([lauf], { jetzt, offenePrs: [pr(["risk:medium"])] }).length, 1, "normaler PR hält den Platz");
+  assert.deepEqual(waehle([lauf, todo], new Set(), 1, { jetzt, offenePrs: [pr(["risk:high"])] }).map((i) => i.identifier), ["SIN-700"]);
+});
+
 test("laufende: Hänger ohne PR nach 6 h belegt keinen Platz mehr (SIN-654)", () => {
   const jetzt = new Date("2026-10-14T21:00:00Z");
   const haenger = issue({ identifier: "SIN-611", stateType: "started", startedAt: "2026-10-14T13:43:00Z" });
