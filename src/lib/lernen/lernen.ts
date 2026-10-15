@@ -3,6 +3,8 @@
  * Lehren (eine Datei je Thema, kein Merge-Konflikt) und Hinweise für den Worker-Prompt. Kein Netz, kein Dateizugriff.
  */
 
+import { kategorieAusGrund } from "../loop/fehlergrund";
+
 export const LEHREN_ORDNER = "docs/autonomy/lehren";
 export const MIN_FEHLER = 2;
 export const MIN_ABLAUF = 3;
@@ -19,6 +21,8 @@ export type LernEreignis = {
   agent: string | null;
   /** US-Dollar, wie in loop_events. */
   cost: number | null;
+  /** SIN-617: „<Kategorie>: <erste Fehlerzeile>“ bei roten Einträgen. */
+  grund?: string | null;
   /** Optional: Labels des Issues (Aufgabentyp) und Größe, z. B. `size:s`. */
   labels?: string[];
 };
@@ -60,8 +64,8 @@ export function hinweiseAusEreignissen(events: LernEreignis[]): Fehlerhinweis[] 
   return events
     .filter((e) => e.status && ROT.test(e.status))
     .map((e) => ({
-      thema: `${e.step ?? "unbekannt"} ${e.status}`,
-      text: `Schritt ${e.step ?? "?"} endete mit „${e.status}“.`,
+      thema: `${e.step ?? "unbekannt"} ${e.status}${e.grund ? ` ${kategorieAusGrund(e.grund)}` : ""}`,
+      text: `Schritt ${e.step ?? "?"} endete mit „${e.status}“${e.grund ? `: ${e.grund}` : ""}.`,
       quelle: [e.issue, e.pr ? `#${e.pr}` : null].filter(Boolean).join(" ") || e.created_at,
     }));
 }

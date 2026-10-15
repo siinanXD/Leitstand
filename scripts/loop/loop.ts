@@ -16,6 +16,7 @@ import { aktivePause, pauseSatz } from "../../src/lib/kontingent/kontingent";
 import { PAUSE_SCHRITT, pauseStand, type PauseStand } from "../../src/lib/pause";
 import { ladeOffenePausen } from "../kontingent/pausen";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
+import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { ausLinear, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
@@ -56,9 +57,9 @@ async function gh<T>(path: string, init: { method?: string; body?: unknown } = {
 
 /** Ein Ereignis in loop_events (SIN-303). Fehler werden nur gemeldet. */
 type Extra = { issue?: string; pr?: number; grund?: string };
-/** `uebersprungen` braucht immer einen Grund (SIN-654), sonst ist im Leitstand nicht erkennbar, warum nichts lief. */
-async function ereignis(step: string, status: "uebersprungen", extra: Extra & { grund: string }): Promise<void>;
-async function ereignis(step: string, status: "start" | "ok" | "fehler", extra?: Extra): Promise<void>;
+/** `uebersprungen` und `fehler` brauchen immer einen Grund (SIN-654, SIN-617), sonst ist im Leitstand nicht erkennbar, warum nichts lief. */
+async function ereignis(step: string, status: "uebersprungen" | "fehler", extra: Extra & { grund: string }): Promise<void>;
+async function ereignis(step: string, status: "start" | "ok", extra?: Extra): Promise<void>;
 async function ereignis(step: string, status: "start" | "ok" | "fehler" | "uebersprungen", extra: Extra = {}) {
   if (extra.grund) console.log(`${step}/${status}: ${extra.grund}`);
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -271,7 +272,7 @@ async function reparaturLauf() {
       const issue = await issueNachKennung(id);
       if (issue) await kommentar(issue.id, `Blocker: PR #${pr} nach 3 Reparaturrunden rot. ${lauf}`);
     }
-    await ereignis("repair", "fehler", { issue: id ?? undefined, pr });
+    await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: build nach 3 Reparaturrunden noch rot (${lauf})`) });
     return;
   }
   if (DRY) return console.log(`[trocken] Runde ${schritt.runde} für #${pr}`);
@@ -294,6 +295,6 @@ if (!lauf) {
 }
 lauf().catch(async (e: Error) => {
   console.error(`::error::${e.message}`);
-  await ereignis(befehl === "reparatur" ? "repair" : befehl === "gemergt" ? "merge" : "dispatch", "fehler");
+  await ereignis(befehl === "reparatur" ? "repair" : befehl === "gemergt" ? "merge" : "dispatch", "fehler", { grund: fehlergrund(e.message) });
   process.exit(1);
 });
