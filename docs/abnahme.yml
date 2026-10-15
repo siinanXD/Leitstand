@@ -85,6 +85,13 @@
   zeitfeld: created_at
   max_alter_min: 1560
 
+- id: gedaechtnis-eingang
+  produkt: gedaechtnis
+  titel: Der Gesprächs-Eingang (Linear-Label gedaechtnis) ist im Gedächtnis-Agent eingebaut
+  art: datei
+  pfad: scripts/gedaechtnis/schreiben.ts
+  enthaelt: eingangDateien
+
 # Lern-App
 - id: lernapp-snapshot
   produkt: lernapp
