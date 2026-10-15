@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
+import { istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
 
 const gut = { bestanden: true, funde: [] };
 
@@ -59,4 +59,30 @@ test("kommentar nennt Ergebnis, Fund und Kosten", () => {
   assert.match(t, /a\.ts:4/);
   assert.match(t, /risk:high/);
   assert.match(t, /0\.0123/);
+});
+
+test("istKontingentFehler: 429 und insufficient_quota ja, 500 und 401 nein", () => {
+  assert.equal(istKontingentFehler(429, ""), true);
+  assert.equal(istKontingentFehler(403, "insufficient_quota"), true);
+  assert.equal(istKontingentFehler(500, "boom"), false);
+  assert.equal(istKontingentFehler(401, "invalid key"), false);
+});
+
+test("Rückfall: Codex ok bleibt Codex, Kontingent leer geht an Claude, echter Fehler bleibt Fehler", async () => {
+  const kein = async () => {
+    throw new Error("darf nicht laufen");
+  };
+  assert.deepEqual(await pruefeMitRueckfall(async () => 1, kein), { r: 1, reviewer: "codex" });
+  const leer = async () => {
+    throw Object.assign(new Error("limit"), { kontingent: true });
+  };
+  assert.deepEqual(await pruefeMitRueckfall(leer, async () => 2), { r: 2, reviewer: "claude" });
+  await assert.rejects(pruefeMitRueckfall(async () => Promise.reject(new Error("HTTP 500")), async () => 3), /HTTP 500/);
+});
+
+test("reviewerZeile und kommentar nennen den Reviewer", () => {
+  assert.equal(reviewerZeile("codex"), "Reviewer: Codex");
+  assert.equal(reviewerZeile("claude"), "Reviewer: Claude (Rückfall, Codex-Kontingent erschöpft)");
+  assert.match(kommentar(gut, "m", null, "claude"), /Reviewer: Claude \(Rückfall/);
+  assert.match(kommentar(gut, "m", null), /Reviewer: Codex/);
 });

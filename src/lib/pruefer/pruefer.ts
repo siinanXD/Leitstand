@@ -84,13 +84,30 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean):
 
 export const hatHoch = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch");
 
-export function kommentar(e: Ergebnis, modell: string, usd: number | null): string {
+export type Reviewer = "codex" | "claude";
+export const reviewerZeile = (r: Reviewer) => (r === "codex" ? "Reviewer: Codex" : "Reviewer: Claude (Rückfall, Codex-Kontingent erschöpft)");
+
+/** Ist die Antwort des Dienstes „Kontingent leer“ (und kein Fehler im Code)? */
+export const istKontingentFehler = (status: number, body: string) => status === 429 || /insufficient_quota|usage limit/i.test(body);
+
+/** Erst der Hauptprüfer; nur bei leerem Kontingent (Fehler mit `kontingent`) der Rückfall. Alles andere bleibt Fehler. */
+export async function pruefeMitRueckfall<T>(haupt: () => Promise<T>, rueckfall: () => Promise<T>): Promise<{ r: T; reviewer: Reviewer }> {
+  try {
+    return { r: await haupt(), reviewer: "codex" };
+  } catch (e) {
+    if (!(e as { kontingent?: boolean }).kontingent) throw e;
+    return { r: await rueckfall(), reviewer: "claude" };
+  }
+}
+
+export function kommentar(e: Ergebnis, modell: string, usd: number | null, reviewer: Reviewer = "codex"): string {
   const zeilen = e.funde.map((f) => `- **${f.schwere}** \`${f.datei}${f.zeile ? `:${f.zeile}` : ""}\`: ${f.text.replace(/\s+/g, " ").trim()}`);
   return [
     MARKER,
     `### Prüfer (zweites Modell): ${e.bestanden ? "bestanden" : "nicht bestanden"}`,
     zeilen.length ? zeilen.join("\n") : "Keine Funde.",
     hatHoch(e) ? "\nSchwere „hoch“: Das Gate setzt `risk:high`, Auto-Merge wartet auf `freigegeben`." : "",
-    `\n<sub>Modell ${modell}${usd === null ? "" : `, Kosten ${usd.toFixed(4)} $`}</sub>`,
+    `\n${reviewerZeile(reviewer)}`,
+    `<sub>Modell ${modell}${usd === null ? "" : `, Kosten ${usd.toFixed(4)} $`}</sub>`,
   ].join("\n");
 }

@@ -10,9 +10,10 @@
  */
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatHoch, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, type Ergebnis } from "../../src/lib/pruefer/pruefer";
+import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatHoch, istKontingentFehler, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
 
 const env = process.env;
+const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
 const DRY = env.DRY_RUN === "1";
 const [nummer, basis] = process.argv.slice(2);
 if (!nummer || !basis) {
@@ -33,9 +34,34 @@ async function modell(text: string, name: string): Promise<{ ergebnis: Ergebnis;
     }),
     signal: AbortSignal.timeout(120_000),
   });
-  if (!res.ok) throw new Error(`OpenAI: HTTP ${res.status}`);
+  if (!res.ok) {
+    const kontingent = istKontingentFehler(res.status, await res.text().catch(() => ""));
+    throw Object.assign(new Error(`OpenAI: HTTP ${res.status}`), { kontingent });
+  }
   const j = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
   return { ergebnis: leseAntwort(j.choices?.[0]?.message?.content ?? ""), ein: j.usage?.prompt_tokens ?? 0, aus: j.usage?.completion_tokens ?? 0 };
+}
+
+/** Rückfall (SIN-696): derselbe Prompt an Claude, Antwort über erzwungenes Tool im selben Schema. Kosten bleiben offen (kein Preis hinterlegt). */
+async function claude(text: string): Promise<{ ergebnis: Ergebnis; ein: number; aus: number }> {
+  if (!env.ANTHROPIC_API_KEY) throw new Error("Codex-Kontingent erschöpft und ANTHROPIC_API_KEY fehlt");
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model: CLAUDE_MODELL,
+      max_tokens: MAX_AUSGABE_TOKENS,
+      system: ANWEISUNG,
+      messages: [{ role: "user", content: text }],
+      tools: [{ name: "pruefung", description: "Ergebnis der Prüfung", input_schema: SCHEMA }],
+      tool_choice: { type: "tool", name: "pruefung" },
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!res.ok) throw new Error(`Anthropic: HTTP ${res.status}`);
+  const j = (await res.json()) as { content?: { type: string; input?: unknown }[]; usage?: { input_tokens?: number; output_tokens?: number } };
+  const tool = j.content?.find((c) => c.type === "tool_use");
+  return { ergebnis: leseAntwort(JSON.stringify(tool?.input ?? {})), ein: j.usage?.input_tokens ?? 0, aus: j.usage?.output_tokens ?? 0 };
 }
 
 async function ledger(ok: boolean, payload: unknown) {
@@ -65,16 +91,25 @@ async function main() {
 
   let ergebnis: Ergebnis = { bestanden: true, funde: [] };
   let usd: number | null = null;
+  let reviewer: Reviewer = "codex";
+  let genutzt = name;
   if (DRY) console.log(`[trocken] ${dateien.length} Dateien, Eingabe ${eing.length} Zeichen, kein OpenAI-Aufruf`);
   else {
-    const r = await modell(eing, name);
+    const { r, reviewer: wer } = await pruefeMitRueckfall(
+      async () => ({ ...(await modell(eing, name)), kosten: true }),
+      async () => ({ ...(await claude(eing)), kosten: false }),
+    );
+    reviewer = wer;
     ergebnis = r.ergebnis;
-    usd = kostenUsd({ eingabe: r.ein, ausgabe: r.aus }, preise);
+    if (wer === "claude") {
+      genutzt = CLAUDE_MODELL;
+      console.log("::warning::Codex-Kontingent erschöpft, Rückfall auf Claude");
+    } else usd = kostenUsd({ eingabe: r.ein, ausgabe: r.aus }, preise);
   }
   ergebnis = bewerte(ergebnis, dateien, gekuerzt);
-  writeFileSync("pruefer-kommentar.md", kommentar(ergebnis, name, usd));
+  writeFileSync("pruefer-kommentar.md", kommentar(ergebnis, genutzt, usd, reviewer));
   if (hatHoch(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");
-  await ledger(true, { modell: name, bestanden: ergebnis.bestanden, funde: ergebnis.funde.length, hoch: hatHoch(ergebnis), kosten_eur_usd: usd, issue: issueNr ?? null });
+  await ledger(true, { modell: genutzt, reviewer, bestanden: ergebnis.bestanden, funde: ergebnis.funde.length, hoch: hatHoch(ergebnis), kosten_eur_usd: usd, issue: issueNr ?? null });
   console.log(`Prüfer: ${ergebnis.bestanden ? "bestanden" : "nicht bestanden"}, ${ergebnis.funde.length} Funde${usd === null ? "" : `, ${usd.toFixed(4)} $`}`);
   process.exit(ergebnis.bestanden ? 0 : 1);
 }
