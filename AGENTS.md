@@ -84,6 +84,16 @@ Regeln:
 
 Neue Steuerlogik (Rollen, Auslöser, Planung, Messung, Kosten) entsteht nur im Leitstand, mit `produkt` als Parameter. Ein Produkt-Repo bekommt keine neuen Workflows außer Bauen, Testen, Deployen und Produkt-Pipelines. Der Anwalt/Prüfer markiert PRs, die das verletzen, mit `no-automerge`. Begründung und Umzugsplan: `docs/decisions/SIN-577-steuerung-im-leitstand.md`.
 
+## Weniger Fehlschläge (SIN-638)
+
+Gilt für Worker und Planer, Wortlaut in `docs/skills/bauen/SKILL.md` und `docs/skills/planer/SKILL.md`.
+
+1. **Größe:** höchstens ca. 300 geänderte Zeilen oder 1 Bereich (Frontend, Backend, Content, Infra). Größere Issues zerlegt der Planer vorher.
+2. **Erst Test, dann Code:** zuerst Test bzw. Abnahme-Probe aus „Fertig, wenn“, rot sehen, dann bauen.
+3. **Zwei rote Läufe:** kein dritter Neustart. Kommentar mit Ursache und Vorschlag zum Zerlegen; der Planer legt Unter-Issues an.
+4. **Grund Pflicht:** jeder rote Lauf hat einen `grund` (SIN-617).
+5. **Kontext schlank:** Issue, betroffene Dateien, `AGENTS.md`, passender Skill, relevante `LEHREN.md`.
+
 ## Pull Requests
 
 - Ein PR pro Linear-Issue. Titel als Conventional Commit mit Linear-ID, z. B. `feat(uebersicht): Projekt-Karten (SIN-304)`.

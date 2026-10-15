@@ -213,3 +213,16 @@
   rest: loop_events?agent=eq.trend&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
+# Weniger Fehlschläge (SIN-638)
+- id: leitstand-worker-regeln
+  produkt: leitstand
+  titel: Die Worker-Regeln (zwei rote Läufe, dann zerlegen) stehen in AGENTS.md
+  art: datei
+  pfad: AGENTS.md
+  enthaelt: Weniger Fehlschläge (SIN-638)
+- id: leitstand-worker-skill
+  produkt: leitstand
+  titel: Der Bauen-Skill verlangt erst Test, dann Code
+  art: datei
+  pfad: docs/skills/bauen/SKILL.md
+  enthaelt: Erst Test, dann Code (SIN-638)
