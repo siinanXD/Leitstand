@@ -5,7 +5,7 @@ import { browserClient } from "./browser-client";
 import type { PauseStand } from "./pause";
 import type { RollenStand } from "./wirkung/wirkung";
 
-async function aufruf(pfad: string, methode: "GET" | "POST", body?: unknown): Promise<Response> {
+export async function aufruf(pfad: string, methode: "GET" | "POST", body?: unknown): Promise<Response> {
   const { data } = (await browserClient()?.auth.getSession()) ?? { data: { session: null } };
   return fetch(pfad, {
     method: methode,

@@ -314,3 +314,15 @@
   art: datei
   pfad: docs/design/ABGLEICH-SIN-660.md
   enthaelt: Figma-Frame
+- id: leitstand-wochencheck
+  produkt: leitstand
+  titel: Die Seite Wochen-Check ist im Code vorhanden
+  art: datei
+  pfad: src/app/wochen-check/page.tsx
+  enthaelt: Wochen-Check
+- id: leitstand-wochencheck-tabellen
+  produkt: leitstand
+  titel: Die Tabellen für den Wochen-Check sind eingespielt
+  art: db
+  rest: leitstand_wochencheck?select=tag&limit=1
+  mindestens: 0

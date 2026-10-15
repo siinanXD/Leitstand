@@ -18,6 +18,7 @@ const REITER = [
 // Unter „Mehr“ steht zu jeder Seite ein Satz, was man dort findet (Sinan 13.10.: „Die Reiter sind unaussagekräftig“).
 const IMMER = [
   { id: "freigabe", href: "/freigabe", name: "Freigaben", hinweis: "Was dein Ja braucht: Code und Werbung" },
+  { id: "wochen-check", href: "/wochen-check", name: "Wochen-Check", hinweis: "Sonntags 30 Minuten: sechs Punkte abhaken" },
   { id: "einstellungen", href: "/einstellungen", name: "Einstellungen", hinweis: "Mitteilungen aufs Handy" },
 ];
 const TECHNIK = [

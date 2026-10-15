@@ -25,6 +25,7 @@ import { ladeQuelle, type Lesequelle } from "../../src/lib/supabase";
 import { karten } from "../../src/lib/uebersicht-einfach";
 import { offene } from "../../src/lib/migrationen/migrationen";
 import { wartendePrs } from "../../src/lib/wartende-prs";
+import { EINSTELLUNG, pushStunde, pushVorbereiten } from "../../src/lib/wochencheck/wochencheck";
 import { pausenAlarme, type RollenEreignis } from "../../src/lib/wirkung/wirkung";
 
 const env = process.env;
@@ -202,6 +203,13 @@ async function main() {
   const gesendet = new Set((rohGesendet ?? []).map((r: { schluessel: string }) => r.schluessel));
 
   const plan = plane(ereignisse, gesendet, jetzt.getTime());
+  // Wochen-Check (SIN-631): sonntags zur eingestellten Stunde; fehlt die Einstellung (Migration offen), gilt 19 Uhr.
+  const { data: stunde } = await db.from("leitstand_einstellungen").select("wert").eq("schluessel", EINSTELLUNG);
+  const woche = pushVorbereiten(jetzt.getTime(), pushStunde(stunde?.[0]?.wert), gesendet);
+  if (woche) {
+    plan.nachrichten.push(woche.nachricht);
+    plan.neu.push(woche.schluessel);
+  }
   console.log(`Abos: ${abos.length}, Ereignisse: ${ereignisse.length}, Mitteilungen: ${plan.nachrichten.length}`);
   for (const n of plan.nachrichten) console.log(`- ${n.titel}: ${n.text.replace(/\n/g, " / ")}`);
   if (DRY || plan.nachrichten.length === 0) return;

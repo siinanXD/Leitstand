@@ -22,6 +22,7 @@ import { letzteJeProdukt } from "../../src/lib/ceo/ceo";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
 import { EINGANG_LABEL, eingangDateien, schlussKommentar, zuSchliessen, type EingangIssue } from "../../src/lib/gedaechtnis/eingang";
 import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, vereinige, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type Erledigt, type OffenerPunkt, type Pr, type Quelle } from "../../src/lib/gedaechtnis/gedaechtnis";
+import { notizPfad } from "../../src/lib/wochencheck/wochencheck";
 import { abschliessen } from "../../src/lib/gedaechtnis/vault";
 import { PROJEKTE, alleProjekte } from "../../src/lib/projekte";
 import { gedaechtnisZeilen, type Fund } from "../../src/lib/trend/trend";
@@ -302,13 +303,25 @@ function pushe(d: Dateien, jetzt: Date): boolean {
   }
 }
 
+/** Abgeschlossene Wochen-Checks der letzten 14 Tage (SIN-631) als Tage/<Datum>-wochencheck.md; ohne Tabelle oder bei Fehler keine. */
+async function wochenChecks(jetzt: Date): Promise<Dateien> {
+  try {
+    const ab = new Date(jetzt.getTime() - 14 * 86_400_000).toISOString().slice(0, 10);
+    const zeilen = (await supabase(`leitstand_wochencheck?select=tag,notiz&tag=gte.${ab}`)) as { tag: string; notiz: string }[];
+    return Object.fromEntries(zeilen.map((z) => [notizPfad(z.tag), z.notiz]));
+  } catch (e) {
+    console.warn(`Warnung: Wochen-Checks übersprungen: ${(e as Error).message}`);
+    return {};
+  }
+}
+
 async function main() {
   const jetzt = new Date();
   const ein = await eingang(jetzt).catch((e: Error): Eingang => {
     console.warn(`Warnung: Eingang übersprungen: ${e.message}`);
     return { issues: [], erledigtStatus: new Map() };
   });
-  const d = { ...dateien(await sammle(jetzt)), ...eingangDateien(ein.issues) };
+  const d = { ...dateien(await sammle(jetzt)), ...eingangDateien(ein.issues), ...(await wochenChecks(jetzt)) };
   const treffer = mitGeheimnis(d);
   if (treffer.length) {
     console.error(`Abbruch: Inhalt sieht nach Geheimnis aus in ${treffer.join(", ")}. Nichts geschrieben.`);

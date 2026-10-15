@@ -21,7 +21,7 @@ export function ideeEingabe(body: unknown): IdeeEingabe | null {
 }
 
 export type LinearProjekt = { id: string; teamId: string; meilensteine: { id: string; name: string }[] };
-export type NeuesIssue = { teamId: string; projectId: string; milestoneId: string; title: string; labelIds: string[]; stateId?: string };
+export type NeuesIssue = { teamId: string; projectId: string; milestoneId?: string; title: string; labelIds: string[]; stateId?: string };
 
 /** Die Linear-Aufrufe, die die Idee braucht. Jeder wirft bei Fehlern. */
 export type LinearNetz = {
