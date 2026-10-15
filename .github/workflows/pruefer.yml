@@ -1,0 +1,65 @@
+# Prüfer mit zweitem Modell (SIN-639): OpenAI prüft jeden Agenten-PR (Branch claude/*) gegen sein Issue.
+# Ergebnis als PR-Kommentar. Schwere „hoch“ setzt risk:high (das Gate in automerge.yml senkt es nie). Kosten landen in loop_events.
+# Läuft nicht mit PR-Code im Secret-Kontext von Fremden: nur Branches dieses Repos, nur lesen, Diff ist Eingabedaten.
+name: pruefer
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR-Nummer (Trockenlauf ohne OpenAI)
+        required: true
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: pruefer-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: true
+jobs:
+  pruefen:
+    if: github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'claude/') && github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PR: ${{ github.event.pull_request.number || inputs.pr }}
+      GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', inputs.pr) }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - id: lauf
+        run: |
+          BASE=$(gh pr view "$PR" --json baseRefName -q .baseRefName)
+          git fetch origin "$BASE"
+          npx tsx scripts/pruefer/pruefer.ts "$PR" "origin/$BASE"
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PRUEFER_MODELL: ${{ vars.PRUEFER_MODELL }}
+          PRUEFER_PREIS_EIN: ${{ vars.PRUEFER_PREIS_EIN }}
+          PRUEFER_PREIS_AUS: ${{ vars.PRUEFER_PREIS_AUS }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        continue-on-error: true
+      - name: Kommentar und risk:high
+        if: always() && hashFiles('pruefer-kommentar.md') != ''
+        run: |
+          ALT=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --paginate -q '.[] | select(.body | startswith("<!-- pruefer-zweites-modell -->")) | .id' | head -1)
+          if [ -n "$ALT" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$ALT" -F body=@pruefer-kommentar.md
+          else
+            gh pr comment "$PR" --body-file pruefer-kommentar.md
+          fi
+          if [ -f pruefer-hoch.txt ] && [ "${{ github.event_name }}" = "pull_request" ]; then
+            gh pr edit "$PR" --add-label risk:high
+          fi
+      - name: Rot, wenn nicht bestanden oder Lauf gescheitert
+        if: steps.lauf.outcome == 'failure'
+        run: exit 1

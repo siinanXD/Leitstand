@@ -280,3 +280,11 @@
   rest: kennzahlen_woche?select=aktualisiert_at&order=aktualisiert_at.desc&limit=1
   zeitfeld: aktualisiert_at
   max_alter_min: 10080
+# Prüfer mit zweitem Modell (SIN-639)
+- id: leitstand-pruefer
+  produkt: leitstand
+  titel: Der Prüfer mit zweitem Modell hat in den letzten 7 Tagen einen PR geprüft
+  art: db
+  rest: loop_events?step=eq.pruefer&status=eq.ok&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 10080
