@@ -95,3 +95,10 @@
   rest: loop_events?or=(project.eq.lernapp,project.eq.content-agent-lernapp)&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 180
+- id: leitstand-push-auswertung
+  produkt: leitstand
+  titel: Die Tages-Auswertung ging in den letzten 26 Stunden aufs Handy
+  art: db
+  rest: leitstand_push_gesendet?schluessel=like.auswertung:*&select=gesendet_at&order=gesendet_at.desc&limit=1
+  zeitfeld: gesendet_at
+  max_alter_min: 1560

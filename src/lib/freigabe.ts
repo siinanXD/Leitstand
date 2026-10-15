@@ -43,6 +43,8 @@ export function grundFuerFreigabe(labels: string[], dateien: string[]): string |
   if (dateien.some((d) => d.startsWith(".github/workflows/"))) return "Ändert Workflows. Solche PRs mergen nie automatisch.";
   if (labels.includes("needs-human")) return "Der Loop hat den PR mit needs-human an dich übergeben.";
   if (labels.includes("risk:high")) return "Als hohes Risiko markiert (risk:high).";
+  if (labels.includes("no-automerge")) return "Mit no-automerge markiert: mergt nicht von selbst.";
+  if (labels.includes("migration")) return "Enthält eine Datenbank-Änderung.";
   return null;
 }
 

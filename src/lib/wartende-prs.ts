@@ -54,7 +54,7 @@ export function wartendePrs(snapshot: { project: string; open_prs: OffenerPr[] }
       const repo = pr.repo ?? REPO_VON_PROJEKT[s.project];
       if (!istRepo(repo)) continue;
       if (pr.entwurf || !pr.ciGruen || pr.labels.includes("freigegeben")) continue;
-      if (!pr.labels.includes("risk:high") && !pr.labels.includes("needs-human")) continue;
+      if (!["risk:high", "needs-human", "no-automerge", "migration"].some((l) => pr.labels.includes(l))) continue;
       const key = `${repo}#${pr.nummer}`;
       treffer.set(key, { key, repo, nummer: pr.nummer, titel: pr.titel, url: pr.url, grund: pr.grund ?? grundFuerFreigabe(pr.labels, []) ?? "Wartet auf deine Freigabe." });
     }
