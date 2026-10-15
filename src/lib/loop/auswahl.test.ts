@@ -124,3 +124,10 @@ test("nachruecken: nichts, solange ein Todo wartet oder kein Platz frei ist", ()
   assert.equal(nachruecken([backlog, issue({ identifier: "SIN-22", stateType: "started" })], new Set(), 1), null);
   assert.equal(nachruecken([backlog], new Set(), 1)?.identifier, "SIN-20");
 });
+
+test("waehle: Bug vor Produkt, bei knappem Kontingent nur Stufe 1-2 (SIN-633)", () => {
+  const issues = [issue({ identifier: "SIN-1", priority: 1 }), issue({ identifier: "SIN-2", priority: 4, labels: ["claude", "bug"] })];
+  assert.deepEqual(waehle(issues, new Set(), 2).map((i) => i.identifier), ["SIN-2", "SIN-1"]);
+  assert.deepEqual(waehle(issues, new Set(), 2, undefined, 30).map((i) => i.identifier), ["SIN-2"]);
+  assert.deepEqual(waehle(issues, new Set(), 2, undefined, 10), []);
+});

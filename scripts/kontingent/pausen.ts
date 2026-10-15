@@ -1,6 +1,8 @@
 // Netz für Kontingent-Pausen (SIN-581): Tabelle `kontingent_pausen` lesen und schreiben, Ereignis in `loop_events`.
 // Ohne SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY: nur Warnung, nie Abbruch (wie scripts/loop/loop.ts).
 import type { Dienst, Pause } from "../../src/lib/kontingent/kontingent";
+import { restProzent } from "../../src/lib/kontingent/prioritaet";
+import { kontingente, parseSnapshot } from "../../src/lib/uebersicht";
 
 const env = process.env;
 const DRY = () => env.DRY_RUN === "1";
@@ -61,4 +63,17 @@ export async function ereignis(status: "pause" | "wieder-da" | "uebersprungen", 
     body: JSON.stringify({ project: "leitstand", step: "kontingent", status, grund: grund ?? null, issue: null, pr: null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
   }).catch((e: Error) => ({ ok: false, status: 0, text: async () => e.message }));
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
+}
+
+/** Geschätzter Claude-Rest in Prozent aus `loop_snapshot` (SIN-633); ohne Daten oder bei Lesefehler null, das bremst nichts. */
+export async function ladeClaudeRest(): Promise<number | null> {
+  if (!hatSupabase()) return null;
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_snapshot?select=*`, { headers: kopf(), signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) throw new Error(String(res.status));
+    return restProzent(kontingente(parseSnapshot(await res.json())));
+  } catch (e) {
+    console.log(`::warning::loop_snapshot nicht lesbar (${(e as Error).message}), Kontingent unbekannt.`);
+    return null;
+  }
 }
