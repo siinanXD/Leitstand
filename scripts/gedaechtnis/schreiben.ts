@@ -15,7 +15,8 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { dateien, ereignisZeile, mitGeheimnis, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type OffenerPunkt, type Pr } from "../../src/lib/gedaechtnis/gedaechtnis";
+import { letzteJeProdukt } from "../../src/lib/ceo/ceo";
+import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type OffenerPunkt, type Pr } from "../../src/lib/gedaechtnis/gedaechtnis";
 import { PROJEKTE, alleProjekte } from "../../src/lib/projekte";
 import { gedaechtnisZeilen, type Fund } from "../../src/lib/trend/trend";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
@@ -91,10 +92,12 @@ async function sammle(jetzt: Date): Promise<Eingabe> {
   const seit = new Date(jetzt.getTime() - 24 * 3_600_000);
   let snapshot: SnapshotRow[] = [];
   let events: LoopEvent[] = [];
+  let ceo: string[] = [];
   const probleme: string[] = [];
   try {
     snapshot = parseSnapshot(await supabase("loop_snapshot?select=*&limit=200"));
     events = parseEvents(await supabase(`loop_events?select=*&created_at=gte.${seit.toISOString()}&order=created_at.desc&limit=1000`));
+    ceo = ceoZeilen(letzteJeProdukt(await supabase(`ceo_entscheidungen?select=produkt,entscheidung,grund,created_at&created_at=gte.${seit.toISOString()}&order=created_at.desc&limit=100`)));
   } catch (e) {
     probleme.push(`Daten unvollständig: ${(e as Error).message}`);
   }
@@ -128,6 +131,7 @@ async function sammle(jetzt: Date): Promise<Eingabe> {
     kostenUsd: events.length ? kosten : null,
     probleme,
     trends: trendZeilen(),
+    ceo,
   };
 }
 

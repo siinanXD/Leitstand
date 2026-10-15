@@ -2,13 +2,7 @@ name: ceo
 
 on:
   schedule:
-    - cron: "0 4 * * *"
-  workflow_run:
-    workflows: [loop-merge]
-    types: [completed]
-  push:
-    branches: [main]
-    paths: [docs/product-readiness.json]
+    - cron: "10 4 * * *" # nach dem Planer (04:00 UTC); SIN-636: der CEO läuft nur noch einmal täglich
   workflow_dispatch:
     inputs:
       ausloeser:
@@ -45,8 +39,7 @@ jobs:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-          CEO_AUSLOESER: ${{ inputs.ausloeser || (github.event_name == 'schedule' && 'taeglich') || (github.event_name == 'push' && 'bereitschaft') || 'vorrat' }}
+          CEO_AUSLOESER: ${{ inputs.ausloeser || 'taeglich' }}
           CEO_ROT: ${{ inputs.rot }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: npx tsx scripts/ceo/ceo.ts

@@ -1,12 +1,13 @@
 {
-  "rolle": "vorarbeiter",
-  "issue": "SIN-543",
-  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "rolle": "planer",
+  "issue": "SIN-636",
+  "zeitpunkt": "2026-10-15T04:00:00Z",
   "status": "fertig",
-  "zusammenfassung": "Ein Issue auf Spur A gelegt, nichts wartet.",
+  "zusammenfassung": "Ein Issue aus der Fertig-Liste angelegt und auf Spur A gelegt, nichts wartet.",
   "naechster_schritt": "Spur A startet den Bauer.",
   "kosten_eur": 0,
   "quellen": ["https://github.com/siinanXD/Leitstand/issues/98"],
+  "angelegt": ["Mein Team anzeigen"],
   "spuren": [
     { "id": "A", "issues": ["SIN-543"] },
     { "id": "B", "issues": [] },

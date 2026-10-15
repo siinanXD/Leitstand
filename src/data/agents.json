@@ -2,6 +2,7 @@
   "agents": [
     { "id": "research", "name": "Research", "auftrag": "Sammelt Quellen und Marktwissen für neue Vorhaben.", "workflows": ["RESEARCH"], "budget7d": null },
     { "id": "planer", "name": "Planer", "auftrag": "Zerlegt Ziele in Linear-Issues und hält die Warteschlange gefüllt.", "workflows": ["PLAN", "QUEUE"], "budget7d": null },
+    { "id": "vorarbeiter", "name": "Vorarbeiter", "auftrag": "Ging im Planer auf (SIN-636).", "workflows": ["VORARBEITER"], "budget7d": null, "zusammengelegt": "planer" },
     { "id": "design", "name": "Design", "auftrag": "Liefert Komponenten und Tokens in Figma, bevor gebaut wird.", "workflows": ["DESIGN"], "budget7d": null },
     { "id": "coding", "name": "Coding", "auftrag": "Setzt Issues um und öffnet den Pull Request.", "workflows": ["WORK", "PR"], "budget7d": null },
     { "id": "pruefen", "name": "Prüfen", "auftrag": "Prüft Pull Requests, mergt bei grünem Build und repariert Fehler.", "workflows": ["GATE", "MERGE"], "budget7d": null },

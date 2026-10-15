@@ -15,8 +15,8 @@
       "type": "array",
       "items": {
         "type": "object",
-        "properties": { "produkt": { "type": "string", "minLength": 1 }, "issue_titel": { "type": "string", "minLength": 1 }, "begruendung": { "type": "string", "minLength": 1 } },
-        "required": ["produkt", "issue_titel", "begruendung"],
+        "properties": { "produkt": { "type": "string", "minLength": 1 }, "entscheidung": { "type": "string", "enum": ["weiterbauen", "warten", "fertig"] }, "begruendung": { "type": "string", "minLength": 1 } },
+        "required": ["produkt", "entscheidung", "begruendung"],
         "additionalProperties": false
       }
     }

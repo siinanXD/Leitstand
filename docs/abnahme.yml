@@ -95,6 +95,27 @@
   rest: loop_events?or=(project.eq.lernapp,project.eq.content-agent-lernapp)&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 180
+# Planung (SIN-636): ein Planer, der CEO entscheidet einmal täglich
+- id: leitstand-planer-lauf
+  produkt: leitstand
+  titel: Der Planer lief in den letzten 26 Stunden
+  art: db
+  rest: loop_events?step=eq.planer&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 1560
+- id: leitstand-ceo-taeglich
+  produkt: leitstand
+  titel: Der CEO hat in den letzten 26 Stunden je Produkt entschieden
+  art: db
+  rest: ceo_entscheidungen?select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 1560
+- id: leitstand-keine-dublette
+  produkt: leitstand
+  titel: Die Dubletten-Prüfung des Planers steht im Skript
+  art: datei
+  pfad: scripts/vorarbeiter/vorarbeiter.ts
+  enthaelt: Dubletten-Prüfung (SIN-613)
 - id: leitstand-push-auswertung
   produkt: leitstand
   titel: Die Tages-Auswertung ging in den letzten 26 Stunden aufs Handy

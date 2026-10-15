@@ -1,21 +1,18 @@
 /**
- * CEO-Agent (SIN-542). Aufruf aus ceo.yml (.github/workflows/ceo.yml):
+ * CEO-Agent (SIN-542, schlank seit SIN-636). Aufruf aus ceo.yml (.github/workflows/ceo.yml), einmal täglich:
  *
- *   CEO_AUSLOESER=vorrat|bereitschaft|rot|taeglich npx tsx scripts/ceo/ceo.ts
+ *   CEO_AUSLOESER=taeglich npx tsx scripts/ceo/ceo.ts
  *
  * Liest loop_snapshot und loop_events (Supabase) und GitHub (gemergte Meta-PRs), entscheidet je Produkt genau eine Sache
- * (src/lib/ceo/ceo.ts) und schreibt eine Zeile in `ceo_entscheidungen` sowie ein Ereignis `rolle_gestartet` in `loop_events`.
- * Kein KI-Aufruf. Kein Geld, keine DB-Änderung, keine Freigabe.
+ * (weiterbauen | warten | fertig, src/lib/ceo/ceo.ts) und schreibt eine Zeile in `ceo_entscheidungen` sowie ein Ereignis `rolle_gestartet` in `loop_events`.
+ * Kein KI-Aufruf. Kein Geld, keine DB-Änderung, keine Freigabe. Issues legt der Planer an (scripts/vorarbeiter/vorarbeiter.ts), nicht der CEO.
  *
- * Entscheidet für alle Produkte mit Repo (fehlt die Snapshot-Zeile: warten, „keine Daten“). Bei weiterbauen mit auffuellen > 0 legt er
- * für den Leitstand Linear-Issues aus docs/FERTIG.md an (LINEAR_API_KEY) und stößt für die Lern-App planner.yml an (GH_TOKEN mit Actions-Schreibrecht).
+ * Entscheidet für alle Produkte mit Repo (fehlt die Snapshot-Zeile: warten, „keine Daten“). Bei `fertig` ruft er den Visionär.
  *
- * Env: GH_TOKEN (AGENT_WORKFLOW_TOKEN), LINEAR_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CEO_AUSLOESER, CEO_ROT (optional: "produkt=Grund;…" aus Live-Check/Sentry).
+ * Env: GH_TOKEN (AGENT_WORKFLOW_TOKEN), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CEO_AUSLOESER, CEO_ROT (optional: "produkt=Grund;…" aus Live-Check/Sentry).
  * DRY_RUN=1 oder fehlende Supabase-Variablen: nur Ausgabe im Log, nichts geschrieben.
  */
-import { readFile } from "node:fs/promises";
 import { AUSLOESER, bezugVon, ereignisZeile, entscheide, entscheidungsZeile, gedaechtnisZeile, ohneDaten, startbar, type Ausloeser, type Entscheidung, type ProduktLage } from "../../src/lib/ceo/ceo";
-import { neueIssueTitel } from "../../src/lib/ceo/fertig";
 import { REPOS } from "../../src/lib/freigabe";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
@@ -30,7 +27,6 @@ const ausloeser: Ausloeser = AUSLOESER.find((a) => a === env.CEO_AUSLOESER) ?? "
 const META = /^\w+\((loop|meta|waechter|gedaechtnis|ceo|agenten)\)/i;
 const ROT = /fail|error|abort|crash|red|rot|stuck|timeout/i;
 const TAG = 24 * 3_600_000;
-const MEILENSTEIN = "v1 Grundgerüst";
 
 const kopf = { apikey: env.SUPABASE_SERVICE_ROLE_KEY ?? "", Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY ?? ""}`, "Content-Type": "application/json" };
 async function supabase(pfad: string, body?: unknown): Promise<unknown> {
@@ -58,52 +54,6 @@ function rotVon(id: string, name: string, events: LoopEvent[]): string | null {
   if (gesetzt) return gesetzt;
   const neuestes = events.find((e) => e.project === id && /live|sentry/i.test(e.step ?? ""));
   return neuestes?.status && ROT.test(neuestes.status) ? `die rote ${/sentry/i.test(neuestes.step ?? "") ? "Sentry-Meldung" : "Live-Prüfung"} von ${name}` : null;
-}
-
-// ------------------------------------------------------------------ Auffüllen (SIN-572)
-
-const LERNAPP_REPO = PROJEKTE.find((x) => x.id === "lernapp")?.repo;
-
-async function linear<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY ?? "" }, body: JSON.stringify({ query, variables }) });
-  const json = (await res.json()) as { data?: T; errors?: unknown };
-  if (!res.ok || json.errors) throw new Error(`Linear: ${res.status} ${JSON.stringify(json.errors ?? "")}`);
-  return json.data as T;
-}
-
-/** Leitstand: bis zu n Issues aus den offenen Punkten in docs/FERTIG.md (Backlog, Label claude, Meilenstein „v1 Grundgerüst“); der Dispatcher rückt nach. Lern-App: Planer anstoßen. */
-async function auffuellen(produkt: string, n: number) {
-  if (produkt === "lernapp") {
-    console.log(`${DRY ? "[trocken] " : ""}lernapp: Planer anstoßen (planer.yml, dry_run=false)`);
-    if (DRY || !LERNAPP_REPO) return;
-    const res = await fetch(`https://api.github.com/repos/${LERNAPP_REPO}/actions/workflows/planner.yml/dispatches`, { method: "POST", headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json" }, body: JSON.stringify({ ref: "main", inputs: { dry_run: "false" } }) });
-    if (!res.ok) throw new Error(`planner.yml anstoßen: ${res.status}`);
-    return;
-  }
-  if (produkt !== "leitstand") return;
-  const md = await readFile("docs/FERTIG.md", "utf8").catch(() => "");
-  if (DRY || !env.LINEAR_API_KEY) {
-    console.log(`[trocken] leitstand: bis zu ${n} Issues aus FERTIG.md: ${neueIssueTitel(md, [], n).join(" | ") || "keine offenen Punkte"}`);
-    return;
-  }
-  const d = await linear<{ projects: { nodes: { id: string; name: string; teams: { nodes: { id: string }[] }; projectMilestones: { nodes: { id: string; name: string }[] }; issues: { nodes: { title: string }[] } }[] } }>(
-    `query { projects(filter: { name: { eq: "Leitstand" } }) { nodes { id name teams(first: 1) { nodes { id } } projectMilestones(first: 20) { nodes { id name } }
-      issues(first: 250, filter: { state: { type: { nin: ["completed", "canceled"] } } }) { nodes { title } } } } }`,
-  );
-  const projekt = d.projects.nodes[0];
-  const teamId = projekt?.teams.nodes[0]?.id;
-  if (!projekt || !teamId) throw new Error("Linear-Projekt „Leitstand“ nicht gefunden");
-  const titel = neueIssueTitel(md, projekt.issues.nodes.map((i) => i.title), n);
-  if (!titel.length) return console.log("leitstand: keine neuen Punkte in docs/FERTIG.md");
-  const t = await linear<{ team: { states: { nodes: { id: string; name: string }[] }; labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { states { nodes { id name } } labels(first: 250) { nodes { id name } } } }`, { t: teamId });
-  const stateId = t.team.states.nodes.find((s) => s.name === "Backlog")?.id;
-  const labelId = t.team.labels.nodes.find((l) => l.name.toLowerCase() === "claude")?.id;
-  if (!stateId || !labelId) throw new Error("Status „Backlog“ oder Label „claude“ in Linear nicht gefunden");
-  const meilensteinId = projekt.projectMilestones.nodes.find((m) => m.name === MEILENSTEIN)?.id;
-  for (const title of titel) {
-    await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, description: "Offener Punkt aus docs/FERTIG.md (angelegt vom CEO, SIN-572).", labelIds: [labelId], stateId } });
-    console.log(`leitstand: Issue angelegt: ${title}`);
-  }
 }
 
 const projektName = (id: string | null) => (id ? (PROJEKTE.find((x) => x.id === id)?.name ?? id) : null);
@@ -157,16 +107,13 @@ async function main() {
   const tag = jetzt.toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
   // Der Satz entsteht bei jedem Lauf (SIN-579), auch wenn nichts zu planen ist: so verfällt er nach jedem Merge, nicht erst am nächsten Morgen.
   for (const e of [...ohne, ...lagen.map(entscheide)]) {
-    console.log(`${gedaechtnisZeile(e, tag)} (Auslöser: ${ausloeser}, auffüllen: ${e.auffuellen}, Meta: ${e.metaErlaubt ? "ja" : "nein"}, Ideen: ${e.ideenErlaubt ? "ja" : "nein"})`);
+    console.log(`${gedaechtnisZeile(e, tag)} (Auslöser: ${ausloeser}, Meta: ${e.metaErlaubt ? "ja" : "nein"}, Ideen: ${e.ideenErlaubt ? "ja" : "nein"})`);
     if (DRY) continue;
     const run = env.GITHUB_RUN_ID;
     await supabase("ceo_entscheidungen", entscheidungsZeile(e, ausloeser, null));
     await supabase("loop_events", ereignisZeile(e.produkt, run ?? null, run ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${run}` : null));
   }
-  for (const e of lagen.map(entscheide)) {
-    if (e.art === "weiterbauen" && e.auffuellen > 0) await auffuellen(e.produkt, e.auffuellen);
-    if (e.visionaer) await visionaerRufen(e.produkt);
-  }
+  for (const e of lagen.map(entscheide)) if (e.visionaer) await visionaerRufen(e.produkt);
   if (DRY) console.log("Trockenlauf: nichts geschrieben.");
 }
 

@@ -1,10 +1,12 @@
-// CEO-Agent (SIN-542): reine Entscheidung je Produkt. Kein Netz, kein KI-Aufruf.
-// `scripts/ceo/ceo.ts` sammelt die Daten und schreibt. Der CEO legt nur fest und priorisiert: kein Geld, keine DB-Änderung, keine Freigabe.
+// CEO-Agent (SIN-542, schlank seit SIN-636): reine Entscheidung je Produkt, genau eine von weiterbauen | warten | fertig. Kein Netz, kein KI-Aufruf.
+// `scripts/ceo/ceo.ts` sammelt die Daten und schreibt. Der CEO legt kein Issue an (das tut der Planer): kein Geld, keine DB-Änderung, keine Freigabe.
 import type { SnapshotRow } from "../uebersicht";
 import { ohneKennungen } from "../zeit";
 
-export const ARTEN = ["weiterbauen", "reparieren", "warten", "fertig"] as const;
+export const ARTEN = ["weiterbauen", "warten", "fertig"] as const;
 export type Art = (typeof ARTEN)[number];
+/** Ältere Zeilen in `ceo_entscheidungen` (Check-Constraint) kennen noch `reparieren`; der Leitstand liest sie als weiterbauen. */
+const ALT = "reparieren";
 export const AUSLOESER = ["vorrat", "bereitschaft", "rot", "taeglich"] as const;
 export type Ausloeser = (typeof AUSLOESER)[number];
 
@@ -54,7 +56,10 @@ export type Entscheidung = {
   bezug: string | null;
 };
 
-const ZURUECKGEHALTEN = ["sinan", "needs-human", "design"];
+/** Wie viele startbare Issues dem Vorrat fehlen: unter MIN auf MAX auffüllen, sonst 0. Der Planer legt sie an (SIN-636). */
+export const luecke = (startbar: number): number => (startbar < MIN_STARTBAR ? MAX_STARTBAR - startbar : 0);
+
+const ZURUECKGEHALTEN =["sinan", "needs-human", "design"];
 
 /** Wie viele Issues eines Produkts sofort startbar sind: Todo, Label `claude`, nicht blockiert, nicht zurückgehalten.
  *  Schreibt ein Produkt nur eine Zusammenfassungszeile (Leitstand, SIN-572), zählt deren `queue.startable`. */
@@ -69,20 +74,20 @@ const nenne = (liste: string[]) => liste.slice(0, 2).join(" und ") + (liste.leng
 /** Fehlt die Snapshot-Zeile eines Produkts, wartet der CEO ehrlich, statt zu raten. */
 export const ohneDaten = (id: string, name: string): Entscheidung => ({ produkt: id, art: "warten", grund: `${name}: Ich weiß noch zu wenig, um zu entscheiden.`, auffuellen: 0, dringend: false, metaErlaubt: true, ideenErlaubt: false, bezug: null });
 
-/** Genau eine Entscheidung je Produkt. Reihenfolge: reparieren, fertig, Fokus, Vorrat reicht, warten, weiterbauen. */
+/** Genau eine Entscheidung je Produkt. Reihenfolge: rot (weiterbauen, dringend), fertig, Fokus, Vorrat reicht, warten, weiterbauen. */
 export function entscheide(p: ProduktLage): Entscheidung {
   const v1Fertig = p.gesamt !== null && p.gesamt > 0 && p.fertig !== null && p.fertig >= p.gesamt;
   const basis = { produkt: p.id, bezug: p.bezug ?? null, metaErlaubt: p.metaPrsHeute < 1, ideenErlaubt: v1Fertig && p.ideenDieseWoche < 1 };
   // Mit freigegebener Version (Sinans „go“) baut das Produkt weiter, auch wenn die alte Liste voll ist.
   const fertig = v1Fertig && p.version !== "go";
   const wartetAufVersion = p.version === "pause" || p.version === "vorschlag";
-  if (p.rot) return { ...basis, art: "reparieren", grund: `${p.name}: Ich repariere zuerst ${p.rot}, weil echte Nutzer sonst Fehler sehen.`, auffuellen: 1, dringend: true };
+  if (p.rot) return { ...basis, art: "weiterbauen", grund: `${p.name}: Ich repariere zuerst ${p.rot}, weil echte Nutzer sonst Fehler sehen.`, auffuellen: 1, dringend: true };
   if (fertig) return { ...basis, art: "fertig", grund: wartetAufVersion ? `${p.name}: Das Grundgerüst steht, ich baue erst mit deinem Go für die nächste Version weiter.` : `${p.name}: Das Grundgerüst steht, ich stoppe und plane die nächste Version.`, auffuellen: 0, dringend: false, visionaer: !wartetAufVersion };
   if (p.fokusBei) return { ...basis, art: "warten", grund: `${p.name}: Der Fokus liegt auf einer Version von ${p.fokusBei}, ich repariere nur.`, auffuellen: 0, dringend: false };
   if (p.startbar >= MIN_STARTBAR) return { ...basis, art: "weiterbauen", grund: `${p.name}: Es ist genug zu tun, die Helfer bauen weiter.`, auffuellen: 0, dringend: false };
   if (p.startbar === 0 && p.wartetAufSinan.length > 0) return { ...basis, art: "warten", grund: `${p.name}: Ich warte auf dich bei ${nenne(p.wartetAufSinan)}, sonst kann nichts weitergehen.`, auffuellen: 0, dringend: false };
-  const luecke = p.fertig !== null && p.gesamt !== null ? ` (${p.fertig} von ${p.gesamt} Punkten fertig)` : "";
-  return { ...basis, art: "weiterbauen", grund: `${p.name}: Bald ist nichts mehr zu tun, ich suche die nächsten Aufgaben aus${luecke}.`, auffuellen: MAX_STARTBAR - p.startbar, dringend: false };
+  const stand = p.fertig !== null && p.gesamt !== null ? ` (${p.fertig} von ${p.gesamt} Punkten fertig)` : "";
+  return { ...basis, art: "weiterbauen", grund: `${p.name}: Bald ist nichts mehr zu tun, ich suche die nächsten Aufgaben aus${stand}.`, auffuellen: luecke(p.startbar), dringend: false };
 }
 
 /** Zeile für `loop_events`, damit der Leitstand zeigt, dass und wann der CEO lief. */
@@ -101,7 +106,7 @@ export function letzteJeProdukt(raw: unknown): Zeile[] {
   if (!Array.isArray(raw)) return [];
   const je = new Map<string, Zeile>();
   for (const r of raw as Record<string, unknown>[]) {
-    const art = ARTEN.find((a) => a === r?.entscheidung);
+    const art = r?.entscheidung === ALT ? "weiterbauen" : ARTEN.find((a) => a === r?.entscheidung);
     if (!art || typeof r.produkt !== "string" || typeof r.grund !== "string" || typeof r.created_at !== "string" || Number.isNaN(Date.parse(r.created_at))) continue;
     const alt = je.get(r.produkt);
     if (!alt || Date.parse(r.created_at) > Date.parse(alt.created_at)) je.set(r.produkt, { produkt: r.produkt, entscheidung: art, grund: r.grund, created_at: r.created_at, bezug: typeof r.bezug === "string" && r.bezug !== "" ? r.bezug : null });

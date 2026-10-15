@@ -1,11 +1,14 @@
 {
   "rolle": "ceo",
-  "issue": "SIN-543",
-  "zeitpunkt": "2026-10-13T09:00:00Z",
+  "issue": "SIN-636",
+  "zeitpunkt": "2026-10-15T04:10:00Z",
   "status": "fertig",
-  "zusammenfassung": "Ein Issue für das Produkt Leitstand angelegt.",
-  "naechster_schritt": "Vorarbeiter plant die Reihenfolge.",
+  "zusammenfassung": "Leitstand baut weiter, Lern-App wartet auf eine Freigabe.",
+  "naechster_schritt": "Planer legt bei Bedarf neue Issues an.",
   "kosten_eur": 0,
   "quellen": ["https://github.com/siinanXD/Leitstand/issues/98"],
-  "entscheidungen": [{ "produkt": "leitstand", "issue_titel": "Mein Team anzeigen", "begruendung": "Fertig-Punkt ist offen." }]
+  "entscheidungen": [
+    { "produkt": "leitstand", "entscheidung": "weiterbauen", "begruendung": "Fertig-Punkte sind offen." },
+    { "produkt": "lernapp", "entscheidung": "warten", "begruendung": "Freigabe von Sinan fehlt." }
+  ]
 }

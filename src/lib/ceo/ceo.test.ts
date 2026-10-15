@@ -1,20 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SnapshotRow } from "../uebersicht";
-import { bezugVon, chefSatz, entscheide, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, ohneDaten, startbar, type ProduktLage } from "./ceo";
+import { bezugVon, chefSatz, entscheide, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, luecke, ohneDaten, startbar, type ProduktLage } from "./ceo";
 import { neueIssueTitel, zaehleHaken } from "./fertig";
 
 const lage: ProduktLage = { id: "lernapp", name: "Lern-App", startbar: 1, fertig: 3, gesamt: 10, rot: null, wartetAufSinan: [], metaPrsHeute: 0, ideenDieseWoche: 0 };
 const zeile = (o: Partial<SnapshotRow>): SnapshotRow => ({ project: "lernapp", stage: null, status: "Todo", title: null, updated_at: null, quota_name: null, quota_used: null, quota_limit: null, issue: "SIN-1", blocked_by: [], quotas: [], labels: ["claude"], minutes: null, pr: null, open_prs: [], ...o });
 
-test("Fixture deckt die 4 Entscheidungsarten ab", () => {
+test("Fixture deckt die 3 Entscheidungsarten ab", () => {
   const bauen = entscheide(lage);
   assert.equal(bauen.art, "weiterbauen");
   assert.equal(bauen.auffuellen, 7); // auf höchstens 8 auffüllen
   assert.match(bauen.grund, /3 von 10/);
 
+  // SIN-636: Reparaturen sind weiterbauen mit „dringend“, der Planer legt das Issue an.
   const repariert = entscheide({ ...lage, rot: "die kaputte Live-Prüfung" });
-  assert.equal(repariert.art, "reparieren");
+  assert.equal(repariert.art, "weiterbauen");
   assert.equal(repariert.dringend, true);
   assert.equal(repariert.grund, "Lern-App: Ich repariere zuerst die kaputte Live-Prüfung, weil echte Nutzer sonst Fehler sehen.");
 
@@ -28,7 +29,13 @@ test("Fixture deckt die 4 Entscheidungsarten ab", () => {
 
 test("Vorrat reicht ab 3: nichts Neues; Rot geht vor Fertig und Vorrat", () => {
   assert.equal(entscheide({ ...lage, startbar: 3 }).auffuellen, 0);
-  assert.equal(entscheide({ ...lage, startbar: 5, fertig: 10, gesamt: 10, rot: "Sentry" }).art, "reparieren");
+  const rot = entscheide({ ...lage, startbar: 5, fertig: 10, gesamt: 10, rot: "Sentry" });
+  assert.equal(rot.art, "weiterbauen");
+  assert.equal(rot.dringend, true);
+});
+
+test("Lücke im Vorrat (Planer): unter 3 auf 8 auffüllen, sonst nichts", () => {
+  assert.deepEqual([0, 2, 3, 8].map(luecke), [8, 6, 0, 0]);
 });
 
 test("Warten nur ohne startbare Issues; sonst weiterbauen", () => {
@@ -54,7 +61,7 @@ test("Zeilen für Tabelle und Gedächtnis; letzte Entscheidung je Produkt", () =
   assert.match(gedaechtnisZeile(e, "2026-10-13"), /^- 2026-10-13 CEO weiterbauen: Lern-App/);
   const l = letzteJeProdukt([
     { produkt: "lernapp", entscheidung: "warten", grund: "alt", created_at: "2026-10-12T06:00:00Z" },
-    { produkt: "lernapp", entscheidung: "reparieren", grund: "neu", created_at: "2026-10-13T06:00:00Z" },
+    { produkt: "lernapp", entscheidung: "reparieren", grund: "neu", created_at: "2026-10-13T06:00:00Z" }, // alte Zeile: wird als weiterbauen gelesen
     { produkt: "leitstand", entscheidung: "unsinn", grund: "x", created_at: "2026-10-13T06:00:00Z" },
     { produkt: "beleg", entscheidung: "fertig", grund: "x", created_at: "kaputt" },
   ]);

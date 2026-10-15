@@ -14,6 +14,8 @@ export type Agent = {
   /** Optional (SIN-505): Modell und Freigabe-Regel aus dem Register; fehlen sie, entfällt die Zeile. */
   modell?: string;
   freigabe?: string;
+  /** SIN-636: Kennung der Rolle, in der diese aufgegangen ist; die Karte trägt dann „zusammengelegt“. */
+  zusammengelegt?: string;
 };
 export const AGENTEN: Agent[] = registerJson.agents;
 
@@ -98,7 +100,7 @@ export function agentKarte(bahn: Bahn, bis: number, id: string = bahn.agent.id):
   const kosten = kostenText(bahn.kosten7d, bahn.agent.budget7d);
   return {
     id,
-    name: bahn.agent.name,
+    name: bahn.agent.zusammengelegt ? `${bahn.agent.name} (zusammengelegt)` : bahn.agent.name,
     auftrag: bahn.agent.auftrag,
     signal: letzte ? signalAus(letzte.status) : "leer",
     aktuell: detailZeile(letzte, bis) || "Keine Daten",

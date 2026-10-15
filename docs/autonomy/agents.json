@@ -1,19 +1,19 @@
 {
-  "stand": "2026-10-13",
-  "quelle": "SIN-543",
+  "stand": "2026-10-15",
+  "quelle": "SIN-543, SIN-636",
   "spuren": [
     { "id": "A", "name": "Spur A · Claude Max" },
     { "id": "B", "name": "Spur B · Claude Max" },
     { "id": "C", "name": "Spur C · API mit Haiku" }
   ],
   "rollen": [
-    { "id": "ceo", "name": "CEO", "skill": "docs/skills/ceo/SKILL.md", "aufgabe": "Entscheidet je Produkt, was als Nächstes gebaut wird.", "ausloeser": ["Schlange unter 3 startbar", "Fertig-Liste ändert sich", "Live-Check rot"], "netz": "täglich 06:00", "werkzeuge": ["Supabase", "Linear", "Gedächtnis"], "ruft": ["vorarbeiter", "research", "visionaer"] },
+    { "id": "ceo", "name": "CEO", "skill": "docs/skills/ceo/SKILL.md", "aufgabe": "Entscheidet einmal täglich je Produkt: weiterbauen, warten oder fertig. Legt kein Issue an.", "ausloeser": ["täglich"], "netz": "täglich 06:10", "werkzeuge": ["Supabase", "Linear", "Gedächtnis"], "ruft": ["research", "visionaer"] },
     { "id": "visionaer", "name": "Visionär", "skill": "docs/skills/visionaer/SKILL.md", "aufgabe": "Teilt ein Produkt in Versionen und schlägt die nächste vor.", "ausloeser": ["CEO meldet fertig"], "netz": null, "werkzeuge": ["Linear", "Supabase", "Gedächtnis"], "ruft": [] },
-    { "id": "vorarbeiter", "name": "Vorarbeiter", "skill": "docs/skills/vorarbeiter/SKILL.md", "aufgabe": "Plant die Reihenfolge und verteilt auf drei Spuren.", "ausloeser": ["nach jedem Merge", "CEO legt Issues an"], "netz": null, "werkzeuge": ["Linear", "Supabase"], "ruft": ["bauen"] },
+    { "id": "planer", "name": "Planer", "skill": "docs/skills/planer/SKILL.md", "aufgabe": "Legt Issues an (ohne Dubletten) und plant Reihenfolge und Spur. Ersetzt Vorarbeiter und die Planung des CEO.", "ausloeser": ["nach jedem Merge", "Fertig-Liste ändert sich", "Abnahme-Lauf", "Schlange unter 3 startbar"], "netz": "täglich 06:00", "werkzeuge": ["Linear", "Supabase", "Gedächtnis"], "ruft": ["bauen"] },
     { "id": "research", "name": "Research", "skill": "docs/skills/research/SKILL.md", "aufgabe": "Sucht vor jeder Entscheidung eine fertige Lösung.", "ausloeser": ["vom CEO oder Bauer angefordert"], "netz": null, "werkzeuge": ["WebSearch", "WebFetch", "Context7", "Hugging Face Hub API", "GitHub-Suche"], "ruft": [] },
-    { "id": "bauen", "name": "Bauen", "skill": "docs/skills/bauen/SKILL.md", "aufgabe": "Baut Code, Design aus Figma, Content und Video.", "ausloeser": ["Plan des Vorarbeiters"], "netz": null, "werkzeuge": ["Bash", "Context7", "Figma-Skript"], "ruft": ["pruefen", "research"] },
+    { "id": "bauen", "name": "Bauen", "skill": "docs/skills/bauen/SKILL.md", "aufgabe": "Baut Code, Design aus Figma, Content und Video.", "ausloeser": ["Plan des Planers"], "netz": null, "werkzeuge": ["Bash", "Context7", "Figma-Skript"], "ruft": ["pruefen", "research"] },
     { "id": "pruefen", "name": "Prüfen", "skill": "docs/skills/pruefen/SKILL.md", "aufgabe": "Prüft Tests, Live-Check, Layout und Inhalte; betreibt den Stand.", "ausloeser": ["jeder Push auf einen PR", "nach jedem Deploy"], "netz": null, "werkzeuge": ["Playwright", "axe", "Langfuse-Scores"], "ruft": [] },
-    { "id": "content", "name": "Content", "skill": "docs/skills/content/SKILL.md", "aufgabe": "Aufgabenart von Bauen: Lerninhalte und Texte.", "ausloeser": ["Plan des Vorarbeiters"], "netz": null, "werkzeuge": ["Bash", "Langfuse-Scores"], "ruft": ["pruefen"] },
+    { "id": "content", "name": "Content", "skill": "docs/skills/content/SKILL.md", "aufgabe": "Aufgabenart von Bauen: Lerninhalte und Texte.", "ausloeser": ["Plan des Planers"], "netz": null, "werkzeuge": ["Bash", "Langfuse-Scores"], "ruft": ["pruefen"] },
     { "id": "marketing", "name": "Marketing", "skill": "docs/skills/marketing/SKILL.md", "aufgabe": "Macht aus Ads, Leads und Metriken Werbemittel.", "ausloeser": ["Fertig-Punkt bestätigt", "Release"], "netz": "montags", "werkzeuge": ["WebFetch", "Supabase"], "ruft": ["anwalt"] },
     { "id": "hausmeister", "name": "Hausmeister", "skill": "docs/skills/hausmeister/SKILL.md", "aufgabe": "Findet toten Code, Dubletten und Müll und räumt auf.", "ausloeser": ["alle 20 Merges (merges_seit_hausmeister)"], "netz": "montags 07:00", "werkzeuge": ["Bash", "knip"], "ruft": [] },
     { "id": "anwalt", "name": "Anwalt", "skill": "docs/skills/anwalt/SKILL.md", "aufgabe": "Prüft DSGVO, KI-Kennzeichnung, Impressum und Werbemittel.", "ausloeser": ["PR ändert Migrationen, Tracking, Prompts mit Nutzerdaten, Rechtstexte oder Werbemittel"], "netz": "monatlich AVV-Abgleich", "werkzeuge": ["GitHub"], "ruft": [] },
