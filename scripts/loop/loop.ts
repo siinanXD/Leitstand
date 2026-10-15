@@ -210,8 +210,8 @@ async function dispatch() {
   const nodes = await projektIssues();
   const issues = nodes.map(ausLinear);
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=all&per_page=100`);
-  const prs = await gh<{ title: string; head: { ref: string } }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
-  const belegung: Belegung = { jetzt: new Date(), offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref })) };
+  const prs = await gh<{ title: string; head: { ref: string }; labels: { name: string }[] }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
+  const belegung: Belegung = { jetzt: new Date(), offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref, labels: p.labels.map((l) => l.name) })) };
   const max = Number(env.LOOP_MAX_PARALLEL ?? 1);
   const gespiegelt = gespiegelteIds(ghIssues);
   let wahl = waehle(issues, gespiegelt, max, belegung, rest);

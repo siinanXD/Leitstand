@@ -29,7 +29,10 @@ export type LinearIssue = {
 
 export type GithubIssue = { number: number; body: string | null; state: string };
 /** Offener PR, nur Titel und Branch (zum Zuordnen zu einem Linear-Issue). */
-export type OffenerPr = { titel: string; branch: string };
+export type OffenerPr = { titel: string; branch: string; labels?: string[] };
+
+/** PR wartet nur noch auf Sinan (`risk:high` ohne `freigegeben`, SIN-678): der Worker ist fertig, der Platz wird frei. */
+export const wartetAufSinan = (pr: OffenerPr) => !!pr.labels?.includes("risk:high") && !pr.labels.includes("freigegeben");
 /** Ohne Angabe zählt jedes laufende Issue (altes Verhalten). */
 export type Belegung = { jetzt: Date; offenePrs: OffenerPr[] };
 
@@ -74,8 +77,10 @@ const prGehoertZu = (pr: OffenerPr, i: LinearIssue) =>
 export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssue[] {
   return issues.filter((i) => {
     if (i.stateType !== "started" || !hatLabel(i)) return false;
-    if (!belegung || !i.startedAt) return true;
-    if (belegung.offenePrs.some((pr) => prGehoertZu(pr, i))) return true;
+    if (!belegung) return true;
+    const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
+    if (eigene.length) return !eigene.every(wartetAufSinan);
+    if (!i.startedAt) return true;
     return belegung.jetzt.getTime() - Date.parse(i.startedAt) <= HAENGER_STUNDEN * 3_600_000;
   });
 }

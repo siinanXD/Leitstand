@@ -332,3 +332,10 @@
   art: datei
   pfad: src/lib/kontingent/prioritaet.ts
   enthaelt: hoechsteStufe
+# Dispatcher: wartender risk:high-PR gibt Platz frei (SIN-678)
+- id: leitstand-dispatch-wartender-pr
+  produkt: leitstand
+  titel: Ein PR, der auf Sinan wartet, belegt keinen Dispatcher-Platz
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: wartetAufSinan
