@@ -301,3 +301,9 @@
   art: datei
   pfad: src/lib/standard/muster.ts
   enthaelt: findeMuster
+- id: leitstand-waechter-entscheidungen
+  produkt: leitstand
+  titel: Der Wächter übernimmt "Entscheidung:"-Kommentare aus Linear
+  art: datei
+  pfad: scripts/waechter/waechter.ts
+  enthaelt: uebernehmeEntscheidungen

@@ -102,6 +102,12 @@ export function aufgabenFuerDich(snapshot: SnapshotRow[]): Aufgabe[] {
   }));
 }
 
+/** Link zum Linear-Issue zum Antworten (SIN-651): Kennung der Aufgabe, sonst die erste Kennung im Titel (PR-Titel enden auf „(SIN-xyz)“). */
+export function linearLink(a: Pick<Aufgabe, "ref" | "titel">): string | null {
+  const id = /^SIN-\d+$/.test(a.ref) ? a.ref : /\bSIN-\d+\b/.exec(a.titel)?.[0];
+  return id ? `https://linear.app/sinan-kahraman/issue/${id}` : null;
+}
+
 export type Kennzahl = { label: string; wert: string; hervor: boolean };
 
 /** Kacheln nur mit echter Quelle: „Produktreife“ und „Prognose fertig“ fehlen, solange es dafür keine Daten gibt. */

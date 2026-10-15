@@ -6,7 +6,7 @@ import type { Pause } from "@/lib/aktionen-client";
 import { pauseSatz } from "@/lib/pause";
 import { nurProjekt } from "@/lib/projekte";
 import { heuteSatz, kontingente, type Quelle } from "@/lib/uebersicht";
-import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
+import { aktivitaetKacheln, aufgabenFuerDich, belegChips, linearLink, inArbeitZeilen, kennzahlen, pipelineSchiene, type Aufgabe } from "@/lib/uebersicht-b1";
 import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "../rahmen";
 import { GedaechtnisKachel } from "../gedaechtnis-kachel";
 import { GelerntKachel } from "../gelernt-kachel";
@@ -26,7 +26,8 @@ const dauer = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}
 
 /** Linear-Kennungen führen zu Linear, PRs des Leitstand-Repos zu GitHub; sonst kein Link (nichts raten). */
 function linkFuer(a: Aufgabe, projekt: string | undefined): string | null {
-  if (/^SIN-\d+$/.test(a.ref)) return `https://linear.app/sinan-kahraman/issue/${a.ref}`;
+  const linear = linearLink(a);
+  if (linear) return linear;
   if (/^#\d+$/.test(a.ref) && projekt === "leitstand") return `https://github.com/siinanXD/Leitstand/pull/${a.ref.slice(1)}`;
   return null;
 }

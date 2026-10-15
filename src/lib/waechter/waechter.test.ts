@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  entscheidungenAusKommentaren,
+  entscheidungsText,
   erkenneIssueHaenger,
   erkennePrHaenger,
   erledigtSeit,
@@ -197,4 +199,19 @@ test("leitstandSnapshot: Spalten wie loop_snapshot (fertig_v1/gesamt_v1, kein pr
   assert.equal(z.gesamt_v1, 10);
   assert.equal("progress" in z, false);
   assert.equal(leitstandSnapshot([], [], "r", null).fertig_v1, null);
+});
+
+test("Entscheidung: im Linear-Kommentar führt zu Label und PR-Kommentar (SIN-651)", () => {
+  const r = entscheidungenAusKommentaren([
+    "Entscheidung: [siinanXD/Content-Agent-Lernapp#350](https://linear.app/x) ja, automatisch",
+    "Entscheidung: siinanXD/Content-Agent-Lernapp#350 nein",
+    "Entscheidung: siinanXD/Fremd#1 ja",
+  ]);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].nummer, 350);
+  assert.match(entscheidungsText(r[0]), /ja, automatisch/);
+});
+
+test("Ohne passenden Kommentar bleibt die Frage offen (SIN-651)", () => {
+  assert.deepEqual(entscheidungenAusKommentaren(["siinanXD/Content-Agent-Lernapp#350 ja", "Hinweis: siinanXD/Content-Agent-Lernapp#350", "Entscheidung: ja, ohne PR"]), []);
 });
