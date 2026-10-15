@@ -21,7 +21,7 @@ const fixture: Eingabe = {
 test("Trockenlauf mit Fixture erzeugt alle 5 Dateitypen mit Frontmatter", () => {
   const d = dateien(fixture);
   assert.deepEqual(Object.keys(d).sort(), ["00 Wo stehen wir.md", "Entscheidungen/SIN-508.md", "Offen.md", "Produkte/Leitstand.md", "Produkte/Lern-App.md", "Tage/2026-10-13.md"]);
-  for (const text of Object.values(d)) assert.match(text, /^---\ntyp: \w+\nprodukt: .+\ndatum: 2026-10-13\nquelle: .+\n---\n/);
+  for (const text of Object.values(d)) assert.match(text, /^---\ntyp: \w+\nprodukt: .+\nstatus: \w+\ndatum: 2026-10-13\nquelle: .+\nbeschreibung: .+\n---\n/);
   assert.match(d["00 Wo stehen wir.md"], /#produkt\/lernapp/);
   assert.match(d["Produkte/Lern-App.md"], /3\/10 fertig/);
   assert.match(d["Produkte/Leitstand.md"], /\[\[Entscheidungen\/SIN-508\]\]/);
