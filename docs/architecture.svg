@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 360" role="img" aria-labelledby="t d" font-family="ui-monospace, monospace" font-size="14">
+  <title id="t">Leitstand architecture</title>
+  <desc id="d">Linear feeds the dispatcher, which opens a GitHub issue. The Claude worker opens a pull request, the build gate and auto-merge merge it. Every step writes events to Supabase, and the Next.js dashboard reads them.</desc>
+  <rect width="900" height="360" fill="#fff7ed"/>
+  <g fill="#ffffff" stroke="#1c1917" stroke-width="1" rx="2">
+    <rect x="20" y="40" width="150" height="60" rx="2"/>
+    <rect x="215" y="40" width="150" height="60" rx="2"/>
+    <rect x="410" y="40" width="150" height="60" rx="2"/>
+    <rect x="605" y="40" width="130" height="60" rx="2"/>
+    <rect x="770" y="40" width="110" height="60" rx="2"/>
+    <rect x="215" y="240" width="220" height="70" rx="2"/>
+    <rect x="520" y="240" width="220" height="70" rx="2"/>
+  </g>
+  <g fill="#1c1917" text-anchor="middle">
+    <text x="95" y="75">Linear</text>
+    <text x="290" y="75">dispatch.yml</text>
+    <text x="485" y="75">Claude worker</text>
+    <text x="670" y="75">build gate</text>
+    <text x="825" y="75">auto-merge</text>
+    <text x="325" y="270">Supabase</text>
+    <text x="325" y="292" fill="#57534e" font-size="12">loop_events, loop_snapshot</text>
+    <text x="630" y="270">Leitstand (Next.js)</text>
+    <text x="630" y="292" fill="#57534e" font-size="12">dashboard, PWA, actions</text>
+  </g>
+  <g stroke="#b45309" stroke-width="1" fill="none">
+    <path d="M170 70H215M365 70H410M560 70H605M735 70H770"/>
+    <path d="M290 100V240M485 100V170H325V240M670 100V170H325"/>
+    <path d="M435 275H520"/>
+  </g>
+  <g fill="#57534e" font-size="12" text-anchor="middle">
+    <text x="192" y="62">Todo</text>
+    <text x="387" y="62">issue</text>
+    <text x="582" y="62">PR</text>
+    <text x="477" y="268">reads</text>
+  </g>
+</svg>

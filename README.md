@@ -1,45 +1,45 @@
 # Leitstand
 
-Übersicht über alle Projekte, Worker, Tokens und Abläufe (Linear SIN-242). Eigenes Repo, getrennt von der Content-Agent-Lernapp.
+A mobile-first control room that shows what a fleet of AI agents is building, what it costs, and what needs a human, for one person running several software products.
 
-## Befehle
+<!-- Hero screenshot: pending, see "Ausgelassen" in the pull request. Playwright capture belongs to the designer role (SIN-561). -->
 
-| Befehl | Zweck |
-| --- | --- |
-| `npm run dev` | Entwicklungsserver auf Port 43124 |
-| `npm run build` | Produktions-Build |
-| `npm run typecheck` | TypeScript prüfen |
-| `npm run lint` | ESLint |
-| `npm test` | Unit-Tests (Kontrast der Design-Tokens) |
-| `npm run test:a11y` | Playwright mit axe-core (nach `npm run build`) |
-| `npm run stand` | Stand-Agent: schreibt `stand-bericht.json` (SIN-508) |
+## Why
 
-## Anmelden am iPhone (SIN-510)
+Autonomous coding agents produce pull requests around the clock, but nobody can tell at a glance what is running, stuck, or waiting for approval. Leitstand reads the events the agents write to Supabase (`loop_events`, `loop_snapshot`) and shows only real data: no invented numbers, and Claude quota figures are labelled as estimates. Actions such as approve, run the planner now, or emergency stop run server-side with their own token and are logged. Sign-in is restricted to the owner (magic link, row-level security).
 
-Die App vom Home-Bildschirm hat einen eigenen Speicher; der Magic-Link öffnet Safari. Darum gibt es zusätzlich den 6-stelligen Code aus der Mail:
+## Architecture
 
-1. Safari → Teilen → Zum Home-Bildschirm.
-2. App öffnen, E-Mail-Adresse eingeben, „Link senden“.
-3. Code aus der Mail bei „Code aus der Mail“ eingeben, „Mit Code anmelden“.
+![Architecture: Linear to dispatcher to Claude worker to build gate to auto-merge, all writing to Supabase, read by the Next.js dashboard](docs/architecture.svg)
 
-Voraussetzung: Die Supabase-Mail-Vorlage „Magic Link“ (Authentication → Email Templates) enthält den Platzhalter für den Code (Token) neben dem Link, siehe `docs/decisions/SIN-510-code-anmeldung.md`. Die Sitzung bleibt per Refresh-Token bestehen.
+The self-building loop is described in [`docs/decisions/SIN-413-loop.md`](docs/decisions/SIN-413-loop.md); the agent roles in [`docs/ABLAUF.md`](docs/ABLAUF.md).
 
-## Pausen (SIN-581)
+## Stack
 
-Trifft ein Dienst sein Limit (Claude, OpenAI, Vercel-Deploys, GitHub, Linear, …), steht eine Zeile in `kontingent_pausen` mit der Reset-Zeit. Quelle der Zeit: Meldung im Log (ohne Zeitzone gilt UTC), sonst Header `retry-after` / `x-ratelimit-reset`, sonst Standard je Dienst (Claude 5 h, Vercel 24 h, GitHub und Linear 1 h).
+Next.js 16 · React 19 · TypeScript · Supabase (EU) · React Flow · GitHub Actions · Vercel · PWA with web push
 
-| Befehl | Zweck |
-| --- | --- |
-| `npx tsx scripts/kontingent/kontingent.ts melden --dienst claude --log lauf.log` | Limit im Log erkannt → Pause speichern |
-| `npx tsx scripts/kontingent/kontingent.ts pruefen --dienst claude` | Exit 3, solange die Pause läuft |
-| `npx tsx scripts/kontingent/kontingent.ts wecken` | Abgelaufene Pausen: `dispatch` anstoßen, `geweckt_at` setzen |
+## Quick start
 
-Trockenlauf: `DRY_RUN=1`, künstliche Pause mit `melden --dienst claude --minuten 2`. `dispatch` und der Wächter beachten die Pause; Begründung in `docs/decisions/SIN-581-kontingent-pausen.md`.
+```bash
+npm ci
+cp .env.example .env.local   # fill in the Supabase values, names only in the repo
+npm run dev                  # http://localhost:43124
+```
 
-## Umgebungsvariablen
+Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:a11y` (Playwright with axe-core, after `npm run build`).
 
-Nur Namen in `.env.example`. Werte kommen aus Infisical (Pfad `/leitstand`).
+## What I learned
 
-## Stand
+1. A dashboard is only trustworthy if every number has a source row; refusing placeholder statistics shaped the whole data model.
+2. Unattended agents need hard gates: a required build check, a bounded number of repair rounds (3), and a human label for risky changes.
+3. Quota-limited services need pauses with a reset time (`kontingent_pausen`) instead of blind retries.
 
-Gerüst mit Design-Tokens aus Figma. Datenquelle: SIN-303 (Lern-App). Übersicht, Projekt-Detail und Handy-Ansicht: SIN-304.
+## Further docs
+
+- Signing in on iPhone (home-screen app, 6-digit code from the mail): [`docs/decisions/SIN-510-code-anmeldung.md`](docs/decisions/SIN-510-code-anmeldung.md)
+- Quota pauses: [`docs/decisions/SIN-581-kontingent-pausen.md`](docs/decisions/SIN-581-kontingent-pausen.md)
+- Rules for agents working in this repo: [`AGENTS.md`](AGENTS.md)
+
+## License
+
+[MIT](LICENSE)
