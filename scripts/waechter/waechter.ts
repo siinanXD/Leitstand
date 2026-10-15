@@ -180,7 +180,7 @@ async function sinanId(): Promise<string | null> {
 // ------------------------------------------------------------------ GitHub
 
 async function ladePrs(repo: string): Promise<PrInfo[]> {
-  const prs = await gh<{ number: number; title: string; head: { ref: string; sha: string }; labels: { name: string }[]; draft: boolean }[]>(
+  const prs = await gh<{ number: number; title: string; head: { ref: string; sha: string }; labels: { name: string }[]; draft: boolean; merged_at: string | null }[]>(
     `/repos/${repo}/pulls?state=open&per_page=50`,
   );
   const r: PrInfo[] = [];
@@ -202,6 +202,7 @@ async function ladePrs(repo: string): Promise<PrInfo[]> {
       ciRot: !!rot,
       ciGruen: checks.check_runs.some((c) => c.name === "build" && c.conclusion === "success"),
       entwurf: p.draft,
+      gemergtAt: p.merged_at,
       migration: dateien.some((f) => f.filename.startsWith("supabase/migrations/")),
       runUrl: rot?.html_url ?? null,
       letzterCommitAt: commit.commit.committer.date,

@@ -201,6 +201,11 @@ test("leitstandSnapshot: Spalten wie loop_snapshot (fertig_v1/gesamt_v1, kein pr
   assert.equal(leitstandSnapshot([], [], "r", null).fertig_v1, null);
 });
 
+test("leitstandSnapshot: gemergter risk:high-PR bleibt nicht in open_prs (SIN-699)", () => {
+  const z = leitstandSnapshot([], [pr({ number: 184, labels: ["risk:high"], gemergtAt: "2026-10-15T15:14:00Z" }), pr({ number: 201 })], "r", null);
+  assert.deepEqual(z.open_prs.map((p) => p.nummer), [201]);
+});
+
 test("Entscheidung: im Linear-Kommentar führt zu Label und PR-Kommentar (SIN-651)", () => {
   const r = entscheidungenAusKommentaren([
     "Entscheidung: [siinanXD/Content-Agent-Lernapp#350](https://linear.app/x) ja, automatisch",
