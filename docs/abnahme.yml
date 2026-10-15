@@ -91,6 +91,12 @@
   art: datei
   pfad: scripts/gedaechtnis/schreiben.ts
   enthaelt: eingangDateien
+- id: gedaechtnis-quelle-fehlt
+  produkt: gedaechtnis
+  titel: Fehlt eine Quelle, schreibt das Gedächtnis „Quelle nicht erreichbar“ statt „nichts“ (SIN-614)
+  art: datei
+  pfad: src/lib/gedaechtnis/gedaechtnis.ts
+  enthaelt: Quelle nicht erreichbar
 
 # Lern-App
 - id: lernapp-snapshot

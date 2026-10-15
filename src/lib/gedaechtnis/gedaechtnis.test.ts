@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MAX_ZEILEN_TAG, MAX_ZEILEN_UEBERSICHT, aktualisiertSatz, ceoZeilen, dateien, mitGeheimnis, tagBerlin, type Eingabe } from "./gedaechtnis";
+import { MAX_ZEILEN_TAG, MAX_ZEILEN_UEBERSICHT, aktualisiertSatz, ceoZeilen, dateien, mitGeheimnis, tagBerlin, vereinige, type Eingabe } from "./gedaechtnis";
 
 const jetzt = new Date("2026-10-13T04:00:00Z");
 const zeilen = (t: string) => t.trimEnd().split("\n").length;
@@ -77,6 +77,43 @@ test("Geheimnisse werden erkannt, normale Seiten nicht", () => {
   // Wörter mit „sk-“ oder „api-key“ ohne Wert sind keine Geheimnisse (Dateinamen wie SIN-397-run-task-pr.md).
   assert.deepEqual(mitGeheimnis({ "c.md": "https://github.com/x/y/blob/main/docs/decisions/SIN-397-run-task-pr.md risk-gate api-key fehlt" }), []);
   assert.deepEqual(mitGeheimnis({ "d.md": "sk-proj-abcdefghijklmnopqrstuvwxyz0123456789" }), ["d.md"]);
+});
+
+test("Offen (SIN-614): offene sinan-Issues aus Linear → Offen.md nicht leer, Snapshot-Dubletten fallen weg", () => {
+  const linear = ["SIN-336", "SIN-337", "SIN-338", "SIN-342", "SIN-594"].map((id) => ({ titel: `${id} Aufgabe`, projekt: "Leitstand", url: `https://linear.app/${id}`, art: "sinan" as const }));
+  const offen = vereinige(linear, [{ titel: "SIN-336 Aufgabe", projekt: "leitstand", url: null, art: "sinan" }, { titel: "PR #5 Freigabe", projekt: "lernapp", url: "u", art: "freigabe" }]);
+  assert.equal(offen.length, 6);
+  const text = dateien({ ...fixture, offen })["Offen.md"];
+  assert.ok(!text.includes("Nichts offen"));
+  assert.equal(text.match(/\(https:\/\/linear\.app\/SIN-\d+\)/g)?.length, 5);
+});
+
+test("Fehlende Quelle (SIN-614): „Quelle nicht erreichbar“ statt „nichts“", () => {
+  const kaputt: Eingabe = {
+    ...fixture,
+    offen: [],
+    prs: null,
+    erledigt: null,
+    fehlt: ["Linear", "Supabase", "GitHub"],
+    produkte: [{ id: "leitstand", name: "Leitstand", ziel: "", fertig: null, gesamt: null, laeuft: null, sinan: null }],
+  };
+  const d = dateien(kaputt);
+  assert.ok(!d["Offen.md"].includes("Nichts offen"));
+  assert.match(d["Offen.md"], /Quelle nicht erreichbar: Linear, Supabase/);
+  assert.match(d["00 Wo stehen wir.md"], /Quelle nicht erreichbar\nDu: Quelle nicht erreichbar|Läuft: Quelle nicht erreichbar/);
+  assert.ok(!d["00 Wo stehen wir.md"].includes("Stand unbekannt") && !d["00 Wo stehen wir.md"].includes("nichts"));
+  const tag = d["Tage/2026-10-13.md"];
+  assert.match(tag, /Quelle nicht erreichbar \(GitHub\)/);
+  assert.match(tag, /Quelle nicht erreichbar \(Linear\)/);
+  assert.ok(!tag.includes("Nichts gemergt"));
+});
+
+test("Tag (SIN-614): in Linear erledigte Issues, höchstens 30 Zeilen", () => {
+  const erledigt = Array.from({ length: 40 }, (_, i) => ({ id: `SIN-${i}`, titel: "t" }));
+  const prs = Array.from({ length: 60 }, (_, i) => ({ nummer: i, titel: "x", projekt: "leitstand", url: "u" }));
+  const text = dateien({ ...fixture, prs, erledigt, probleme: Array.from({ length: 40 }, (_, i) => `P ${i}`) })["Tage/2026-10-13.md"];
+  assert.match(text, /## In Linear erledigt\n- SIN-0 t/);
+  assert.ok(zeilen(text) <= MAX_ZEILEN_TAG);
 });
 
 test("Berliner Tag und Kachel-Satz", () => {
