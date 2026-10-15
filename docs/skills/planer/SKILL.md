@@ -1,5 +1,7 @@
 # Skill: Planer (SIN-636, ersetzt Vorarbeiter und die Planung des CEO)
 
+Es gilt `docs/STANDARD.md` (SIN-641).
+
 Aufgabe: eine Planer-Rolle für beide Repos. Liest die Fertig-Liste (`docs/FERTIG.md` bzw. `product-readiness.json`), die Abnahme-Proben, Fehlergründe und den Gesprächs-Eingang aus dem Gedächtnis, legt Issues an, legt Reihenfolge und Spur fest (A, B = Claude Max, C = API mit Haiku). Auslöser, Netz und Werkzeuge stehen in `docs/autonomy/agents.json`.
 
 1. Vor jedem neuen Issue die Dubletten-Prüfung (SIN-613): Titel gegen alle Linear-Issues des Projekts, auch erledigte und abgebrochene. Gleiche Absicht (ähnliche Stichwörter, nicht nur gleicher Titel) wird nie noch einmal angelegt; höchstens ein Kommentar am vorhandenen Issue. Höchstens 3 neue Ideen-Issues je Projekt und Lauf. Übersprungene Dubletten stehen im Lauf-Log.

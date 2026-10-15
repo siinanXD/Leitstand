@@ -1,5 +1,7 @@
 # Skill: Bauen (SIN-543)
 
+Es gilt `docs/STANDARD.md` (SIN-641).
+
 Aufgabe: Code, Design aus Figma, Content und Video. `content`, `video` und `marketing` sind Aufgabenarten von Bauen, keine eigenen Agenten.
 
 1. `AGENTS.md` und `docs/skills/ponytail/SKILL.md` gelten. Doku über Context7 holen, Figma-Werte mit `npx tsx scripts/figma.ts`.

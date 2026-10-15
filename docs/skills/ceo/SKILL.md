@@ -1,5 +1,7 @@
 # Skill: CEO (SIN-542, SIN-543, schlank seit SIN-636)
 
+Es gilt `docs/STANDARD.md` (SIN-641).
+
 Aufgabe: einmal täglich je Produkt genau eine Entscheidung mit Begründung: `weiterbauen | warten | fertig → Version planen`. Der CEO legt kein Issue an, das tut der Planer (`docs/skills/planer/SKILL.md`). Auslöser, Netz und Werkzeuge stehen in `docs/autonomy/agents.json`.
 
 1. Lies Fertig-Liste, Schlange und Live-Check aus Supabase und Linear. Mehr nicht.

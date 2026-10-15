@@ -1,5 +1,7 @@
 # Skill: Designer (SIN-561)
 
+Es gilt `docs/STANDARD.md` (SIN-641).
+
 Teil von „Bauen“. Gilt für jeden PR, der `src/app/`, `src/components/` oder `globals.css` ändert. Für Docs und Skripte gilt er nicht.
 
 ## Pflege (bei jedem Frontend-PR)

@@ -1,5 +1,7 @@
 # Skill: Visionär (SIN-573)
 
+Es gilt `docs/STANDARD.md` (SIN-641).
+
 Aufgabe: ein Produkt in Versionen teilen, damit Änderungen gut getrennt bleiben. Läuft nur, wenn der CEO `fertig` meldet, sonst nie. Auslöser und Werkzeuge stehen in `docs/autonomy/agents.json`.
 
 1. Lies `docs/PRODUCT.md`, `docs/markt/*.md` (Feature-Agent), offene `idee`-Issues, Kosten und PostHog-Kennzahlen. Mehr nicht. Nichts erfinden: fehlt eine Zahl, schreibe es.

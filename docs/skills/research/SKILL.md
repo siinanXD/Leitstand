@@ -1,5 +1,7 @@
 # Skill: Research (SIN-543)
 
+Es gilt `docs/STANDARD.md` (SIN-641).
+
 Aufgabe: vor jeder Entscheidung eine fertige Lösung suchen. Läuft nur, wenn CEO oder Bauer es anfordern, nie von allein.
 
 1. Suche in dieser Reihenfolge: Repo (gibt es das schon?), GitHub-Suche, Context7 (aktuelle Doku), WebSearch/WebFetch, Hugging Face.
