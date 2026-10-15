@@ -7,7 +7,9 @@
  * und schreibt Markdown für den privaten Obsidian-Vault siinanXD/gedaechtnis. Pusht nur, wenn sich etwas geändert hat.
  * Kein KI-Aufruf, keine Rohdaten oder Traces. Legt nie ein öffentliches Repo an und ändert nie Token-Rechte.
  *
- * Env: GH_TOKEN (AGENT_WORKFLOW_TOKEN), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+ * Gesprächs-Eingang (SIN-612): Linear-Issues mit Label `gedaechtnis` werden Notizen unter Eingang/ und nach dem Push mit Link geschlossen.
+ *
+ * Env: GH_TOKEN (AGENT_WORKFLOW_TOKEN), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, LINEAR_API_KEY (optional, ohne ihn entfällt der Eingang).
  * Ohne Zugriff auf das Repo (SIN-540 offen) oder mit DRY_RUN=1: Trockenlauf, Ausgabe in GEDAECHTNIS_AUSGABE (Standard gedaechtnis-ausgabe/),
  * Status `braucht_sinan`, Lauf bleibt grün.
  */
@@ -16,6 +18,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { letzteJeProdukt } from "../../src/lib/ceo/ceo";
+import { EINGANG_LABEL, eingangDateien, schlussKommentar, zuSchliessen, type EingangIssue } from "../../src/lib/gedaechtnis/eingang";
 import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type OffenerPunkt, type Pr } from "../../src/lib/gedaechtnis/gedaechtnis";
 import { PROJEKTE, alleProjekte } from "../../src/lib/projekte";
 import { gedaechtnisZeilen, type Fund } from "../../src/lib/trend/trend";
@@ -47,6 +50,49 @@ async function supabase(pfad: string): Promise<unknown> {
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${pfad}`, { headers: supabaseKopf });
   if (!res.ok) throw new Error(`Supabase ${pfad.split("?")[0]}: ${res.status}`);
   return res.json();
+}
+
+type Eingang = { issues: EingangIssue[]; erledigtStatus: Map<string, string> };
+
+async function linear<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY ?? "" }, body: JSON.stringify({ query, variables }) });
+  const json = (await res.json()) as { data?: T; errors?: unknown };
+  if (!res.ok || json.errors) throw new Error(`Linear: ${res.status}`);
+  return json.data as T;
+}
+
+/** Issues mit Label `gedaechtnis` der letzten 14 Tage (auch geschlossene, damit spätere Änderungen die Notiz aktualisieren). */
+async function eingang(jetzt: Date): Promise<Eingang> {
+  const status = new Map<string, string>();
+  if (!env.LINEAR_API_KEY) return { issues: [], erledigtStatus: status };
+  const seit = new Date(jetzt.getTime() - 14 * 86_400_000).toISOString();
+  const d = await linear<{ issues: { nodes: { id: string; identifier: string; title: string; description: string | null; url: string; createdAt: string; state: { type: string }; team: { states: { nodes: { id: string; type: string }[] } } }[] } }>(
+    "query($l:String!,$seit:DateTimeOrDuration!){issues(first:50,filter:{labels:{name:{eq:$l}},updatedAt:{gte:$seit}}){nodes{id identifier title description url createdAt state{type} team{states{nodes{id type}}}}}}",
+    { l: EINGANG_LABEL, seit },
+  );
+  for (const n of d.issues.nodes) status.set(n.id, n.team.states.nodes.find((s) => s.type === "completed")?.id ?? "");
+  return { issues: d.issues.nodes.map((n) => ({ id: n.id, identifier: n.identifier, title: n.title, description: n.description, url: n.url, createdAt: n.createdAt, stateType: n.state.type })), erledigtStatus: status };
+}
+
+/** Legt das Label im Team SIN an, falls es fehlt. */
+async function labelSichern(): Promise<void> {
+  if (!env.LINEAR_API_KEY) return;
+  const d = await linear<{ issueLabels: { nodes: { id: string }[] }; teams: { nodes: { id: string }[] } }>('query($l:String!){issueLabels(filter:{name:{eq:$l}}){nodes{id}} teams(filter:{key:{eq:"SIN"}}){nodes{id}}}', { l: EINGANG_LABEL });
+  const team = d.teams.nodes[0]?.id;
+  if (d.issueLabels.nodes.length === 0 && team) await linear("mutation($n:String!,$t:String!){issueLabelCreate(input:{name:$n,teamId:$t}){success}}", { n: EINGANG_LABEL, t: team });
+}
+
+/** Nach erfolgreichem Push: Kommentar mit Link auf die Notiz, dann Status „erledigt“. Eine Panne bei einem Issue stoppt die anderen nicht. */
+async function schliesse(e: Eingang): Promise<void> {
+  for (const i of zuSchliessen(e.issues)) {
+    try {
+      await linear("mutation($id:String!,$b:String!){commentCreate(input:{issueId:$id,body:$b}){success}}", { id: i.id, b: schlussKommentar(i.identifier) });
+      const stateId = e.erledigtStatus.get(i.id);
+      if (stateId) await linear("mutation($id:String!,$s:String!){issueUpdate(id:$id,input:{stateId:$s}){success}}", { id: i.id, s: stateId });
+    } catch (err) {
+      console.warn(`Warnung: ${i.identifier} nicht geschlossen: ${(err as Error).message}`);
+    }
+  }
 }
 
 /** Vault prüfen; fehlt er, einmal privat anlegen. null = kein Zugriff (SIN-540 bleibt offen). */
@@ -179,7 +225,11 @@ function pushe(d: Dateien, jetzt: Date): boolean {
 
 async function main() {
   const jetzt = new Date();
-  const d = dateien(await sammle(jetzt));
+  const ein = await eingang(jetzt).catch((e: Error): Eingang => {
+    console.warn(`Warnung: Eingang übersprungen: ${e.message}`);
+    return { issues: [], erledigtStatus: new Map() };
+  });
+  const d = { ...dateien(await sammle(jetzt)), ...eingangDateien(ein.issues) };
   const treffer = mitGeheimnis(d);
   if (treffer.length) {
     console.error(`Abbruch: Inhalt sieht nach Geheimnis aus in ${treffer.join(", ")}. Nichts geschrieben.`);
@@ -192,6 +242,9 @@ async function main() {
     return;
   }
   const gepusht = pushe(d, jetzt);
+  // Geschlossen wird erst, wenn die Notizen im Vault liegen (auch bei „keine Änderung“: dann lagen sie schon dort).
+  await labelSichern().catch(() => undefined);
+  await schliesse(ein);
   console.log(gepusht ? `${Object.keys(d).length} Dateien geprüft, Änderungen nach ${VAULT_REPO} gepusht.` : "Keine Änderung, nichts gepusht.");
   if (gepusht && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
     const run = env.GITHUB_RUN_ID;
