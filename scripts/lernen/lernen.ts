@@ -17,7 +17,7 @@ const seit = new Date(jetzt.getTime() - stunden * 3600_000).toISOString();
 
 async function ereignisse(): Promise<LernEreignis[]> {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt");
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?project=eq.leitstand&created_at=gte.${seit}&select=created_at,step,status,issue,pr,agent,cost&order=created_at`, {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?project=eq.leitstand&created_at=gte.${seit}&select=created_at,step,status,issue,pr,agent,cost,grund&order=created_at`, {
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
   });
   if (!res.ok) throw new Error(`loop_events: ${res.status} ${await res.text()}`);

@@ -259,3 +259,10 @@
   art: datei
   pfad: src/lib/ceo/fertig.ts
   enthaelt: MAX_NEU_JE_LAUF
+# Fehlergründe (SIN-617)
+- id: leitstand-fehlergrund
+  produkt: leitstand
+  titel: Die Fehlergrund-Logik für loop_events ist im Repo
+  art: datei
+  pfad: src/lib/loop/fehlergrund.ts
+  enthaelt: topGruende

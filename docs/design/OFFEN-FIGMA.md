@@ -5,3 +5,4 @@ Routen, die ohne Design-Issue aus vorhandenen Komponenten und Tokens entstanden 
 | Route | Datum | PR |
 | --- | --- | --- |
 | /abnahme „Läuft es wirklich?“ (Menüpunkt unter „Mehr“ für Technik) | 2026-10-14 | SIN-626 |
+| Kachel „Häufigste Fehlergründe (24 h)“ auf /details (aus vorhandenen Klassen, wie „Gelernt diese Woche“) | 2026-10-15 | SIN-617 |

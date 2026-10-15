@@ -10,6 +10,7 @@ import { aktivitaetKacheln, aufgabenFuerDich, belegChips, inArbeitZeilen, kennza
 import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "../rahmen";
 import { GedaechtnisKachel } from "../gedaechtnis-kachel";
 import { GelerntKachel } from "../gelernt-kachel";
+import { FehlergruendeKachel } from "../fehlergruende-kachel";
 import { TrendsKachel } from "../trends-kachel";
 import { WerbungKachel } from "../werbung-kachel";
 import "../freigabe.css";
@@ -210,6 +211,7 @@ export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; p
         <GedaechtnisKachel angemeldet />
         <TrendsKachel angemeldet />
         <GelerntKachel angemeldet />
+        <FehlergruendeKachel angemeldet />
       </div>
     </main>
   );
