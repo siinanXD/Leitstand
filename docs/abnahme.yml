@@ -266,3 +266,10 @@
   art: datei
   pfad: src/lib/loop/fehlergrund.ts
   enthaelt: topGruende
+# Fokus (SIN-627)
+- id: leitstand-fokus-pause
+  produkt: leitstand
+  titel: Marketing und Trend laufen nicht mehr nach Zeitplan
+  art: datei
+  pfad: src/lib/wirkung/wirkung.ts
+  enthaelt: FOKUS_PAUSE

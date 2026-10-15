@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { LAUF_FRIST_MS, note, pauseZeile, pausenAlarme, rolleEingabe, rollenStand, weiterZeile, WIRKUNG_AB, zuPausieren, type RollenEreignis } from "./wirkung";
+import { FOKUS_AB, LAUF_FRIST_MS, note, pauseZeile, pausenAlarme, rolleEingabe, rollenStand, weiterZeile, WIRKUNG_AB, zuPausieren, type RollenEreignis } from "./wirkung";
 
 const TAG = 24 * 3_600_000;
 const JETZT = WIRKUNG_AB + 20 * TAG;
@@ -71,4 +71,23 @@ test("Knopf-Eingabe: nur bekannte Rollen", () => {
 test("Register: jede Rolle hat eine Kennzahl mit Ziel", () => {
   const r = JSON.parse(readFileSync("docs/autonomy/agents.json", "utf8")) as { rollen: { id: string; wirkung?: { kennzahl: string; ziel: string } }[] };
   for (const x of r.rollen) assert.ok(x.wirkung?.kennzahl && x.wirkung.ziel, x.id);
+});
+
+test("Fokus (SIN-627): Marketing, Trend und Visionär ruhen mit Grund, der Knopf schaltet sie wieder an", () => {
+  const fokus = [{ id: "marketing", name: "Marketing" }, { id: "ceo", name: "CEO" }];
+  const [marketing, ceo] = rollenStand(fokus, [], JETZT);
+  assert.deepEqual([marketing.pausiert, marketing.grund, ceo.pausiert, ceo.grund], [true, "pausiert bis MAF v1", false, null]);
+  assert.deepEqual(zuPausieren(fokus, [], JETZT), ["ceo"]);
+  const weiter = { ...weiterZeile("marketing"), created_at: vor(100) } as RollenEreignis;
+  assert.equal(rollenStand(fokus, [weiter], JETZT)[0].pausiert, false);
+  const alt = { ...weiterZeile("marketing"), created_at: new Date(FOKUS_AB - TAG).toISOString() } as RollenEreignis;
+  assert.equal(rollenStand(fokus, [alt], JETZT)[0].pausiert, true);
+});
+
+test("Fokus (SIN-627): marketing.yml und trend.yml haben keinen Zeitplan mehr, workflow_dispatch bleibt", () => {
+  for (const f of ["marketing", "trend"]) {
+    const text = readFileSync(`.github/workflows/${f}.yml`, "utf8");
+    assert.doesNotMatch(text, /^\s*schedule:/m);
+    assert.match(text, /^\s*workflow_dispatch:/m);
+  }
 });

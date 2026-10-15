@@ -3,9 +3,7 @@
 # Kein Claude-Kontingent: der Lauf kann nicht daran rot werden. Der Stand docs/markt/trends.json geht als PR auf main (Auto-Merge, nur docs/).
 name: trend
 on:
-  schedule:
-    - cron: "30 4 * * 0"
-    - cron: "30 4 * * 1-6"
+  # SIN-627: Zeitplan aus bis MAF v1 (war "30 4 * * 0" Woche und "30 4 * * 1-6" messen); Wiederanschalten siehe docs/decisions/SIN-627-fokus.md
   workflow_dispatch:
     inputs:
       modus:
