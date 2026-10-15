@@ -123,3 +123,93 @@
   rest: leitstand_push_gesendet?schluessel=like.auswertung:*&select=gesendet_at&order=gesendet_at.desc&limit=1
   zeitfeld: gesendet_at
   max_alter_min: 1560
+# Wirkung (SIN-637): jede aktive Rolle schreibt mindestens alle 48 Stunden ein Ereignis; die Spalte wirkung ist angewendet
+- id: leitstand-wirkung-spalte
+  produkt: leitstand
+  titel: Die Spalte wirkung in loop_events ist angewendet
+  art: db
+  rest: loop_events?select=wirkung&limit=1
+- id: leitstand-rolle-ceo
+  produkt: leitstand
+  titel: CEO hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.ceo&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-visionaer
+  produkt: leitstand
+  titel: Visionär hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.visionaer&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-planer
+  produkt: leitstand
+  titel: Planer hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.planer&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-research
+  produkt: leitstand
+  titel: Research hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.research&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-bauen
+  produkt: leitstand
+  titel: Bauen hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.bauen&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-pruefen
+  produkt: leitstand
+  titel: Prüfen hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.pruefen&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-content
+  produkt: leitstand
+  titel: Content hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.content&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-marketing
+  produkt: leitstand
+  titel: Marketing hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.marketing&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-hausmeister
+  produkt: leitstand
+  titel: Hausmeister hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.hausmeister&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-anwalt
+  produkt: leitstand
+  titel: Anwalt hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.anwalt&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-gedaechtnis
+  produkt: leitstand
+  titel: Gedächtnis hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.gedaechtnis&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
+- id: leitstand-rolle-trend
+  produkt: leitstand
+  titel: Trend hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.trend&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880

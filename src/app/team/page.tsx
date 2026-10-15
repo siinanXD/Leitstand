@@ -1,7 +1,9 @@
 "use client";
 
 import { agentKarte, bahnen, type AgentKarte } from "@/lib/agenten";
-import { ohneKennungen } from "@/lib/zeit";
+import { useRollen } from "@/lib/aktionen-client";
+import { useSitzung } from "@/lib/sitzung";
+import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
 import { MitMehr } from "../mit-mehr";
 import { projekteIn, Rahmen } from "../rahmen";
 import { ZustandSymbol, type ZustandArt } from "../zustand-symbol";
@@ -13,6 +15,39 @@ const GRUPPEN: { art: ZustandArt; farbe: string; titel: (n: number) => string }[
   { art: "wartet", farbe: "sonne", titel: (n) => (n === 1 ? "Einer wartet auf dich" : `${n} warten auf dich`) },
   { art: "laeuft", farbe: "gruen", titel: (n) => (n === 1 ? "Einer arbeitet gerade" : `${n} arbeiten gerade`) },
 ];
+
+const euro = (v: number) => `${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+
+/** Noten (SIN-637): je Rolle Note 1 bis 6 aus der gemeldeten Wirkung, Kosten der Woche, letzter Lauf. „ok“ allein gibt keine Note. */
+function Noten({ jetzt }: { jetzt: Date }) {
+  const sitzung = useSitzung();
+  const { rollen, fehler, anschalten } = useRollen(sitzung.zustand === "ok" && sitzung.sitzung !== null);
+  if (!rollen) return null;
+  return (
+    <section aria-labelledby="team-noten">
+      <h2 id="team-noten" className="karte-titel">
+        Noten
+      </h2>
+      <ul className="noten">
+        {rollen.map((r) => (
+          <li key={r.id}>
+            <strong>{r.name}</strong>
+            <span className="note">{r.note === null ? "Keine Note" : `Note ${r.note}`}</span>
+            <span title={`${r.kennzahl} (Ziel ${r.ziel})`}>{r.pausiert ? "Pausiert, 14 Tage ohne Wirkung" : !r.laeuft ? "Läuft nicht" : `Ziel ${r.ziel}`}</span>
+            <span>{r.kosten7d === null ? "Kosten unbekannt" : `${euro(r.kosten7d)} diese Woche`}</span>
+            <span>{r.letzterLauf ? `Letzter Lauf ${zeitInWorten(r.letzterLauf, jetzt) ?? "früher"}` : "Noch kein Lauf"}</span>
+            {r.pausiert && (
+              <button type="button" onClick={() => void anschalten(r.id)}>
+                Wieder anschalten
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {fehler && <p role="status">{fehler}</p>}
+    </section>
+  );
+}
 
 /** Team nach Figma T2 v2 (SIN-578, 81:10): Figuren statt Tabelle, je Zustand eine Karte, höchstens drei Figuren, Rest hinter „mehr“. Wer ruht, steht in einer Zeile darunter. Zustand nur aus loop_events. */
 export default function Team() {
@@ -54,6 +89,7 @@ export default function Team() {
                 <MitMehr liste={ruhen} klasse="figuren" zeile={figur} />
               </section>
             )}
+            <Noten jetzt={jetzt} />
           </main>
         );
       }}
