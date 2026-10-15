@@ -352,3 +352,9 @@
   art: datei
   pfad: src/lib/vorarbeiter/vorarbeiter.ts
   enthaelt: anstossEntscheidung
+- id: leitstand-botadvisor
+  produkt: leitstand
+  titel: Die Rolle Bot Advisor ist im Register eingetragen
+  art: datei
+  pfad: docs/autonomy/agents.json
+  enthaelt: '"id": "botadvisor"'

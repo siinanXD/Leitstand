@@ -1,0 +1,30 @@
+{
+  "rolle": "botadvisor",
+  "issue": "SIN-713",
+  "zeitpunkt": "2026-10-15T20:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Fixture: Entwurf Competitor Website Watch, Beispieldaten ohne Aussagekraft.",
+  "naechster_schritt": "Rollen-Dateien ablegen, ABLAUF.md neu erzeugen, npm test.",
+  "kosten_eur": 0,
+  "quellen": ["Satz von Sinan"],
+  "satz": "Beobachte die Websites meiner Wettbewerber und sag mir, wenn sich Preise oder Angebote ändern.",
+  "fragen": [
+    { "id": "seiten", "frage": "Welche Adressen sollen beobachtet werden?", "warum": "Ohne Liste kann der Agent nichts abrufen.", "vorschlag": "Preisseite und Startseite je Wettbewerber" },
+    { "id": "takt", "frage": "Wie oft soll geprüft werden?", "warum": "Bestimmt den Takt und die Kosten.", "vorschlag": "wöchentlich" },
+    { "id": "ausgabe", "frage": "Wohin soll die Meldung gehen?", "warum": "Der Agent legt keine Issues ohne Ziel an.", "vorschlag": "Linear-Issue mit Label idee" }
+  ],
+  "agent": {
+    "id": "wettbewerb",
+    "name": "Competitor Website Watch",
+    "aufgabe": "Ruft die Seiten der Wettbewerber ab und meldet Änderungen bei Preisen und Angeboten.",
+    "system_prompt": "Du beobachtest die vorgegebenen Seiten. Vergleiche den abgerufenen Text mit dem letzten Stand im Gedächtnis. Melde nur belegte Änderungen mit Fundstelle, erfinde nichts. Gib das Ergebnis nach dem Schema aus.",
+    "werkzeuge": ["WebFetch", "Gedächtnis", "Linear"],
+    "takt": "woechentlich",
+    "secrets": ["LINEAR_API_KEY"],
+    "ausgabe_schema": {
+      "type": "object",
+      "properties": { "aenderungen": { "type": "array" } },
+      "required": ["aenderungen"]
+    }
+  }
+}

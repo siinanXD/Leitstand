@@ -11,6 +11,8 @@ export type Schema = {
   pattern?: string;
   minimum?: number;
   maximum?: number;
+  minItems?: number;
+  maxItems?: number;
 };
 
 const typVon = (v: unknown) => (Array.isArray(v) ? "array" : v === null ? "null" : typeof v);
@@ -30,7 +32,9 @@ export function pruefeSchema(wert: unknown, schema: Schema, pfad = "$"): string[
     if (schema.minimum !== undefined && wert < schema.minimum) f.push(`${pfad}: unter ${schema.minimum}`);
     if (schema.maximum !== undefined && wert > schema.maximum) f.push(`${pfad}: über ${schema.maximum}`);
   }
-  if (Array.isArray(wert) && schema.items) wert.forEach((x, i) => f.push(...pruefeSchema(x, schema.items!, `${pfad}[${i}]`)));
+  if (Array.isArray(wert) && schema.minItems !== undefined && wert.length < schema.minItems) f.push(`${pfad}: weniger als ${schema.minItems} Einträge`);
+  if (Array.isArray(wert) && schema.maxItems !== undefined && wert.length > schema.maxItems) f.push(`${pfad}: mehr als ${schema.maxItems} Einträge`);
+  if (Array.isArray(wert) && schema.items)wert.forEach((x, i) => f.push(...pruefeSchema(x, schema.items!, `${pfad}[${i}]`)));
   if (t === "object") {
     const o = wert as Record<string, unknown>;
     for (const k of schema.required ?? []) if (!(k in o)) f.push(`${pfad}.${k}: fehlt`);
