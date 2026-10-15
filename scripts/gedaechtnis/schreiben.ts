@@ -17,9 +17,11 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
 import { letzteJeProdukt } from "../../src/lib/ceo/ceo";
+import { zaehleHaken } from "../../src/lib/ceo/fertig";
 import { EINGANG_LABEL, eingangDateien, schlussKommentar, zuSchliessen, type EingangIssue } from "../../src/lib/gedaechtnis/eingang";
-import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type OffenerPunkt, type Pr } from "../../src/lib/gedaechtnis/gedaechtnis";
+import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, vereinige, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type Erledigt, type OffenerPunkt, type Pr, type Quelle } from "../../src/lib/gedaechtnis/gedaechtnis";
 import { PROJEKTE, alleProjekte } from "../../src/lib/projekte";
 import { gedaechtnisZeilen, type Fund } from "../../src/lib/trend/trend";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
@@ -119,13 +121,41 @@ async function entscheidungen(): Promise<Entscheidung[]> {
   return [...je.values()].sort((a, b) => Number(b.id.slice(4)) - Number(a.id.slice(4)));
 }
 
-async function gemergt(repos: string[], seit: Date): Promise<Pr[]> {
+/** `null`, sobald ein Repo nicht antwortet: „Nichts gemergt“ wäre dann falsch. */
+async function gemergt(repos: string[], seit: Date): Promise<Pr[] | null> {
   const out: Pr[] = [];
   for (const repo of repos) {
     const liste = await ghJson<{ number: number; title: string; html_url: string; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=50`);
-    for (const p of liste ?? []) if (p.merged_at && new Date(p.merged_at) >= seit) out.push({ nummer: p.number, titel: p.title, projekt: PROJEKTE.find((x) => x.repo === repo)?.id ?? repo, url: p.html_url });
+    if (!liste) return null;
+    for (const p of liste) if (p.merged_at && new Date(p.merged_at) >= seit) out.push({ nummer: p.number, titel: p.title, projekt: PROJEKTE.find((x) => x.repo === repo)?.id ?? repo, url: p.html_url });
   }
   return out;
+}
+
+type LinearZeile = { identifier: string; title: string; url: string; project: { name: string } | null };
+
+/** Alle offenen Issues mit Label `sinan` direkt aus Linear (der Snapshot kennt nur einen Teil). */
+async function sinanIssues(): Promise<OffenerPunkt[]> {
+  const d = await linear<{ issues: { nodes: LinearZeile[] } }>(
+    'query{issues(first:100,filter:{labels:{name:{eq:"sinan"}},state:{type:{nin:["completed","canceled"]}}}){nodes{identifier title url project{name}}}}',
+  );
+  return d.issues.nodes.map((n) => ({ titel: `${n.identifier} ${n.title}`, projekt: n.project?.name ?? "Linear", url: n.url, art: "sinan" }));
+}
+
+/** In den letzten 24 h in Linear erledigte Issues. */
+async function erledigtIssues(seit: Date): Promise<Erledigt[]> {
+  const d = await linear<{ issues: { nodes: Pick<LinearZeile, "identifier" | "title">[] } }>(
+    "query($seit:DateTimeOrDuration!){issues(first:50,filter:{completedAt:{gte:$seit}}){nodes{identifier title}}}",
+    { seit: seit.toISOString() },
+  );
+  return d.issues.nodes.map((n) => ({ id: n.identifier, titel: n.title }));
+}
+
+/** Content-Fabrik (Lern-App): jüngstes Ereignis der letzten 2 h mit „content“ oder „fabrik“ im Schritt oder Agenten, das nicht rot ist. */
+function fabrikZeile(events: LoopEvent[], jetzt: Date): string | null {
+  const grenze = jetzt.getTime() - 2 * 3_600_000;
+  const e = events.find((x) => Date.parse(x.created_at) >= grenze && /content|fabrik/i.test(`${x.step ?? ""} ${x.agent ?? ""}`) && !(x.status && ROT.test(x.status)));
+  return e ? `Content-Fabrik (zuletzt ${new Date(e.created_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" })} Uhr)` : null;
 }
 
 function offenePunkte(snapshot: SnapshotRow[]): OffenerPunkt[] {
@@ -140,37 +170,69 @@ async function sammle(jetzt: Date): Promise<Eingabe> {
   let events: LoopEvent[] = [];
   let ceo: string[] = [];
   const probleme: string[] = [];
+  const fehlt: Quelle[] = [];
+  const meldeFehlt = (q: Quelle, e: unknown) => {
+    fehlt.push(q);
+    probleme.push(`Quelle nicht erreichbar (${q}): ${(e as Error).message}`);
+  };
   try {
     snapshot = parseSnapshot(await supabase("loop_snapshot?select=*&limit=200"));
     events = parseEvents(await supabase(`loop_events?select=*&created_at=gte.${seit.toISOString()}&order=created_at.desc&limit=1000`));
-    ceo = ceoZeilen(letzteJeProdukt(await supabase(`ceo_entscheidungen?select=produkt,entscheidung,grund,created_at&created_at=gte.${seit.toISOString()}&order=created_at.desc&limit=100`)));
   } catch (e) {
-    probleme.push(`Daten unvollständig: ${(e as Error).message}`);
+    meldeFehlt("Supabase", e);
   }
+  if (!fehlt.includes("Supabase")) {
+    try {
+      ceo = ceoZeilen(letzteJeProdukt(await supabase(`ceo_entscheidungen?select=produkt,entscheidung,grund,created_at&created_at=gte.${seit.toISOString()}&order=created_at.desc&limit=100`)));
+    } catch (e) {
+      probleme.push(`CEO-Entscheidungen nicht gelesen: ${(e as Error).message}`);
+    }
+  }
+  // Linear: ohne Schlüssel oder bei Fehler „Quelle nicht erreichbar“, nie „nichts offen“.
+  let linearOffen: OffenerPunkt[] | null = null;
+  let erledigt: Erledigt[] | null = null;
+  try {
+    if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY fehlt");
+    linearOffen = await sinanIssues();
+    erledigt = await erledigtIssues(seit);
+  } catch (e) {
+    linearOffen = null;
+    erledigt = null;
+    meldeFehlt("Linear", e);
+  }
+  const supabaseOk = !fehlt.includes("Supabase");
   const quelle = { events, snapshot };
   const stand = new Map(fortschritt(quelle).map((f) => [f.project, f]));
+  // Der Leitstand zählt seine eigene Fertig-Liste, falls der Snapshot keinen Stand trägt (Befund 14.10.: „Stand unbekannt“).
+  const eigener = await readFile("docs/FERTIG.md", "utf8").then(zaehleHaken, () => null);
   const laeuft = inArbeitZeilen(quelle, jetzt);
-  const offen = offenePunkte(snapshot);
-  const projekte = alleProjekte(snapshot.map((s) => s.project));
+  const fabrik = fabrikZeile(events, jetzt);
+  const offen = vereinige(linearOffen ?? [], offenePunkte(snapshot));
+  const projekte = alleProjekte([...PROJEKTE.filter((p) => p.repo).map((p) => p.id), ...snapshot.map((s) => s.project)]);
   const beschreibung = async (repo?: string) => (repo ? ((await ghJson<{ description: string | null }>(`/repos/${repo}`))?.description ?? "") : "");
+  const gehoertZu = (o: OffenerPunkt, p: (typeof projekte)[number]) => [p.id, p.name, p.repo?.split("/")[1]].some((n) => n && n.toLowerCase() === o.projekt.toLowerCase());
 
   const produkte = await Promise.all(
     projekte.map(async (p) => ({
       id: p.id,
       name: p.name,
       ziel: await beschreibung(p.repo),
-      fertig: stand.get(p.id)?.fertig ?? null,
-      gesamt: stand.get(p.id)?.gesamt ?? null,
-      laeuft: laeuft.filter((z) => z.project === p.id).map((z) => `${z.issue ?? ""} ${z.titel ?? ""}`.trim()),
-      sinan: offen.filter((o) => o.projekt === p.id || o.projekt === p.repo?.split("/")[1]).map((o) => o.titel),
+      fertig: stand.get(p.id)?.fertig ?? (p.id === "leitstand" ? (eigener?.fertig ?? null) : null),
+      gesamt: stand.get(p.id)?.gesamt ?? (p.id === "leitstand" ? (eigener?.gesamt ?? null) : null),
+      laeuft: supabaseOk ? [...laeuft.filter((z) => z.project === p.id).map((z) => `${z.issue ?? ""} ${z.titel ?? ""}`.trim()), ...(p.id === "lernapp" && fabrik ? [fabrik] : [])] : null,
+      sinan: linearOffen && supabaseOk ? offen.filter((o) => gehoertZu(o, p)).map((o) => o.titel) : null,
     })),
   );
   for (const e of events.filter((x) => x.status && ROT.test(x.status))) probleme.push(`${e.project ?? "?"}: ${e.step ?? "?"} ${e.status}${e.issue ? ` (${e.issue})` : ""}`);
   const kosten = events.reduce((s, e) => s + (e.cost ?? 0), 0);
+  const prs = await gemergt(projekte.flatMap((p) => (p.repo ? [p.repo] : [])), seit);
+  if (!prs) meldeFehlt("GitHub", new Error("Pull Requests nicht lesbar"));
   return {
     jetzt,
     produkte,
-    prs: await gemergt(projekte.flatMap((p) => (p.repo ? [p.repo] : [])), seit),
+    prs,
+    erledigt,
+    fehlt,
     entscheidungen: await entscheidungen(),
     offen,
     // shortcut: nur Agenten-Kosten aus loop_events (USD), nicht die Quellen von /api/kosten; bei Bedarf dorthin umstellen.

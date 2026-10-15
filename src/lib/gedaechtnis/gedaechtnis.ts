@@ -13,12 +13,16 @@ export const MAX_ZEILEN_TAG = 30;
 const MAX_ENTSCHEIDUNGEN = 10;
 const MAX_ZEICHEN = 90;
 
-export type Produkt = { id: string; name: string; ziel: string; fertig: number | null; gesamt: number | null; laeuft: string[]; sinan: string[] };
+/** `laeuft` und `sinan` sind `null`, wenn die Quelle (Supabase bzw. Linear) nicht erreichbar war: dann steht „Quelle nicht erreichbar“ statt „nichts“ (SIN-614). */
+export type Produkt = { id: string; name: string; ziel: string; fertig: number | null; gesamt: number | null; laeuft: string[] | null; sinan: string[] | null };
 export type Pr = { nummer: number; titel: string; projekt: string; url: string };
 /** `id` ist die Linear-Kennung aus dem Dateinamen in `docs/decisions/`, `url` der Link auf die Datei (kein Inhalt wird kopiert). */
 export type Entscheidung = { id: string; projekt: string; titel: string; url: string };
 export type OffenerPunkt = { titel: string; projekt: string; url: string | null; art: "sinan" | "freigabe" };
-export type Eingabe = { jetzt: Date; produkte: Produkt[]; prs: Pr[]; entscheidungen: Entscheidung[]; offen: OffenerPunkt[]; kostenUsd: number | null; probleme: string[]; /** Trend-Radar 2 (SIN-575): höchstens 3 Zeilen, kommen aus `gedaechtnisZeilen`. */ trends?: string[]; /** CEO-Entscheidung des Tages je Produkt (SIN-636), kommen aus `ceoZeilen`. */ ceo?: string[] };
+/** In Linear erledigtes Issue der letzten 24 h. */
+export type Erledigt = { id: string; titel: string };
+export type Quelle = "Linear" | "Supabase" | "GitHub";
+export type Eingabe = { jetzt: Date; produkte: Produkt[]; /** `null` = GitHub nicht erreichbar. */ prs: Pr[] | null; /** `null` = Linear nicht erreichbar. */ erledigt?: Erledigt[] | null; /** Quellen, die beim Sammeln nicht antworteten (SIN-614). */ fehlt?: Quelle[]; entscheidungen: Entscheidung[]; offen: OffenerPunkt[]; kostenUsd: number | null; probleme: string[]; /** Trend-Radar 2 (SIN-575): höchstens 3 Zeilen, kommen aus `gedaechtnisZeilen`. */ trends?: string[]; /** CEO-Entscheidung des Tages je Produkt (SIN-636), kommen aus `ceoZeilen`. */ ceo?: string[] };
 
 export type Dateien = Record<string, string>;
 
@@ -43,8 +47,9 @@ function begrenze(zeilen: string[], max: number): string[] {
   return zeilen.length <= max ? zeilen : [...zeilen.slice(0, max - 1), `… und ${zeilen.length - max + 1} weitere`];
 }
 
-const stand = (p: Produkt): string => (p.fertig !== null && p.gesamt !== null ? `${p.fertig}/${p.gesamt} fertig` : "Stand unbekannt");
-const auflistung = (liste: string[], leer: string): string => (liste.length === 0 ? leer : liste.slice(0, 2).map((t) => kurz(t, 40)).join("; ") + (liste.length > 2 ? ` (+${liste.length - 2})` : ""));
+const NICHT_ERREICHBAR = "Quelle nicht erreichbar";
+const stand = (p: Produkt): string => (p.fertig !== null && p.gesamt !== null ? `${p.fertig}/${p.gesamt} fertig` : p.laeuft === null ? NICHT_ERREICHBAR : "Stand unbekannt");
+const auflistung = (liste: string[] | null, leer: string): string => (liste === null ? NICHT_ERREICHBAR : liste.length === 0 ? leer : liste.slice(0, 2).map((t) => kurz(t, 40)).join("; ") + (liste.length > 2 ? ` (+${liste.length - 2})` : ""));
 
 /** Immer oben: je Produkt genau 3 Zeilen (Stand, was läuft, was Sinan tun muss). Wird jedes Mal komplett neu geschrieben. */
 export function uebersicht(e: Eingabe): string {
@@ -59,7 +64,8 @@ export function uebersicht(e: Eingabe): string {
     );
   }
   const mehr = e.produkte.length - sichtbar.length;
-  zeilen.push(`[[Offen]] · ${e.offen.length} offen${mehr > 0 ? ` · ${mehr} Produkte nur unter Produkte/` : ""}`);
+  const luecke = (e.fehlt ?? []).some((q) => q !== "GitHub");
+  zeilen.push(`[[Offen]] · ${e.offen.length} offen${luecke ? `, ${NICHT_ERREICHBAR}` : ""}${mehr > 0 ? ` · ${mehr} Produkte nur unter Produkte/` : ""}`);
   return zeilen.join("\n") + "\n";
 }
 
@@ -82,15 +88,16 @@ export function produktSeite(p: Produkt, entscheidungen: Entscheidung[], jetzt: 
 /** Ein Tag: gebaut, entschieden, Kosten, Probleme. Höchstens 30 Zeilen. */
 export function tagSeite(e: Eingabe): string {
   const tag = tagBerlin(e.jetzt);
-  const ids = e.entscheidungen.filter((x) => e.prs.some((p) => p.titel.includes(x.id)));
+  const ids = e.entscheidungen.filter((x) => (e.prs ?? []).some((p) => p.titel.includes(x.id)));
   const trends = (e.trends ?? []).slice(0, 3).map((z) => kurz(z));
   const ceo = (e.ceo ?? []).slice(0, 4).map((z) => kurz(z));
-  const feste = 6 + 2 + 3 * 2 + 2 + 1 + (trends.length ? 1 + trends.length : 0) + (ceo.length ? 1 + ceo.length : 0); // Kopf, Titel, Abschnittszeilen, Leerzeilen, Fuß, Trends: übrig für Listen
+  const feste = 6 + 2 + 4 * 2 + 2 + 1 + (trends.length ? 1 + trends.length : 0) + (ceo.length ? 1 + ceo.length : 0); // Kopf, Titel, Abschnittszeilen, Leerzeilen, Fuß, Trends: übrig für Listen
   const platz = MAX_ZEILEN_TAG - feste;
-  const je = Math.max(1, Math.floor(platz / 3));
+  const je = Math.max(1, Math.floor(platz / 4));
   const kosten = e.kostenUsd === null ? "Kosten: unbekannt" : `Kosten: ${e.kostenUsd.toFixed(2)} US-Dollar (Agenten, ohne Abos)`;
-  const gebaut = e.prs.length === 0 ? ["Nichts gemergt."] : e.prs.map((p) => `- #${p.nummer} ${kurz(p.titel)}`);
+  const gebaut = e.prs === null ? [`${NICHT_ERREICHBAR} (GitHub)`] : e.prs.length === 0 ? ["Nichts gemergt."] : e.prs.map((p) => `- #${p.nummer} ${kurz(p.titel)}`);
   const entschieden = ids.length === 0 ? ["Nichts."] : ids.map((x) => `- [[Entscheidungen/${dateiname(x.id)}]] ${kurz(x.titel)}`);
+  const erledigt = e.erledigt == null ? [`${NICHT_ERREICHBAR} (Linear)`] : e.erledigt.length === 0 ? ["Nichts."] : e.erledigt.map((x) => `- ${x.id} ${kurz(x.titel)}`);
   const probleme = e.probleme.length === 0 ? ["Keine."] : e.probleme.map((t) => `- ${kurz(t)}`);
   return [
     ...kopf("tag", "alle", tag),
@@ -99,6 +106,8 @@ export function tagSeite(e: Eingabe): string {
     ...begrenze(gebaut, je),
     "## Entschieden",
     ...begrenze(entschieden, je),
+    "## In Linear erledigt",
+    ...begrenze(erledigt, je),
     "## Kosten und Probleme",
     kosten,
     ...begrenze(probleme, je),
@@ -116,9 +125,20 @@ export function entscheidungSeite(x: Entscheidung, jetzt: Date): string {
   return [...kopf("entscheidung", x.projekt, tagBerlin(jetzt)), `# ${x.id}: ${kurz(x.titel)}`, "", `Entscheidungsdatei: ${x.url}`, "", `[[Produkte/${dateiname(x.projekt)}]]`].join("\n") + "\n";
 }
 
+/** Linear zuerst (hat den Link); Snapshot-Punkte mit gleicher Kennung (SIN-123) zählen nicht doppelt. */
+export function vereinige(linear: OffenerPunkt[], snapshot: OffenerPunkt[]): OffenerPunkt[] {
+  const ref = (o: OffenerPunkt) => /^(SIN-\d+)\b/.exec(o.titel)?.[1];
+  const da = new Set(linear.map(ref));
+  return [...linear, ...snapshot.filter((o) => !da.has(ref(o)) || !ref(o))];
+}
+
+/** Fehlt Linear oder Supabase, steht „Quelle nicht erreichbar“, nie „Nichts offen“ (SIN-614). */
 export function offenSeite(e: Eingabe): string {
   const zeile = (o: OffenerPunkt) => `- ${o.art === "freigabe" ? "Freigabe" : "Aufgabe"} (${kurz(o.projekt, 30)}): ${o.url ? `[${kurz(o.titel)}](${o.url})` : kurz(o.titel)}`;
-  return [...kopf("offen", "alle", tagBerlin(e.jetzt)), "# Offen", "", ...(e.offen.length === 0 ? ["Nichts offen."] : e.offen.map(zeile)), "", "[[00 Wo stehen wir]]"].join("\n") + "\n";
+  const fehlt = (e.fehlt ?? []).filter((q) => q !== "GitHub");
+  const hinweis = fehlt.length ? [`${NICHT_ERREICHBAR}: ${fehlt.join(", ")}. Die Liste kann unvollständig sein.`] : [];
+  const liste = e.offen.length === 0 && !hinweis.length ? ["Nichts offen."] : [...e.offen.map(zeile), ...hinweis];
+  return [...kopf("offen", "alle", tagBerlin(e.jetzt)), "# Offen", "", ...liste, "", "[[00 Wo stehen wir]]"].join("\n") + "\n";
 }
 
 /** Alle Dateien des Vaults: Pfad → Inhalt. */
