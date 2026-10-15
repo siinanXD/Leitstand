@@ -25,6 +25,7 @@ import { ladeQuelle, type Lesequelle } from "../../src/lib/supabase";
 import { karten } from "../../src/lib/uebersicht-einfach";
 import { offene } from "../../src/lib/migrationen/migrationen";
 import { wartendePrs } from "../../src/lib/wartende-prs";
+import { pausenAlarme, type RollenEreignis } from "../../src/lib/wirkung/wirkung";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -190,6 +191,7 @@ async function main() {
     ...brauchtDichAus(wartend, jetzt.getTime()),
     ...offene(q.events).map((m) => ({ id: `alarm:migration:${m.datei}`, art: "alarm" as const, projekt: "Leitstand", kennung: "Datenbank", titel: `${m.datei}: ${m.grund}`, zeit: m.zeit })),
     ...alarmeAus(q.events, jetzt.getTime()),
+    ...pausenAlarme(q.events as unknown as RollenEreignis[], jetzt.getTime()),
     ...stillstandAus(schlangen, jetzt.getTime()),
     ...fertigAus(prs.gemergt, jetzt.getTime()),
     ...abbruchAus(laeufe, jetzt.getTime(), prs.mitPr),

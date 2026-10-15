@@ -1,0 +1,32 @@
+# Auto-Pause der Rollen (SIN-637): 14 Tage ohne Wirkung → Rolle pausiert, Push über push-ausloeser.
+name: wirkung
+on:
+  schedule:
+    - cron: "20 4 * * *" # 06:20 Berlin (Sommerzeit)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur ins Log schreiben"
+        type: boolean
+        default: true
+concurrency:
+  group: wirkung
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  wirkung:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsx scripts/wirkung/wirkung.ts
+        env:
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

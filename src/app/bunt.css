@@ -709,3 +709,33 @@
   gap: var(--space-8);
   min-height: var(--touch-min);
 }
+
+.noten {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-8);
+}
+
+.noten li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-12);
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-tool);
+  font-size: 13px;
+}
+
+.noten .note {
+  font-family: var(--font-geist-mono), monospace;
+  color: var(--color-text-primary);
+}
+
+.noten button {
+  min-height: 44px;
+  min-width: 44px;
+}

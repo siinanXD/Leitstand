@@ -1,5 +1,8 @@
 // Rollen-Ablauf aus docs/autonomy/agents.json (SIN-543). Rein: aus dem Register wird Mermaid erzeugt, nie von Hand gezeichnet.
-export type Rolle = { id: string; name: string; skill: string; aufgabe: string; ausloeser: string[]; netz: string | null; werkzeuge: string[]; ruft: string[] };
+export type Rolle = { id: string; name: string; skill: string; aufgabe: string; ausloeser: string[]; netz: string | null; werkzeuge: string[]; ruft: string[];
+  /** SIN-637: Pflicht, eine messbare Kennzahl mit Ziel. Das Ereignis meldet den Zielerreichungsgrad (0 bis 1). */
+  wirkung: { kennzahl: string; ziel: string };
+};
 export type Register = { stand: string; quelle: string; spuren: { id: string; name: string }[]; rollen: Rolle[] };
 
 /** Mermaid ist empfindlich gegen Anführungszeichen und Zeilenumbrüche; Register-Text wird entschärft. */
@@ -13,6 +16,7 @@ export function registerFehler(r: Register): string[] {
   for (const x of r.rollen) {
     if (x.ausloeser.length === 0) fehler.push(`${x.id}: kein Auslöser`);
     if (x.werkzeuge.length === 0) fehler.push(`${x.id}: keine Werkzeuge`);
+    if (!x.wirkung?.kennzahl || !x.wirkung?.ziel) fehler.push(`${x.id}: keine Wirkung (Kennzahl mit Ziel)`);
     for (const z of x.ruft) if (!ids.has(z)) fehler.push(`${x.id} ruft unbekannte Rolle ${z}`);
   }
   return fehler;
