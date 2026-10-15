@@ -55,6 +55,12 @@
   art: datei
   pfad: AGENTS.md
   enthaelt: Abnahme-Proben (SIN-626)
+- id: leitstand-veraltet-warnung
+  produkt: leitstand
+  titel: Die App warnt bei veralteten Daten (Snapshot über 30 Minuten)
+  art: datei
+  pfad: src/lib/veraltet.ts
+  enthaelt: SNAPSHOT_MAX_MIN = 30
 
 # Gedächtnis
 - id: gedaechtnis-offen

@@ -12,10 +12,13 @@ import { useSitzung } from "@/lib/sitzung";
 import { erinnere, merke, type Gemerkt } from "@/lib/stand-speicher";
 import { ladeChef, ladeQuelle, type Laden, type Lesequelle } from "@/lib/supabase";
 import type { Quelle } from "@/lib/uebersicht";
+import { datenStand, veraltet } from "@/lib/veraltet";
 import { zeitInWorten } from "@/lib/zeit";
 import { Kopf } from "./kopf";
 
 export const uhrzeit = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
+
+const ZIEHEN_PX = 80;
 
 const LEER: Quelle = { events: [], snapshot: [] };
 
@@ -35,7 +38,7 @@ function Platzhalter() {
   );
 }
 
-export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: Quelle, jetzt: Date, wartend: Wartende, pause: Pause, laden: "laedt" | "ok" | "fehler", chef: Zeile[] | null) => ReactNode }) {
+export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: Quelle, jetzt: Date, wartend: Wartende, pause: Pause, laden: "laedt" | "ok" | "fehler", chef: Zeile[] | null, stand: string) => ReactNode }) {
   const sitzung = useSitzung();
   const [frisch, setFrisch] = useState<Geladen | null>(null);
   const [gemerkt, setGemerkt] = useState<Gemerkt | null>(null);
@@ -49,6 +52,9 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
   const geladen: Geladen | null = frisch ?? (erinnert ? { laden: { zustand: "ok", quelle: gemerkt.quelle }, jetzt: new Date(), chef: gemerkt.chef } : null);
   const quelleOk = geladen?.laden.zustand === "ok" ? geladen.laden.quelle : LEER;
   const wartende = wartendePrs(quelleOk.snapshot).filter((p) => !freigaben.erledigt.has(p.key));
+  // „Stand“ = Alter der Daten (jüngster Snapshot), nicht der Zeitpunkt des Abrufs; sonst sähen alte Zahlen aktuell aus (SIN-659).
+  const stand = datenStand(quelleOk) ?? (frisch ? frisch.jetzt.toISOString() : (gemerkt?.zeit ?? new Date().toISOString()));
+  const warnung = geladen ? veraltet(quelleOk, geladen.jetzt, pause.stand?.pausiert === true) : null;
 
   useEffect(() => {
     document.title = tabTitel(angemeldet ? wartende.length : 0);
@@ -93,8 +99,25 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
       if (document.visibilityState === "visible") setNeu((n) => n + 1);
     };
     document.addEventListener("visibilitychange", sichtbar);
-    const takt = setInterval(() => setFrisch((g) => (g ? { ...g, jetzt: new Date() } : g)), 60_000);
+    // Ersatz, falls Realtime schweigt (SIN-659): jede Minute neu laden; das setzt auch die Uhr.
+    const takt = setInterval(() => {
+      setFrisch((g) => (g ? { ...g, jetzt: new Date() } : g));
+      if (document.visibilityState === "visible") setNeu((n) => n + 1);
+    }, 60_000);
+    // Ziehen zum Aktualisieren: das Homescreen-PWA auf dem iPhone hat es nicht von selbst.
+    let startY: number | null = null;
+    const beginn = (e: TouchEvent) => {
+      startY = window.scrollY <= 0 ? e.touches[0].clientY : null;
+    };
+    const ende = (e: TouchEvent) => {
+      if (startY !== null && e.changedTouches[0].clientY - startY > ZIEHEN_PX && window.scrollY <= 0) setNeu((n) => n + 1);
+      startY = null;
+    };
+    document.addEventListener("touchstart", beginn, { passive: true });
+    document.addEventListener("touchend", ende, { passive: true });
     return () => {
+      document.removeEventListener("touchstart", beginn);
+      document.removeEventListener("touchend", ende);
       abmelden();
       document.removeEventListener("visibilitychange", sichtbar);
       clearTimeout(verzoegert);
@@ -128,12 +151,17 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
           Stand von {zeitInWorten(gemerkt.zeit, new Date()) ?? "früher"}
         </p>
       )}
+      {warnung && (
+        <p className="hinweis" role="alert">
+          {warnung.art === "snapshot" ? `Leitstand-Loop steht seit ${uhrzeit(warnung.seit)} Uhr. Die Zahlen sind veraltet.` : `Der Dispatcher ist seit ${uhrzeit(warnung.seit)} Uhr nicht mehr gelaufen. Neue Aufgaben starten nicht.`}
+        </p>
+      )}
       {geladen.laden.zustand === "fehler" && (
         <p className="hinweis" role="status">
           Datenquelle nicht erreichbar.
         </p>
       )}
-      {children(quelleOk, geladen.jetzt, { wartende, fehler: freigaben.fehler, freigeben: freigaben.freigeben }, pause, geladen.laden.zustand, geladen.chef)}
+      {children(quelleOk, geladen.jetzt, { wartende, fehler: freigaben.fehler, freigeben: freigaben.freigeben }, pause, geladen.laden.zustand, geladen.chef, stand)}
     </>
   );
 }
