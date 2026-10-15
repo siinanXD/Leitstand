@@ -13,6 +13,7 @@ import { veraltet } from "@/lib/veraltet";
 import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
 import { ChefZeile } from "./chef-karte";
 import { fertigZeile, WieWeit } from "./fortschritt-balken";
+import { KennzahlenKachel } from "./kennzahlen-kachel";
 import { MitMehr } from "./mit-mehr";
 import { Rahmen, uhrzeit, type Wartende } from "./rahmen";
 import { ZustandSymbol, type ZustandArt } from "./zustand-symbol";
@@ -151,6 +152,7 @@ function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet, chef, stan
   const alt = veraltet(quelle, jetzt, loopPausiert) !== null;
   return (
     <main className="einfach bunt">
+      <KennzahlenKachel angemeldet={angemeldet} jetzt={jetzt} />
       <section className="einfach-lage" aria-labelledby="lage">
         {pausiert && (
           <p className="achtung" role="status">
