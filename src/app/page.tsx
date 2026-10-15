@@ -193,7 +193,7 @@ export default function Home() {
   const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
   return (
     <Rahmen aktiv="uebersicht">
-      {(quelle, jetzt, wartend, pause, laden, chef, stand) => <Start stand={stand} loopPausiert={pause.stand?.pausiert === true}quelle={quelle} jetzt={jetzt} wartend={wartend} laden={laden} pausiert={pause.stand?.pausiert ? pauseSatz(pause.stand.seit, jetzt) : null} angemeldet={angemeldet} chef={chef} />}
+      {(quelle, jetzt, wartend, pause, laden, chef, stand) => <Start stand={stand} loopPausiert={pause.stand?.pausiert === true} quelle={quelle} jetzt={jetzt} wartend={wartend} laden={laden} pausiert={pause.stand?.pausiert ? pauseSatz(pause.stand.seit, jetzt) : null} angemeldet={angemeldet} chef={chef} />}
     </Rahmen>
   );
 }
