@@ -75,6 +75,11 @@ Regeln:
 - Der Worker läuft mit `AGENT_WORKFLOW_TOKEN` (Workflows RW) und ändert `.github/workflows/` selbst, keine neuen `.vorlage`-Dateien. `automerge.yml` setzt `risk:high` nur bei Rechte-Erweiterungen, neuen Secrets, neuen Drittanbieter-Actions oder Änderungen am Gate (wie SIN-234/SIN-252 der Lern-App).
 - Der Worker legt `sinan`-Issues mit `LINEAR_API_KEY` selbst an (Linear-GraphQL per `curl`).
 
+## Abnahme-Proben (SIN-626)
+
+- **Kein Done ohne grüne Probe.** Jedes Issue bekommt beim Bauen mindestens eine Probe in `docs/abnahme.yml` (HTTP, lesende Abfrage, Datei-Check) mit erwartetem Ergebnis. Ein Issue ohne Probe gilt nicht als fertig; ein Linear-Issue geht erst auf „Done“, wenn seine Probe im Leitstand („Läuft es wirklich?“) grün ist.
+- `abnahme.yml` (stündlich) führt alle Proben aus und schreibt je Probe eine Zeile in `loop_events` (Schritt `abnahme`). Rot länger als 2 Stunden löst den Alarm aus. Logik in `src/lib/abnahme/abnahme.ts` (rein, mit Tests), Netz in `scripts/abnahme/abnahme.ts`. Entscheidung: `docs/decisions/SIN-626-abnahme-proben.md`.
+
 ## Steuerung nur im Leitstand (SIN-577)
 
 Neue Steuerlogik (Rollen, Auslöser, Planung, Messung, Kosten) entsteht nur im Leitstand, mit `produkt` als Parameter. Ein Produkt-Repo bekommt keine neuen Workflows außer Bauen, Testen, Deployen und Produkt-Pipelines. Der Anwalt/Prüfer markiert PRs, die das verletzen, mit `no-automerge`. Begründung und Umzugsplan: `docs/decisions/SIN-577-steuerung-im-leitstand.md`.

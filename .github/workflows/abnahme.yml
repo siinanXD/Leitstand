@@ -1,0 +1,38 @@
+name: abnahme
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur anzeigen, nichts in loop_events schreiben"
+        type: boolean
+        default: true
+
+concurrency:
+  group: abnahme
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  abnahme:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Proben ausführen
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LEITSTAND_URL: ${{ secrets.LEITSTAND_URL || vars.LEITSTAND_URL }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/abnahme/abnahme.ts

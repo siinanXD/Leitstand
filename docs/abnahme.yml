@@ -1,0 +1,97 @@
+# Abnahme-Proben (SIN-626): je Punkt der Fertig-Liste eine unabhängige Live-Prüfung. Stündlich durch scripts/abnahme/abnahme.ts.
+# Regel: kein Issue gilt als fertig ohne grüne Probe; wer baut, schreibt die Probe mit.
+# Felder: id (einmalig), produkt (wie project in loop_events), titel (Klartext, steht im Leitstand), art, dazu je Art:
+#   http    url, status (Standard 200), enthaelt (Text in der Antwort, optional)
+#   db      rest (lesende Abfrage auf die REST-Schnittstelle), mindestens (Zeilen, Standard 1),
+#           zeitfeld + max_alter_min (jüngste Zeile höchstens so alt, Standard 60), nicht_leer (Feld mit Inhalt)
+#   datei   pfad (im Checkout), enthaelt (optional)
+#   github  repo, pfad, enthaelt (optional); liest mit AGENT_WORKFLOW_TOKEN
+# Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
+
+# Leitstand
+- id: leitstand-snapshot
+  produkt: leitstand
+  titel: Leitstand-Snapshot ist frisch und die Schlange gefüllt
+  art: db
+  rest: loop_snapshot?project=eq.leitstand&select=updated_at,queue
+  zeitfeld: updated_at
+  max_alter_min: 60
+  nicht_leer: queue
+- id: leitstand-ereignisse
+  produkt: leitstand
+  titel: Der Loop hat in den letzten 3 Stunden etwas gemeldet
+  art: db
+  rest: loop_events?project=eq.leitstand&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 180
+- id: leitstand-health
+  produkt: leitstand
+  titel: Die Leitstand-App antwortet
+  art: http
+  url: ${LEITSTAND_URL}/api/health
+- id: leitstand-aufgaben
+  produkt: leitstand
+  titel: Aufgabentitel aus Linear sind aktuell gespiegelt
+  art: db
+  rest: leitstand_aufgaben?select=aktualisiert_at&order=aktualisiert_at.desc&limit=1
+  zeitfeld: aktualisiert_at
+  max_alter_min: 120
+- id: leitstand-werkzeuge
+  produkt: leitstand
+  titel: Werkzeuge wurden in den letzten 3 Stunden geprüft
+  art: db
+  rest: leitstand_werkzeug_status?select=geprueft_at&order=geprueft_at.desc&limit=1
+  zeitfeld: geprueft_at
+  max_alter_min: 180
+- id: leitstand-fertigliste
+  produkt: leitstand
+  titel: Die Fertig-Liste hat Punkte
+  art: datei
+  pfad: docs/FERTIG.md
+  enthaelt: - [
+- id: leitstand-regel
+  produkt: leitstand
+  titel: Die Regel "kein Done ohne grüne Probe" steht in AGENTS.md
+  art: datei
+  pfad: AGENTS.md
+  enthaelt: Abnahme-Proben (SIN-626)
+
+# Gedächtnis
+- id: gedaechtnis-offen
+  produkt: gedaechtnis
+  titel: Offen.md im Vault ist vorhanden
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: Offen.md
+  enthaelt: # Offen
+- id: gedaechtnis-stand
+  produkt: gedaechtnis
+  titel: Die Seite Wo stehen wir im Vault ist vorhanden
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: 00 Wo stehen wir.md
+  enthaelt: Offen
+- id: gedaechtnis-lauf
+  produkt: gedaechtnis
+  titel: Das Gedächtnis wurde in den letzten 26 Stunden aktualisiert
+  art: db
+  rest: loop_events?step=eq.gedaechtnis&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 1560
+
+# Lern-App
+- id: lernapp-snapshot
+  produkt: lernapp
+  titel: Lern-App-Snapshot ist frisch und die Schlange gefüllt
+  art: db
+  rest: loop_snapshot?project=eq.lernapp&select=updated_at,queue
+  zeitfeld: updated_at
+  max_alter_min: 60
+  nicht_leer: queue
+- id: lernapp-ereignisse
+  produkt: lernapp
+  titel: Der Lern-App-Loop hat in den letzten 3 Stunden etwas gemeldet
+  art: db
+  rest: loop_events?or=(project.eq.lernapp,project.eq.content-agent-lernapp)&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 180
