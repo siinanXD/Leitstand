@@ -55,6 +55,12 @@
   art: datei
   pfad: docs/FERTIG.md
   enthaelt: Fertig-Liste Leitstand v1
+- id: leitstand-haken-merge
+  produkt: leitstand
+  titel: Der Merge-Schritt gleicht Fertig-Kriterien ab, bevor ein Issue Done wird (SIN-754)
+  art: datei
+  pfad: scripts/loop/loop.ts
+  enthaelt: entscheide(
 - id: leitstand-regel
   produkt: leitstand
   titel: Die Regel "kein Done ohne grüne Probe" steht in AGENTS.md
