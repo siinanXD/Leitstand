@@ -30,3 +30,14 @@ test("Aufgaben: Linear-Zustände und Projektnamen", () => {
   assert.equal(projektAusLinear("Leitstand"), "leitstand");
   assert.equal(projektAusLinear("SJCODE Website"), "sjcode-website");
 });
+
+test("Aufgaben: Haken-Zähler nur bei stimmigen Zahlen (SIN-754)", () => {
+  const [a, b, c] = parseAufgaben([
+    { issue: "SIN-7", titel: "A", status: "laeuft", haken_gesamt: 5, haken_erledigt: 3 },
+    { issue: "SIN-8", titel: "B", status: "laeuft", haken_gesamt: 0, haken_erledigt: 0 },
+    { issue: "SIN-9", titel: "C", status: "laeuft", haken_gesamt: 2, haken_erledigt: 3 },
+  ]);
+  assert.deepEqual(a.haken, { erledigt: 3, gesamt: 5 });
+  assert.equal(b.haken, null);
+  assert.equal(c.haken, null);
+});

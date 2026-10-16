@@ -18,6 +18,7 @@ import { alarmeAus } from "../../src/lib/abnahme/abnahme";
 import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, produktFertigAus, rollenStillstandAus, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
+import { leseHaken } from "../../src/lib/loop/haken";
 import { OHNE_TODOS_SCHRITT } from "../../src/lib/vorarbeiter/vorarbeiter";
 import { sendeAnAlle } from "../../src/lib/push/push";
 import { supabaseSpeicher, vapidSender } from "../../src/lib/push/server";
@@ -72,13 +73,17 @@ async function linearTitel(ids: string[]): Promise<Map<string, string>> {
 async function aufgabenSpiegeln(db: any): Promise<void> {
   if (!env.LINEAR_API_KEY) return console.log("::warning::LINEAR_API_KEY fehlt: Aufgabentitel werden nicht gespiegelt.");
   const seit = new Date(Date.now() - 30 * 24 * 3_600_000).toISOString();
-  const query = `query($seit: DateTimeOrDuration!) { issues(first: 250, orderBy: updatedAt, filter: { updatedAt: { gt: $seit } }) { nodes { identifier title startedAt completedAt canceledAt state { type } project { name } labels { nodes { name } } } } }`;
+  const query = `query($seit: DateTimeOrDuration!) { issues(first: 250, orderBy: updatedAt, filter: { updatedAt: { gt: $seit } }) { nodes { identifier title description startedAt completedAt canceledAt state { type } project { name } labels { nodes { name } } } } }`;
   try {
     const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY }, body: JSON.stringify({ query, variables: { seit } }), signal: AbortSignal.timeout(20_000) });
-    const json = (await res.json()) as { data?: { issues?: { nodes?: { identifier: string; title: string; startedAt: string | null; completedAt: string | null; canceledAt: string | null; state?: { type?: string }; project?: { name?: string } | null; labels?: { nodes?: { name: string }[] } }[] } }; errors?: { message: string }[] };
+    const json = (await res.json()) as { data?: { issues?: { nodes?: { identifier: string; title: string; description: string | null; startedAt: string | null; completedAt: string | null; canceledAt: string | null; state?: { type?: string }; project?: { name?: string } | null; labels?: { nodes?: { name: string }[] } }[] } }; errors?: { message: string }[] };
     if (json.errors?.length) throw new Error(json.errors[0].message);
-    const zeilen = (json.data?.issues?.nodes ?? []).map((i) => ({
+    const zeilen = (json.data?.issues?.nodes ?? []).map((i) => {
+      const haken = leseHaken(i.description);
+      return {
       issue: i.identifier,
+      haken_gesamt: haken.length,
+      haken_erledigt: haken.filter((h) => h.erledigt).length,
       titel: i.title,
       projekt: projektAusLinear(i.project?.name),
       status: statusAusLinear(i.state?.type),
@@ -86,9 +91,12 @@ async function aufgabenSpiegeln(db: any): Promise<void> {
       fertig_at: i.completedAt ?? i.canceledAt,
       labels: (i.labels?.nodes ?? []).map((l) => l.name),
       aktualisiert_at: new Date().toISOString(),
-    }));
+      };
+    });
     if (DRY) return console.log(`Aufgaben (Trockenlauf): ${zeilen.length}`);
-    const { error } = await db.from("leitstand_aufgaben").upsert(zeilen as never, { onConflict: "issue" });
+    let { error } = await db.from("leitstand_aufgaben").upsert(zeilen as never, { onConflict: "issue" });
+    // Migration 20261016100000 noch nicht eingespielt: ohne Haken-Spalten spiegeln, damit Titel und Stand weiterlaufen.
+    if (error && /haken_/.test(error.message)) ({ error } = await db.from("leitstand_aufgaben").upsert(zeilen.map((z) => Object.fromEntries(Object.entries(z).filter(([k]) => !k.startsWith("haken_")))) as never, { onConflict: "issue" }));
     if (error) throw new Error(error.message);
     console.log(`Aufgaben gespiegelt: ${zeilen.length}`);
   } catch (e) {

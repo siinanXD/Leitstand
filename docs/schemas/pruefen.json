@@ -12,6 +12,16 @@
     "kosten_eur": { "type": "number", "minimum": 0 },
     "quellen": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "ergebnis": { "type": "string", "enum": ["gruen", "rot"] },
+    "haken": {
+      "description": "SIN-754: je `- [ ]`-Zeile des Issues belegt oder offen",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": { "text": { "type": "string", "minLength": 1 }, "belegt": { "type": "boolean" }, "beleg": { "type": "string" } },
+        "required": ["text", "belegt", "beleg"],
+        "additionalProperties": false
+      }
+    },
     "pruefungen": {
       "type": "array",
       "items": {
