@@ -15,6 +15,7 @@ import {
   planeSchlange,
   pruefeNeuesProjekt,
   repoAusLinks,
+  snapshotUebersprungenGrund,
   tagesstand,
   updateFaellig,
   type PrInfo,
@@ -219,6 +220,17 @@ test("leitstandSnapshot und waehle zählen dasselbe (SIN-736, 3 Konstellationen)
     assert.equal(startable, k.erwartet);
     assert.equal(waehle(k.issues, k.gespiegelt, 99).length, startable);
   }
+});
+
+test("snapshotUebersprungenGrund: nennt je Ursache einen Grund (SIN-788)", () => {
+  const ziel = { repo: "siinanXD/Leitstand", linearProjekt: "Leitstand" };
+  const p = (o: Partial<Projekt>) => projekt({ name: "Leitstand", statusTyp: "started", zusammenfassung: null, ...o });
+  assert.equal(snapshotUebersprungenGrund(p({}), "siinanxd/leitstand", ziel), null);
+  assert.match(snapshotUebersprungenGrund(p({ zusammenfassung: "pausiert bis Montag" }), "siinanXD/Leitstand", ziel) ?? "", /pausiert/);
+  assert.match(snapshotUebersprungenGrund(p({ statusTyp: "planned" }), "siinanXD/Leitstand", ziel) ?? "", /In Progress/);
+  assert.match(snapshotUebersprungenGrund(p({}), null, ziel) ?? "", /GitHub-Link/);
+  assert.match(snapshotUebersprungenGrund(p({}), "x/y", ziel) ?? "", /x\/y/);
+  assert.equal(snapshotUebersprungenGrund(p({ name: "Lern-App", statusTyp: "planned" }), null, ziel), null);
 });
 
 test("Entscheidung: im Linear-Kommentar führt zu Label und PR-Kommentar (SIN-651)", () => {

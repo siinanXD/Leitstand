@@ -32,6 +32,7 @@ import {
   pruefeNeuesProjekt,
   repoAusLinks,
   reparaturText,
+  snapshotUebersprungenGrund,
   tagesstand,
   updateFaellig,
   updateText,
@@ -210,6 +211,18 @@ async function ladePrs(repo: string): Promise<PrInfo[]> {
     });
   }
   return r;
+}
+
+/** SIN-788: Ein übersprungener Snapshot hinterlässt einen Eintrag mit Grund, nie stilles Überspringen. */
+async function meldeUebersprungen(grund: string) {
+  console.log(`::warning::Kein loop_snapshot für leitstand: ${grund}`);
+  if (DRY || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return;
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
+    method: "POST",
+    headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ project: "leitstand", agent: "waechter", step: "snapshot", status: "uebersprungen", grund, issue: null, pr: null, run_id: env.GITHUB_RUN_ID ?? null, run_url: null }),
+  });
+  if (!res.ok) console.log(`::warning::loop_events (Snapshot übersprungen) schreiben: ${res.status}`);
 }
 
 /** Eigene Zeile `leitstand` in loop_snapshot (SIN-572): Upsert auf `project`, `plan` des Vorarbeiters bleibt. Ohne Supabase-Secrets nur Warnung. */
@@ -413,13 +426,16 @@ async function main() {
   for (const p of alle) {
     const name = p.projekt.name;
     try {
+      const repo = repoAusLinks(p.projekt.links);
+      const ziel = PROJEKTE.find((x) => x.id === "leitstand");
+      const grund = ziel?.repo && ziel.linearProjekt ? snapshotUebersprungenGrund(p.projekt, repo, { repo: ziel.repo, linearProjekt: ziel.linearProjekt }) : null;
+      if (grund) await meldeUebersprungen(grund);
       if (istPausiert(p.projekt)) {
         log(name, "pausiert, unberührt");
         continue;
       }
       await neuesProjekt(p);
       if (!istAktiv(p.projekt)) continue;
-      const repo = repoAusLinks(p.projekt.links);
       if (!repo) {
         log(name, "aktiv, aber kein GitHub-Link: übersprungen");
         continue;

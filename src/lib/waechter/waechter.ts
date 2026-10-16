@@ -343,3 +343,16 @@ export function leitstandSnapshot(issues: LinearIssue[], prs: PrInfo[], repo: st
     updated_at: new Date().toISOString(),
   };
 }
+
+/**
+ * SIN-788: Warum der Leitstand-Snapshot in diesem Lauf nicht geschrieben wird, sonst null.
+ * Reihenfolge wie in `main` des Wächters; `ziel` ist Repo und Linear-Projektname des Leitstands aus PROJEKTE.
+ */
+export function snapshotUebersprungenGrund(p: Projekt, repo: string | null, ziel: { repo: string; linearProjekt: string }): string | null {
+  if (p.name !== ziel.linearProjekt) return null;
+  if (istPausiert(p)) return "Projekt pausiert (Zusammenfassung enthält „pausiert“)";
+  if (!istAktiv(p)) return `Linear-Projekt nicht „In Progress“ (Status ${p.statusTyp})`;
+  if (!repo) return "kein GitHub-Link am Linear-Projekt";
+  if (repo.toLowerCase() !== ziel.repo.toLowerCase()) return `GitHub-Link zeigt auf ${repo}, erwartet ${ziel.repo}`;
+  return null;
+}
