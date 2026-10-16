@@ -4,6 +4,7 @@
  */
 
 import { passend, stufe } from "../kontingent/prioritaet";
+import { istTeil } from "./haken";
 
 export const PROJEKT ="Leitstand";
 export const LABEL = "claude";
@@ -36,7 +37,7 @@ export type OffenerPr = { titel: string; branch: string; labels?: string[] };
 /** PR wartet nur noch auf Sinan (`risk:high` ohne `freigegeben`, SIN-678): der Worker ist fertig, der Platz wird frei. */
 export const wartetAufSinan = (pr: OffenerPr) => !!pr.labels?.includes("risk:high") && !pr.labels.includes("freigegeben");
 /** Ohne Angabe zählt jedes laufende Issue (altes Verhalten). */
-export type Belegung = { jetzt: Date; offenePrs: OffenerPr[] };
+export type Belegung = { jetzt: Date; offenePrs: OffenerPr[]; teilGemergt?: string[] };
 
 const ERLEDIGT = new Set(["completed", "canceled"]);
 
@@ -89,6 +90,9 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
     if (!belegung) return true;
     const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
     if (eigene.length) return !eigene.every(wartetAufSinan);
+    // SIN-781: „Part of“-PR gemergt, Haken offen: das Issue wartet auf den Folge-Worker und belegt keinen Platz.
+    // shortcut: gilt auch, wenn der Folge-Worker schon läuft, aber noch keinen PR hat; ausbauen, wenn das zu Doppelläufen führt.
+    if (belegung.teilGemergt?.includes(i.identifier)) return false;
     if (!i.startedAt) return true;
     return belegung.jetzt.getTime() - Date.parse(i.startedAt) <= PLATZ_MINUTEN * 60_000;
   });
@@ -170,6 +174,19 @@ export function gemergteFuerLaufende(issues: LinearIssue[], prs: { nummer: numbe
       const pr = prs.find((p) => p.gemergt && linearId(p.titel) === i.identifier);
       return pr ? [{ identifier: i.identifier, pr: pr.nummer }] : [];
     });
+}
+
+/** Kennungen, deren jüngster gemergter PR ein „Part of“ ist (SIN-781). Neueste PRs zuerst. */
+export function teilGemergte(prs: { titel: string; body?: string | null; gemergt: boolean }[]): string[] {
+  const gesehen = new Set<string>();
+  const teil: string[] = [];
+  for (const p of prs) {
+    const id = p.gemergt ? linearId(p.titel) : null;
+    if (!id || gesehen.has(id)) continue;
+    gesehen.add(id);
+    if (istTeil(p.titel, p.body)) teil.push(id);
+  }
+  return teil;
 }
 
 /** Nächster Schritt der Reparatur nach rotem `build`: nächste Runde oder Stopp. */

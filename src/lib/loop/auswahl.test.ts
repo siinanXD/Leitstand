@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, waehle, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -86,6 +86,20 @@ test("laufende: Hänger ohne PR nach 90 Min belegt keinen Platz mehr (SIN-654)",
   assert.deepEqual(waehle([haenger, todo], new Set(), 1, { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-623"]);
   assert.deepEqual(waehle([haenger, todo], new Set(), 1), []);
   assert.deepEqual(freigegebene([haenger, jung], { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-611"]);
+});
+
+test("laufende: gemergter „Part of“-PR mit offenen Haken belegt keinen Platz (SIN-781)", () => {
+  const jetzt = new Date("2026-10-16T16:00:00Z");
+  const lauf = issue({ identifier: "SIN-754", stateType: "started", startedAt: "2026-10-16T15:50:00Z" });
+  const todo = issue({ identifier: "SIN-770" });
+  const gemergt = [{ titel: "feat(uebersicht): Haken (SIN-754)", body: "Part of SIN-754", gemergt: true }];
+  const teilGemergt = teilGemergte(gemergt);
+  assert.deepEqual(teilGemergt, ["SIN-754"]);
+  assert.equal(laufende([lauf], { jetzt, offenePrs: [], teilGemergt }).length, 0);
+  assert.deepEqual(waehle([lauf, todo], new Set(), 1, { jetzt, offenePrs: [], teilGemergt }).map((i) => i.identifier), ["SIN-770"]);
+  assert.equal(laufende([lauf], { jetzt, offenePrs: [{ titel: "fix (SIN-754)", branch: "claude/sin-754" }], teilGemergt }).length, 1, "offener Folge-PR hält den Platz");
+  assert.deepEqual(teilGemergte([{ titel: "fix (SIN-754)", body: "Closes #1", gemergt: true }, ...gemergt]), [], "jüngster PR ohne Part of");
+  assert.deepEqual(teilGemergte([{ titel: "feat (SIN-9)", body: "Part of SIN-9", gemergt: false }]), [], "ungemergt zählt nicht");
 });
 
 test("grundNichtsStartbar: nie leer, nennt belegte Plätze oder fehlende Todo-Issues (SIN-654)", () => {
