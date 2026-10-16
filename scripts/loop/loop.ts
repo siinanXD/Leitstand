@@ -6,6 +6,8 @@
  *   npx tsx scripts/loop/loop.ts gemergt --pr 12     Linear-Issue zum gemergten PR auf Done setzen
  *   npx tsx scripts/loop/loop.ts reparatur --pr 12 --lauf <url>   nach rotem `build`: @claude bitten oder stoppen
  *
+ * Dispatch läuft je Produkt aus projekte.ts (repo + linearProjekt + bauphase, SIN-763); LOOP_MAX_PARALLEL gilt je Repo.
+ *
  * Env: LINEAR_API_KEY, GH_TOKEN (AGENT_WORKFLOW_TOKEN, damit Folge-Workflows starten), GITHUB_REPOSITORY.
  * Optional: LOOP_MAX_PARALLEL (Standard 1), DRY_RUN=1, SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY für loop_events.
  * Ohne Supabase-Secrets steht nur eine Warnung im Log (nie ein Abbruch).
@@ -18,7 +20,8 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { ausLinear, freigegebene, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, PROJEKT, reparatur, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -57,7 +60,7 @@ async function gh<T>(path: string, init: { method?: string; body?: unknown } = {
 }
 
 /** Ein Ereignis in loop_events (SIN-303). Fehler werden nur gemeldet. */
-type Extra = { issue?: string; pr?: number; grund?: string };
+type Extra = { issue?: string; pr?: number; grund?: string; projekt?: string };
 /** `uebersprungen` und `fehler` brauchen immer einen Grund (SIN-654, SIN-617), sonst ist im Leitstand nicht erkennbar, warum nichts lief. */
 async function ereignis(step: string, status: "uebersprungen" | "fehler", extra: Extra & { grund: string }): Promise<void>;
 async function ereignis(step: string, status: "start" | "ok", extra?: Extra): Promise<void>;
@@ -77,14 +80,14 @@ async function ereignis(step: string, status: "start" | "ok" | "fehler" | "ueber
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({ project: "leitstand", step, status, grund: extra.grund ?? null, issue: extra.issue ?? null, pr: extra.pr ?? null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
+    body: JSON.stringify({ project: extra.projekt ?? "leitstand", step, status, grund: extra.grund ?? null, issue: extra.issue ?? null, pr: extra.pr ?? null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
   }).catch((e: Error) => ({ ok: false, status: 0, text: async () => e.message }));
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
 }
 
 type Node = Parameters<typeof ausLinear>[0] & { team: { id: string } };
 
-async function projektIssues(): Promise<Node[]> {
+async function projektIssues(projekt: string): Promise<Node[]> {
   const d = await linear<{ issues: { nodes: Node[] } }>(
     `query($p: String!) {
       issues(first: 100, filter: { project: { name: { eq: $p } }, state: { type: { in: ["backlog", "unstarted", "started"] } } }) {
@@ -93,7 +96,7 @@ async function projektIssues(): Promise<Node[]> {
           inverseRelations { nodes { type issue { identifier state { type } } } } }
       }
     }`,
-    { p: PROJEKT },
+    { p: projekt },
   );
   return d.issues.nodes;
 }
@@ -206,9 +209,67 @@ async function dispatch() {
   // SIN-633: Unter dem Puffer pausiert der Loop, bei knappem Rest laufen nur Stufe 1–2.
   const rest = await ladeClaudeRest();
   if (rest !== null && knappSatz(rest)) console.log(knappSatz(rest));
-  await ereignis("dispatch", "start");
-  const nodes = await projektIssues();
-  const issues = nodes.map(ausLinear);
+  // SIN-763: je Produkt mit Repo und Linear-Projekt; ein Fehler in einem Repo stoppt die anderen nicht. Platz (max) gilt je Repo.
+  let fehler = false;
+  for (const ziel of loopZiele()) {
+    try {
+      await dispatchZiel(ziel, rest);
+    } catch (e) {
+      fehler = true;
+      console.error(`::error::${ziel.id}: ${(e as Error).message}`);
+      await ereignis("dispatch", "fehler", { projekt: ziel.id, grund: fehlergrund((e as Error).message) });
+    }
+  }
+  if (fehler) process.exit(1);
+}
+
+/** Voraussetzung im Produkt-Repo (SIN-763): claude.yml vorhanden und Secret gesetzt. Gibt den Grund zurück, wenn etwas fehlt. */
+async function fehlendeVoraussetzung(r: string): Promise<string | null> {
+  const da = (pfad: string) => gh(pfad).then(() => true, () => false);
+  if (!(await da(`/repos/${r}/contents/.github/workflows/claude.yml`))) return `${r} hat keine .github/workflows/claude.yml`;
+  // 404 heißt: Secret fehlt oder AGENT_WORKFLOW_TOKEN darf Secrets nicht lesen; beides muss Sinan klären.
+  if (!(await da(`/repos/${r}/actions/secrets/CLAUDE_CODE_OAUTH_TOKEN`))) return `${r}: Secret CLAUDE_CODE_OAUTH_TOKEN nicht gefunden (fehlt oder AGENT_WORKFLOW_TOKEN darf Secrets nicht lesen)`;
+  return null;
+}
+
+/** Ein `sinan`-Issue in Linear, nur einmal je Titel (offene Issues gleichen Titels zählen). */
+async function sinanIssue(teamId: string, title: string, description: string) {
+  if (DRY) return console.log(`[trocken] sinan-Issue: ${title}`);
+  const d = await linear<{ issues: { nodes: { id: string }[] }; team: { labels: { nodes: { id: string; name: string }[] } } }>(
+    `query($t: String!, $title: String!) {
+      issues(first: 1, filter: { title: { eq: $title }, state: { type: { nin: ["completed", "canceled"] } } }) { nodes { id } }
+      team(id: $t) { labels(first: 250) { nodes { id name } } }
+    }`,
+    { t: teamId, title },
+  );
+  if (d.issues.nodes.length) return;
+  const label = d.team.labels.nodes.find((l) => l.name.toLowerCase() === "sinan");
+  await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, {
+    i: { teamId, title, description, labelIds: label ? [label.id] : [] },
+  });
+}
+
+async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
+  const repo = ziel.repo;
+  const projekt = ziel.id;
+  await ereignis("dispatch", "start", { projekt });
+  const nodes = await projektIssues(ziel.linearProjekt);
+  let issues = nodes.map(ausLinear);
+  const eigenes = repo.toLowerCase() === (env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand").toLowerCase();
+  if (!eigenes) {
+    const fehlt = await fehlendeVoraussetzung(repo);
+    if (fehlt) {
+      const team = nodes[0]?.team.id;
+      if (team) await sinanIssue(team, `Repo ${repo} braucht claude.yml und Secret`, `Der Loop kann in ${repo} nicht bauen: ${fehlt}.\n\nKlick-Anleitung:\n1. In ${repo} die Datei .github/workflows/claude.yml aus dem Leitstand-Repo übernehmen.\n2. ${repo} → Settings → Secrets and variables → Actions → Secret CLAUDE_CODE_OAUTH_TOKEN setzen.\n3. Der Token AGENT_WORKFLOW_TOKEN braucht auf ${repo} die Rechte Issues: Read and write, Pull requests: Read, Actions secrets: Read (Settings → Developer settings → Fine-grained token → Repository access).\n\nDanach startet der Dispatcher dort automatisch (SIN-763).`);
+      await ereignis("dispatch", "uebersprungen", { projekt, grund: `voraussetzung: ${fehlt}` });
+      return;
+    }
+    // Produkt-Repos haben kein loop-merge: gemergte PRs setzen das Linear-Issue hier auf Done.
+    const geschlossene = await gh<{ number: number; title: string; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
+    const fertig = gemergteFuerLaufende(issues, geschlossene.map((p) => ({ nummer: p.number, titel: p.title, gemergt: !!p.merged_at })));
+    for (const f of fertig) await gemergt(repo, f.pr, projekt);
+    issues = issues.filter((i) => !fertig.some((f) => f.identifier === i.identifier));
+  }
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   const prs = await gh<{ title: string; head: { ref: string }; labels: { name: string }[] }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
   const belegung: Belegung = { jetzt: new Date(), offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref, labels: p.labels.map((l) => l.name) })) };
@@ -216,7 +277,7 @@ async function dispatch() {
   const gespiegelt = gespiegelteIds(ghIssues);
   for (const h of freigegebene(issues, belegung)) {
     console.log(`Platz von ${h.identifier} freigegeben: kein offener PR, seit ${h.startedAt ?? "?"} In Progress.`);
-    await ereignis("platz", "ok", { issue: h.identifier, grund: `haenger: ohne PR länger als ${PLATZ_MINUTEN} Min` });
+    await ereignis("platz", "ok", { projekt, issue: h.identifier, grund: `haenger: ohne PR länger als ${PLATZ_MINUTEN} Min` });
   }
   let wahl = waehle(issues, gespiegelt, max, belegung, rest);
   if (!wahl.length) {
@@ -231,11 +292,11 @@ async function dispatch() {
   if (!wahl.length) {
     const grund = grundNichtsStartbar(issues, gespiegelt, max, belegung);
     console.log(`Nichts zu starten. ${grund}`);
-    await ereignis("dispatch", "uebersprungen", { grund });
+    await ereignis("dispatch", "uebersprungen", { projekt, grund });
     return;
   }
   for (const i of wahl) {
-    const { title, body } = issueText(i, lehrenHinweise(i));
+    const { title, body } = issueText(i, eigenes ? lehrenHinweise(i) : "");
     const team = nodes.find((n) => n.id === i.id)!.team.id;
     if (DRY) {
       console.log(`[trocken] würde starten: ${title}`);
@@ -246,13 +307,12 @@ async function dispatch() {
     await gh(`/repos/${repo}/issues/${neu.number}/labels`, { method: "POST", body: { labels: ["claude"] } });
     await setzeStatus(i.id, team, "In Progress");
     await kommentar(i.id, `Loop gestartet: ${neu.html_url}`);
-    await ereignis("dispatch", "ok", { issue: i.identifier });
+    await ereignis("dispatch", "ok", { projekt, issue: i.identifier });
     console.log(`Gestartet: ${i.identifier} → #${neu.number}`);
   }
 }
 
-async function gemergt() {
-  const pr = Number(arg("pr"));
+async function gemergt(repo: string, pr: number, projekt?: string) {
   const p = await gh<{ title: string; html_url: string; merged: boolean }>(`/repos/${repo}/pulls/${pr}`);
   if (!p.merged) return console.log(`PR #${pr} ist nicht gemergt.`);
   const id = linearId(p.title);
@@ -264,7 +324,7 @@ async function gemergt() {
   // SIN-760: Spiegel schließen (falls `Closes #N` es nicht schon tat), sonst startet das Issue nie wieder.
   const offene = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   for (const n of offeneSpiegel(offene, id)) await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
-  await ereignis("merge", "ok", { issue: id, pr });
+  await ereignis("merge", "ok", { projekt, issue: id, pr });
 }
 
 async function reparaturLauf() {
@@ -298,7 +358,7 @@ async function reparaturLauf() {
 }
 
 const befehl = process.argv[2];
-const laeufe: Record<string, () => Promise<unknown>> = { dispatch, gemergt, reparatur: reparaturLauf };
+const laeufe: Record<string, () => Promise<unknown>> = { dispatch, gemergt: () => gemergt(repo, Number(arg("pr"))), reparatur: reparaturLauf };
 const lauf = laeufe[befehl ?? ""];
 if (!lauf) {
   console.error("Befehl: dispatch | gemergt --pr N | reparatur --pr N --lauf URL");
