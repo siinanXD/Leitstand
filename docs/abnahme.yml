@@ -406,3 +406,9 @@
   art: datei
   pfad: src/app/page.tsx
   enthaelt: Haken
+- id: leitstand-platz-part-of
+  produkt: leitstand
+  titel: Gemergter „Part of“-PR belegt keinen Dispatcher-Platz (SIN-781)
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: teilGemergt
