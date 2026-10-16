@@ -21,6 +21,7 @@ import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { ausLinear, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 
 const env = process.env;
@@ -296,7 +297,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     return;
   }
   for (const i of wahl) {
-    const { title, body } = issueText(i, eigenes ? lehrenHinweise(i) : "");
+    const { title, body } = issueText(i, [eigenes ? lehrenHinweise(i) : "", wiederaufnahme(i.description)].filter(Boolean).join("\n\n"));
     const team = nodes.find((n) => n.id === i.id)!.team.id;
     if (DRY) {
       console.log(`[trocken] würde starten: ${title}`);
@@ -312,19 +313,46 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   }
 }
 
+/** Issue mit Text und bisherigen Kommentaren, für den Haken-Abgleich (SIN-754). */
+async function issueMitHaken(identifier: string) {
+  const d = await linear<{ issue: { id: string; description: string | null; team: { id: string }; comments: { nodes: { body: string }[] } } | null }>(
+    `query($id: String!) { issue(id: $id) { id description team { id } comments(first: 100) { nodes { body } } } }`,
+    { id: identifier },
+  );
+  return d.issue;
+}
+
+/** Label am Linear-Issue setzen (z. B. needs-human). */
+async function labelSetzen(issueId: string, teamId: string, name: string) {
+  const d = await linear<{ team: { labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { labels(first: 250) { nodes { id name } } } }`, { t: teamId });
+  const l = d.team.labels.nodes.find((x) => x.name.toLowerCase() === name);
+  if (!l) throw new Error(`Linear-Label „${name}“ nicht gefunden`);
+  if (DRY) return console.log(`[trocken] Label ${name}`);
+  await linear(`mutation($id: String!, $l: [String!]) { issueUpdate(id: $id, input: { addedLabelIds: $l }) { success } }`, { id: issueId, l: [l.id] });
+}
+
 async function gemergt(repo: string, pr: number, projekt?: string) {
-  const p = await gh<{ title: string; html_url: string; merged: boolean }>(`/repos/${repo}/pulls/${pr}`);
+  const p = await gh<{ title: string; body: string | null; html_url: string; merged: boolean }>(`/repos/${repo}/pulls/${pr}`);
   if (!p.merged) return console.log(`PR #${pr} ist nicht gemergt.`);
   const id = linearId(p.title);
   if (!id) return console.log(`PR #${pr}: keine Linear-Kennung im Titel.`);
-  const issue = await issueNachKennung(id);
+  const issue = await issueMitHaken(id);
   if (!issue) return console.log(`${id} nicht in Linear gefunden.`);
-  await setzeStatus(issue.id, issue.team.id, "Done");
-  await kommentar(issue.id, `Gemergt: ${p.html_url}`);
+  // SIN-754: Done nur, wenn alle Fertig-Kriterien belegt sind und der PR kein „Part of“ ist.
+  const belege = leseBelege((await gh<{ body: string }[]>(`/repos/${repo}/issues/${pr}/comments?per_page=100`)).map((c) => c.body));
+  const runde = issue.comments.nodes.filter((c) => c.body.includes(RUNDE_MARKER)).length + 1;
+  const e = entscheide({ haken: leseHaken(issue.description), belege, teil: istTeil(p.title, p.body), runde });
+  if (e.belegt.length && issue.description && !DRY) await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: setzeHaken(issue.description, e.belegt) });
+  await kommentar(issue.id, kommentarText(e, belege ?? [], runde, p.html_url));
+  if (e.status === "done") await setzeStatus(issue.id, issue.team.id, "Done");
+  else if (e.status === "needs-human") await labelSetzen(issue.id, issue.team.id, "needs-human");
+  // Offen: zurück auf Todo, der nächste Dispatch gibt dem Worker die offenen Haken mit.
+  else await setzeStatus(issue.id, issue.team.id, "Todo");
   // SIN-760: Spiegel schließen (falls `Closes #N` es nicht schon tat), sonst startet das Issue nie wieder.
   const offene = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   for (const n of offeneSpiegel(offene, id)) await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
-  await ereignis("merge", "ok", { projekt, issue: id, pr });
+  if (e.status === "done") await ereignis("merge", "ok", { projekt, issue: id, pr });
+  else await ereignis("merge", "uebersprungen", { projekt, issue: id, pr, grund: `haken_offen: ${e.grund}` });
 }
 
 async function reparaturLauf() {
