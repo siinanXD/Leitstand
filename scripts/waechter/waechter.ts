@@ -243,22 +243,37 @@ async function schliesseSpiegel(repo: string, offene: GithubIssue[], identifier:
 async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | null; teamId: string }, repo: string) {
   const { projekt, teamId } = p;
   const issues = await ladeIssues(projekt.id);
-  const [prs, offeneGh] = await Promise.all([ladePrs(repo), ghOffeneSpiegel(repo)]);
+  // SIN-781: Fehler beim Laden der PRs oder des GitHub-Spiegels verhindern den Snapshot nicht, er geht mit dem raus, was da ist.
+  const fehler: string[] = [];
+  const teil = async <T>(name: string, lade: () => Promise<T>, leer: T): Promise<T> => {
+    try {
+      return await lade();
+    } catch (e) {
+      fehler.push(`${name}: ${e instanceof Error ? e.message : String(e)}`);
+      console.log(`::warning::${projekt.name}: ${fehler.at(-1)}`);
+      return leer;
+    }
+  };
+  const [prs, offeneGh] = await Promise.all([teil("prs", () => ladePrs(repo), [] as PrInfo[]), teil("spiegel", () => ghOffeneSpiegel(repo), [] as GithubIssue[])]);
   const gespiegelt = gespiegelteIds(offeneGh);
-  const team = await teamDaten(teamId);
 
   // SIN-762: Snapshot vor Pausen, Hängern und Reparaturen, damit ein Fehler dort ihn nicht einfriert.
   // Linear-Link und PROJEKTE unterscheiden sich in der Schreibweise (siinanxd/leitstand vs. siinanXD/Leitstand).
   if (repo.toLowerCase() === PROJEKTE.find((x) => x.id === "leitstand")?.repo?.toLowerCase()) {
     const haken = await readFile("docs/FERTIG.md", "utf8").then(zaehleHaken, () => null);
     const zeile = leitstandSnapshot(issues, prs, repo, haken, gespiegelt);
+    // Fehler im Feld `queue.fehler` (jsonb, keine Migration nötig).
+    if (fehler.length) Object.assign(zeile.queue, { fehler });
     log(projekt.name, `Snapshot: ${JSON.stringify(zeile.queue)}, fertig ${haken ? `${haken.fertig} von ${haken.gesamt}` : "unbekannt"}`);
     if (!DRY) await schreibeSnapshot(zeile);
   }
 
+  const team = await teamDaten(teamId);
+
   // Hänger vor der Schlange, damit zurückgesetzte Issues nicht doppelt zählen.
   const claudePausen = (await ladePausenAlle()).filter((p) => p.dienst === "claude").map((p) => p.erstellt_at);
-  const haenger = erkenneIssueHaenger(issues, prs, jetzt, claudePausen);
+  // Ohne geladene PRs/Spiegel wäre jeder Lauf ein „Hänger“: dann nichts zurücksetzen.
+  const haenger = fehler.length ? [] : erkenneIssueHaenger(issues, prs, jetzt, claudePausen);
   for (const h of haenger) {
     if (h.kontingent) {
       log(projekt.name, `${h.issue.identifier} scheiterte am Claude-Kontingent → zurück auf Todo`);
