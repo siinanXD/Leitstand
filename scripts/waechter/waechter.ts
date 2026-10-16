@@ -247,6 +247,15 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
   const gespiegelt = gespiegelteIds(offeneGh);
   const team = await teamDaten(teamId);
 
+  // SIN-762: Snapshot vor Pausen, Hängern und Reparaturen, damit ein Fehler dort ihn nicht einfriert.
+  // Linear-Link und PROJEKTE unterscheiden sich in der Schreibweise (siinanxd/leitstand vs. siinanXD/Leitstand).
+  if (repo.toLowerCase() === PROJEKTE.find((x) => x.id === "leitstand")?.repo?.toLowerCase()) {
+    const haken = await readFile("docs/FERTIG.md", "utf8").then(zaehleHaken, () => null);
+    const zeile = leitstandSnapshot(issues, prs, repo, haken, gespiegelt);
+    log(projekt.name, `Snapshot: ${JSON.stringify(zeile.queue)}, fertig ${haken ? `${haken.fertig} von ${haken.gesamt}` : "unbekannt"}`);
+    if (!DRY) await schreibeSnapshot(zeile);
+  }
+
   // Hänger vor der Schlange, damit zurückgesetzte Issues nicht doppelt zählen.
   const claudePausen = (await ladePausenAlle()).filter((p) => p.dienst === "claude").map((p) => p.erstellt_at);
   const haenger = erkenneIssueHaenger(issues, prs, jetzt, claudePausen);
@@ -316,14 +325,6 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
     if (!DRY) await neuesIssue(teamId, projekt.id, t.title, t.description, [LABEL]);
   } else {
     log(projekt.name, "Schlange ok");
-  }
-
-  // Linear-Link und PROJEKTE unterscheiden sich in der Schreibweise (siinanxd/leitstand vs. siinanXD/Leitstand).
-  if (repo.toLowerCase() === PROJEKTE.find((x) => x.id === "leitstand")?.repo?.toLowerCase()) {
-    const haken = await readFile("docs/FERTIG.md", "utf8").then(zaehleHaken, () => null);
-    const zeile = leitstandSnapshot(issues, prs, repo, haken, gespiegelt);
-    log(projekt.name, `Snapshot: ${JSON.stringify(zeile.queue)}, fertig ${haken ? `${haken.fertig} von ${haken.gesamt}` : "unbekannt"}`);
-    if (!DRY) await schreibeSnapshot(zeile);
   }
 
   if (updateFaellig(p.letztesUpdateAt, jetzt)) {
