@@ -49,14 +49,21 @@ export function linearId(text: string | null | undefined): string | null {
 /** Markierung im GitHub-Issue, damit ein Linear-Issue nie zweimal gespiegelt wird. */
 export const marker = (identifier: string) => `<!-- linear:${identifier} -->`;
 
+const MARKER_RE = /<!-- linear:(SIN-\d+) -->/;
+
+/** Nur ein offener Spiegel blockiert; ein geschlossener lässt das Issue wieder starten (SIN-760). */
 export function gespiegelteIds(githubIssues: GithubIssue[]): Set<string> {
   const ids = new Set<string>();
   for (const i of githubIssues) {
-    const m = String(i.body ?? "").match(/<!-- linear:(SIN-\d+) -->/);
+    const m = i.state === "open" ? String(i.body ?? "").match(MARKER_RE) : null;
     if (m) ids.add(m[1]);
   }
   return ids;
 }
+
+/** Nummern der offenen GitHub-Spiegel eines Linear-Issues. */
+export const offeneSpiegel = (githubIssues: GithubIssue[], identifier: string): number[] =>
+  githubIssues.filter((i) => i.state === "open" && i.body?.match(MARKER_RE)?.[1] === identifier).map((i) => i.number);
 
 const hatLabel = (i: LinearIssue) => i.labels.some((l) => l.toLowerCase() === LABEL);
 const offenBlockiert = (i: LinearIssue) => i.blockiertVon.some((b) => !ERLEDIGT.has(b.stateType));
