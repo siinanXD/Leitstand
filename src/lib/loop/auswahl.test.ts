@@ -88,6 +88,15 @@ test("laufende: Hänger ohne PR nach 90 Min belegt keinen Platz mehr (SIN-654)",
   assert.deepEqual(freigegebene([haenger, jung], { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-611"]);
 });
 
+test("laufende: Hänger ohne PR und ohne Startzeit belegt keinen Platz (SIN-781)", () => {
+  const jetzt = new Date("2026-10-16T16:00:00Z");
+  const lauf = issue({ identifier: "SIN-738", stateType: "started", startedAt: null });
+  const todo = issue({ identifier: "SIN-770" });
+  assert.equal(laufende([lauf], { jetzt, offenePrs: [] }).length, 0);
+  assert.equal(laufende([lauf]).length, 1, "ohne Belegung wie bisher");
+  assert.deepEqual(waehle([lauf, todo], new Set(), 1, { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-770"]);
+});
+
 test("laufende: gemergter „Part of“-PR mit offenen Haken belegt keinen Platz (SIN-781)", () => {
   const jetzt = new Date("2026-10-16T16:00:00Z");
   const lauf = issue({ identifier: "SIN-754", stateType: "started", startedAt: "2026-10-16T15:50:00Z" });

@@ -412,3 +412,9 @@
   art: datei
   pfad: src/lib/loop/auswahl.ts
   enthaelt: teilGemergt
+- id: leitstand-snapshot-entkoppelt
+  produkt: leitstand
+  titel: Der Leitstand-Snapshot entsteht auch bei Teilfehlern (SIN-781)
+  art: datei
+  pfad: scripts/waechter/waechter.ts
+  enthaelt: queue.fehler

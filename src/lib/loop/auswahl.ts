@@ -93,7 +93,8 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
     // SIN-781: „Part of“-PR gemergt, Haken offen: das Issue wartet auf den Folge-Worker und belegt keinen Platz.
     // shortcut: gilt auch, wenn der Folge-Worker schon läuft, aber noch keinen PR hat; ausbauen, wenn das zu Doppelläufen führt.
     if (belegung.teilGemergt?.includes(i.identifier)) return false;
-    if (!i.startedAt) return true;
+    // Ohne Startzeit (Linear liefert sie nicht immer) nie ewig belegen: sonst bleibt der Platz für immer zu.
+    if (!i.startedAt) return false;
     return belegung.jetzt.getTime() - Date.parse(i.startedAt) <= PLATZ_MINUTEN * 60_000;
   });
 }
