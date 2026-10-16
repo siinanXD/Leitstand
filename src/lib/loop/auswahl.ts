@@ -10,6 +10,8 @@ export const LABEL = "claude";
 export const MAX_REPARATUR = 3;
 /** Ab hier gilt ein Issue „In Progress“ ohne offenen PR als Hänger (gleiche Grenze wie der Wächter, SIN-419). */
 export const HAENGER_STUNDEN = 6;
+/** Ohne offenen PR belegt ein laufendes Issue den Platz höchstens so lange (SIN-759). */
+export const PLATZ_MINUTEN = 90;
 
 export type LinearIssue = {
   id: string;
@@ -71,7 +73,7 @@ const prGehoertZu = (pr: OffenerPr, i: LinearIssue) =>
 
 /**
  * Laufende Issues, die einen Platz belegen: „In Progress“ mit Label `claude`. Mit `belegung` zählt ein Hänger nicht
- * (SIN-654): ohne offenen PR und länger als HAENGER_STUNDEN gestartet, z. B. weil der Worker mit Blocker aufgab.
+ * (SIN-654): ohne offenen PR und länger als PLATZ_MINUTEN gestartet, z. B. weil der Worker mit Blocker aufgab.
  * Sonst blockiert so ein Issue den einzigen Platz, bis der Wächter es zurücksetzt.
  */
 export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssue[] {
@@ -81,8 +83,14 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
     const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
     if (eigene.length) return !eigene.every(wartetAufSinan);
     if (!i.startedAt) return true;
-    return belegung.jetzt.getTime() - Date.parse(i.startedAt) <= HAENGER_STUNDEN * 3_600_000;
+    return belegung.jetzt.getTime() - Date.parse(i.startedAt) <= PLATZ_MINUTEN * 60_000;
   });
+}
+
+/** Issues „In Progress“ mit Label `claude`, deren Platz `laufende` freigegeben hat (für den Eintrag in loop_events). */
+export function freigegebene(issues: LinearIssue[], belegung: Belegung): LinearIssue[] {
+  const belegt = new Set(laufende(issues, belegung).map((i) => i.identifier));
+  return issues.filter((i) => i.stateType === "started" && hatLabel(i) && !belegt.has(i.identifier));
 }
 
 const startbar = (i: LinearIssue, gespiegelt: Set<string>) =>
