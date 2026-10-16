@@ -32,6 +32,7 @@ import {
   pruefeNeuesProjekt,
   repoAusLinks,
   reparaturText,
+  snapshotGrundOhneProjekt,
   snapshotUebersprungenGrund,
   tagesstand,
   updateFaellig,
@@ -423,6 +424,9 @@ async function main() {
     fehler++;
     console.log(`::error::Entscheidungen: ${(e as Error).message}`);
   }
+  const leitstand = PROJEKTE.find((x) => x.id === "leitstand");
+  const fehlt = leitstand?.linearProjekt ? snapshotGrundOhneProjekt(alle.map((p) => p.projekt.name), { linearProjekt: leitstand.linearProjekt }) : null;
+  if (fehlt) await meldeUebersprungen(fehlt);
   for (const p of alle) {
     const name = p.projekt.name;
     try {

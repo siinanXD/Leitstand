@@ -15,6 +15,7 @@ import {
   planeSchlange,
   pruefeNeuesProjekt,
   repoAusLinks,
+  snapshotGrundOhneProjekt,
   snapshotUebersprungenGrund,
   tagesstand,
   updateFaellig,
@@ -231,6 +232,12 @@ test("snapshotUebersprungenGrund: nennt je Ursache einen Grund (SIN-788)", () =>
   assert.match(snapshotUebersprungenGrund(p({}), null, ziel) ?? "", /GitHub-Link/);
   assert.match(snapshotUebersprungenGrund(p({}), "x/y", ziel) ?? "", /x\/y/);
   assert.equal(snapshotUebersprungenGrund(p({ name: "Lern-App", statusTyp: "planned" }), null, ziel), null);
+});
+
+test("snapshotGrundOhneProjekt: fehlendes Linear-Projekt nennt Grund (SIN-788)", () => {
+  const ziel = { linearProjekt: "Leitstand" };
+  assert.equal(snapshotGrundOhneProjekt(["Lern-App", "Leitstand"], ziel), null);
+  assert.match(snapshotGrundOhneProjekt(["Lern-App"], ziel) ?? "", /Leitstand.*1 geladenen/);
 });
 
 test("Entscheidung: im Linear-Kommentar führt zu Label und PR-Kommentar (SIN-651)", () => {
