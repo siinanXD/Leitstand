@@ -3,7 +3,7 @@
 import { berlinerTag } from "./berlin";
 
 export type AufgabeStatus = "offen" | "laeuft" | "fertig" | "abgebrochen";
-export type Aufgabe = { issue: string; titel: string; projekt: string | null; status: AufgabeStatus; gestartet: string | null; fertig: string | null; labels: string[] };
+export type Aufgabe = { issue: string; titel: string; projekt: string | null; status: AufgabeStatus; gestartet: string | null; fertig: string | null; labels: string[]; /** Fertig-Kriterien im Linear-Issue (SIN-754); null = keine Haken oder noch nicht gespiegelt. */ haken: { erledigt: number; gesamt: number } | null };
 
 const STATUS: readonly AufgabeStatus[] = ["offen", "laeuft", "fertig", "abgebrochen"];
 const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -35,7 +35,10 @@ export function parseAufgaben(raw: unknown): Aufgabe[] {
     if (!o || !issue || !titel) return [];
     const status = STATUS.includes(o.status as AufgabeStatus) ? (o.status as AufgabeStatus) : "offen";
     const labels = Array.isArray(o.labels) ? o.labels.filter((l): l is string => typeof l === "string") : [];
-    return [{ issue, titel, projekt: text(o.projekt), status, gestartet: zeit(o.gestartet_at), fertig: zeit(o.fertig_at), labels }];
+    const gesamt = Number(o.haken_gesamt);
+    const erledigt = Number(o.haken_erledigt);
+    const haken = Number.isInteger(gesamt) && gesamt > 0 && Number.isInteger(erledigt) && erledigt >= 0 && erledigt <= gesamt ? { erledigt, gesamt } : null;
+    return [{ issue, titel, projekt: text(o.projekt), status, gestartet: zeit(o.gestartet_at), fertig: zeit(o.fertig_at), labels, haken }];
   });
 }
 

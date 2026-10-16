@@ -115,7 +115,7 @@ function InArbeit({ liste, jetzt }: { liste: Aufgabe[]; jetzt: Date }) {
           <span className="eintrag-titel">
             <Link href={`/aufgabe/${a.issue}`}>{ohneKennungen(a.titel)}</Link>
           </span>
-          <span className="mono-label">{[a.projekt ? projektInfo(a.projekt).name : null, a.gestartet ? `gestartet ${zeitInWorten(a.gestartet, jetzt)}` : null].filter(Boolean).join(" · ")}</span>
+          <span className="mono-label">{[a.projekt ? projektInfo(a.projekt).name : null, a.haken ? `${a.haken.erledigt} von ${a.haken.gesamt} Haken` : null, a.gestartet ? `gestartet ${zeitInWorten(a.gestartet, jetzt)}` : null].filter(Boolean).join(" · ")}</span>
         </li>
       )}
     />
