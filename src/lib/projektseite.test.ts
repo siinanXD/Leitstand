@@ -53,6 +53,6 @@ test("Alle Projekte: Zeilen, Phase ohne Daten leer, Satz", () => {
   assert.equal(l.prs, 1);
   assert.equal(l.brauchtDich, 1);
   assert.equal(z.find((x) => x.projekt.id === "beleg")!.phase, null);
-  assert.equal(projekteSatz(z), "5 Projekte, 1 Worker arbeitet, 1 Aufgabe wartet auf dich.");
+  assert.equal(projekteSatz(z), "6 Projekte, 1 Worker arbeitet, 1 Aufgabe wartet auf dich.");
   assert.equal(projekteSatz([]), null);
 });

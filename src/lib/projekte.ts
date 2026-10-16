@@ -24,6 +24,8 @@ export const PROJEKTE: Projekt[] = [
   { id: "leitstand", name: "Leitstand", farbe: "var(--color-projekt-leitstand)", repo: "siinanXD/Leitstand", linearProjekt: "Leitstand", bauphase: true, links: { figma: "https://www.figma.com/design/7Ti9iVUjUjw3rh9WYhSu9K" } },
   // shortcut: neutrale Farbe, eigene Projektfarbe braucht ein Design-Issue; ausbauen, sobald es ein Token gibt
   { id: "sjcode-website", name: "SJCODE Website", farbe: "var(--color-border-subtle)", repo: "siinanXD/SJCODE-website", linearProjekt: "SJCODE Website", bauphase: true, links: { app: "https://sjcode.de" } },
+  // shortcut: neutrale Farbe wie SJCODE, eigene Projektfarbe braucht ein Design-Issue; Default-Branch ist master, der Dispatcher nutzt keinen Branch-Namen
+  { id: "stromlauf-ai", name: "Stromlauf AI", farbe: "var(--color-border-subtle)", repo: "siinanXD/stromlauf-ai", linearProjekt: "Stromlauf AI", bauphase: true },
   { id: "beleg", name: "Beleg-Assistent", farbe: "var(--color-projekt-beleg)", bauphase: true },
   { id: "stoerung", name: "Störungs-Assistent", farbe: "var(--color-projekt-stoerung)", bauphase: true },
 ];
