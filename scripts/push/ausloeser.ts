@@ -15,7 +15,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { alarmeAus } from "../../src/lib/abnahme/abnahme";
-import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, rollenStillstandAus, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
+import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, produktFertigAus, rollenStillstandAus, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
 import { OHNE_TODOS_SCHRITT } from "../../src/lib/vorarbeiter/vorarbeiter";
@@ -199,6 +199,7 @@ async function main() {
     ...rollenStillstandAus(pruefeRollen(q.events, jetzt.getTime()), "Leitstand", jetzt.getTime()),
     ...planerOhneTodosAus(q.events.filter((e) => e.step === OHNE_TODOS_SCHRITT).map((e) => ({ projekt: e.project ?? "", name: projektInfo(e.project ?? "").name, zeit: Date.parse(e.created_at) })), jetzt.getTime()),
     ...fertigAus(prs.gemergt, jetzt.getTime()),
+    ...produktFertigAus(q.events.filter((e) => e.step === "produkt-fertig").map((e) => ({ projekt: projektInfo(e.project ?? "").name, zeit: Date.parse(e.created_at) }))),
     ...abbruchAus(laeufe, jetzt.getTime(), prs.mitPr),
   ];
   const ab = new Date(jetzt.getTime() - MERKEN_TAGE * 24 * 3_600_000).toISOString();

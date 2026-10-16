@@ -49,6 +49,12 @@
   art: datei
   pfad: docs/FERTIG.md
   enthaelt: - [
+- id: leitstand-fertigliste-v1
+  produkt: leitstand
+  titel: Die Fertig-Liste v1 trägt Sinans Kopfzeile (SIN-761)
+  art: datei
+  pfad: docs/FERTIG.md
+  enthaelt: Fertig-Liste Leitstand v1
 - id: leitstand-regel
   produkt: leitstand
   titel: Die Regel "kein Done ohne grüne Probe" steht in AGENTS.md

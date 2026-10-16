@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import type { SnapshotRow } from "../uebersicht";
-import { bezugVon, chefSatz, entscheide, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, luecke, ohneDaten, startbar, type ProduktLage } from "./ceo";
-import { gleicheAbsicht, neueIssueTitel, pruefeDubletten, zaehleHaken } from "./fertig";
+import { bezugVon, chefSatz, entscheide, fertigMeldung, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, luecke, ohneDaten, startbar, type ProduktLage } from "./ceo";
+import { gleicheAbsicht, ideenGesperrt, neueIssueTitel, pruefeDubletten, zaehleHaken } from "./fertig";
 
 const lage: ProduktLage = { id: "lernapp", name: "Lern-App", startbar: 1, fertig: 3, gesamt: 10, rot: null, wartetAufSinan: [], metaPrsHeute: 0, ideenDieseWoche: 0 };
 const zeile = (o: Partial<SnapshotRow>): SnapshotRow => ({ project: "lernapp", stage: null, status: "Todo", title: null, updated_at: null, quota_name: null, quota_used: null, quota_limit: null, issue: "SIN-1", blocked_by: [], quotas: [], labels: ["claude"], minutes: null, pr: null, open_prs: [], ...o });
@@ -119,4 +120,23 @@ test("Bezug: was läuft, sonst die erste offene Aufgabe; wird mitgeschrieben und
   assert.equal(entscheidungsZeile(e, "vorrat", null).bezug, "SIN-2");
   assert.equal(letzteJeProdukt([{ produkt: "lernapp", entscheidung: "warten", grund: "x", created_at: "2026-10-13T10:00:00Z", bezug: "SIN-2" }])[0].bezug, "SIN-2");
   assert.equal(letzteJeProdukt([{ produkt: "lernapp", entscheidung: "warten", grund: "x", created_at: "2026-10-13T10:00:00Z" }])[0].bezug, null);
+});
+
+test("SIN-761: offene FERTIG.md sperrt Ideen, volle Liste nicht; Leitstand-Liste steht auf 1/5", async () => {
+  assert.equal(ideenGesperrt("- [x] a\n- [ ] b\n"), true);
+  assert.equal(ideenGesperrt("- [x] a\n- [x] b\n"), false);
+  assert.equal(ideenGesperrt("nichts"), false);
+  const md = await readFile("docs/FERTIG.md", "utf8");
+  assert.deepEqual(zaehleHaken(md), { fertig: 1, gesamt: 5 });
+  assert.equal(ideenGesperrt(md), true);
+  // Auch mit freier Wochenquote keine Idee, solange Punkte offen sind.
+  assert.equal(entscheide({ ...lage, fertig: 1, gesamt: 5, ideenDieseWoche: 0 }).ideenErlaubt, false);
+});
+
+test("SIN-761: alle Haken gesetzt → fertig + nächstes Produkt freischalten (SIN-705)", () => {
+  const e = entscheide({ ...lage, id: "leitstand", name: "Leitstand", fertig: 5, gesamt: 5 });
+  assert.equal(e.art, "fertig");
+  assert.equal(e.freischalten, "SIN-705");
+  assert.equal(entscheide({ ...lage, fertig: 10, gesamt: 10 }).freischalten, null);
+  assert.equal(fertigMeldung("Leitstand"), "Produkt Leitstand ist fertig");
 });
