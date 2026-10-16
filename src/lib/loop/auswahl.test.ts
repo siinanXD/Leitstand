@@ -195,3 +195,7 @@ test("loopZiele: nur Produkte mit Repo, Linear-Projekt und Bauphase (SIN-763)", 
   assert.ok(ids.includes("leitstand") && ids.includes("sjcode-website"));
   assert.ok(!ids.includes("lernapp") && !ids.includes("beleg"));
 });
+
+test("loopZiele enthält Stromlauf AI (SIN-798)", () => {
+  assert.deepEqual(loopZiele().find((z) => z.id === "stromlauf-ai"), { id: "stromlauf-ai", repo: "siinanXD/stromlauf-ai", linearProjekt: "Stromlauf AI" });
+});
