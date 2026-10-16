@@ -18,7 +18,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { ausLinear, freigegebene, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, PROJEKT, reparatur, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, freigegebene, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, PROJEKT, reparatur, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -209,7 +209,7 @@ async function dispatch() {
   await ereignis("dispatch", "start");
   const nodes = await projektIssues();
   const issues = nodes.map(ausLinear);
-  const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=all&per_page=100`);
+  const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   const prs = await gh<{ title: string; head: { ref: string }; labels: { name: string }[] }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
   const belegung: Belegung = { jetzt: new Date(), offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref, labels: p.labels.map((l) => l.name) })) };
   const max = Number(env.LOOP_MAX_PARALLEL ?? 1);
@@ -261,6 +261,9 @@ async function gemergt() {
   if (!issue) return console.log(`${id} nicht in Linear gefunden.`);
   await setzeStatus(issue.id, issue.team.id, "Done");
   await kommentar(issue.id, `Gemergt: ${p.html_url}`);
+  // SIN-760: Spiegel schließen (falls `Closes #N` es nicht schon tat), sonst startet das Issue nie wieder.
+  const offene = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
+  for (const n of offeneSpiegel(offene, id)) await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
   await ereignis("merge", "ok", { issue: id, pr });
 }
 

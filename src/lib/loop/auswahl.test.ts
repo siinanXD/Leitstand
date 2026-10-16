@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, reparatur, waehle, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, waehle, type LinearIssue } from "./auswahl";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
   id: o.identifier,
@@ -28,6 +28,18 @@ test("gespiegelteIds liest nur die Markierung", () => {
     { number: 3, body: null, state: "open" },
   ]);
   assert.deepEqual([...ids], ["SIN-410"]);
+});
+
+test("gespiegelteIds: geschlossener Spiegel blockiert nicht, offener schon", () => {
+  const issues = [issue({ identifier: "SIN-1" }), issue({ identifier: "SIN-2" })];
+  const gh = [
+    { number: 1, body: marker("SIN-1"), state: "closed" },
+    { number: 2, body: marker("SIN-2"), state: "open" },
+  ];
+  assert.deepEqual(waehle(issues, gespiegelteIds(gh), 5).map((i) => i.identifier), ["SIN-1"]);
+  assert.deepEqual(offeneSpiegel(gh, "SIN-1"), []);
+  assert.deepEqual(offeneSpiegel(gh, "SIN-2"), [2]);
+  assert.match(grundNichtsStartbar([issues[1]], gespiegelteIds(gh), 5), /gespiegelt/);
 });
 
 test("waehle: nur Todo mit Label claude, nicht blockiert, nicht gespiegelt, nach Priorität", () => {

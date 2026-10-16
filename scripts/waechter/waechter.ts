@@ -14,7 +14,7 @@ import { readFile } from "node:fs/promises";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
 import { ladePausenAlle } from "../kontingent/pausen";
 import { PROJEKTE } from "../../src/lib/projekte";
-import { ausLinear, gespiegelteIds, LABEL, type GithubIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, gespiegelteIds, LABEL, offeneSpiegel, type GithubIssue } from "../../src/lib/loop/auswahl";
 import {
   entscheidungenAusKommentaren,
   entscheidungsText,
@@ -228,9 +228,14 @@ async function schreibeSnapshot(zeile: ReturnType<typeof leitstandSnapshot>) {
   if (!neu.ok) throw new Error(`loop_snapshot schreiben: ${neu.status} ${await neu.text()}`);
 }
 
-async function ghIssuesGespiegelt(repo: string): Promise<Set<string>> {
-  const l = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=${LABEL}&state=all&per_page=100`);
-  return gespiegelteIds(l);
+const ghOffeneSpiegel = (repo: string) => gh<GithubIssue[]>(`/repos/${repo}/issues?labels=${LABEL}&state=open&per_page=100`);
+
+/** SIN-760: Beim Zurücksetzen auf Todo den offenen Spiegel schließen, sonst bleibt das Issue „gespiegelt“. */
+async function schliesseSpiegel(repo: string, offene: GithubIssue[], identifier: string) {
+  for (const n of offeneSpiegel(offene, identifier)) {
+    await gh(`/repos/${repo}/issues/${n}/comments`, { method: "POST", body: { body: "neu gestartet" } });
+    await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
+  }
 }
 
 // ------------------------------------------------------------------ Ablauf
@@ -238,7 +243,8 @@ async function ghIssuesGespiegelt(repo: string): Promise<Set<string>> {
 async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | null; teamId: string }, repo: string) {
   const { projekt, teamId } = p;
   const issues = await ladeIssues(projekt.id);
-  const [prs, gespiegelt] = await Promise.all([ladePrs(repo), ghIssuesGespiegelt(repo)]);
+  const [prs, offeneGh] = await Promise.all([ladePrs(repo), ghOffeneSpiegel(repo)]);
+  const gespiegelt = gespiegelteIds(offeneGh);
   const team = await teamDaten(teamId);
 
   // Hänger vor der Schlange, damit zurückgesetzte Issues nicht doppelt zählen.
@@ -251,12 +257,14 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       const todo = team.status("Todo");
       if (todo) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: todo });
       await kommentar(h.issue.id, "Wächter: Der Lauf scheiterte am Claude-Kontingent, kein Hänger. Zurück auf Todo, startet nach der Pause von selbst.");
+      await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
     } else if (h.art === "zuruecksetzen") {
       log(projekt.name, `${h.issue.identifier} hängt seit über 6 h ohne PR → zurück auf Todo`);
       if (DRY) continue;
       const todo = team.status("Todo");
       if (todo) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: todo });
       await kommentar(h.issue.id, `Wächter: seit über 6 Stunden In Progress ohne offenen PR. Zurück auf Todo (einmalig). ${MARKER_ZURUECK}`);
+      await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
     } else {
       log(projekt.name, `${h.issue.identifier} hängt erneut → needs-human`);
       if (DRY) continue;
