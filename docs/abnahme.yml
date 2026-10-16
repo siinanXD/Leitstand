@@ -418,3 +418,9 @@
   art: datei
   pfad: scripts/waechter/waechter.ts
   enthaelt: queue.fehler
+- id: leitstand-snapshot-grund
+  produkt: leitstand
+  titel: Ein übersprungener Leitstand-Snapshot nennt den Grund in loop_events (SIN-788)
+  art: datei
+  pfad: scripts/waechter/waechter.ts
+  enthaelt: uebersprungen
