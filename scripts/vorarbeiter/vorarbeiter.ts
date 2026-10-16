@@ -157,7 +157,7 @@ async function legeLeitstandIssuesAn(n: number) {
   if (!stateId || !labelId) throw new Error("Status „Backlog“ oder Label „claude“ in Linear nicht gefunden");
   const meilensteinId = projekt.projectMilestones.nodes.find((m) => m.name === MEILENSTEIN)?.id;
   for (const title of titel) {
-    await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, description: "Offener Punkt aus docs/FERTIG.md (angelegt vom Planer, SIN-636).", labelIds: [labelId], stateId } });
+    await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, priority: 2, description: "Offener Punkt aus docs/FERTIG.md (angelegt vom Planer, SIN-636).\n\n## Fertig-Kriterien\n- [ ] Der Punkt ist live und in docs/abnahme.yml mit einer grünen Probe belegt.", labelIds: [labelId], stateId } });
     console.log(`leitstand: Issue angelegt: ${title}`);
   }
 }

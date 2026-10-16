@@ -217,6 +217,10 @@ export const fertigAus = (prs: readonly GemergterPr[], jetzt: number): Ereignis[
     .filter((p) => /^(feat|fix)(\(|!|:)/.test(p.titel) && fertigGueltig(p.gemergt, jetzt))
     .map((p) => ({ id: `fertig:${p.repo}#${p.nummer}`, art: "fertig", projekt: p.projekt, kennung: "", titel: menschlich(p.titel), zeit: p.gemergt, url: "/" }));
 
+/** „Produkt X ist fertig“ (SIN-761): der CEO schreibt ein Ereignis, hier wird daraus einmal je Produkt eine Mitteilung. */
+export const produktFertigAus = (zeilen: readonly { projekt: string; zeit: number }[]): Ereignis[] =>
+  zeilen.map((z) => ({ id: `produkt-fertig:${z.projekt}`, art: "fertig", projekt: z.projekt, kennung: "", titel: "Produkt ist fertig", zeit: z.zeit, url: "/" }));
+
 /** Worker-Lauf je Aufgabe. `ergebnis` wie bei GitHub: success, failure, cancelled, skipped. */
 export type WorkerLauf = { repo: string; projekt: string; issue: string; titel: string; ergebnis: string; ende: number };
 export const ABBRUCH_FENSTER_MS = 60 * 60_000;

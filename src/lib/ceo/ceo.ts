@@ -50,11 +50,19 @@ export type Entscheidung = {
   /** Regeln: Meta-Arbeit erlaubt (höchstens 1 pro Tag), Ideen erlaubt (v1 fertig, höchstens 1 pro Woche). */
   metaErlaubt: boolean;
   ideenErlaubt: boolean;
+  /** `fertig`: Linear-Kennung des nächsten Produkts, das freigeschaltet wird (Label `agent-ready`, SIN-761). */
+  freischalten?: string | null;
   /** `fertig` ohne Version in Arbeit: Dispatcher stoppen und den Visionär rufen (SIN-573). */
   visionaer?: boolean;
   /** Aufgabe, auf die sich der Satz bezieht (SIN-579); der Leitstand zeigt den Satz nur, solange sie nicht fertig ist. */
   bezug: string | null;
 };
+
+/** Welches Issue ein fertiges Produkt freischaltet (SIN-761): Leitstand fertig → Schaltplan-Agent (SIN-705). */
+export const FREISCHALTEN: Record<string, string> = { leitstand: "SIN-705" };
+/** Schritt in `loop_events` für „Produkt X ist fertig“; der Push-Lauf macht daraus die Mitteilung an Sinan. */
+export const FERTIG_SCHRITT = "produkt-fertig";
+export const fertigMeldung = (name: string) => `Produkt ${name} ist fertig`;
 
 /** Wie viele startbare Issues dem Vorrat fehlen: unter MIN auf MAX auffüllen, sonst 0. Der Planer legt sie an (SIN-636). */
 export const luecke = (startbar: number): number => (startbar < MIN_STARTBAR ? MAX_STARTBAR - startbar : 0);
@@ -82,7 +90,7 @@ export function entscheide(p: ProduktLage): Entscheidung {
   const fertig = v1Fertig && p.version !== "go";
   const wartetAufVersion = p.version === "pause" || p.version === "vorschlag";
   if (p.rot) return { ...basis, art: "weiterbauen", grund: `${p.name}: Ich repariere zuerst ${p.rot}, weil echte Nutzer sonst Fehler sehen.`, auffuellen: 1, dringend: true };
-  if (fertig) return { ...basis, art: "fertig", grund: wartetAufVersion ? `${p.name}: Das Grundgerüst steht, ich baue erst mit deinem Go für die nächste Version weiter.` : `${p.name}: Das Grundgerüst steht, ich stoppe und plane die nächste Version.`, auffuellen: 0, dringend: false, visionaer: !wartetAufVersion };
+  if (fertig) return { ...basis, art: "fertig", grund: wartetAufVersion ? `${p.name}: Das Grundgerüst steht, ich baue erst mit deinem Go für die nächste Version weiter.` : `${p.name}: Das Grundgerüst steht, ich stoppe und plane die nächste Version.`, auffuellen: 0, dringend: false, visionaer: !wartetAufVersion, freischalten: FREISCHALTEN[p.id] ?? null };
   if (p.fokusBei) return { ...basis, art: "warten", grund: `${p.name}: Der Fokus liegt auf einer Version von ${p.fokusBei}, ich repariere nur.`, auffuellen: 0, dringend: false };
   if (p.startbar >= MIN_STARTBAR) return { ...basis, art: "weiterbauen", grund: `${p.name}: Es ist genug zu tun, die Helfer bauen weiter.`, auffuellen: 0, dringend: false };
   if (p.startbar === 0 && p.wartetAufSinan.length > 0) return { ...basis, art: "warten", grund: `${p.name}: Ich warte auf dich bei ${nenne(p.wartetAufSinan)}, sonst kann nichts weitergehen.`, auffuellen: 0, dringend: false };

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abbruchAus, alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, fertigAus, inRuhe, menschlich, planerOhneTodosAus, plane, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
+import { abbruchAus, alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, fertigAus, inRuhe, menschlich, planerOhneTodosAus, plane, produktFertigAus, nachrichtFuer, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
 
 const utc = (s: string) => Date.parse(s);
 const e = (id: string, art: Ereignis["art"], zeit: number, extra: Partial<Ereignis> = {}): Ereignis => ({ id, art, projekt: "Leitstand", kennung: "SIN-1", titel: "Freigabe offen", zeit, ...extra });
@@ -242,4 +242,10 @@ test("Abbruch: nicht melden, wenn es zur Aufgabe schon einen PR gibt", () => {
   const lauf = { repo: "siinanXD/Leitstand", projekt: "Leitstand", issue: "SIN-573", titel: "Visionär", ergebnis: "failure", ende: jetzt - 5 * 60_000 };
   assert.equal(abbruchAus([lauf], jetzt, new Set(["SIN-573"])).length, 0);
   assert.equal(abbruchAus([lauf], jetzt, new Set(["SIN-1"])).length, 1);
+});
+
+test("SIN-761: Produkt fertig wird eine Mitteilung „Fertig und live“", () => {
+  const [ev] = produktFertigAus([{ projekt: "Leitstand", zeit: 1 }]);
+  assert.equal(ev.id, "produkt-fertig:Leitstand");
+  assert.equal(nachrichtFuer(ev).titel, "Fertig und live");
 });

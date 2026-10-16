@@ -14,7 +14,13 @@ export function zaehleHaken(md: string): { fertig: number; gesamt: number } | nu
   return p.length ? { fertig: p.filter((x) => x.fertig).length, gesamt: p.length } : null;
 }
 
-const norm = (t: string) => t.toLowerCase().replace(/\s+/g, " ").trim();
+/** Solange FERTIG.md v1 offene Punkte hat, legt der Planer keine neuen `idee`-Issues an (SIN-761). Nur Bugs mit Nutzerwirkung dürfen rein. Ohne Punkte: keine Sperre (nichts raten). */
+export function ideenGesperrt(md: string): boolean {
+  const h = zaehleHaken(md);
+  return h !== null && h.fertig < h.gesamt;
+}
+
+const norm =(t: string) => t.toLowerCase().replace(/\s+/g, " ").trim();
 
 /** Höchstens so viele neue Ideen-Issues je Projekt und Lauf (SIN-613). */
 export const MAX_NEU_JE_LAUF = 3;

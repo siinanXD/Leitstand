@@ -12,7 +12,7 @@
  * Env: GH_TOKEN (AGENT_WORKFLOW_TOKEN), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CEO_AUSLOESER, CEO_ROT (optional: "produkt=Grund;…" aus Live-Check/Sentry).
  * DRY_RUN=1 oder fehlende Supabase-Variablen: nur Ausgabe im Log, nichts geschrieben.
  */
-import { AUSLOESER, bezugVon, ereignisZeile, entscheide, entscheidungsZeile, gedaechtnisZeile, ohneDaten, startbar, type Ausloeser, type Entscheidung, type ProduktLage } from "../../src/lib/ceo/ceo";
+import { AUSLOESER, bezugVon, ereignisZeile, entscheide, FERTIG_SCHRITT, fertigMeldung, entscheidungsZeile, gedaechtnisZeile, ohneDaten, startbar, type Ausloeser, type Entscheidung, type ProduktLage } from "../../src/lib/ceo/ceo";
 import { REPOS } from "../../src/lib/freigabe";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
@@ -68,6 +68,25 @@ async function visionaerRufen(produkt: string) {
   if (!res.ok) console.log(`::warning::visionaer.yml nicht gestartet (${res.status}).`);
 }
 
+/** `fertig` mit allen Haken (SIN-761): Push „Produkt X ist fertig“ (Ereignis, einmal je Produkt) und das nächste Produkt freischalten (Label `agent-ready` am Linear-Issue). */
+async function freischalten(e: Entscheidung, name: string, schonGemeldet: boolean) {
+  console.log(`${DRY ? "[trocken] " : ""}${fertigMeldung(name)}${e.freischalten ? `, schalte ${e.freischalten} frei (agent-ready)` : ""}`);
+  if (DRY) return;
+  if (!schonGemeldet) await supabase("loop_events", { project: e.produkt, agent: "ceo", step: FERTIG_SCHRITT, status: "ok", grund: fertigMeldung(name), issue: null, pr: null, run_id: null, run_url: null });
+  if (!e.freischalten || !env.LINEAR_API_KEY) return void (e.freischalten && console.log("::warning::LINEAR_API_KEY fehlt, Freischalten übersprungen."));
+  const linear = async <T>(query: string, variables: Record<string, unknown>): Promise<T> => {
+    const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY ?? "" }, body: JSON.stringify({ query, variables }) });
+    const json = (await res.json()) as { data?: T; errors?: unknown };
+    if (!res.ok || json.errors) throw new Error(`Linear: ${res.status} ${JSON.stringify(json.errors ?? "")}`);
+    return json.data as T;
+  };
+  const d = await linear<{ issue: { id: string; team: { labels: { nodes: { id: string; name: string }[] } }; labels: { nodes: { id: string }[] } } }>(`query($i: String!) { issue(id: $i) { id team { labels(first: 250) { nodes { id name } } } labels { nodes { id } } } }`, { i: e.freischalten });
+  const label = d.issue.team.labels.nodes.find((l) => l.name === "agent-ready");
+  if (!label) return console.log("::warning::Label agent-ready fehlt im Linear-Team.");
+  if (d.issue.labels.nodes.some((l) => l.id === label.id)) return;
+  await linear(`mutation($i: String!, $l: [String!]) { issueUpdate(id: $i, input: { labelIds: $l }) { success } }`, { i: d.issue.id, l: [...d.issue.labels.nodes.map((l) => l.id), label.id] });
+}
+
 async function main() {
   const jetzt = new Date();
   const snapshot: SnapshotRow[] = !env.SUPABASE_URL ? [] : parseSnapshot(await supabase("loop_snapshot?select=*&limit=200"));
@@ -113,7 +132,10 @@ async function main() {
     await supabase("ceo_entscheidungen", entscheidungsZeile(e, ausloeser, null));
     await supabase("loop_events", ereignisZeile(e.produkt, run ?? null, run ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${run}` : null));
   }
-  for (const e of lagen.map(entscheide)) if (e.visionaer) await visionaerRufen(e.produkt);
+  for (const e of lagen.map(entscheide)) {
+    if (e.art === "fertig") await freischalten(e, projektName(e.produkt) ?? e.produkt, events.some((v) => v.project === e.produkt && v.step === FERTIG_SCHRITT));
+    if (e.visionaer) await visionaerRufen(e.produkt);
+  }
   if (DRY) console.log("Trockenlauf: nichts geschrieben.");
 }
 
