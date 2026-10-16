@@ -8,6 +8,8 @@ export type Projekt = {
   farbe: string;
   /** GitHub-Repo für Links auf PRs, falls bekannt. */
   repo?: string;
+  /** Name des Linear-Projekts (SIN-763): Mit `repo` und `bauphase` baut der Dispatcher dort Issues mit Label `claude`. */
+  linearProjekt?: string;
   /** Projekte in Bauphase haben bei der Platzvergabe Vorrang. */
   bauphase?: boolean;
   /** Bekannte Adressen (SIN-531): nur eintragen, was es wirklich gibt; fehlende Links zeigt die Seite als „nicht verfügbar“. */
@@ -19,12 +21,18 @@ export type LinkArt = (typeof LINK_ARTEN)[number];
 
 export const PROJEKTE: Projekt[] = [
   { id: "lernapp", name: "Lern-App", farbe: "var(--color-projekt-lernapp)", repo: "siinanXD/Content-Agent-Lernapp" },
-  { id: "leitstand", name: "Leitstand", farbe: "var(--color-projekt-leitstand)", repo: "siinanXD/Leitstand", bauphase: true, links: { figma: "https://www.figma.com/design/7Ti9iVUjUjw3rh9WYhSu9K" } },
+  { id: "leitstand", name: "Leitstand", farbe: "var(--color-projekt-leitstand)", repo: "siinanXD/Leitstand", linearProjekt: "Leitstand", bauphase: true, links: { figma: "https://www.figma.com/design/7Ti9iVUjUjw3rh9WYhSu9K" } },
   // shortcut: neutrale Farbe, eigene Projektfarbe braucht ein Design-Issue; ausbauen, sobald es ein Token gibt
-  { id: "sjcode-website", name: "SJCODE Website", farbe: "var(--color-border-subtle)", repo: "siinanXD/SJCODE-website", bauphase: true, links: { app: "https://sjcode.de" } },
+  { id: "sjcode-website", name: "SJCODE Website", farbe: "var(--color-border-subtle)", repo: "siinanXD/SJCODE-website", linearProjekt: "SJCODE Website", bauphase: true, links: { app: "https://sjcode.de" } },
   { id: "beleg", name: "Beleg-Assistent", farbe: "var(--color-projekt-beleg)", bauphase: true },
   { id: "stoerung", name: "Störungs-Assistent", farbe: "var(--color-projekt-stoerung)", bauphase: true },
 ];
+
+export type LoopZiel = { id: string; repo: string; linearProjekt: string };
+
+/** Produkte, in denen der Dispatcher baut (SIN-763): Repo, Linear-Projekt und Bauphase gesetzt. */
+export const loopZiele = (liste: Projekt[] = PROJEKTE): LoopZiel[] =>
+  liste.flatMap((p) => (p.repo && p.linearProjekt && p.bauphase ? [{ id: p.id, repo: p.repo, linearProjekt: p.linearProjekt }] : []));
 
 const NEUTRAL = "var(--color-border-subtle)";
 

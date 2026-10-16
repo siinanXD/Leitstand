@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, waehle, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, waehle, type LinearIssue } from "./auswahl";
+import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
   id: o.identifier,
@@ -154,4 +155,20 @@ test("waehle: Bug vor Produkt, bei knappem Kontingent nur Stufe 1-2 (SIN-633)", 
   assert.deepEqual(waehle(issues, new Set(), 2).map((i) => i.identifier), ["SIN-2", "SIN-1"]);
   assert.deepEqual(waehle(issues, new Set(), 2, undefined, 30).map((i) => i.identifier), ["SIN-2"]);
   assert.deepEqual(waehle(issues, new Set(), 2, undefined, 10), []);
+});
+
+test("gemergteFuerLaufende: nur laufende Issues mit gemergtem PR (SIN-763)", () => {
+  const issues = [issue({ identifier: "SIN-1", stateType: "started" }), issue({ identifier: "SIN-2", stateType: "started" }), issue({ identifier: "SIN-3", stateType: "unstarted" })];
+  const prs = [
+    { nummer: 7, titel: "feat: a (SIN-1)", gemergt: true },
+    { nummer: 8, titel: "feat: b (SIN-2)", gemergt: false },
+    { nummer: 9, titel: "feat: c (SIN-3)", gemergt: true },
+  ];
+  assert.deepEqual(gemergteFuerLaufende(issues, prs), [{ identifier: "SIN-1", pr: 7 }]);
+});
+
+test("loopZiele: nur Produkte mit Repo, Linear-Projekt und Bauphase (SIN-763)", () => {
+  const ids = loopZiele().map((z) => z.id);
+  assert.ok(ids.includes("leitstand") && ids.includes("sjcode-website"));
+  assert.ok(!ids.includes("lernapp") && !ids.includes("beleg"));
 });

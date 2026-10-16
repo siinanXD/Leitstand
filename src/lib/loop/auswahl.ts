@@ -162,6 +162,16 @@ export function grundNichtsStartbar(issues: LinearIssue[], gespiegelt: Set<strin
   return `keine_todo: ${wartend.length} Todo-Issue(s) mit Label claude, alle blockiert oder schon gespiegelt`;
 }
 
+/** Gemergte PRs (SIN-763), deren Linear-Issue noch „In Progress“ ist: In Produkt-Repos läuft kein loop-merge, der Dispatcher holt das nach. */
+export function gemergteFuerLaufende(issues: LinearIssue[], prs: { nummer: number; titel: string; gemergt: boolean }[]): { identifier: string; pr: number }[] {
+  return issues
+    .filter((i) => i.stateType === "started")
+    .flatMap((i) => {
+      const pr = prs.find((p) => p.gemergt && linearId(p.titel) === i.identifier);
+      return pr ? [{ identifier: i.identifier, pr: pr.nummer }] : [];
+    });
+}
+
 /** Nächster Schritt der Reparatur nach rotem `build`: nächste Runde oder Stopp. */
 export function reparatur(labels: string[]): { runde: number } | { stopp: true } {
   const runden = labels.map((l) => /^repair:(\d+)$/.exec(l)).filter(Boolean).map((m) => Number(m![1]));

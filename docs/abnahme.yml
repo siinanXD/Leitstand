@@ -388,3 +388,9 @@
   art: datei
   pfad: README.md
   enthaelt: docs/architecture.svg
+- id: dispatch-je-repo
+  produkt: leitstand
+  titel: Der Dispatcher baut je Produkt-Repo (linearProjekt in projekte.ts)
+  art: datei
+  pfad: src/lib/projekte.ts
+  enthaelt: linearProjekt
