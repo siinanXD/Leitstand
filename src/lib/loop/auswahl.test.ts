@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, reparatur, waehle, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, reparatur, waehle, type LinearIssue } from "./auswahl";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
   id: o.identifier,
@@ -61,10 +61,10 @@ test("laufende: PR wartet auf Sinan (risk:high) gibt den Platz frei (SIN-678)", 
   assert.deepEqual(waehle([lauf, todo], new Set(), 1, { jetzt, offenePrs: [pr(["risk:high"])] }).map((i) => i.identifier), ["SIN-700"]);
 });
 
-test("laufende: Hänger ohne PR nach 6 h belegt keinen Platz mehr (SIN-654)", () => {
+test("laufende: Hänger ohne PR nach 90 Min belegt keinen Platz mehr (SIN-654)", () => {
   const jetzt = new Date("2026-10-14T21:00:00Z");
   const haenger = issue({ identifier: "SIN-611", stateType: "started", startedAt: "2026-10-14T13:43:00Z" });
-  const jung = issue({ identifier: "SIN-612", stateType: "started", startedAt: "2026-10-14T18:00:00Z" });
+  const jung = issue({ identifier: "SIN-612", stateType: "started", startedAt: "2026-10-14T19:45:00Z" });
   const todo = issue({ identifier: "SIN-623" });
   assert.deepEqual(laufende([haenger, jung], { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-612"]);
   assert.equal(laufende([haenger], { jetzt, offenePrs: [{ titel: "feat(x): y (SIN-611)", branch: "claude/a" }] }).length, 1, "offener PR hält den Platz");
@@ -72,6 +72,7 @@ test("laufende: Hänger ohne PR nach 6 h belegt keinen Platz mehr (SIN-654)", ()
   assert.equal(laufende([haenger]).length, 1, "ohne Belegung wie bisher");
   assert.deepEqual(waehle([haenger, todo], new Set(), 1, { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-623"]);
   assert.deepEqual(waehle([haenger, todo], new Set(), 1), []);
+  assert.deepEqual(freigegebene([haenger, jung], { jetzt, offenePrs: [] }).map((i) => i.identifier), ["SIN-611"]);
 });
 
 test("grundNichtsStartbar: nie leer, nennt belegte Plätze oder fehlende Todo-Issues (SIN-654)", () => {
