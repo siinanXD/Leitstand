@@ -424,3 +424,9 @@
   art: datei
   pfad: scripts/waechter/waechter.ts
   enthaelt: uebersprungen
+- id: leitstand-fliessband-bezug
+  produkt: leitstand
+  titel: Die Aufgaben-Spiegelung kennt Eltern- und verwandte Issues fürs Fließband (SIN-814)
+  art: db
+  rest: leitstand_aufgaben?select=issue,bezug&limit=1
+  mindestens: 1

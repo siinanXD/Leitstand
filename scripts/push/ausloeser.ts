@@ -73,10 +73,10 @@ async function linearTitel(ids: string[]): Promise<Map<string, string>> {
 async function aufgabenSpiegeln(db: any): Promise<void> {
   if (!env.LINEAR_API_KEY) return console.log("::warning::LINEAR_API_KEY fehlt: Aufgabentitel werden nicht gespiegelt.");
   const seit = new Date(Date.now() - 30 * 24 * 3_600_000).toISOString();
-  const query = `query($seit: DateTimeOrDuration!) { issues(first: 250, orderBy: updatedAt, filter: { updatedAt: { gt: $seit } }) { nodes { identifier title description startedAt completedAt canceledAt state { type } project { name } labels { nodes { name } } } } }`;
+  const query = `query($seit: DateTimeOrDuration!) { issues(first: 250, orderBy: updatedAt, filter: { updatedAt: { gt: $seit } }) { nodes { identifier title description startedAt completedAt canceledAt state { type } project { name } labels { nodes { name } } parent { identifier } relations { nodes { relatedIssue { identifier } } } } } }`;
   try {
     const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY }, body: JSON.stringify({ query, variables: { seit } }), signal: AbortSignal.timeout(20_000) });
-    const json = (await res.json()) as { data?: { issues?: { nodes?: { identifier: string; title: string; description: string | null; startedAt: string | null; completedAt: string | null; canceledAt: string | null; state?: { type?: string }; project?: { name?: string } | null; labels?: { nodes?: { name: string }[] } }[] } }; errors?: { message: string }[] };
+    const json = (await res.json()) as { data?: { issues?: { nodes?: { identifier: string; title: string; description: string | null; startedAt: string | null; completedAt: string | null; canceledAt: string | null; state?: { type?: string }; project?: { name?: string } | null; labels?: { nodes?: { name: string }[] }; parent?: { identifier: string } | null; relations?: { nodes?: { relatedIssue?: { identifier: string } | null }[] } }[] } }; errors?: { message: string }[] };
     if (json.errors?.length) throw new Error(json.errors[0].message);
     const zeilen = (json.data?.issues?.nodes ?? []).map((i) => {
       const haken = leseHaken(i.description);
@@ -90,13 +90,14 @@ async function aufgabenSpiegeln(db: any): Promise<void> {
       gestartet_at: i.startedAt,
       fertig_at: i.completedAt ?? i.canceledAt,
       labels: (i.labels?.nodes ?? []).map((l) => l.name),
+      bezug: [i.parent?.identifier, ...(i.relations?.nodes ?? []).map((r) => r.relatedIssue?.identifier)].filter((x): x is string => !!x),
       aktualisiert_at: new Date().toISOString(),
       };
     });
     if (DRY) return console.log(`Aufgaben (Trockenlauf): ${zeilen.length}`);
     let { error } = await db.from("leitstand_aufgaben").upsert(zeilen as never, { onConflict: "issue" });
     // Migration 20261016100000 noch nicht eingespielt: ohne Haken-Spalten spiegeln, damit Titel und Stand weiterlaufen.
-    if (error && /haken_/.test(error.message)) ({ error } = await db.from("leitstand_aufgaben").upsert(zeilen.map((z) => Object.fromEntries(Object.entries(z).filter(([k]) => !k.startsWith("haken_")))) as never, { onConflict: "issue" }));
+    if (error && /haken_|bezug/.test(error.message)) ({ error } = await db.from("leitstand_aufgaben").upsert(zeilen.map((z) => Object.fromEntries(Object.entries(z).filter(([k]) => !k.startsWith("haken_") && k !== "bezug"))) as never, { onConflict: "issue" }));
     if (error) throw new Error(error.message);
     console.log(`Aufgaben gespiegelt: ${zeilen.length}`);
   } catch (e) {
