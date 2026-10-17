@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { brauchtInhalt, FRIST_MINUTEN, klassifiziere, stufe, wartezeitMs } from "../../../scripts/loop/risiko.mjs";
 
 const bekannt = new Set<string>();
@@ -57,4 +58,31 @@ test("Stufe: nur Doku/Tests ist low, Code medium, Gate high", () => {
   assert.equal(stufe({ files: [f("docs/x.md"), f("src/lib/a.ts")], bekannt }).stufe, "medium");
   assert.equal(stufe({ files: [], bekannt }).stufe, "medium");
   assert.equal(stufe({ files: [f(".github/workflows/automerge.yml")], bekannt }).stufe, "high");
+});
+
+test("Workflow-Änderung ohne erweiterte Rechte ist medium, nie low", () => {
+  const f = { filename: ".github/workflows/a.yml", status: "modified", patch: "+      - run: echo hi" };
+  assert.equal(stufe({ files: [f], bekannt }).stufe, "medium");
+  const rechte = { filename: ".github/workflows/a.yml", status: "modified", patch: "+permissions:\n+  contents: read" };
+  assert.equal(stufe({ files: [rechte], bekannt }).stufe, "medium");
+  assert.equal(stufe({ files: [{ filename: "scripts/autonomy/risk.mjs", status: "modified", patch: "+x" }], bekannt }).stufe, "medium");
+});
+
+test("Doku mit permissions oder Secret ist nicht low", () => {
+  const f = { filename: "docs/vorlagen/x.md", status: "modified", patch: "+permissions:\n+  contents: read" };
+  assert.equal(stufe({ files: [f], bekannt }).stufe, "medium");
+  assert.equal(stufe({ files: [{ filename: "docs/x.md", status: "modified", patch: "+Token: secrets.NEU" }], bekannt }).stufe, "medium");
+});
+
+test("nur docs/ ist low und ohne Wartezeit", () => {
+  const r = stufe({ files: [{ filename: "docs/x.md", status: "modified", patch: "+text" }], bekannt });
+  assert.equal(r.stufe, "low");
+  const t = new Date("2026-10-17T10:00:00Z").getTime();
+  assert.equal(wartezeitMs(r.stufe, "2026-10-17T10:00:00Z", t), 0);
+});
+
+test("dispatch.yml startet nach jedem Push auf main, auch bei Merge durch den Agent-Token", () => {
+  const y = readFileSync(new URL("../../../.github/workflows/dispatch.yml", import.meta.url), "utf8");
+  assert.match(y, /push:\s*\n\s*branches:\s*\[main\]/);
+  assert.match(y, /repository_dispatch:/);
 });

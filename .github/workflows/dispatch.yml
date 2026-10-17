@@ -7,6 +7,9 @@ on:
   schedule:
     - cron: "17 */2 * * *"
   # Nach jedem Merge in einem Produkt-Repo (SJCODE-website, stromlauf-ai) sendet dessen post-merge ein repository_dispatch (SIN-812).
+  # Jeder Merge auf main, auch durch den Agent-Token (loop-merge.yml reagiert nur auf PR-Ereignisse).
+  push:
+    branches: [main]
   repository_dispatch:
     types: [produkt-merge]
   workflow_dispatch:
