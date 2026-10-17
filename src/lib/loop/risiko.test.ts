@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { brauchtInhalt, klassifiziere } from "../../../scripts/loop/risiko.mjs";
+import { brauchtInhalt, FRIST_MINUTEN, klassifiziere, stufe, wartezeitMs } from "../../../scripts/loop/risiko.mjs";
 
 const bekannt = new Set<string>();
 const WRITE = "name: x\npermissions:\n  contents: write\njobs: {}\n";
@@ -38,4 +38,23 @@ test("von Hand gesetztes risk:high bleibt stehen", () => {
 
 test("ohne Label und ohne Befund: medium", () => {
   assert.equal(klassifiziere({ files: [{ filename: "README.md", status: "modified", patch: "+x" }], bekannt }).high, false);
+});
+
+test("Fristen: low sofort, medium 30 Min, high nie automatisch", () => {
+  assert.equal(FRIST_MINUTEN.medium, 30);
+  const seit = "2026-10-17T10:00:00Z";
+  const t = new Date(seit).getTime();
+  assert.equal(wartezeitMs("low", seit, t), 0);
+  assert.equal(wartezeitMs("medium", seit, t), 30 * 60_000);
+  assert.equal(wartezeitMs("medium", seit, t + 10 * 60_000), 20 * 60_000);
+  assert.equal(wartezeitMs("medium", seit, t + 31 * 60_000), 0);
+  assert.equal(wartezeitMs("high", seit, t), null);
+});
+
+test("Stufe: nur Doku/Tests ist low, Code medium, Gate high", () => {
+  const f = (filename: string) => ({ filename, status: "modified", patch: "" });
+  assert.equal(stufe({ files: [f("docs/x.md"), f("src/lib/a.test.ts")], bekannt }).stufe, "low");
+  assert.equal(stufe({ files: [f("docs/x.md"), f("src/lib/a.ts")], bekannt }).stufe, "medium");
+  assert.equal(stufe({ files: [], bekannt }).stufe, "medium");
+  assert.equal(stufe({ files: [f(".github/workflows/automerge.yml")], bekannt }).stufe, "high");
 });

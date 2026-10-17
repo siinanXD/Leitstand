@@ -41,3 +41,23 @@ export function klassifiziere({ files, bekannt, labels = [] }) {
   if (labels.includes("risk:high") && gruende.length === 0) gruende.push("risk:high bereits gesetzt, das Gate senkt es nicht");
   return { gruende, high: gruende.length > 0 };
 }
+
+// Einspruchsfrist (SIN-812): risk:low sofort, risk:medium nach 30 Min, risk:high nur mit `freigegeben`.
+export const FRIST_MINUTEN = { low: 0, medium: 30 };
+
+const NUR_DOKU = /^(docs\/|[^/]+\.md$)|\.test\.(ts|tsx|mjs)$|^tests\//;
+
+/** low: nur Doku und Tests; high: siehe klassifiziere; sonst medium. */
+export function stufe({ files, bekannt, labels = [] }) {
+  const { gruende, high } = klassifiziere({ files, bekannt, labels });
+  if (high) return { stufe: "high", gruende };
+  const low = files.length > 0 && files.every((f) => NUR_DOKU.test(f.filename) && (!f.previous_filename || NUR_DOKU.test(f.previous_filename)));
+  return { stufe: low ? "low" : "medium", gruende };
+}
+
+/** Verbleibende Wartezeit in ms ab `seit` (letzter Commit); 0 = sofort mergen, null = nie automatisch (high). */
+export function wartezeitMs(st, seit, jetzt = Date.now()) {
+  if (st === "high") return null;
+  const ende = new Date(seit).getTime() + FRIST_MINUTEN[st] * 60_000;
+  return Math.max(0, ende - jetzt);
+}

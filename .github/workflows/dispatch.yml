@@ -6,6 +6,9 @@ name: dispatch
 on:
   schedule:
     - cron: "17 */2 * * *"
+  # Nach jedem Merge in einem Produkt-Repo (SJCODE-website, stromlauf-ai) sendet dessen post-merge ein repository_dispatch (SIN-812).
+  repository_dispatch:
+    types: [produkt-merge]
   workflow_dispatch:
     inputs:
       dry_run:
