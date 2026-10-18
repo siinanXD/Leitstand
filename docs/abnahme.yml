@@ -438,3 +438,16 @@
   rest: loop_events?project=eq.leitstand&step=eq.planer&status=eq.ok&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 1560
+
+- id: leitstand-codex-worker-protokoll
+  produkt: leitstand
+  titel: Das Codex-Übergabeprotokoll ist im Repository vorhanden (SIN-832)
+  art: datei
+  pfad: docs/CODEX-WORKER.md
+  enthaelt: codex-worker:claimed:
+- id: leitstand-codex-worker-verweis
+  produkt: leitstand
+  titel: Agenten finden den Codex-Übergabeweg in AGENTS.md (SIN-832)
+  art: datei
+  pfad: AGENTS.md
+  enthaelt: docs/CODEX-WORKER.md

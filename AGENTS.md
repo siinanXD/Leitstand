@@ -100,6 +100,10 @@ Gilt für Worker und Planer, Wortlaut in `docs/skills/bauen/SKILL.md` und `docs/
 
 ## Pull Requests
 
+### Übergabe an Codex (SIN-832)
+
+Risikoarme Aufgaben können bestehende Agenten über einen Draft-PR gemäß [docs/CODEX-WORKER.md](docs/CODEX-WORKER.md) an den ereignisgesteuerten Codex-Worker übergeben. Ein Issue hat genau einen Implementierer: nach der Übergabe baut Claude nicht parallel daran weiter. Der andere Worker darf unabhängig prüfen. Dieser Weg erweitert keine Rechte und ändert weder Dispatcher noch Freigabegrenzen.
+
 - Ein PR pro Linear-Issue. Titel als Conventional Commit mit Linear-ID, z. B. `feat(uebersicht): Projekt-Karten (SIN-304)`.
 - Commit-Nachrichten enthalten `Part of SIN-xxx`.
 - Vor dem Push: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`.
