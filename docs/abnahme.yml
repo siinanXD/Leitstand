@@ -9,6 +9,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-stern-auswahl
+  produkt: leitstand
+  titel: Die Auswahl aus GitHub-Sternen begründet Nutzen und bewussten Verzicht (SIN-833)
+  art: datei
+  pfad: docs/decisions/SIN-833-github-sterne.md
+  enthaelt: 42 öffentlichen Sterne
 - id: leitstand-snapshot
   produkt: leitstand
   titel: Leitstand-Snapshot ist frisch und die Schlange gefüllt
@@ -465,3 +471,4 @@
   art: datei
   pfad: docs/autonomy/ROLLEN-ABNAHME.md
   enthaelt: Momentaufnahme, kein Live-Status
+
