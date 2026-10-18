@@ -50,6 +50,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Vertrauenswürdige Prüfer-Version vorhanden
+        # Beim ersten Einführen fehlt der gehärtete Prüfer noch auf der Basis: stoppen, nie den alten CLI mit leerem Diff ausführen.
+        run: test -f src/lib/pruefer/git.ts
       - name: PR-Objekte nur zum Lesen laden
         env:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}

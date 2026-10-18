@@ -40,3 +40,10 @@ test("Prüfer installiert und läuft nur aus Basis, keine persistierten Git-Cred
   assert.doesNotMatch(workflow, /git checkout|gh pr checkout|git reset/);
   assert.match(workflow, /node --import tsx scripts\/pruefer\/pruefer.ts "\$PR" "\$BASE_SHA" "\$HEAD_SHA"/);
 });
+
+test("Erstinstallation stoppt vor dem Secret-Schritt, wenn die Basis noch den alten Prüfer enthält", () => {
+  const start = workflow.indexOf("run: test -f src/lib/pruefer/git.ts");
+  assert.ok(start > 0);
+  assert.ok(start < workflow.indexOf("- id: lauf"));
+  assert.ok(start < workflow.indexOf("OPENAI_API_KEY:"));
+});

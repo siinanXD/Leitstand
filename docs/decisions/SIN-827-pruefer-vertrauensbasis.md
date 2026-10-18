@@ -14,3 +14,11 @@ Quelle, gelesen 18.10.2026: https://docs.github.com/en/actions/reference/securit
 - Bestehender API-Fallback auf Anthropic und dessen unbekannte Kosten werden nicht aus einem Abo-Reset freigegeben. Kein Budget ausgeweitet; explizites Budget-/Fallback-Tracking bleibt ein weiterer Abnahmepunkt.
 
 Die Datei-Probe in docs/abnahme.yml bestätigt nur den installierten Diff-Helfer. Sie ersetzt keine Live-Sicherheitsabnahme.
+
+## Wiederaufnahme 19.10.2026 (SIN-834)
+
+Die bisherige Freigabe für Commit 63e5eae ist im PR-Kommentar dokumentiert. main 824025b wurde ohne Verwerfen der parallelen Abnahme-Proben und Lehren integriert. Zusätzlich stoppt der Workflow vor dem Modell-Schritt, falls auf dem vertrauenswürdigen Basisstand der gehärtete Diff-Helfer noch fehlt: Der alte CLI ignorierte das neue Head-Argument und konnte einen leeren Basis-gegen-HEAD-Diff prüfen. Das wird beim erstmaligen Einführen ausdrücklich als nicht prüfbar behandelt.
+
+Ruleset 24750459 konnte jetzt gelesen werden: aktiv, ausschließlich `build` erforderlich, keine Pull-Request-/Codeowner-Review-Regel und kein erforderlicher `pruefen`-Check. Die frühere 403-Ungewissheit gilt für diesen Ruleset-Befund nicht mehr. Kein Ruleset geändert. PR bleibt Draft bis unabhängigem Review, abgestimmtem Pflicht-Gate und ausdrücklicher Freigabe der zusätzlichen Bootstrap-Sicherung; bestehende Freigabe nicht auf neue Security-Logik ausdehnen.
+
+Prüfung: Typecheck, Lint und 478 Tests nach Konfliktauflösung erfolgreich; anschließend alle sechs gezielten Security-Tests einschließlich Bootstrap-Sicherung erfolgreich. Kein Modellaufruf, kein API-Fallback-Test mit Kosten. GitHub-CI und Live-Negativprobe bleiben getrennte Abnahmestufen.

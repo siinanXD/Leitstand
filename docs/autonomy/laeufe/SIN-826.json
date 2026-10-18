@@ -1,0 +1,28 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-826",
+  "zeitpunkt": "2026-10-18T19:46:44.277Z",
+  "status": "blockiert",
+  "zusammenfassung": "Research-CLI repariert, 13 Rollen mit Belegen/Grenzen bewertet und Bericht unter Mein Team verlinkt. Vollständige Rollen-Live-Abnahme und Routing bleiben offen.",
+  "naechster_schritt": "CI von PR 270 prüfen; danach unabhängige Abnahme. API-Abrechnung SIN-453, Context7 SIN-537 und Security-Draft SIN-827 getrennt klären.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://github.com/siinanXD/Leitstand/actions/runs/39152341649",
+    "https://github.com/siinanXD/Content-Agent-Lernapp/actions/runs/39156645750",
+    "https://github.com/siinanXD/Leitstand/pull/268"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/270",
+  "geaendert": [
+    "README.md",
+    "docs/abnahme.yml",
+    "docs/autonomy/LEHREN.md",
+    "docs/skills/botadvisor/SKILL.md",
+    "scripts/autonomy/research.ts",
+    "src/app/team/page.tsx",
+    "docs/autonomy/ROLLEN-ABNAHME.md",
+    "docs/decisions/SIN-826-rollen-abnahme.md",
+    "docs/decisions/SIN-826-research.md",
+    "src/lib/autonomy/research-cli.test.ts"
+  ]
+}

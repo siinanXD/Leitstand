@@ -9,6 +9,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-stern-auswahl
+  produkt: leitstand
+  titel: Die Auswahl aus GitHub-Sternen begründet Nutzen und bewussten Verzicht (SIN-833)
+  art: datei
+  pfad: docs/decisions/SIN-833-github-sterne.md
+  enthaelt: 42 öffentlichen Sterne
 - id: leitstand-snapshot
   produkt: leitstand
   titel: Leitstand-Snapshot ist frisch und die Schlange gefüllt
@@ -458,3 +464,17 @@
   art: datei
   pfad: src/lib/pruefer/git.ts
   enthaelt: --no-textconv
+
+- id: leitstand-dev-audit-bewertung
+  produkt: leitstand
+  titel: Die offene Dev-Abhängigkeitslücke ist bewertet, nicht als behoben markiert (SIN-828)
+  art: datei
+  pfad: docs/decisions/SIN-828-dev-abhaengigkeiten.md
+  enthaelt: Risiko offen
+
+- id: leitstand-rollen-abnahme
+  produkt: leitstand
+  titel: Die Rollen-Abnahme nennt Belege und offene Live-Prüfungen (SIN-826)
+  art: datei
+  pfad: docs/autonomy/ROLLEN-ABNAHME.md
+  enthaelt: Momentaufnahme, kein Live-Status

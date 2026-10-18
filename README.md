@@ -38,6 +38,8 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:a11y` (Pl
 
 ## Further docs
 
+- Role/tool evidence and open acceptance checks: [`docs/autonomy/ROLLEN-ABNAHME.md`](docs/autonomy/ROLLEN-ABNAHME.md); also linked from “Mein Team”. This is a dated assessment, not live telemetry.
+- Research CLI: `DRY_RUN=1 npx tsx scripts/autonomy/research.ts SIN-826 "agent tools"` checks startup without network or file writes. Actual searches require both GitHub and public Hugging Face results before writing a decision file; no model API is called.
 - Signing in on iPhone (home-screen app, 6-digit code from the mail): [`docs/decisions/SIN-510-code-anmeldung.md`](docs/decisions/SIN-510-code-anmeldung.md)
 - Quota pauses: [`docs/decisions/SIN-581-kontingent-pausen.md`](docs/decisions/SIN-581-kontingent-pausen.md)
 - Rules for agents working in this repo: [`AGENTS.md`](AGENTS.md)
