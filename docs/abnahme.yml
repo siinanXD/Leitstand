@@ -451,3 +451,10 @@
   art: datei
   pfad: AGENTS.md
   enthaelt: docs/CODEX-WORKER.md
+
+- id: leitstand-dev-audit-bewertung
+  produkt: leitstand
+  titel: Die offene Dev-Abhängigkeitslücke ist bewertet, nicht als behoben markiert (SIN-828)
+  art: datei
+  pfad: docs/decisions/SIN-828-dev-abhaengigkeiten.md
+  enthaelt: Risiko offen
