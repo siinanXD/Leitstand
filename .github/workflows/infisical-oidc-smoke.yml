@@ -1,0 +1,59 @@
+name: Infisical OIDC authentication smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  oidc-auth-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check identity variable and authenticate without fetching secrets
+        env:
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          OIDC_AUDIENCE: https://github.com/siinanXD
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          (async () => {
+            const identityId = process.env.INFISICAL_IDENTITY_ID;
+            if (!identityId || !/^[0-9a-f-]{36}$/i.test(identityId)) {
+              throw new Error('INFISICAL_IDENTITY_ID is missing or invalid');
+            }
+            const requestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+            const requestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+            if (!requestUrl || !requestToken) {
+              throw new Error('GitHub OIDC token request is unavailable');
+            }
+            const audience = process.env.OIDC_AUDIENCE;
+            const oidcUrl = new URL(requestUrl);
+            oidcUrl.searchParams.set('audience', audience);
+            const oidcResponse = await fetch(oidcUrl, {
+              headers: { Authorization: `Bearer ${requestToken}` }
+            });
+            if (!oidcResponse.ok) {
+              throw new Error(`GitHub OIDC request failed (HTTP ${oidcResponse.status})`);
+            }
+            const oidcData = await oidcResponse.json();
+            if (!oidcData.value) throw new Error('GitHub OIDC token missing');
+            const authResponse = await fetch('https://eu.infisical.com/api/v1/auth/oidc-auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ identityId, jwt: oidcData.value })
+            });
+            if (!authResponse.ok) {
+              throw new Error(`Infisical OIDC login failed (HTTP ${authResponse.status})`);
+            }
+            const authData = await authResponse.json();
+            if (!authData.accessToken) throw new Error('Infisical response has no access token');
+            console.log('Infisical OIDC authentication: SUCCESS (no secrets fetched)');
+          })().catch(error => {
+            console.error(error.message);
+            process.exitCode = 1;
+          });
+          NODE
