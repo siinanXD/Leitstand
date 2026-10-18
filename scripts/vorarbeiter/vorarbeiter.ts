@@ -131,7 +131,7 @@ async function legeLeitstandIssuesAn(n: number) {
   const md = await readFile("docs/FERTIG.md", "utf8").catch(() => "");
   if (DRY || !env.LINEAR_API_KEY) return console.log(`[trocken] leitstand: bis zu ${n} Issues aus FERTIG.md: ${pruefeDubletten(md, [], n).neu.join(" | ") || "keine offenen Punkte"}`);
   const d = await linear<{ projects: { nodes: { id: string; teams: { nodes: { id: string }[] }; projectMilestones: { nodes: { id: string; name: string }[] }; issues: { nodes: { title: string }[] } }[] } }>(
-    `query($p: String!) { projects(filter: { name: { eq: $p } }) { nodes { id teams(first: 1) { nodes { id } } projectMilestones(first: 20) { nodes { id name } }
+    `query($p: String!) { projects(first: 1, filter: { name: { eq: $p } }) { nodes { id teams(first: 1) { nodes { id } } projectMilestones(first: 20) { nodes { id name } }
       issues(first: 250) { nodes { title } } } } }`,
     { p: PROJEKT },
   );
