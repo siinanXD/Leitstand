@@ -1,13 +1,14 @@
 /**
  * Prüfer mit zweitem Modell (SIN-639). Aufruf aus pruefer.yml:
  *
- *   npx tsx scripts/pruefer/pruefer.ts <PR-Nummer> <Basis-Ref>
+ *   npx tsx scripts/pruefer/pruefer.ts <PR-Nummer> <Basis-SHA> <Head-SHA>
  *
  * Liest PR und Issue (gh), schickt Diff und Issue an OpenAI (Chat Completions, Structured Outputs), schreibt pruefer-kommentar.md
  * und Kosten als loop_events (Schritt pruefer, payload.kosten_eur_usd). Exit 1 bei „nicht bestanden“, Datei pruefer-hoch.txt bei Schwere hoch.
  * Env: OPENAI_API_KEY, PRUEFER_MODELL, PRUEFER_PREIS_EIN, PRUEFER_PREIS_AUS (USD je 1 Mio. Tokens, aus der OpenAI-Doku), GH_TOKEN,
  * SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (optional). DRY_RUN=1: kein Netz zu OpenAI und Supabase, Diff und Regeln laufen.
  */
+import { lesePrDiff } from "../../src/lib/pruefer/git";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatHoch, istKontingentFehler, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
@@ -15,9 +16,9 @@ import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatH
 const env = process.env;
 const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
 const DRY = env.DRY_RUN === "1";
-const [nummer, basis] = process.argv.slice(2);
-if (!nummer || !basis) {
-  console.error("Aufruf: pruefer.ts <PR-Nummer> <Basis-Ref>");
+const [nummer, basis, head] = process.argv.slice(2);
+if (!nummer || !/^\d+$/.test(nummer) || !basis || !head) {
+  console.error("Aufruf: pruefer.ts <PR-Nummer> <Basis-SHA> <Head-SHA>");
   process.exit(2);
 }
 const sh = (cmd: string, ...a: string[]) => execFileSync(cmd, a, { encoding: "utf8", maxBuffer: 50_000_000 });
@@ -44,7 +45,7 @@ async function modell(text: string, name: string): Promise<{ ergebnis: Ergebnis;
 
 /** Rückfall (SIN-696): derselbe Prompt an Claude, Antwort über erzwungenes Tool im selben Schema. Kosten bleiben offen (kein Preis hinterlegt). */
 async function claude(text: string): Promise<{ ergebnis: Ergebnis; ein: number; aus: number }> {
-  if (!env.ANTHROPIC_API_KEY) throw new Error("Codex-Kontingent erschöpft und ANTHROPIC_API_KEY fehlt");
+  if (!env.ANTHROPIC_API_KEY) throw new Error("OpenAI-API-Kontingent erschöpft und ANTHROPIC_API_KEY fehlt");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -85,8 +86,8 @@ async function main() {
   const pr = JSON.parse(sh("gh", "pr", "view", nummer, "--json", "title,body")) as { title: string; body: string };
   const issueNr = /Closes #(\d+)/i.exec(pr.body ?? "")?.[1];
   const issue = issueNr ? (JSON.parse(sh("gh", "issue", "view", issueNr, "--json", "title,body")) as { title: string; body: string }) : null;
-  const dateien = sh("git", "diff", "--name-only", `${basis}...HEAD`).split("\n").filter(Boolean);
-  const { text, gekuerzt } = begrenze(sh("git", "diff", "--unified=3", `${basis}...HEAD`), maxDiffZeichen(preise));
+  const { dateien, diff } = lesePrDiff(basis, head);
+  const { text, gekuerzt } = begrenze(diff, maxDiffZeichen(preise));
   const eing = eingabe({ issue: issue ? `${issue.title}\n${issue.body}` : `(kein Issue verlinkt) ${pr.body ?? ""}`, titel: pr.title, dateien, diff: text, gekuerzt });
 
   let ergebnis: Ergebnis = { bestanden: true, funde: [] };
@@ -103,11 +104,11 @@ async function main() {
     ergebnis = r.ergebnis;
     if (wer === "claude") {
       genutzt = CLAUDE_MODELL;
-      console.log("::warning::Codex-Kontingent erschöpft, Rückfall auf Claude");
+      console.log("::warning::OpenAI-API-Kontingent erschöpft, Rückfall auf Claude");
     } else usd = kostenUsd({ eingabe: r.ein, ausgabe: r.aus }, preise);
   }
   ergebnis = bewerte(ergebnis, dateien, gekuerzt);
-  writeFileSync("pruefer-kommentar.md", kommentar(ergebnis, genutzt, usd, reviewer));
+  writeFileSync("pruefer-kommentar.md", kommentar(ergebnis, genutzt, usd, reviewer) + `\n\nGeprüfter Commit: \`${head}\``);
   if (hatHoch(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");
   await ledger(true, { modell: genutzt, reviewer, bestanden: ergebnis.bestanden, funde: ergebnis.funde.length, hoch: hatHoch(ergebnis), kosten_eur_usd: usd, issue: issueNr ?? null });
   console.log(`Prüfer: ${ergebnis.bestanden ? "bestanden" : "nicht bestanden"}, ${ergebnis.funde.length} Funde${usd === null ? "" : `, ${usd.toFixed(4)} $`}`);

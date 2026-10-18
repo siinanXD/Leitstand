@@ -45,3 +45,7 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:a11y` (Pl
 ## License
 
 [MIT](LICENSE)
+
+## PR-Prüfer (SIN-827)
+
+Der vorgeschlagene gehärtete Prüfer lädt seine Implementierung und Abhängigkeiten vom Basis-Commit, liest Claude-/Codex-PRs nur als Diff und nennt den geprüften Commit. CLI: `node --import tsx scripts/pruefer/pruefer.ts <PR-Nummer> <Basis-SHA> <Head-SHA>`. Beide SHAs müssen vollständig sein. `DRY_RUN=1` unterdrückt Modell-/Ledger-Aufrufe. OpenAI-/Anthropic-API-Nutzung ist getrennt von Plus-/Max-Abos; vorhandene API-Konfiguration bleibt erforderlich.
