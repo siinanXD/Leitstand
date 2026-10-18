@@ -12,6 +12,7 @@
     { "schritt": "claude", "takt": "ereignis", "grenze_h": 24, "alias": ["worker", "work"] },
     { "schritt": "dispatch", "takt": "2h", "grenze_h": 5, "alias": [] },
     { "schritt": "gedaechtnis", "takt": "taeglich", "grenze_h": 26, "alias": [] },
+    { "schritt": "infisical-secret-read-smoke", "takt": "aus", "grenze_h": 0, "alias": [] },
     { "schritt": "infisical-oidc-smoke", "takt": "aus", "grenze_h": 0, "alias": [] },
     { "schritt": "hausmeister", "takt": "woechentlich", "grenze_h": 192, "alias": [] },
     { "schritt": "lernen", "takt": "woechentlich", "grenze_h": 192, "alias": [] },
