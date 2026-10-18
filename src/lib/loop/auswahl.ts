@@ -8,7 +8,8 @@ import { istTeil } from "./haken";
 
 export const PROJEKT ="Leitstand";
 export const LABEL = "claude";
-export const MAX_REPARATUR = 3;
+/** Zwei rote Builds insgesamt: ursprünglicher Fehlversuch plus genau eine Reparatur (SIN-638). */
+export const MAX_REPARATUR = 1;
 /** Ab hier gilt ein Issue „In Progress“ ohne offenen PR als Hänger (gleiche Grenze wie der Wächter, SIN-419). */
 export const HAENGER_STUNDEN = 6;
 /** Ohne offenen PR belegt ein laufendes Issue den Platz höchstens so lange (SIN-759). */

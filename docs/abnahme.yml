@@ -471,3 +471,10 @@
   art: datei
   pfad: docs/autonomy/ROLLEN-ABNAHME.md
   enthaelt: Momentaufnahme, kein Live-Status
+
+- id: leitstand-reparatur-definition
+  produkt: leitstand
+  titel: Zwei rote Builds zählen Erstversuch und eine Reparatur (SIN-638)
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: MAX_REPARATUR = 1

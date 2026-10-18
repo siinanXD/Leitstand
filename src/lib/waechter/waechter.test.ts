@@ -131,7 +131,7 @@ test("Hänger: junges Issue, offener PR oder needs-human werden übersprungen", 
 test("PR-Hänger: rot und 30 Minuten ohne Commit → @claude, Runden zählen, dann Stopp", () => {
   assert.deepEqual(erkennePrHaenger([pr()], jetzt).map((a) => a.art), ["reparatur"]);
   const a = erkennePrHaenger([pr({ labels: ["repair:1"] })], jetzt)[0];
-  assert.ok(a.art === "reparatur" && a.runde === 2);
+  assert.equal(a.art, "stopp", "zweiter roter Build startet keine zweite Reparatur");
   assert.deepEqual(erkennePrHaenger([pr({ labels: ["repair:3"] })], jetzt).map((x) => x.art), ["stopp"]);
 });
 

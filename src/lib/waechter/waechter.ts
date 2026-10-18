@@ -146,7 +146,7 @@ export function erkenneIssueHaenger(issues: WaechterIssue[], offenePrs: PrInfo[]
 
 export type PrAktion = { art: "reparatur"; pr: PrInfo; runde: number } | { art: "stopp"; pr: PrInfo };
 
-/** Offener PR mit roter CI und seit 30 Minuten ohne neuen Commit: @claude bitten (höchstens 3 Runden), danach needs-human. */
+/** Offener PR mit roter CI und seit 30 Minuten ohne neuen Commit: eine Reparatur, beim zweiten roten Build needs-human. */
 export function erkennePrHaenger(prs: PrInfo[], jetzt: Date): PrAktion[] {
   const r: PrAktion[] = [];
   for (const pr of prs) {

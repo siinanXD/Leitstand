@@ -1,5 +1,5 @@
 # Reparatur (SIN-413): Ist `build` auf einem Claude-PR rot, bittet der Loop @claude um eine Reparatur.
-# Höchstens 3 Runden (Labels repair:1 bis repair:3), danach Label needs-human und Hinweis in Linear.
+# Eine Reparatur nach dem ersten roten Build; zweiter roter Build stoppt (SIN-638, MAX_REPARATUR in auswahl.ts).
 name: repair
 
 on:

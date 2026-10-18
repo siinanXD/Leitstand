@@ -7,3 +7,4 @@ Linear-Projektabfrage mit 100 Issues und verschachtelten Relationen überschreit
 Verschachtelte Projekt-Metadatenabfrage multipliziert standardmäßig 50 Projekte × 250 Titel → bei exaktem Projektnamen first: 1 setzen; sonst bleibt der Planer nach erfolgreichem Issue-Lesen rot (SIN-825).
 Research-CLI mit Top-Level-await startet im CommonJS-Projekt nicht, selbst trocken → async main mit Fehlerabschluss; den tatsächlichen CLI-Einstieg ohne Netz sowie mit positiven/negativen Quellen-Fixtures testen (SIN-826).
 Numerische Datumsangabe im Team-Link verletzt den bestehenden Verständlichkeits-Test → Beschriftung ohne nackte Ziffern, Prüfdatum im verlinkten Bericht belassen; Browser-Gate unverändert lassen (SIN-826).
+Zwei Fehlversuche sind Erstversuch plus eine Reparatur → Runtime-Grenze und alle Aufrufer aus derselben Konstanten ableiten, nicht drei Reparaturen zusätzlich erlauben (SIN-638).

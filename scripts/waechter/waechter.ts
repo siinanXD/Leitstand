@@ -1,3 +1,4 @@
+import { MAX_REPARATUR } from "../../src/lib/loop/auswahl";
 /**
  * Projekt-Wächter (SIN-419). Aufruf aus waechter.yml:
  *
@@ -319,12 +320,12 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: [`repair:${a.runde}`] } });
       await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, { method: "POST", body: { body: reparaturText(a.pr, a.runde) } });
     } else {
-      log(projekt.name, `PR #${a.pr.number} nach 3 Runden noch rot → needs-human`);
+      log(projekt.name, `PR #${a.pr.number} nach ${MAX_REPARATUR} Reparaturrunde noch rot → needs-human`);
       if (DRY) continue;
       await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
       await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, {
         method: "POST",
-        body: { body: `Wächter: build ist nach 3 Reparaturrunden noch rot${a.pr.runUrl ? ` (${a.pr.runUrl})` : ""}. Stopp, Sinan entscheidet.` },
+        body: { body: `Wächter: build ist nach ${MAX_REPARATUR} Reparaturrunde noch rot${a.pr.runUrl ? ` (${a.pr.runUrl})` : ""}. Stopp nach zwei roten Builds; Ursache und Zerlegungsvorschlag dokumentieren, kein weiterer Neustart.` },
       });
     }
   }
