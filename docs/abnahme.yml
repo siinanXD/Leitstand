@@ -471,3 +471,10 @@
   art: datei
   pfad: docs/autonomy/ROLLEN-ABNAHME.md
   enthaelt: Momentaufnahme, kein Live-Status
+
+- id: gedaechtnis-entscheidungshistorie
+  produkt: gedaechtnis
+  titel: Die Regel zum Erhalt historischer Entscheidungen ist dokumentiert (SIN-615)
+  art: datei
+  pfad: docs/decisions/SIN-615-entscheidungshistorie.md
+  enthaelt: Bestehende Entscheidungsnotizen vollständig erhalten
