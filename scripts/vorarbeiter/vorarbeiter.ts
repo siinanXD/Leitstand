@@ -1,3 +1,4 @@
+import { ladeProjektIssues } from "../../src/lib/loop/projekt-issues";
 /**
  * Planer (SIN-636; der Pfad stammt vom Vorarbeiter, SIN-553, der im Planer aufgegangen ist). Aufruf aus planer.yml (.github/workflows/planer.yml):
  * täglich 04:00 UTC vor dem CEO, nach jedem Merge, bei geänderter docs/FERTIG.md und nach dem Abnahme-Lauf:
@@ -48,20 +49,9 @@ async function gh<T>(pfad: string, init: { method?: string; body?: unknown } = {
   return (await res.json()) as T;
 }
 
-type Knoten = Parameters<typeof ausLinear>[0] & { team: { id: string } };
-
 async function projektIssues(): Promise<{ issue: LinearIssue; team: string }[]> {
-  const d = await linear<{ issues: { nodes: Knoten[] } }>(
-    `query($p: String!) {
-      issues(first: 100, filter: { project: { name: { eq: $p } }, state: { type: { in: ["backlog", "unstarted", "started"] } } }) {
-        nodes { id identifier title description priority url createdAt team { id }
-          labels { nodes { name } } state { type }
-          inverseRelations { nodes { type issue { identifier state { type } } } } }
-      }
-    }`,
-    { p: PROJEKT },
-  );
-  return d.issues.nodes.map((n) => ({ issue: ausLinear(n), team: n.team.id }));
+  const nodes = await ladeProjektIssues(linear, PROJEKT);
+  return nodes.map((n) => ({ issue: ausLinear(n), team: n.team.id }));
 }
 
 /** Plan in `loop_snapshot.plan` der Zeile `leitstand` ablegen. `loop_snapshot` hat eine Zeile je Projekt (Schlüssel `project`), keine Titel-Spalte. */

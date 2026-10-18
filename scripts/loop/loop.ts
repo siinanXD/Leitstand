@@ -1,3 +1,4 @@
+import { ladeProjektIssues, type ProjektKnoten } from "../../src/lib/loop/projekt-issues";
 /**
  * Loop des Leitstands (SIN-413). Aufruf aus den Workflows:
  *
@@ -86,20 +87,8 @@ async function ereignis(step: string, status: "start" | "ok" | "fehler" | "ueber
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
 }
 
-type Node = Parameters<typeof ausLinear>[0] & { team: { id: string } };
-
-async function projektIssues(projekt: string): Promise<Node[]> {
-  const d = await linear<{ issues: { nodes: Node[] } }>(
-    `query($p: String!) {
-      issues(first: 100, filter: { project: { name: { eq: $p } }, state: { type: { in: ["backlog", "unstarted", "started"] } } }) {
-        nodes { id identifier title description priority url createdAt startedAt team { id }
-          labels { nodes { name } } state { type }
-          inverseRelations { nodes { type issue { identifier state { type } } } } }
-      }
-    }`,
-    { p: projekt },
-  );
-  return d.issues.nodes;
+async function projektIssues(projekt: string): Promise<ProjektKnoten[]> {
+  return ladeProjektIssues(linear, projekt);
 }
 
 async function setzeStatus(issueId: string, teamId: string, name: string) {

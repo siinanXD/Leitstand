@@ -430,3 +430,11 @@
   art: db
   rest: leitstand_aufgaben?select=issue,bezug&limit=1
   mindestens: 1
+
+- id: leitstand-planer-pagination
+  produkt: leitstand
+  titel: Der Planer hat in den letzten 26 Stunden erfolgreich geplant (SIN-825)
+  art: db
+  rest: loop_events?project=eq.leitstand&step=eq.planer&status=eq.ok&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 1560

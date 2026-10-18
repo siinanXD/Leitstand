@@ -14,6 +14,8 @@ Autonomous coding agents produce pull requests around the clock, but nobody can 
 
 The self-building loop is described in [`docs/decisions/SIN-413-loop.md`](docs/decisions/SIN-413-loop.md); the agent roles in [`docs/ABLAUF.md`](docs/ABLAUF.md).
 
+Dispatcher und Planer lesen offene Linear-Projekt-Issues in Seiten zu 25 mit Cursor-Fortsetzung (SIN-825), damit verschachtelte Abfragen unter dem Komplexitätslimit bleiben.
+
 ## Stack
 
 Next.js 16 · React 19 · TypeScript · Supabase (EU) · React Flow · GitHub Actions · Vercel · PWA with web push
