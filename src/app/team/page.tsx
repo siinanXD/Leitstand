@@ -70,7 +70,7 @@ export default function Team() {
               <h1>Mein Team</h1>
             </div>
             <p>
-              <a href="https://github.com/siinanXD/Leitstand/blob/main/docs/autonomy/ROLLEN-ABNAHME.md">Rollen und Werkzeuge: geprüfter Stand vom 18.10.2026</a>
+              <a href="https://github.com/siinanXD/Leitstand/blob/main/docs/autonomy/ROLLEN-ABNAHME.md">Rollen und Werkzeuge: Prüfbericht und offene Punkte</a>
             </p>
             {GRUPPEN.map((g) => {
               const liste = karten.filter((k) => ZUSTAND[k.signal] === g.art);
