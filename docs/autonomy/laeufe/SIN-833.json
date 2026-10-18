@@ -1,0 +1,48 @@
+{
+  "rolle": "research",
+  "issue": "SIN-833",
+  "zeitpunkt": "2026-10-18T20:13:38.530Z",
+  "status": "fertig",
+  "zusammenfassung": "42 öffentliche Sterne vollständig vorausgewählt; elf READMEs und TDD-Skill vertieft. Vorhandene Plattformen und wenige gezielte Methoden statt neuem Agenten-Harness.",
+  "naechster_schritt": "PR 272 unabhängig prüfen, Context7 separat in Draft 271 freigeben; bestehende SIN-738/412 nutzen, keine Bundle-Installation.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://api.github.com/users/siinanXD/starred?per_page=100",
+    "https://github.com/siinanXD/Leitstand/pull/272"
+  ],
+  "treffer": [
+    {
+      "quelle": "github",
+      "name": "mattpocock/skills",
+      "url": "https://github.com/mattpocock/skills",
+      "lizenz": "MIT",
+      "sterne": 296051,
+      "datum": "2026-10-18"
+    },
+    {
+      "quelle": "github",
+      "name": "DietrichGebert/ponytail",
+      "url": "https://github.com/DietrichGebert/ponytail",
+      "lizenz": "MIT",
+      "sterne": 166940,
+      "datum": "2026-10-18"
+    },
+    {
+      "quelle": "github",
+      "name": "ayghri/i-have-adhd",
+      "url": "https://github.com/ayghri/i-have-adhd",
+      "lizenz": "MIT",
+      "sterne": 57670,
+      "datum": "2026-10-18"
+    },
+    {
+      "quelle": "github",
+      "name": "xyflow/xyflow",
+      "url": "https://github.com/xyflow/xyflow",
+      "lizenz": "MIT",
+      "sterne": 38709,
+      "datum": "2026-10-18"
+    }
+  ],
+  "empfehlung": "anpassen"
+}
