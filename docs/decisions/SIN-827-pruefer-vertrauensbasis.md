@@ -41,3 +41,18 @@ Vor einer Aktivierung sind drei Voraussetzungen nötig:
 3. Erst dann bestehendes Ruleset additiv um unabhängige, Head-gebundene Prüfung und Owner-Freigabe für kritische Pfade ergänzen. build, Löschschutz, Non-Fast-Forward-Schutz und leere Bypass-Liste erhalten. Geskippter/fehlender Prüfer und ein Trockenlauf dürfen nicht als Review bestanden gelten. Neues Head invalidiert frühere Prüfung.
 
 Abnahme vor Pilot: Workflow-PR ohne Ownerfreigabe blockiert; selbst vergebene Freigabe blockiert; veralteter/fremder Review blockiert; gültiger Review auf exaktem Head plus echte Freigabe erlaubt den regulären Weg; normaler risikoarmer PR bleibt ohne Gate-Umgehung abwickelbar. Keine dieser Produktivregeln wurde in dieser Sitzung geändert.
+
+
+## Unabhängiger Review und Reparatur 19.10.2026
+
+Codex-Review 5565478407 auf 9d2a1f2 bestätigte drei Lücken: PR-kontrollierte Workflowdefinition, nicht festgelegter vertrauenswürdiger Zielbranch und fehlendes Retargeting-Ereignis. Diese Runde bleibt ein vorbereiteter Draft, keine produktive Aktivierung.
+
+Die Definition wird über `pull_request_target` aus dem Default-Branch geladen; nur `refs/heads/main` mit Default-Branch main ist zulässig. Vor Checkout, Installation und Zugriff auf Agent-/Modell-/Supabase-Secrets validiert github-script mit dem vorhandenen GITHUB_TOKEN den PR. Ausschließlich main als PR-Basis, GitHub-Branchmerkmal protected und identische vollständige SHAs für Workflow-Commit, aktuellen main und PR-Basis werden akzeptiert. Kein PR-Code wird ausgecheckt oder installiert. Bestehender Bootstrap-Stopp und ignore-scripts bleiben erhalten.
+
+`edited` wird nur bei Basisänderungen verarbeitet. Ein solcher Wechsel entwertet vorhandene maschinelle Prüferkommentare auch dann, wenn der neue Zielbranch abgewiesen wird. Vor Veröffentlichung wird das Basis-/Head-Paar erneut aus der API gelesen; ein während des Modelllaufs überholtes Ergebnis wird nicht veröffentlicht. Der Ergebnistext nennt beide Commits. Fremde Kommentare werden bei der Entwertung nicht verändert.
+
+Quelle, gelesen 19.10.2026: https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target . Die aktuelle GitHub-Dokumentation bindet den Trigger an den Default-Branch. Die dort beschriebene Event-Policy ist gesondert zu prüfen; keine Ausnahme oder Policy-Änderung vorgenommen. Der Triggerwechsel ist nach bestehenden Risiko-Regeln high und braucht konkrete Freigabe vor Wirksamwerden. Keine neuen Tokenrechte angefordert.
+
+Grenzen: protected allein belegt keine ausreichende unabhängige Freigabe der Default-Branch-Änderungen. SIN-624 bleibt deshalb offen. Ein privilegierter Target-Workflow-Lauf ist außerdem kein Head-gebundener Pflichtstatus; diesen Check nicht ungeprüft als Required-Check hinzufügen. Bestehendes Gate/Review-Provenienz unter SIN-624/SIN-754 weiter absichern. Kein Modell-API-Lauf, kein produktiver Secret- oder Ruleset-Wechsel; echte negative Live-Proben erst nach Freigabe.
+
+Regressionen zuerst rot (3 erwartete Fehler), anschließend gezielte Workflow-/Git-/CLI-Gegenproben grün. Gesamtprüfung und unabhängiger Folge-Review separat mit Head/Workflow-Lauf dokumentieren.
