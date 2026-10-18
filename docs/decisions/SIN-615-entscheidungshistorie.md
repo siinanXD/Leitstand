@@ -7,3 +7,10 @@ Kleinste Reparatur: Produktnamen aus derselben Eingabe wie die Produktseiten ver
 Nachweis: zwei neue Regressionstests scheiterten vor der Änderung und bestehen danach. Ein Test lässt den bestehenden Linkprüfer die erzeugten Dateien prüfen; der andere schützt Datum, ersetzten Status und historische Ergänzung und prüft den Neueingang. Typecheck, Lint und 475 Tests erfolgreich. Keine neue Abhängigkeit, kein Modellaufruf, keine Änderung an Workflow, Rechten oder Geheimnisprüfung.
 
 Grenzen: Dies ist keine Live-Abnahme des Schreib-Workflows. Automatische semantische Widerspruchslösung, vollständige Ereignisabdeckung und das wiederholte Anhängen von Wochenberichten bleiben gesonderte offene Befunde in SIN-541/SIN-615. Keine fachliche Entscheidung automatisch überschreiben.
+
+
+## Unabhängiger Review 19.10.2026: echte Vault-Probe
+
+Codex-Befund4309239928: Die bisherige Datei-Probe belegt nur Dokumentation im Checkout. Sie darf die produktive Synchronisierung nicht als erfolgreich ausgeben. Ersetzt durch vier bestehende github-Leseproben auf Entscheidungen/SIN-639.md im privaten produktiven Vault: ursprüngliches Datum2026-10-18, Status gilt, Herkunft und korrekter Produktlink Produkte/Leitstand. Die Notiz wurde vor Änderung der Probe frisch über den Connector gelesen; Datum/Status/Herkunft vorhanden, Produktlink noch kleingeschrieben und damit rot. Die Baseline ist deshalb ausdrücklich kein Live-Erfolg.
+
+Regression zuerst rot, danach grün; entfernte Metadaten/Herkunft und falsche Großschreibung werden erkannt. Kein neuer Probe-Typ, keine Abhängigkeit und kein künstlicher Erfolgsmarker. Die vier Proben werden erst nach regulärem Merge und tatsächlichem Writer-Lauf vollständig grün. Eine Stichprobe garantiert nicht die Integrität jeder historischen Notiz; vorhandene Unit-/Replay-Prüfungen bleiben zusätzlich nötig. Falls die repräsentative Entscheidung später bewusst ersetzt wird, ist der erwartete Status mit belegter Folgeentscheidung anzupassen.

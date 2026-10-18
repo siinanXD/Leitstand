@@ -8,3 +8,8 @@ Verschachtelte Projekt-Metadatenabfrage multipliziert standardmäßig 50 Projekt
 Research-CLI mit Top-Level-await startet im CommonJS-Projekt nicht, selbst trocken → async main mit Fehlerabschluss; den tatsächlichen CLI-Einstieg ohne Netz sowie mit positiven/negativen Quellen-Fixtures testen (SIN-826).
 Numerische Datumsangabe im Team-Link verletzt den bestehenden Verständlichkeits-Test → Beschriftung ohne nackte Ziffern, Prüfdatum im verlinkten Bericht belassen; Browser-Gate unverändert lassen (SIN-826).
 Gedächtnis-Sync darf historische Entscheidungen nicht zu Tages-Snapshots machen → bestehende Notizen samt Datum/Status erhalten; Produktlinks mit tatsächlichem Seitennamen erzeugen (SIN-615).
+
+
+### SIN-615: Dokumentationsprobe ersetzt keinen produktiven Writer-Nachweis
+
+Entscheidungshistorie und reparierte Produktlinks an einer vorhandenen historischen Notiz aus dem produktiven GitHub-Vault zurücklesen. Datum, Status und Herkunft getrennt gegen den gelesenen Ausgangsstand prüfen. Ein Text im lokalen Checkout oder selbst gesetzter Erfolgsmarker belegt keine ausgeführte Synchronisierung.
