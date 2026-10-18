@@ -41,6 +41,16 @@ jobs:
             }
             const oidcData = await oidcResponse.json();
             if (!oidcData.value) throw new Error('GitHub OIDC token missing');
+            // Only decode non-secret routing claims; never print or persist the JWT.
+            const tokenParts = oidcData.value.split('.');
+            if (tokenParts.length !== 3) throw new Error('Unexpected GitHub OIDC token shape');
+            const claims = JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString('utf8'));
+            if (typeof claims.sub !== 'string' || typeof claims.iss !== 'string') {
+              throw new Error('Expected GitHub OIDC claims are missing');
+            }
+            console.log('OIDC issuer:', claims.iss);
+            console.log('OIDC subject:', claims.sub);
+            console.log('OIDC audience matches configured value:', claims.aud === audience);
             const authResponse = await fetch('https://eu.infisical.com/api/v1/auth/oidc-auth/login', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
