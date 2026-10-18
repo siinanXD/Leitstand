@@ -22,3 +22,22 @@ Die bisherige Freigabe für Commit 63e5eae ist im PR-Kommentar dokumentiert. mai
 Ruleset 24750459 konnte jetzt gelesen werden: aktiv, ausschließlich `build` erforderlich, keine Pull-Request-/Codeowner-Review-Regel und kein erforderlicher `pruefen`-Check. Die frühere 403-Ungewissheit gilt für diesen Ruleset-Befund nicht mehr. Kein Ruleset geändert. PR bleibt Draft bis unabhängigem Review, abgestimmtem Pflicht-Gate und ausdrücklicher Freigabe der zusätzlichen Bootstrap-Sicherung; bestehende Freigabe nicht auf neue Security-Logik ausdehnen.
 
 Prüfung: Typecheck, Lint und 478 Tests nach Konfliktauflösung erfolgreich; anschließend alle sechs gezielten Security-Tests einschließlich Bootstrap-Sicherung erfolgreich. Kein Modellaufruf, kein API-Fallback-Test mit Kosten. GitHub-CI und Live-Negativprobe bleiben getrennte Abnahmestufen.
+
+## Weitere Gegenproben 19.10.2026
+
+Zwei Regressionen zunächst rot, danach grün:
+
+- API-PR-Metadaten können nach einem neuen Push vom auslösenden Ereignis abweichen. Head und Basis müssen exakt dem Ereignis entsprechen; veraltete Ereignisse stoppen vor dem Modellschritt, statt ein Ergebnis für einen anderen Check-Commit zu erzeugen.
+- Ein echter CLI-Trockenlauf in isoliertem Git-Repo mit gesperrtem Netz darf keine produktive Kommentar-Datei schreiben. Er erzeugt jetzt ausschließlich pruefer-trockenlauf.md mit ausdrücklichem Nicht-Abnahme-Hinweis. Der Workflow veröffentlicht damit keinen simulierten Erfolg als echtes Review.
+
+Acht gezielte Sicherheitsprüfungen grün; Gesamtprüfung separat protokolliert. Kein Modellaufruf, keine Live-Secrets im Test. Dies sind zusätzliche Regressionen der implementierenden Work-Sitzung, kein unabhängiges Peer-Review.
+
+## Konkret vorbereitete Schutzentscheidung (SIN-624)
+
+Vor einer Aktivierung sind drei Voraussetzungen nötig:
+
+1. Bestehenden Legacy-Branchschutz über eine bereits berechtigte Owner-Sitzung nur lesen und exportieren; der Connector liefert 403. Keine zusätzlichen Administrationsrechte an den Worker vergeben.
+2. Autor-/Reviewer-Vertrauensgrenze trennen: Der aktuelle Autor siinanXD ist zugleich Codeowner, und das Worker-Token wird in Claude/Auto-Merge verwendet. Der Worker darf die menschliche Freigabe nicht mit derselben Identität selbst erteilen können. Eine weitere Review-Regel allein löst das nicht. Bestehende getrennte App-Identitäten zuerst nachweisen; Änderungen produktiver Token/Rechte brauchen konkrete Freigabe.
+3. Erst dann bestehendes Ruleset additiv um unabhängige, Head-gebundene Prüfung und Owner-Freigabe für kritische Pfade ergänzen. build, Löschschutz, Non-Fast-Forward-Schutz und leere Bypass-Liste erhalten. Geskippter/fehlender Prüfer und ein Trockenlauf dürfen nicht als Review bestanden gelten. Neues Head invalidiert frühere Prüfung.
+
+Abnahme vor Pilot: Workflow-PR ohne Ownerfreigabe blockiert; selbst vergebene Freigabe blockiert; veralteter/fremder Review blockiert; gültiger Review auf exaktem Head plus echte Freigabe erlaubt den regulären Weg; normaler risikoarmer PR bleibt ohne Gate-Umgehung abwickelbar. Keine dieser Produktivregeln wurde in dieser Sitzung geändert.

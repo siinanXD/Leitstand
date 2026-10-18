@@ -108,7 +108,8 @@ async function main() {
     } else usd = kostenUsd({ eingabe: r.ein, ausgabe: r.aus }, preise);
   }
   ergebnis = bewerte(ergebnis, dateien, gekuerzt);
-  writeFileSync("pruefer-kommentar.md", kommentar(ergebnis, genutzt, usd, reviewer) + `\n\nGeprüfter Commit: \`${head}\``);
+  const hinweis = DRY ? "**Trockenlauf: keine unabhängige Prüfung oder Live-Abnahme.**\n\n" : "";
+  writeFileSync(DRY ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md", hinweis + kommentar(ergebnis, genutzt, usd, reviewer) + `\n\nGeprüfter Commit: \`${head}\``);
   if (hatHoch(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");
   await ledger(true, { modell: genutzt, reviewer, bestanden: ergebnis.bestanden, funde: ergebnis.funde.length, hoch: hatHoch(ergebnis), kosten_eur_usd: usd, issue: issueNr ?? null });
   console.log(`Prüfer: ${ergebnis.bestanden ? "bestanden" : "nicht bestanden"}, ${ergebnis.funde.length} Funde${usd === null ? "" : `, ${usd.toFixed(4)} $`}`);

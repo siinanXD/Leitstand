@@ -7,9 +7,9 @@ const script = workflow.match(/          script: \|\n((?:            .*\n)+)/)![
 const ausfuehren = new Function("github", "context", "core", "process", `return (async () => {${script}})();`);
 const repo = { full_name: "siinanXD/Leitstand" };
 const pr = (ref = "claude/sin-827") => ({ state: "open", draft: false, head: { repo, ref, sha: "a".repeat(40) }, base: { repo, sha: "b".repeat(40) } });
-async function ziel(data: ReturnType<typeof pr>, eventName = "pull_request", nummer = "827") {
+async function ziel(data: ReturnType<typeof pr>, eventName = "pull_request", nummer = "827", ereignis?: ReturnType<typeof pr>) {
   const outputs: Record<string, string> = {};
-  await ausfuehren({ rest: { pulls: { get: async () => ({ data }) } } }, { repo: { owner: "siinanXD", repo: "Leitstand" }, eventName }, { setOutput: (k: string, v: string) => { outputs[k] = v; } }, { env: { PR: nummer } });
+  await ausfuehren({ rest: { pulls: { get: async () => ({ data }) } } }, { repo: { owner: "siinanXD", repo: "Leitstand" }, eventName, payload: { pull_request: ereignis } }, { setOutput: (k: string, v: string) => { outputs[k] = v; } }, { env: { PR: nummer } });
   return outputs;
 }
 
@@ -18,6 +18,13 @@ test("Workflow-Zielprüfung akzeptiert Claude und Codex und liefert nur Commit-S
     assert.deepEqual(await ziel(pr(ref)), { basis: "b".repeat(40), head: "a".repeat(40) });
     assert.ok(workflow.includes(`startsWith(github.head_ref, '${ref.split("/")[0]}/')`));
   }
+});
+
+test("Veraltetes PR-Ereignis darf keinen inzwischen anderen Head oder Basisstand prüfen", async () => {
+  const event = pr();
+  await assert.rejects(ziel({ ...pr(), head: { ...pr().head, sha: "c".repeat(40) } }, "pull_request", "827", event), /veraltet/);
+  await assert.rejects(ziel({ ...pr(), base: { ...pr().base, sha: "c".repeat(40) } }, "pull_request", "827", event), /veraltet/);
+  assert.deepEqual(await ziel(pr(), "pull_request", "827", event), { basis: "b".repeat(40), head: "a".repeat(40) });
 });
 
 test("Fork, Draft, geschlossener PR und ungültige Ziele werden abgewiesen", async () => {

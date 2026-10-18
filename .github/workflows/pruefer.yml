@@ -41,6 +41,8 @@ jobs:
             if (pr.state !== 'open' || pr.head.repo?.full_name.toLowerCase() !== repo || pr.base.repo?.full_name.toLowerCase() !== repo) throw new Error('Nur offene PRs aus demselben Repository');
             if (!/^(claude|codex)\//.test(pr.head.ref)) throw new Error('Kein unterstützter Worker-Branch');
             if (context.eventName !== 'workflow_dispatch' && pr.draft) throw new Error('Draft wird nicht geprüft');
+            const eventPr = context.payload?.pull_request;
+            if (eventPr && (eventPr.head.sha !== pr.head.sha || eventPr.base.sha !== pr.base.sha)) throw new Error('PR-Ereignis veraltet: Head oder Basis hat sich geändert');
             for (const [name, sha] of [['basis', pr.base.sha], ['head', pr.head.sha]]) {
               if (!/^[a-f0-9]{40}$/i.test(sha)) throw new Error('Ungültige Commit-SHA');
               core.setOutput(name, sha);
