@@ -14,20 +14,28 @@ if (!issue || !frage) {
 }
 
 const q = encodeURIComponent(frage);
-if (process.env.DRY_RUN) {
+if (process.env.DRY_RUN === "1") {
   console.log(`Trockenlauf.\n${HF_URL}${q}\n${GITHUB_URL}${q}`);
   process.exit(0);
 }
 
 async function holen(url: string, kopf: Record<string, string> = {}): Promise<unknown> {
-  const r = await fetch(url, { headers: { accept: "application/json", ...kopf } });
+  const r = await fetch(url, { headers: { accept: "application/json", ...kopf }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
   return r.json();
 }
 
-const jetzt = new Date().toISOString();
-const token = process.env.GITHUB_TOKEN;
-const [hf, gh] = await Promise.all([holen(`${HF_URL}${q}`), holen(`${GITHUB_URL}${q}`, token ? { authorization: `Bearer ${token}` } : {})]);
-const datei = `docs/decisions/${issue}-research.md`;
-writeFileSync(datei, entscheidungsdatei(issue, frage, [...githubTreffer(gh, jetzt), ...huggingfaceTreffer(hf, jetzt)], jetzt));
-console.log(`Geschrieben: ${datei}`);
+// tsx lädt dieses Projekt als CommonJS; Top-Level-await verhindert bereits den Trockenlauf.
+async function main() {
+  const jetzt = new Date().toISOString();
+  const token = process.env.GITHUB_TOKEN;
+  const [hf, gh] = await Promise.all([holen(`${HF_URL}${q}`), holen(`${GITHUB_URL}${q}`, token ? { authorization: `Bearer ${token}` } : {})]);
+  const datei = `docs/decisions/${issue}-research.md`;
+  writeFileSync(datei, entscheidungsdatei(issue, frage, [...githubTreffer(gh, jetzt), ...huggingfaceTreffer(hf, jetzt)], jetzt));
+  console.log(`Geschrieben: ${datei}`);
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
+});

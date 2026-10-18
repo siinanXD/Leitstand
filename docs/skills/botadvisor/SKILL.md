@@ -13,7 +13,7 @@ Aufgabe: Sinan beschreibt in einem Satz, was automatisiert werden soll. Der Bot 
    - `docs/skills/<id>/SKILL.md` mit dem `system_prompt`
    - `docs/schemas/<id>.json` (gemeinsamer Rollen-Kopf plus Felder aus `ausgabe_schema`) und `docs/schemas/fixtures/<id>.json`
    - `docs/ABLAUF.md` neu erzeugen: `npx tsx scripts/autonomy/ablauf.ts`
-4. **Prüfen:** `npx tsx scripts/autonomy/schema.ts botadvisor <datei>` und `npm test`. Im Dashboard erscheint die neue Rolle aus `agents.json`; der Loop startet sie über ihren Eintrag in `rollen.json`.
+4. **Prüfen:** `npx tsx scripts/autonomy/schema.ts botadvisor <datei>` und `npm test`. Register und Schema allein starten keine Rolle: `rollen.json` beschreibt die Überwachung, keinen Dispatcher. Vor Aktivierung vorhandenen Auslöser, ausführenden Worker, erlaubte Werkzeuge und einen echten Ergebnisbeleg dokumentieren. Die Team-Karten lesen `src/data/agents.json`, die Noten `docs/autonomy/agents.json`; ein Eintrag allein belegt weder Anzeige noch Ausführung. Risikoarme Codex-Übergaben erfolgen über `docs/CODEX-WORKER.md`; keine parallele Claude-Umsetzung desselben Issues.
 
 ## Regeln
 

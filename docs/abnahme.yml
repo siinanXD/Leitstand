@@ -458,3 +458,10 @@
   art: datei
   pfad: docs/decisions/SIN-828-dev-abhaengigkeiten.md
   enthaelt: Risiko offen
+
+- id: leitstand-rollen-abnahme
+  produkt: leitstand
+  titel: Die Rollen-Abnahme nennt Belege und offene Live-Prüfungen (SIN-826)
+  art: datei
+  pfad: docs/autonomy/ROLLEN-ABNAHME.md
+  enthaelt: Momentaufnahme, kein Live-Status
