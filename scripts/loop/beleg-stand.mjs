@@ -28,11 +28,12 @@ export async function ladeAuftrag(titel, token, holen = fetch) {
 
 export const standMarker = (headSha, hash) => `<!-- pruefer-stand:${headSha.toLowerCase()}:${hash} -->`;
 
-/** Stand aus dem jüngsten Kommentar mit Marker; ohne Marker `null`. */
+/** Nur jüngster offizieller Prüfer-Kommentar zählt; Fehlreview entwertet frühere Erfolge. */
 export function leseStand(kommentare) {
   for (const k of [...kommentare].reverse()) {
+    if (!k.startsWith("<!-- pruefer-zweites-modell -->\n")) continue;
     const m = STAND.exec(k);
-    if (k.startsWith("<!-- pruefer-zweites-modell -->") && (!m || !k.includes("### Prüfer (zweites Modell): bestanden"))) return null;
+    if (!m || !/^### Prüfer \(zweites Modell\): bestanden\r?$/m.test(k)) return null;
     if (m) return { sha: m[1], hash: m[2] };
   }
   return null;
