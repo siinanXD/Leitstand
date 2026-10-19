@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
@@ -14,8 +14,8 @@ import cp from "node:child_process";
 import { syncBuiltinESMExports } from "node:module";
 let gh = 0;
 cp.execFileSync = (cmd, args) => {
-  if (cmd === "gh") return JSON.stringify({ title: "fix: Auftrag (SIN-830)", body: "Closes #1", headRefOid: process.env.GEANDERT && gh++ ? "neuer-head" : "gepruefter-head" });
-  if (cmd === "git") { console.log("DIFF " + args.join(" ")); return args.includes("--name-only") ? "docs/abnahme.yml\\n" : "+ Probe\\n"; }
+  if (cmd === "gh") return JSON.stringify({ title: "fix: Auftrag (SIN-830)", body: "Closes #1", headRefOid: process.env.GEANDERT && gh++ ? "c".repeat(40) : "a".repeat(40) });
+  if (cmd === "git") { console.log("DIFF " + args.join(" ")); return args.includes("--name-only") ? "docs/abnahme.yml\\0" : "+ Probe\\n"; }
   throw new Error("Nicht erlaubter Prozess: " + cmd);
 };
 syncBuiltinESMExports();
@@ -26,12 +26,15 @@ globalThis.fetch = async (url) => {
     for (const geaendert of [false, true]) {
       const cwd = join(dir, geaendert ? "geandert" : "stabil");
       mkdirSync(cwd);
-      const r = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), "--import", preload, resolve("scripts/pruefer/pruefer.ts"), "1", "origin/main"], { cwd, encoding: "utf8", env: { NODE_ENV: "test", PATH: process.env.PATH, DRY_RUN: "1", LINEAR_API_KEY: "fixture", PRUEFER_MODELL: "fixture", PRUEFER_PREIS_EIN: "1", PRUEFER_PREIS_AUS: "1", ...(geaendert ? { GEANDERT: "1" } : {}) } });
-      assert.match(r.stdout, /origin\/main\.\.\.gepruefter-head/);
-      assert.doesNotMatch(r.stdout, /origin\/main\.\.\.HEAD/);
+      const r = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), "--import", preload, resolve("scripts/pruefer/pruefer.ts"), "1", "b".repeat(40), "a".repeat(40)], { cwd, encoding: "utf8", env: { NODE_ENV: "test", PATH: process.env.PATH, DRY_RUN: "1", LINEAR_API_KEY: "fixture", PRUEFER_MODELL: "fixture", PRUEFER_PREIS_EIN: "1", PRUEFER_PREIS_AUS: "1", ...(geaendert ? { GEANDERT: "1" } : {}) } });
+      assert.match(r.stdout, new RegExp("b".repeat(40) + "\\.\\.\\." + "a".repeat(40)));
+      assert.doesNotMatch(r.stdout, /\.\.\.HEAD/);
       assert.equal(r.status, geaendert ? 2 : 0, r.stderr + r.stdout);
       if (geaendert) assert.match(r.stderr, /Head während der Prüfung geändert/);
-      else assert.doesNotMatch(readFileSync(join(cwd, "pruefer-kommentar.md"), "utf8"), /pruefer-haken:/, "Trockenlauf darf keinen verwendbaren Abschlussbeleg erzeugen");
+      else {
+        assert.equal(existsSync(join(cwd, "pruefer-kommentar.md")), false);
+        assert.match(readFileSync(join(cwd, "pruefer-trockenlauf.md"), "utf8"), /Trockenlauf.*keine unabhängige Prüfung/);
+      }
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });

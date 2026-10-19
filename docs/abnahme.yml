@@ -477,6 +477,13 @@
   pfad: AGENTS.md
   enthaelt: docs/CODEX-WORKER.md
 
+- id: leitstand-pruefer-vertrauensbasis
+  produkt: leitstand
+  titel: Der Prüfer liest PR-Daten ohne Checkout des PR-Codes (SIN-827)
+  art: datei
+  pfad: src/lib/pruefer/git.ts
+  enthaelt: --no-textconv
+
 - id: leitstand-dev-audit-bewertung
   produkt: leitstand
   titel: Die offene Dev-Abhängigkeitslücke ist bewertet, nicht als behoben markiert (SIN-828)

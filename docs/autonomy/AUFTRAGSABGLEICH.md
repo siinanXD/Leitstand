@@ -18,6 +18,6 @@ Der bestehende Dispatcher führt diese lesende Abnahme erneut aus, solange Live-
 
 ## Aktivierung und Grenzen
 
-Dieses Paket ersetzt keine Security-Abnahme. Vor Aktivierung die vertrauenswürdige Ausführung des Prüfers aus SIN-827/PR269 integrieren und unabhängig prüfen: Ein Botname allein schützt nicht vor manipulierter Workflowdefinition. Bestehende Marker ohne Head-/Auftragsbindung werden absichtlich nicht als Abschlussbeleg akzeptiert. Der unabhängige Code-Prüfer muss die fachliche Aussage der Probe prüfen; der geschützte Abschlusslauf misst deren tatsächliches Ergebnis. Eine URL allein beweist ihren Inhalt nicht.
+Dieses Paket ersetzt keine Security-Abnahme. Die inzwischen in main gemergte vertrauenswürdige Ausführung des Prüfers aus SIN-827/PR269 ist integriert; vor Aktivierung den kombinierten Stand unabhängig prüfen: Ein Botname allein schützt nicht vor manipulierter Workflowdefinition. Bestehende Marker ohne Head-/Auftragsbindung werden absichtlich nicht als Abschlussbeleg akzeptiert. Der unabhängige Code-Prüfer muss die fachliche Aussage der Probe prüfen; der geschützte Abschlusslauf misst deren tatsächliches Ergebnis. Eine URL allein beweist ihren Inhalt nicht.
 
 SIN-830 ist der konkrete Kontrollfall: Lauf 39219058277 führte alle damaligen 72 Proben aus (55 grün, 17 rot) und scheiterte erst beim Speichern nach loop_events mit HTTP 400. Die zwei später ergänzten Proben ergeben aktuell 74; kein erfolgreicher Speicher- oder vollständiger Produktablauf ist durch diese Codeänderung nachgewiesen.
