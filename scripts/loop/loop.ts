@@ -24,7 +24,8 @@ import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { ausLinear, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
-import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
+import { planeFallback, reserviere, type Ereignis, type Provider, type ProviderStand } from "../../src/lib/loop/fallback";
+import { codexGeeignet, codexUebergabe } from "../../src/lib/loop/codex";
 import { auftragAus, blockiert, supabaseReservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
 const env = process.env;
@@ -98,9 +99,9 @@ function reservierungen(titel?: Map<string, string>): ReservierungsSpeicher | nu
 }
 
 const laufUrl = () => (env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : null);
-/** Claude: der Dispatcher läuft nur ohne aktive Claude-Pause (oben geprüft). Codex: kein belegter Start-Adapter (SIN-832, Zuordnungsfehler). */
+/** Claude: der Dispatcher läuft nur ohne aktive Claude-Pause (oben geprüft). Codex (SIN-870): Start per Draft-PR nach docs/CODEX-WORKER.md. */
 const CLAUDE_FREI: ProviderStand = { adapter: true, fehler: null, bis: null, versuche: 0 };
-const CODEX_OHNE_ADAPTER: ProviderStand = { adapter: false, fehler: null, bis: null, versuche: 0 };
+const CODEX_UEBERGABE: ProviderStand = { adapter: true, fehler: null, bis: null, versuche: 0 };
 /** Strukturiertes Ereignis als JSON im vorhandenen Feld `grund` (loop_events hat keine payload-Spalte, SIN-848). */
 const alsGrund = (art: string, e: Ereignis) => `reservierung_${art}: ${JSON.stringify(e)}`;
 
@@ -108,10 +109,10 @@ const alsGrund = (art: string, e: Ereignis) => `reservierung_${art}: ${JSON.stri
  * Vor dem Start: Stand laden, Policy fragen, atomar reservieren. Nur bei bestätigter Reservierung startet ein Worker.
  * Speicherfehler, verlorener Compare-and-swap oder ein vorhandener Claim verhindern den Start; nichts wird blind freigegeben.
  */
-async function reserviereStart(speicher: ReservierungsSpeicher | null, i: LinearIssue, projekt: string): Promise<boolean> {
+async function reserviereStart(speicher: ReservierungsSpeicher | null, i: LinearIssue, projekt: string, codexErlaubt: boolean): Promise<Provider | null> {
   if (!speicher) {
     await ereignis("dispatch", "uebersprungen", { projekt, issue: i.identifier, grund: "reservierung_fehlt: SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt, kein Start ohne dauerhafte Sperre (SIN-832)" });
-    return false;
+    return null;
   }
   const links = [laufUrl()].filter((x): x is string => !!x);
   let stand;
@@ -119,21 +120,22 @@ async function reserviereStart(speicher: ReservierungsSpeicher | null, i: Linear
     stand = await speicher.laden(i.identifier);
   } catch (e) {
     await ereignis("dispatch", "fehler", { projekt, issue: i.identifier, grund: fehlergrund(`reservierung_unlesbar: ${(e as Error).message}`) });
-    return false;
+    return null;
   }
-  const a = auftragAus(stand, { pr: null, branch: null, codexGeeignet: false });
-  const e = planeFallback(a, { claude: CLAUDE_FREI, codex: CODEX_OHNE_ADAPTER }, new Date(), links);
+  // SIN-870: Codex nur im eigenen Repo (dort ist der Auslöser eingerichtet) und nur für `codex` + `risk:low`.
+  const a = auftragAus(stand, { pr: null, branch: null, codexGeeignet: codexErlaubt && codexGeeignet(i.labels), codexZuerst: true });
+  const e = planeFallback(a, { claude: CLAUDE_FREI, codex: CODEX_UEBERGABE }, new Date(), links);
   if (e.status !== "startbereit") {
     await ereignis("dispatch", "uebersprungen", { projekt, issue: i.identifier, grund: alsGrund(e.status, e) });
-    return false;
+    return null;
   }
   const claim = `gh-${env.GITHUB_RUN_ID ?? "lokal"}-${i.identifier}`;
   if (!(await reserviere(a, e, claim, speicher))) {
     await ereignis("dispatch", "uebersprungen", { projekt, issue: i.identifier, grund: alsGrund("verloren", { ...e, status: "wartend" }) });
-    return false;
+    return null;
   }
-  console.log(`Reserviert: ${i.identifier} (${claim}, Revision ${a.revision + 1}).`);
-  return true;
+  console.log(`Reserviert: ${i.identifier} für ${e.provider} (${claim}, Revision ${a.revision + 1}).`);
+  return e.provider;
 }
 
 /** Nach belegtem Ende (Merge, Stopp): Claim lösen. Fehler werden gemeldet, der Reparaturzähler bleibt stehen. */
@@ -388,7 +390,12 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
       continue;
     }
     // SIN-832: erst die dauerhafte Reservierung, dann der Start. Scheitert der Start danach, bleibt der Claim (Ausgang unklar).
-    if (!(await reserviereStart(speicher, i, projekt))) continue;
+    const provider = await reserviereStart(speicher, i, projekt, eigenes);
+    if (!provider) continue;
+    if (provider === "codex") {
+      await uebergibAnCodex(i, team, projekt);
+      continue;
+    }
     const neu = await gh<{ number: number; html_url: string }>(`/repos/${repo}/issues`, { method: "POST", body: { title, body } });
     // Label getrennt setzen: das löst `issues: labeled` aus und startet claude.yml.
     await gh(`/repos/${repo}/issues/${neu.number}/labels`, { method: "POST", body: { labels: ["claude"] } });
@@ -397,6 +404,19 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     await ereignis("dispatch", "ok", { projekt, issue: i.identifier });
     console.log(`Gestartet: ${i.identifier} → #${neu.number}`);
   }
+}
+
+/** SIN-870: Draft-PR mit Briefdatei und Titelmarker (docs/CODEX-WORKER.md). Kein GitHub-Spiegel, damit Claude nicht startet. */
+async function uebergibAnCodex(i: LinearIssue, teamId: string, projekt: string) {
+  const u = codexUebergabe(i);
+  const main = await gh<{ object: { sha: string } }>(`/repos/${repo}/git/ref/heads/main`);
+  await gh(`/repos/${repo}/git/refs`, { method: "POST", body: { ref: `refs/heads/${u.branch}`, sha: main.object.sha } });
+  await gh(`/repos/${repo}/contents/${u.datei}`, { method: "PUT", body: { message: u.commit, content: Buffer.from(u.brief).toString("base64"), branch: u.branch } });
+  const pr = await gh<{ number: number; html_url: string }>(`/repos/${repo}/pulls`, { method: "POST", body: { title: u.titel, head: u.branch, base: "main", body: u.body, draft: true } });
+  await setzeStatus(i.id, teamId, "In Progress");
+  await kommentar(i.id, `An Codex übergeben: ${pr.html_url}`);
+  await ereignis("dispatch", "ok", { projekt, issue: i.identifier, pr: pr.number });
+  console.log(`An Codex übergeben: ${i.identifier} → PR #${pr.number}`);
 }
 
 /** Issue mit Text und bisherigen Kommentaren, für den Haken-Abgleich (SIN-754). */

@@ -11,6 +11,8 @@ export type Auftrag = {
   issue: string; pr: number | null; branch: string | null; revision: number;
   worker: { provider: Provider; claim: string } | null;
   reparaturen: number; codexGeeignet: boolean;
+  /** SIN-870: Issue mit Label `codex` geht zuerst an Codex, Claude bleibt Rückfall. */
+  codexZuerst?: boolean;
 };
 export type Ereignis = {
   issue: string; pr: number | null; branch: string | null; provider: Provider | null;
@@ -57,7 +59,7 @@ export function planeFallback(a: Auftrag, staende: Record<Provider, ProviderStan
     fehlerklasse: null, status: "wartend", zeitstempel: jetzt.toISOString(), nachweise: nachweise(links) };
   if (a.worker) return { ...e, status: "aktiv" };
   if (a.reparaturen >= 2) return { ...e, status: "needs-human", fehlerklasse: "fachlich" };
-  for (const provider of ["claude", "codex"] as const) {
+  for (const provider of a.codexZuerst && a.codexGeeignet ? (["codex", "claude"] as const) : (["claude", "codex"] as const)) {
     if (provider === "codex" && !a.codexGeeignet) continue;
     if (verfuegbar(staende[provider], jetzt)) return { ...e, provider, status: "startbereit" };
   }

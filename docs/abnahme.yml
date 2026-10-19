@@ -33,6 +33,12 @@
   art: datei
   pfad: docs/decisions/SIN-833-github-sterne.md
   enthaelt: 42 öffentlichen Sterne
+- id: leitstand-codex-routing
+  produkt: leitstand
+  titel: Der Dispatcher gibt nur Issues mit Label codex und risk:low an Codex (SIN-870, Live-Lauf offen)
+  art: datei
+  pfad: src/lib/loop/codex.ts
+  enthaelt: risk:low
 - id: leitstand-snapshot
   produkt: leitstand
   titel: Leitstand-Snapshot ist frisch und die Schlange gefüllt

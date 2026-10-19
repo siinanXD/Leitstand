@@ -52,8 +52,9 @@ export function ausZeile(issue: string, z: Zeile | undefined): Reservierung {
 }
 
 /** Speicherstand plus Kontext aus dem Aufrufer (PR, Branch, Eignung) als `Auftrag` für `planeFallback`. */
-export function auftragAus(r: Reservierung, k: { pr: number | null; branch: string | null; codexGeeignet: boolean }): Auftrag {
+export function auftragAus(r: Reservierung, k: { pr: number | null; branch: string | null; codexGeeignet: boolean; codexZuerst?: boolean }): Auftrag {
   return {
+    codexZuerst: k.codexZuerst,
     issue: r.issue,
     pr: k.pr,
     branch: k.branch,
