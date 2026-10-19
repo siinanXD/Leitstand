@@ -7,3 +7,7 @@ Die reine Entscheidung, der aufrufende CLI, Workflow-Kommentar, AGENTS.md und Ba
 Regression: aktualisierte Sequenz scheiterte mit vorheriger Runtime (repair:1 erlaubte Runde 2); nach Fix 19/19 Auswahltests grün. Weitere Abnahme: komplette Repo-Prüfungen und bestehende GitHub-CI. Produktionswirkung und das Ziel <20 % rote Läufe über sieben Tage sind damit nicht bewiesen.
 
 Scope: Leitstand. Lern-App verwendet noch ihre bisherige eigene Reparaturlogik; die repoübergreifende Übernahme bleibt ein offener Teil von SIN-638. Wiederholte Workflow-Auslieferungen, Worker-Claims und Wiederaufnahme nach Kontingent-Pausen benötigen separate Belege. Kein Job wurde neu gestartet.
+
+## Aktualisiert durch SIN-840
+
+Die jüngere Nutzerentscheidung verlangt höchstens zwei erfolglose Reparaturrunden je Issue. Sie ersetzt die historische Definition Erstversuch plus eine Reparatur oben. Runden werden dauerhaft im bestehenden Linear-Issue reserviert; CI und Wächter nutzen denselben Einstieg.

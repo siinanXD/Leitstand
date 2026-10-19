@@ -102,7 +102,7 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean):
 export const hatHoch = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch");
 
 export type Reviewer = "codex" | "claude";
-export const reviewerZeile = (r: Reviewer) => (r === "codex" ? "Reviewer: Codex" : "Reviewer: Claude (Rückfall, Codex-Kontingent erschöpft)");
+export const reviewerZeile = (r: Reviewer) => (r === "codex" ? "Reviewer: OpenAI API" : "Reviewer: Anthropic API (Rückfall, OpenAI-API-Kontingent erschöpft)");
 
 /** Ist die Antwort des Dienstes „Kontingent leer“ (und kein Fehler im Code)? */
 export const istKontingentFehler = (status: number, body: string) => status === 429 || /insufficient_quota|usage limit/i.test(body);

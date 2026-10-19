@@ -15,6 +15,13 @@ test("docs/abnahme.yml ist lesbar und hat mindestens 10 Proben für Leitstand, G
   for (const produkt of ["leitstand", "gedaechtnis", "lernapp"]) assert.ok(proben.some((p) => p.produkt === produkt), produkt);
 });
 
+test("docs/abnahme.yml hat für jede Rolle aus agents.json eine Ereignis-Probe (SIN-830)", () => {
+  const ids = new Set(parseProben(readFileSync("docs/abnahme.yml", "utf8")).map((p) => p.id));
+  const { rollen } = JSON.parse(readFileSync("docs/autonomy/agents.json", "utf8")) as { rollen: { id: string }[] };
+  assert.ok(rollen.length >= 13);
+  for (const r of rollen) assert.ok(ids.has(`leitstand-rolle-${r.id}`), r.id);
+});
+
 test("parseProben: Felder, Anführungszeichen, Kommentare; Fehler bei doppelter id und unbekannter Art", () => {
   const [p] = parseProben('# Kommentar\n- id: a\n  produkt: x\n  titel: "Ein: Titel"\n  art: http\n  url: https://x.de/a?b=c\n');
   assert.deepEqual(p, { id: "a", produkt: "x", titel: "Ein: Titel", art: "http", url: "https://x.de/a?b=c" });

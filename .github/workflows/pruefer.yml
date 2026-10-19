@@ -1,10 +1,10 @@
-# Prüfer mit zweitem Modell (SIN-639): OpenAI prüft jeden Agenten-PR (Branch claude/*) gegen sein Issue.
+# Prüfer mit zweitem Modell (SIN-639, SIN-827): OpenAI API prüft Claude- und Codex-PRs.
 # Ergebnis als PR-Kommentar. Schwere „hoch“ setzt risk:high (das Gate in automerge.yml senkt es nie). Kosten landen in loop_events.
-# Läuft nicht mit PR-Code im Secret-Kontext von Fremden: nur Branches dieses Repos, nur lesen, Diff ist Eingabedaten.
+# Prüfer/Abhängigkeiten vom Basis-Commit; PR-Commits werden nur als Diff gelesen, nie ausgecheckt.
 name: pruefer
 on:
-  pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, edited]
   workflow_dispatch:
     inputs:
       pr:
@@ -18,28 +18,71 @@ concurrency:
   cancel-in-progress: true
 jobs:
   pruefen:
-    if: github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'claude/') && github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft)
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || ((startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'codex/')) && github.event.pull_request.head.repo.full_name == github.repository && ((github.event.action == 'edited' && github.event.changes.base) || (!github.event.pull_request.draft && github.event.action != 'edited'))))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       PR: ${{ github.event.pull_request.number || inputs.pr }}
-      GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
     steps:
+      - id: ziel
+        name: PR-Ziel validieren
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (!['pull_request_target', 'workflow_dispatch'].includes(context.eventName) || context.ref !== 'refs/heads/main' || context.payload.repository?.default_branch !== 'main') throw new Error('Workflow muss von main stammen');
+            if (!/^[1-9][0-9]*$/.test(process.env.PR || '')) throw new Error('Ungültige PR-Nummer');
+            const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: Number(process.env.PR)});
+            const repo = `${context.repo.owner}/${context.repo.repo}`.toLowerCase();
+            if (pr.state !== 'open' || pr.head.repo?.full_name.toLowerCase() !== repo || pr.base.repo?.full_name.toLowerCase() !== repo) throw new Error('Nur offene PRs aus demselben Repository');
+            if (!/^(claude|codex)\//.test(pr.head.ref)) throw new Error('Kein unterstützter Worker-Branch');
+            if (context.eventName !== 'workflow_dispatch' && pr.draft) throw new Error('Draft wird nicht geprüft');
+            const eventPr = context.payload?.pull_request;
+            if (eventPr && (eventPr.head.sha !== pr.head.sha || eventPr.base.sha !== pr.base.sha)) throw new Error('PR-Ereignis veraltet: Head oder Basis hat sich geändert');
+            if (pr.base.ref !== 'main') throw new Error('Nur main als PR-Basis zulässig');
+            const {data: branch} = await github.rest.repos.getBranch({...context.repo, branch: 'main'});
+            if (!branch.protected) throw new Error('main ist nicht geschützt');
+            if (branch.commit.sha !== context.sha || pr.base.sha !== context.sha) throw new Error('Workflow und PR-Basis müssen denselben geschützten Commit verwenden');
+            for (const [name, sha] of [['basis', pr.base.sha], ['head', pr.head.sha]]) {
+              if (!/^[a-f0-9]{40}$/i.test(sha)) throw new Error('Ungültige Commit-SHA');
+              core.setOutput(name, sha);
+            }
+      - name: Alte Prüfung bei Basiswechsel entwerten
+        if: always() && github.event_name == 'pull_request_target' && github.event.changes.base
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number: Number(process.env.PR)});
+            for (const c of comments.filter(c => ['github-actions[bot]', context.repo.owner].includes(c.user?.login) && c.body?.startsWith('<!-- pruefer-zweites-modell -->'))) {
+              await github.rest.issues.updateComment({...context.repo, comment_id: c.id, body: '<!-- pruefer-zweites-modell -->\n\nBasis geändert: frühere Prüfung ungültig. Neue unabhängige Prüfung ausstehend.'});
+            }
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', inputs.pr) }}
+          ref: ${{ steps.ziel.outputs.basis }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --no-audit --no-fund
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Vertrauenswürdige Prüfer-Version vorhanden
+        # Beim ersten Einführen fehlt der gehärtete Prüfer noch auf der Basis: stoppen, nie den alten CLI mit leerem Diff ausführen.
+        run: test -f src/lib/pruefer/git.ts
+      - name: PR-Objekte nur zum Lesen laden
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          BASE_SHA: ${{ steps.ziel.outputs.basis }}
+          HEAD_SHA: ${{ steps.ziel.outputs.head }}
+        run: git -c credential.helper='!gh auth git-credential' fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
       - id: lauf
         run: |
-          BASE=$(gh pr view "$PR" --json baseRefName -q .baseRefName)
-          git fetch origin "$BASE"
-          npx tsx scripts/pruefer/pruefer.ts "$PR" "origin/$BASE"
+          node --import tsx scripts/pruefer/pruefer.ts "$PR" "$BASE_SHA" "$HEAD_SHA"
         env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          BASE_SHA: ${{ steps.ziel.outputs.basis }}
+          HEAD_SHA: ${{ steps.ziel.outputs.head }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -52,14 +95,23 @@ jobs:
         continue-on-error: true
       - name: Kommentar und risk:high
         if: always() && hashFiles('pruefer-kommentar.md') != ''
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          BASE_SHA: ${{ steps.ziel.outputs.basis }}
+          HEAD_SHA: ${{ steps.ziel.outputs.head }}
         run: |
+          AKTUELL=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq '[.head.sha, .base.sha] | join(" ")')
+          if [ "$AKTUELL" != "$HEAD_SHA $BASE_SHA" ]; then
+            echo 'Prüfergebnis veraltet: Head oder Basis geändert'
+            exit 1
+          fi
           ALT=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --paginate -q '.[] | select(.body | startswith("<!-- pruefer-zweites-modell -->")) | .id' | head -1)
           if [ -n "$ALT" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$ALT" -F body=@pruefer-kommentar.md
           else
             gh pr comment "$PR" --body-file pruefer-kommentar.md
           fi
-          if [ -f pruefer-hoch.txt ] && [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ -f pruefer-hoch.txt ] && [ "${{ github.event_name }}" = "pull_request_target" ]; then
             gh pr edit "$PR" --add-label risk:high
           fi
       - name: Rot, wenn nicht bestanden oder Lauf gescheitert
