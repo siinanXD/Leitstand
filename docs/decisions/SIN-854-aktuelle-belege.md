@@ -23,3 +23,5 @@ Die Merge-Prüfung erzwingt jetzt für jeden unmarkierten Haken einen nichtleere
 Regressionen prüfen fehlende/fehlerhafte Pflichtbelege, unveränderte strenge Standardphase, offene und doppelte Live-Belege, Done-Sperre und echte Sicherheitsbefunde. Bestehender CI-Probenlauf prüft diese Tests. Die Reviewer-Version stammt weiterhin ausschließlich von main: Aktivierung und frische Reviews folgen erst nach separater Freigabe dieses Gate-PRs. Kein Review des PR-Heads mit produktiven Secrets.
 
 Die Ausgabe übernimmt ausschließlich tatsächliche Auftragshaken. Der bestehende Done-Normalisierer wird wiederverwendet: gleichwertige Haken mit widersprüchlicher Phase sperren den Review und bleiben unbelegt. Die CI-Abnahme ist an `${GITHUB_SHA}` gebunden, damit ein älterer grüner main-Lauf nicht als Nachweis des neuen Prüfers zählt.
+
+Lesendes Rückprüfen von Linear zeigte escaped eckige Klammern in der gespeicherten Markierung. Der Leser akzeptiert diese exakte Markdown-Darstellung ebenfalls; Regression prüft das tatsächliche Quellformat bis zum offenen Done-Abgleich. Kein freies Erraten von Phasen.

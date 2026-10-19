@@ -138,3 +138,12 @@ test("Normgleiche doppelte Auftragshaken bleiben gesperrt statt eine Live-Abnahm
   assert.ok(e.haken?.every(h => !h.belegt));
   assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
 });
+
+test("Tatsächliches Linear-Markdown-Escaping erhält die explizite Nachaktivierungsphase", () => {
+  const text = "\\[nach Aktivierung\\] Live-Lauf";
+  const auftrag = `- [ ] ${text}`;
+  const e = bewerte({ ...gut, haken: [{ text, belegt: true, beleg: "simuliert" }] }, probeDateien, false, auftrag);
+  assert.equal(e.bestanden, true);
+  assert.deepEqual(e.haken?.map(h => [h.text, h.belegt]), [[text, false]]);
+  assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
+});
