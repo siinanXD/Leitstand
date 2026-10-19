@@ -350,10 +350,11 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     const gesperrt = new Set(staende.filter((r) => blockiert(r, MAX_REPARATUR)).map((r) => r.issue));
     for (const r of staende.filter((x) => !x.claim && x.reparaturen >= MAX_REPARATUR)) {
       const i = issues.find((x) => x.identifier === r.issue);
-      if (!i || i.labels.includes("needs-human")) continue;
+      if (!i || i.labels.some((l) => l.toLowerCase() === "needs-human")) continue;
       const team = nodes.find((n) => n.id === i.id)!.team.id;
-      await labelSetzen(i.id, team, "needs-human").catch((e: Error) => console.log(`::warning::${r.issue}: needs-human nicht gesetzt: ${e.message}`));
-      await kommentar(i.id, `Loop: ${r.reparaturen} erfolglose Reparaturrunden (issueweit, SIN-832). Kein weiterer Start, Sinan entscheidet. Danach \`reparaturen\` in \`leitstand_aufgaben\` zurücksetzen und \`needs-human\` entfernen.`);
+      // Nur mit gesetztem Label kommentieren, sonst kommt derselbe Kommentar bei jedem Dispatch.
+      const gesetzt = await labelSetzen(i.id, team, "needs-human").then(() => true, (e: Error) => (console.log(`::warning::${r.issue}: needs-human nicht gesetzt: ${e.message}`), false));
+      if (gesetzt) await kommentar(i.id, `Loop: ${r.reparaturen} erfolglose Reparaturrunden (issueweit, SIN-832). Kein weiterer Start, Sinan entscheidet. Danach \`reparaturen\` in \`leitstand_aufgaben\` zurücksetzen und \`needs-human\` entfernen.`);
     }
     if (gesperrt.size) console.log(`Ohne Startplatz (Claim oder Reparaturgrenze): ${[...gesperrt].join(", ")}`);
     issues = issues.filter((i) => !gesperrt.has(i.identifier));

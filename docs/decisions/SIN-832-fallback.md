@@ -68,3 +68,5 @@ Review-Agent auf `af734b6`: zwei P1, drei P2. Behoben im selben PR:
 - P2: Wächter löst den Claim beim Zurücksetzen (Kontingent oder 6 h ohne PR) im selben Schritt, Beleg ist der eigene Lauf.
 - P3: HTTP 400 nennt die fehlende Migration.
 Offen (P3, dokumentiert): Aufräumen nur für Projekte, die der Wächter bearbeitet; Schutz gilt nur für Starts über den Leitstand-Dispatcher (manuelles `@claude` reserviert nichts).
+
+Zweite Nacharbeitsrunde (Folge-Review auf `3088dcb`, alle sieben Befunde behoben, ein neuer P2): Beim Zurücksetzen nach 6 h ohne PR löst der Wächter den Claim nur, wenn belegt kein `claude.yml`-Lauf läuft oder wartet (Zeitablauf allein ist kein Beleg); sonst übernimmt `claimsAufraeumen` später. needs-human-Kommentar nur bei gesetztem Label, Labelvergleich klein geschrieben. Bekannt und hingenommen (P3): Ein Todo-Issue mit Claim, dessen Status-Wechsel auf In Progress scheiterte, belegt keinen Platz, `LOOP_MAX_PARALLEL` kann kurz überschritten werden (zwei Worker am selben Issue verhindert der Claim); eine per Reparatur angelegte Zeile trägt bis zum nächsten Spiegel den PR-Titel. Damit sind die zwei Nacharbeitsrunden dieses Pakets ausgeschöpft.

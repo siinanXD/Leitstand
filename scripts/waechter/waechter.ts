@@ -293,9 +293,11 @@ async function claimsAufraeumen(projekt: string, repo: string, ids: string[], pr
  * Nach dem Zurücksetzen auf Todo (Kontingent-Abbruch oder 6 h ohne PR, Spiegel gerade geschlossen) den Claim im selben
  * Schritt lösen; Beleg ist dieser Wächter-Lauf. Ohne Lauf-URL (lokal) oder Supabase bleibt er.
  */
-async function claimNachZuruecksetzen(projekt: string, id: string) {
+async function claimNachZuruecksetzen(projekt: string, id: string, repo?: string) {
   const speicher = reservierungen();
   if (!speicher || !env.GITHUB_RUN_ID) return;
+  // 6 h ohne PR ist nur Zeitablauf: lösen erst, wenn belegt kein Worker-Lauf mehr läuft oder wartet (sonst später claimsAufraeumen).
+  if (repo && (await workerLaeuft(repo)) !== false) return log(projekt, `${id}: Claim bleibt, Worker-Lauf aktiv oder Zustand unbekannt`);
   const beleg = `https://github.com/${env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand"}/actions/runs/${env.GITHUB_RUN_ID}`;
   try {
     const r = await speicher.laden(id);
@@ -357,7 +359,7 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       if (todo) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: todo });
       await kommentar(h.issue.id, `Wächter: seit über 6 Stunden In Progress ohne offenen PR. Zurück auf Todo (einmalig). ${MARKER_ZURUECK}`);
       await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
-      await claimNachZuruecksetzen(projekt.name, h.issue.identifier);
+      await claimNachZuruecksetzen(projekt.name, h.issue.identifier, repo);
     } else {
       log(projekt.name, `${h.issue.identifier} hängt erneut → needs-human`);
       if (DRY) continue;
