@@ -57,7 +57,7 @@ Der Leitstand baut sich selbst wie die Lern-App, in schlanker Form:
 2. Für jedes gewählte Issue entsteht ein GitHub-Issue mit Label `claude`. Das startet `claude.yml`. Linear springt auf „In Progress“.
 3. Der Worker öffnet den PR. `build` prüft, `automerge.yml` mergt per Squash, sobald `build` grün ist.
 4. `loop-merge.yml` setzt das Linear-Issue aus dem PR-Titel auf „Done“ und startet sofort das nächste.
-5. `repair.yml`: Ist `build` auf einem `claude/`-PR rot, bittet der Loop `@claude` um Reparatur. Nach dem ersten roten Build genau eine Reparatur (`repair:1`); ist der nächste Build wieder rot, Stopp mit `needs-human`, Ursache und Zerlegungsvorschlag in Linear.
+5. `repair.yml`: Ist `build` auf einem `claude/`-PR rot, bittet der Loop `@claude` um Reparatur. Höchstens zwei erfolglose Reparaturrunden je Issue (`repair:1`, `repair:2`, SIN-840); ist der Build danach wieder rot, Stopp mit `needs-human`, Ursache und Zerlegungsvorschlag in Linear.
 
 Regeln:
 
@@ -107,7 +107,7 @@ Risikoarme Aufgaben können bestehende Agenten über einen Draft-PR gemäß [doc
 - Ein PR pro Linear-Issue. Titel als Conventional Commit mit Linear-ID, z. B. `feat(uebersicht): Projekt-Karten (SIN-304)`.
 - Commit-Nachrichten enthalten `Part of SIN-xxx`.
 - Vor dem Push: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`.
-- Höchstens zwei rote Builds pro PR insgesamt (Erstversuch plus eine Reparatur), dann stoppen, Ursache und Zerlegungsvorschlag melden.
+- Höchstens zwei erfolglose Reparaturrunden pro PR (SIN-840), dann stoppen, Ursache und Zerlegungsvorschlag melden.
 - Nie selbst mergen.
 
 ## Projekt-Wächter (SIN-419)
