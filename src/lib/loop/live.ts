@@ -12,6 +12,11 @@ export async function pruefeLive(a: { belege: Beleg[]; proben: Probe[]; issue: s
       belege.push({ ...b, art: "code", belegt: false, beleg: "HTTP-/DB-Probe mit issue und exaktem kriterium in docs/abnahme.yml ergänzen" });
       continue;
     }
+    const inhaltlich = (p: Probe) => p.art === "http" ? !!p.enthaelt?.trim() : !!p.nicht_leer?.trim() || (!!p.zeitfeld?.trim() && Number.isFinite(Number(p.max_alter_min ?? 60)) && Number(p.max_alter_min ?? 60) > 0);
+    if (!passend.every(inhaltlich)) {
+      belege.push({ ...b, art: "code", belegt: false, beleg: "Live-Probe braucht HTTP-Inhaltsprüfung oder DB-Inhalts-/Frischebedingung; bloßer Status oder Zeilenfund reicht nicht" });
+      continue;
+    }
     if (!a.runUrl) {
       belege.push({ ...b, belegt: false, beleg: "GitHub-Laufnachweis für die Live-Messung fehlt" });
       continue;

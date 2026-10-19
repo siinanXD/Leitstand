@@ -21,6 +21,17 @@ test("Modell-URL und Datei-Existenz belegen kein Live-Verhalten; tatsächlichen 
   assert.equal((await pruefeLive(a, async () => { throw new Error("offline"); }))[0].belegt, false);
 });
 
+test("schwache oder ungültige Probe ist Code-Lücke, auch wenn eine zweite Probe grün wäre", async () => {
+  let aufrufe = 0;
+  const gruen = async () => { aufrufe++; return { ok: true, grund: "ok" }; };
+  for (const schwach of [{ ...probe, enthaelt: "" }, { ...probe, art: "db" as const, rest: "events" }, { ...probe, art: "db" as const, rest: "events", zeitfeld: "created_at", max_alter_min: "unendlich" }]) {
+    const [b] = await pruefeLive({ belege, proben: [probe, schwach], issue: "SIN-830", runUrl }, gruen);
+    assert.equal(b.belegt, false);
+    assert.equal(b.art, "code");
+  }
+  assert.equal(aufrufe, 0, "ungültige Proben nicht ausführen und nicht still durch andere grüne Probe ersetzen");
+});
+
 test("Datenbank-Probe liest echte Zeilen und wertet Frische statt URL/HTTP 200 allein", async () => {
   const db = { ...probe, art: "db" as const, rest: "events?select=created_at", zeitfeld: "created_at", max_alter_min: "60" };
   const env = { SUPABASE_URL: "https://example.test", SUPABASE_SERVICE_ROLE_KEY: "fixture" };
