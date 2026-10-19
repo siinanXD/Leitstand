@@ -99,8 +99,8 @@ async function main() {
   const auftragInhalt = auftragText(auftrag);
   const frei = maxDiffZeichen(preise) - auftragInhalt.length;
   if (frei <= 0) throw new Error("Aktueller Auftrag überschreitet den bestehenden Prüf-Kostendeckel; Auftrag eingrenzen, nicht Kommentare abschneiden");
-  const dateien = sh("git", "diff", "--name-only", `${basis}...HEAD`).split("\n").filter(Boolean);
-  const { text, gekuerzt } = begrenze(sh("git", "diff", "--unified=3", `${basis}...HEAD`), frei);
+  const dateien = sh("git", "diff", "--name-only", `${basis}...${stand.head}`).split("\n").filter(Boolean);
+  const { text, gekuerzt } = begrenze(sh("git", "diff", "--unified=3", `${basis}...${stand.head}`), frei);
   const eing = eingabe({ issue: auftragInhalt, titel: pr.title, dateien, diff: text, gekuerzt });
 
   let ergebnis: Ergebnis = { bestanden: true, funde: [] };

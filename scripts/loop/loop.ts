@@ -395,6 +395,6 @@ if (!lauf) {
 }
 lauf().catch(async (e: Error) => {
   console.error(`::error::${e.message}`);
-  await ereignis(befehl === "reparatur" ? "repair" : befehl === "gemergt" ? "merge" : "dispatch", "fehler", { grund: fehlergrund(e.message) });
+  if (befehl !== "auftrag") await ereignis(befehl === "reparatur" ? "repair" : befehl === "gemergt" ? "merge" : "dispatch", "fehler", { grund: fehlergrund(e.message) });
   process.exit(1);
 });
