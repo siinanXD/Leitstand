@@ -203,6 +203,13 @@ test("loopZiele: nur Produkte mit Repo, Linear-Projekt und Bauphase (SIN-763)", 
   assert.ok(!ids.includes("lernapp") && !ids.includes("beleg"));
 });
 
+test("SIN-846: nur offene Belege-Haken: kein Bau-Worker, kein Platz", () => {
+  const beleg = "- [x] Code\n- [ ] Zählung je Kurs\n- [ ] Run-Link";
+  assert.deepEqual(waehle([issue({ identifier: "SIN-1", description: beleg })], new Set(), 5), []);
+  assert.deepEqual(waehle([issue({ identifier: "SIN-2", description: beleg + "\n- [ ] Code bauen" })], new Set(), 5).map((i) => i.identifier), ["SIN-2"]);
+  assert.equal(laufende([issue({ identifier: "SIN-1", description: beleg, stateType: "started" })]).length, 0);
+});
+
 test("loopZiele enthält Stromlauf AI (SIN-798)", () => {
   assert.deepEqual(loopZiele().find((z) => z.id === "stromlauf-ai"), { id: "stromlauf-ai", repo: "siinanXD/stromlauf-ai", linearProjekt: "Stromlauf AI" });
 });
