@@ -9,6 +9,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-hermes-realitaet
+  produkt: leitstand
+  titel: Der Hermes-Abgleich nennt die offenen Nacharbeiten zu SIN-512 und SIN-513 (SIN-835)
+  art: datei
+  pfad: docs/decisions/SIN-835-hermes-realitaetscheck.md
+  enthaelt: Nacharbeiten
 - id: leitstand-lauf-vertrag
   produkt: leitstand
   titel: Der Output-Vertrag für Agenten-Läufe prüft Schema und speichert idempotent (SIN-836, Pilot offen)
