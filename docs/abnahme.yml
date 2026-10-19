@@ -499,6 +499,13 @@
   pfad: src/app/team/page.tsx
   enthaelt: Takt und letzter Lauf aller Rollen
 
+- id: leitstand-rolle-codex
+  produkt: leitstand
+  titel: Codex ist als Rolle mit Takt in rollen.json geführt (SIN-832)
+  art: datei
+  pfad: docs/autonomy/rollen.json
+  enthaelt: '"schritt": "codex"'
+
 # CEO schaltet nach vollem FERTIG.md das nächste Produkt frei (SIN-831)
 - id: leitstand-ceo-freischalten
   produkt: leitstand
