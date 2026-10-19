@@ -63,7 +63,7 @@ Regeln:
 
 - Ein Linear-Issue startet nur mit Label `claude` und Status „Todo“.
 - Nachrücken (SIN-417): Ist keins mehr in der Schlange, setzt `dispatch` das wichtigste Backlog-Issue (Priorität, dann ältestes) auf „Todo“ mit Label `claude`. Nie mit Label `design`, `sinan` oder `needs-human`, nie blockiert. Wer ein Backlog-Issue zurückhalten will, gibt ihm eins dieser Labels.
-- Risiko setzt `automerge.yml` als Label (Sinan, 13.10.2026, wie SIN-547 in der Lern-App). `risk:medium` (Standard): Auto-Merge nach grünem `build`, auch bei Workflow-Änderungen (Schritte, Skripte, Zeitpläne, bekannte Secrets). `risk:high` wartet auf Sinans Label `freigegeben`: Workflow-Rechte erweitert (`write`), neues Secret ohne Verwendung auf main, `pull_request_target`, Drittanbieter-Action außerhalb `actions/*`, `anthropics/*`, `github/*`, Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), `src/middleware`, `src/lib/auth`, `src/lib/kopplung`, Service-Role-Key im Client. Der Grund steht als PR-Kommentar. `no-automerge` und Draft stoppen immer.
+- Risiko setzt `automerge.yml` als Label (Sinan, 13.10.2026, wie SIN-547 in der Lern-App). `risk:medium` (Standard): Auto-Merge nach grünem `build`, auch bei Workflow-Änderungen (Schritte, Skripte, Zeitpläne, bekannte Secrets). `risk:high` wartet auf Sinans Label `freigegeben`: Workflow-Rechte erweitert (`write`), neues Secret ohne Verwendung auf main, `pull_request_target`, Drittanbieter-Action außerhalb `actions/*`, `anthropics/*`, `github/*`, Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), `src/middleware`, `src/lib/auth`, `src/lib/kopplung`, Service-Role-Key im Client. Der Grund steht als PR-Kommentar. `no-automerge` und Draft stoppen immer. Aufbauphase (SIN-855): keine feste Einspruchsfrist, `risk:low`/`risk:medium` mergen sofort nach grünem `build`; alte `einspruch`-Marker sperren nicht (`docs/decisions/SIN-855-aufbauphase-ohne-einspruchsfrist.md`).
 - Ereignisse landen in `loop_events` mit Projekt `leitstand`, sobald die Secrets `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` im Repo stehen. Ohne sie gibt es nur eine Warnung im Log.
 - Logik in `src/lib/loop/auswahl.ts` (rein, mit Tests), Netz in `scripts/loop/loop.ts`.
 
@@ -78,6 +78,10 @@ Regeln:
 - Fehlende Secrets bündelt der Worker in ein einziges `sinan`-Issue (bis SIN-611 sie aus Infisical holt).
 - Der Worker läuft mit `AGENT_WORKFLOW_TOKEN` (Workflows RW) und ändert `.github/workflows/` selbst, keine neuen `.vorlage`-Dateien. `automerge.yml` setzt `risk:high` nur bei Rechte-Erweiterungen, neuen Secrets, neuen Drittanbieter-Actions oder Änderungen am Gate (wie SIN-234/SIN-252 der Lern-App).
 - Der Worker legt `sinan`-Issues mit `LINEAR_API_KEY` selbst an (Linear-GraphQL per `curl`).
+
+## Merge-Prüfung und Live-Abnahme (SIN-854)
+
+Unmarkierte Fertig-Kriterien brauchen vor dem Merge einen aktuellen Beleg. Nur ausdrücklich mit `[nach Aktivierung] ` beginnende Haken beschreiben Abnahmen, die erst der aktivierte neue Workflow ermöglichen kann. Der Prüfer lässt diese Haken offen; sie sperren weiterhin Done. Keine automatische Verschiebung nach Stichworten, kein Weglassen eines Sicherheitsbefunds. Die Owner-Freigabe bei `risk:high` bleibt separat erforderlich.
 
 ## Abnahme-Proben (SIN-626)
 
