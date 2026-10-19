@@ -71,7 +71,8 @@ async function ledger(ok: boolean, payload: unknown) {
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
     method: "POST",
     headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ project: "leitstand", step: "pruefer", status: ok ? "ok" : "fehler", issue: null, pr: Number(nummer), payload }),
+    // SIN-848: `grund` ist die Pflichtspalte für rote Läufe (SIN-617); `payload` hält das Ergebnis als Structured JSON.
+    body: JSON.stringify({ project: "leitstand", agent: "pruefer", step: "pruefer", status: ok ? "ok" : "fehler", issue: null, pr: Number(nummer), run_id: env.GITHUB_RUN_ID ?? null, grund: ok ? null : String((payload as { grund?: string })?.grund ?? "unbekannt").slice(0, 500), payload }),
     signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) console.log(`::warning::loop_events: HTTP ${res.status}`);
@@ -117,7 +118,8 @@ async function main() {
 }
 
 main().catch(async (e: Error) => {
-  console.error(e.message);
+  // SIN-848: als Annotation, damit der Grund ohne Log-Download sichtbar ist (Logs sind nicht für alle lesbar).
+  console.log(`::error::Prüfer abgebrochen: ${e.message}`);
   await ledger(false, { grund: e.message });
   process.exit(2);
 });
