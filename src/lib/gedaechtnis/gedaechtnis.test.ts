@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MAX_ZEILEN_TAG, MAX_ZEILEN_UEBERSICHT, aktualisiertSatz, ceoZeilen, dateien, mitGeheimnis, tagBerlin, vereinige, type Eingabe } from "./gedaechtnis";
+import { pruefe } from "./vault";
 
 const jetzt = new Date("2026-10-13T04:00:00Z");
 const zeilen = (t: string) => t.trimEnd().split("\n").length;
@@ -17,6 +18,18 @@ const fixture: Eingabe = {
   kostenUsd: 1.234,
   probleme: [],
 };
+
+test("Entscheidungen verlinken die tatsächlichen Produktdateien; unbekannte Produkte erfinden keinen Link", () => {
+  const d = dateien({ ...fixture, entscheidungen: [
+    ...fixture.entscheidungen,
+    { id: "SIN-1", projekt: "lernapp", titel: "Quelle", url: "https://example.invalid/1" },
+    { id: "SIN-2", projekt: "unbekannt", titel: "Quelle", url: "https://example.invalid/2" },
+  ] });
+  assert.match(d["Entscheidungen/SIN-508.md"], /\[\[Produkte\/Leitstand\]\]/);
+  assert.match(d["Entscheidungen/SIN-1.md"], /\[\[Produkte\/Lern-App\]\]/);
+  assert.ok(!d["Entscheidungen/SIN-2.md"].includes("[[Produkte/"));
+  assert.deepEqual(pruefe(d, jetzt).filter((b) => b.art === "link"), []);
+});
 
 test("Trockenlauf mit Fixture erzeugt alle 5 Dateitypen mit Frontmatter", () => {
   const d = dateien(fixture);
