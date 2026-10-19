@@ -492,6 +492,13 @@
   pfad: docs/autonomy/ROLLEN-ABNAHME.md
   enthaelt: Momentaufnahme, kein Live-Status
 
+- id: leitstand-context7-konfiguration
+  produkt: leitstand
+  titel: Die Context7-Dokumentationskonfiguration ist vorhanden, Live-Nutzung separat prüfen (SIN-537)
+  art: datei
+  pfad: .github/workflows/claude.yml
+  enthaelt: https://mcp.context7.com/mcp
+
 - id: gedaechtnis-historie-datum
   produkt: gedaechtnis
   titel: Historische Vault-Entscheidung behält ihr ursprüngliches Datum (SIN-615)

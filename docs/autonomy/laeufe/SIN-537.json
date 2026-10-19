@@ -1,0 +1,24 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-537",
+  "zeitpunkt": "2026-10-18T20:13:37.581Z",
+  "status": "braucht_sinan",
+  "zusammenfassung": "Context7-Draft: zwei genaue Dokutools, acht offizielle WebFetch-Domains, keine neuen Secrets. Öffentliche MCP-Probe erfolgreich; Aktivierung und echter Claude-Lauf offen.",
+  "naechster_schritt": "Draft 271 unabhängig prüfen und Toolrechte freigeben; danach tatsächlichen Claude-Actions-Dokulauf belegen.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://context7.com/docs/resources/all-clients",
+    "https://code.claude.com/docs/en/permissions",
+    "https://github.com/anthropics/claude-code-action/blob/main/docs/configuration.md"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/271",
+  "geaendert": [
+    ".github/workflows/claude.yml",
+    "README.md",
+    "docs/abnahme.yml",
+    "docs/autonomy/LEHREN.md",
+    "docs/decisions/SIN-537-leitstand-context7.md",
+    "src/lib/autonomy/context7-workflow.test.ts"
+  ]
+}

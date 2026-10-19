@@ -12,6 +12,7 @@ Ledger-Zeile mit Spalte `payload` an loop_events → PostgREST 400, Beleg verlor
 
 Research-CLI mit Top-Level-await startet im CommonJS-Projekt nicht, selbst trocken → async main mit Fehlerabschluss; den tatsächlichen CLI-Einstieg ohne Netz sowie mit positiven/negativen Quellen-Fixtures testen (SIN-826).
 Numerische Datumsangabe im Team-Link verletzt den bestehenden Verständlichkeits-Test → Beschriftung ohne nackte Ziffern, Prüfdatum im verlinkten Bericht belassen; Browser-Gate unverändert lassen (SIN-826).
+Context7-Regel ohne konfigurierte Laufzeit hilft dem Worker nicht → pro Repo HTTP-MCP und genaue Dokurechte prüfen; öffentliche MCP-Probe ist noch kein Claude-Actions-Nachweis, Rechte erst nach Draft-Freigabe aktivieren (SIN-537).
 Gedächtnis-Sync darf historische Entscheidungen nicht zu Tages-Snapshots machen → bestehende Notizen samt Datum/Status erhalten; Produktlinks mit tatsächlichem Seitennamen erzeugen (SIN-615).
 
 
