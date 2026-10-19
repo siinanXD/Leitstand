@@ -112,7 +112,7 @@ async function main() {
       console.log("::warning::OpenAI-API-Kontingent erschöpft, Rückfall auf Claude");
     } else usd = kostenUsd({ eingabe: r.ein, ausgabe: r.aus }, preise);
   }
-  ergebnis = bewerte(ergebnis, dateien, gekuerzt);
+  ergebnis = bewerte(ergebnis, dateien, gekuerzt, DRY ? undefined : issue.body);
   const hinweis = DRY ? "**Trockenlauf: keine unabhängige Prüfung oder Live-Abnahme.**\n\n" : "";
   writeFileSync(DRY ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md", hinweis + kommentar(ergebnis, genutzt, usd, reviewer) + `\n\n${!DRY && ergebnis.bestanden ? standMarker(head, issue.hash) : ""}\nGeprüfter Commit: \`${head}\`\nGeprüfte Basis: \`${basis}\``);
   if (hatHoch(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");

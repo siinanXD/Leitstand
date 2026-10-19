@@ -603,7 +603,7 @@
 
 - id: leitstand-merge-beleg-cli-abnahme
   produkt: leitstand
-  titel: CI - Gate und Reparatur-CLI gegen API-Fixtures auf main grün nach SIN-854-Korrektur, kein Live-Nachweis
+  titel: CI - Merge-Phasen, Gate und Reparatur-CLI auf main geprüft (SIN-854, kein Live-Nachweis)
   art: http
-  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?status=success&event=push&branch=main&created=%3E%3D2026-10-19T22%3A06%3A22Z&per_page=1
+  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?status=success&event=push&branch=main&head_sha=${GITHUB_SHA}&per_page=1
   enthaelt: '"conclusion": "success"'

@@ -31,3 +31,5 @@ Ein always-Schritt läuft nicht, wenn die Job-Bedingung den Draft vorher ausschl
 GitHub-Spiegel und reine Checkbox-Hashes übersehen geänderte nummerierte Kriterien → Prüfer und Gate lesen denselben aktuellen Linear-Auftrag; Hash über vollständigen Text, nur Häkchen-Stand ausnehmen. Zwei Reparaturrunden mit tatsächlichem CLI/API-Fixture bis needs-human in GitHub und Linear prüfen (SIN-854).
 
 `UNSTABLE` ist kein grüner Check → Direkt-Merge nur bei CLEAN; das echte Gate gegen Altfristen und Schutzgrenzen ausführen statt Regex-Vorkommen zu prüfen (SIN-855).
+
+- SIN-854: Ein Code-Review kann keinen erst nach Aktivierung möglichen Folge-Merge belegen. Solche Kriterien ausdrücklich markieren, als unbelegt erhalten und Done weiter sperren; sonst bleibt ein korrekt geschützter Workflow in einer zirkulären Freigabe hängen.
