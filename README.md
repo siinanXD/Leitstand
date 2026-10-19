@@ -38,6 +38,7 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:a11y` (Pl
 
 ## Further docs
 
+- Proposed Context7 documentation access, exact permissions and remaining live acceptance: [`docs/decisions/SIN-537-leitstand-context7.md`](docs/decisions/SIN-537-leitstand-context7.md).
 - Role/tool evidence and open acceptance checks: [`docs/autonomy/ROLLEN-ABNAHME.md`](docs/autonomy/ROLLEN-ABNAHME.md); also linked from “Mein Team”. This is a dated assessment, not live telemetry.
 - Research CLI: `DRY_RUN=1 npx tsx scripts/autonomy/research.ts SIN-826 "agent tools"` checks startup without network or file writes. Actual searches require both GitHub and public Hugging Face results before writing a decision file; no model API is called.
 - Signing in on iPhone (home-screen app, 6-digit code from the mail): [`docs/decisions/SIN-510-code-anmeldung.md`](docs/decisions/SIN-510-code-anmeldung.md)
