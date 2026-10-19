@@ -586,3 +586,11 @@
   art: http
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/belege.yml/runs?status=success&per_page=1
   enthaelt: '"success"'
+
+- id: leitstand-merge-aktuelle-belege
+  produkt: leitstand
+  titel: Das Merge-Gate auf main prüft den Beleg gegen Head-SHA und Kriterien-Hash (SIN-854)
+  art: github
+  repo: siinanXD/Leitstand
+  pfad: .github/workflows/automerge.yml
+  enthaelt: belegAktuell

@@ -9,6 +9,7 @@
  * SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (optional). DRY_RUN=1: kein Netz zu OpenAI und Supabase, Diff und Regeln laufen.
  */
 import { lesePrDiff } from "../../src/lib/pruefer/git";
+import { kriterienHash, standMarker } from "../loop/beleg-stand.mjs";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatHoch, istKontingentFehler, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
@@ -110,7 +111,7 @@ async function main() {
   }
   ergebnis = bewerte(ergebnis, dateien, gekuerzt);
   const hinweis = DRY ? "**Trockenlauf: keine unabhängige Prüfung oder Live-Abnahme.**\n\n" : "";
-  writeFileSync(DRY ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md", hinweis + kommentar(ergebnis, genutzt, usd, reviewer) + `\n\nGeprüfter Commit: \`${head}\`\nGeprüfte Basis: \`${basis}\``);
+  writeFileSync(DRY ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md", hinweis + kommentar(ergebnis, genutzt, usd, reviewer) + `\n\n${standMarker(head, kriterienHash(issue?.body))}\nGeprüfter Commit: \`${head}\`\nGeprüfte Basis: \`${basis}\``);
   if (hatHoch(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");
   await ledger(true, { modell: genutzt, reviewer, bestanden: ergebnis.bestanden, funde: ergebnis.funde.length, hoch: hatHoch(ergebnis), kosten_eur_usd: usd, issue: issueNr ?? null });
   console.log(`Prüfer: ${ergebnis.bestanden ? "bestanden" : "nicht bestanden"}, ${ergebnis.funde.length} Funde${usd === null ? "" : `, ${usd.toFixed(4)} $`}`);

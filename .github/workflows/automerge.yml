@@ -6,6 +6,8 @@
 #     Änderung am Gate selbst (automerge.yml), Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), Auth/Middleware, Service-Role-Key im Client.
 #   - Ein gesetztes `risk:high` senkt das Gate nie. Neue/umbenannte/kopierte Workflows werden komplett geprüft (SIN-623).
 #   - Einspruchsfrist (SIN-812): `risk:low` (nur Doku/Tests) sofort, `risk:medium` 30 Min nach dem letzten Commit, `risk:high` nur mit `freigegeben`.
+#   - Belege (SIN-854): Bei claude/- und codex/-PRs zählt nur ein Prüfer-Beleg für den aktuellen Head und den heutigen Kriterien-Text
+#     des Issues (scripts/loop/beleg-stand.mjs, von main). Neuer Commit oder geänderte Kriterien: Merge gesperrt bis zur neuen Runde.
 #   - Nie: Draft-PRs, Label `no-automerge`.
 # Der Grund steht als Kommentar im PR und im Leitstand (wartende PRs).
 name: automerge
@@ -84,7 +86,25 @@ jobs:
               labels.splice(0, labels.length, ...aktuell.labels.map((l) => l.name));
             }
             pr.draft = aktuell.draft;
-            const allowed = !pr.draft &&!labels.includes("no-automerge") && (!high || labels.includes("freigegeben"));
+
+            // Aktuelle Belege (SIN-854): Prüfer-Stand muss zum PR-Head und zum heutigen Kriterien-Text passen. Logik von main, kein PR-Code.
+            let belegOk = true;
+            if (/^(claude|codex)\//.test(pr.head.ref)) {
+              const { belegAktuell, kriterienHash, leseStand } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/loop/beleg-stand.mjs`);
+              const issueNr = /Closes #(\d+)/i.exec(aktuell.body || "")?.[1];
+              const issueText = issueNr ? (await github.rest.issues.get({ ...context.repo, issue_number: Number(issueNr) })).data.body : "";
+              let pruef = { ok: false, grund: "" };
+              // Prüfer läuft parallel; ohne Beleg höchstens 10 Min warten, dann bleibt der Merge gesperrt.
+              for (let i = 0; i < 20; i++) {
+                const kommentare = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: pr.number, per_page: 100 });
+                pruef = belegAktuell({ stand: leseStand(kommentare.filter((k) => ["github-actions[bot]", context.repo.owner].includes(k.user?.login)).map((k) => k.body || "")), headSha: aktuell.head.sha, hash: kriterienHash(issueText) });
+                if (pruef.ok || i === 19) break;
+                await new Promise((r) => setTimeout(r, 30000));
+              }
+              belegOk = pruef.ok;
+              if (!belegOk) core.warning(`Kein Merge: ${pruef.grund}`);
+            }
+            const allowed = !pr.draft && belegOk && !labels.includes("no-automerge") && (!high || labels.includes("freigegeben"));
             const gql = github.graphql;
             if (allowed) {
               await gql(`mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) { clientMutationId } }`, { id: pr.node_id })
