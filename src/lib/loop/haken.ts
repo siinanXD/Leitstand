@@ -12,7 +12,7 @@ const ZEILE = /^(\s*[-*]\s+\[)([ xX])(\]\s+)(.+?)\s*$/;
 export type Haken = { text: string; erledigt: boolean };
 export type Beleg = { text: string; belegt: boolean; beleg: string };
 
-const norm = (s: string) => s.replace(/[`*_]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+export const normalisiereHaken = (s: string) => s.replace(/[`*_]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
 export function leseHaken(beschreibung: string | null | undefined): Haken[] {
   return String(beschreibung ?? "").split("\n").flatMap((z) => {
@@ -23,10 +23,10 @@ export function leseHaken(beschreibung: string | null | undefined): Haken[] {
 
 /** Setzt die belegten Haken auf `- [x]`; erledigte bleiben erledigt. */
 export function setzeHaken(beschreibung: string, belegte: string[]): string {
-  const ziel = new Set(belegte.map(norm));
+  const ziel = new Set(belegte.map(normalisiereHaken));
   return beschreibung.split("\n").map((z) => {
     const m = ZEILE.exec(z);
-    return m && ziel.has(norm(m[4])) ? `${m[1]}x${m[3]}${m[4]}` : z;
+    return m && ziel.has(normalisiereHaken(m[4])) ? `${m[1]}x${m[3]}${m[4]}` : z;
   }).join("\n");
 }
 
@@ -41,10 +41,10 @@ export type Entscheidung = { status: "done" | "offen" | "needs-human"; belegt: s
  * `belege` fehlt (Prüfer nicht gelaufen) = nichts belegt.
  */
 export function entscheide(a: { haken: Haken[]; belege: Beleg[] | null; teil: boolean; runde: number }): Entscheidung {
-  const belegtSet = new Set((a.belege ?? []).filter((b) => b.belegt).map((b) => norm(b.text)));
+  const belegtSet = new Set((a.belege ?? []).filter((b) => b.belegt).map((b) => normalisiereHaken(b.text)));
   const offeneHaken = a.haken.filter((h) => !h.erledigt);
-  const belegt = offeneHaken.filter((h) => belegtSet.has(norm(h.text))).map((h) => h.text);
-  const offen = offeneHaken.filter((h) => !belegtSet.has(norm(h.text))).map((h) => h.text);
+  const belegt = offeneHaken.filter((h) => belegtSet.has(normalisiereHaken(h.text))).map((h) => h.text);
+  const offen = offeneHaken.filter((h) => !belegtSet.has(normalisiereHaken(h.text))).map((h) => h.text);
   if (!a.teil && offen.length === 0) return { status: "done", belegt, offen, grund: a.haken.length ? "alle Haken belegt" : "keine Haken im Issue" };
   const grund = a.teil ? "PR ist „Part of“, Issue bleibt offen" : `${offen.length} Haken offen`;
   return { status: a.runde >= MAX_RUNDEN ? "needs-human" : "offen", belegt, offen, grund };

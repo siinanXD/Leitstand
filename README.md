@@ -1,5 +1,9 @@
 # Leitstand
 
+Gate-Integration für die Aufbauphase prüfen: `DRY_RUN=1 node scripts/loop/aufbauphase-probe.mjs`.
+Die Probe führt das echte Auto-Merge-Skript mit simuliertem GitHub aus; sie mergt
+nichts und ersetzt keinen Live-Nachweis. CI und Abnahme führen sie automatisch aus.
+
 A mobile-first control room that shows what a fleet of AI agents is building, what it costs, and what needs a human, for one person running several software products.
 
 <!-- Hero screenshot: pending, see "Ausgelassen" in the pull request. Playwright capture belongs to the designer role (SIN-561). -->
@@ -70,3 +74,4 @@ Parallel werden nur Issues mit explizit getrennten Schreibpfaden ausgewählt: `<
 Claude bekommt einen `lese-assistent` für abgegrenzte Recherche und Testanalyse (Read/Grep/Glob, gleiches Modell, 12 Turns). Ein Subagent gleichzeitig, keine Rekursion; Implementierung bleibt beim Hauptworker, Abschlussreview unabhängig. Subagents verbrauchen dasselbe Kontingent. Die konfigurierten CLI-Grenzen benötigen eine passende Claude-Code-Version; erst ein echter Worker-Lauf belegt ihre Wirkung.
 
 Abnahme: Der echte Dispatch-CLI läuft in CI mit isolierten Netz-Fixtures (Claims, zwei Plätze, Konflikte, unabhängig paginierte PR-Dateien und Lesefehler). Zwei echte parallele Issues und ein protokollierter Subagent-Lauf sind für den Live-Nachweis von SIN-856 noch erforderlich.
+**Aktuelle Belege (SIN-854):** Prüfer und Merge-Gate benötigen `LINEAR_API_KEY`, lesen den aktuellen Linear-Auftrag und binden bestandene Review-Belege an Head-SHA und vollständigen Auftragstext. Ein veralteter GitHub-Spiegel ist keine Merge-Grundlage. Worker-PRs mergen nur synchron mit geprüfter Head-SHA und unmittelbar erneut gelesenen Kriterien; es bleibt keine ausstehende Auto-Merge-Freigabe aktiv. Eine echte erneute Review kann mit `pruefer.yml` auf `main`, Eingaben `pr` und `pruefen=true`, angefordert werden; ohne diesen Schalter bleibt der manuelle Lauf trocken. Kontrollierte Gate-/Reparatur-Abnahme ohne externe Modellaufrufe: `node --import tsx --test src/lib/loop/beleg-stand.test.ts src/lib/loop/merge-gate.test.ts src/lib/loop/repair-cli.test.ts`. Aktivierungsgrenzen stehen in [SIN-854](docs/decisions/SIN-854-aktuelle-belege.md).

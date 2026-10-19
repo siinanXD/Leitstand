@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
 
+import { entscheide, leseHaken } from "../loop/haken";
+
 const gut = { bestanden: true, funde: [] };
 
 test("PR mit Code, aber ohne Abnahme-Probe: nicht bestanden, Fund hoch", () => {
@@ -85,4 +87,63 @@ test("reviewerZeile und kommentar nennen den Reviewer", () => {
   assert.equal(reviewerZeile("claude"), "Reviewer: Anthropic API (Rückfall, OpenAI-API-Kontingent erschöpft)");
   assert.match(kommentar(gut, "m", null, "claude"), /Reviewer: Anthropic API \(Rückfall/);
   assert.match(kommentar(gut, "m", null), /Reviewer: OpenAI API/);
+});
+
+const probeDateien = ["src/a.ts", "docs/abnahme.yml"];
+const phasenAuftrag = "- [ ] Neue Auswahl ist getestet\n- [ ] [nach Aktivierung] Echter Folge-Merge mit Run-Link";
+
+test("Merge-Prüfung lässt explizite Live-Abnahme offen und verhindert damit Done", () => {
+  const e = bewerte({ ...gut, haken: [
+    { text: "Neue Auswahl ist getestet", belegt: true, beleg: "src/a.test.ts" },
+    { text: "[nach Aktivierung] Echter Folge-Merge mit Run-Link", belegt: true, beleg: "simulierter Test" },
+    { text: "[nach Aktivierung] Echter Folge-Merge mit Run-Link", belegt: true, beleg: "kopierter doppelter Beleg" },
+  ] }, probeDateien, false, phasenAuftrag);
+  assert.equal(e.bestanden, true);
+  assert.equal(e.haken?.find(h => h.text.startsWith("[nach Aktivierung]"))?.belegt, false);
+  assert.equal(entscheide({ haken: leseHaken(phasenAuftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
+});
+
+test("Merge-Prüfung: fehlender oder leerer Codebeleg sperrt trotz Modell-Erfolg", () => {
+  for (const haken of [[], [{ text: "Neue Auswahl ist getestet", belegt: true, beleg: " " }]]) {
+    const e = bewerte({ ...gut, haken }, probeDateien, false, phasenAuftrag);
+    assert.equal(e.bestanden, false);
+    assert.ok(e.funde.some(f => f.schwere === "hoch"));
+  }
+});
+
+test("Ohne explizite Phasenmarkierung bleibt ein Live-Kriterium vor Merge verpflichtend", () => {
+  const e = bewerte({ ...gut, haken: [] }, probeDateien, false, "- [ ] Echter Live-Lauf muss belegt sein");
+  assert.equal(e.bestanden, false);
+});
+
+test("Explizite spätere Abnahme hebt einen echten Sicherheitsbefund nicht auf", () => {
+  const e = bewerte({ bestanden: true, funde: [{ datei: "a", zeile: 1, schwere: "hoch", text: "Secret wird öffentlich ausgegeben" }] }, probeDateien, false, "- [ ] [nach Aktivierung] Live-Lauf");
+  assert.equal(e.bestanden, false);
+});
+
+test("Modellvarianten von späteren Kriterien können den normalisierten Done-Abgleich nicht umgehen", () => {
+  const auftrag = "- [ ] [nach Aktivierung] Live-Lauf";
+  for (const text of ["[nach aktivierung] Live-Lauf", "**[nach Aktivierung]** Live-Lauf", "`[nach Aktivierung]` Live-Lauf"]) {
+    const e = bewerte({ ...gut, haken: [{ text, belegt: true, beleg: "simuliert" }] }, probeDateien, false, auftrag);
+    assert.equal(e.bestanden, true);
+    assert.deepEqual(e.haken?.map(h => [h.text, h.belegt]), [["[nach Aktivierung] Live-Lauf", false]]);
+    assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
+  }
+});
+
+test("Normgleiche doppelte Auftragshaken bleiben gesperrt statt eine Live-Abnahme zu erledigen", () => {
+  const auftrag = "- [ ] [nach Aktivierung] Live-Lauf\n- [ ] **[nach Aktivierung]** Live-Lauf";
+  const e = bewerte({ ...gut, haken: [{ text: "**[nach Aktivierung]** Live-Lauf", belegt: true, beleg: "simuliert" }] }, probeDateien, false, auftrag);
+  assert.equal(e.bestanden, false);
+  assert.ok(e.haken?.every(h => !h.belegt));
+  assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
+});
+
+test("Tatsächliches Linear-Markdown-Escaping erhält die explizite Nachaktivierungsphase", () => {
+  const text = "\\[nach Aktivierung\\] Live-Lauf";
+  const auftrag = `- [ ] ${text}`;
+  const e = bewerte({ ...gut, haken: [{ text, belegt: true, beleg: "simuliert" }] }, probeDateien, false, auftrag);
+  assert.equal(e.bestanden, true);
+  assert.deepEqual(e.haken?.map(h => [h.text, h.belegt]), [[text, false]]);
+  assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
 });

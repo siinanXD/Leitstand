@@ -30,6 +30,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Parallel-Auswahl (isolierte CLI-Probe, kein Live-Start)
         run: DRY_RUN=1 PROBE_BERICHT=/tmp/leitstand-parallel-probe.json node scripts/loop/parallel-probe.mjs
+      - name: Aufbauphase-Gate gegen GitHub-Fixtures prüfen (kein echter Merge)
+        run: DRY_RUN=1 node scripts/loop/aufbauphase-probe.mjs
       - name: Proben ausführen
         env:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}

@@ -9,6 +9,7 @@
  * SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (optional). DRY_RUN=1: kein Netz zu OpenAI und Supabase, Diff und Regeln laufen.
  */
 import { lesePrDiff } from "../../src/lib/pruefer/git";
+import { ladeAuftrag, standMarker } from "../loop/beleg-stand.mjs";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatHoch, istKontingentFehler, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
@@ -86,7 +87,10 @@ async function main() {
 
   const pr = JSON.parse(sh("gh", "pr", "view", nummer, "--json", "title,body")) as { title: string; body: string };
   const issueNr = /Closes #(\d+)/i.exec(pr.body ?? "")?.[1];
-  const issue = issueNr ? (JSON.parse(sh("gh", "issue", "view", issueNr, "--json", "title,body")) as { title: string; body: string }) : null;
+  // Trockenlauf nutzt nur Startkontext und erzeugt grundsätzlich keinen gültigen Stand.
+  const issue = DRY
+    ? { ...(issueNr ? JSON.parse(sh("gh", "issue", "view", issueNr, "--json", "title,body")) : { title: pr.title, body: pr.body }), hash: "" }
+    : await ladeAuftrag(pr.title, env.LINEAR_API_KEY);
   const { dateien, diff } = lesePrDiff(basis, head);
   const { text, gekuerzt } = begrenze(diff, maxDiffZeichen(preise));
   const eing = eingabe({ issue: issue ? `${issue.title}\n${issue.body}` : `(kein Issue verlinkt) ${pr.body ?? ""}`, titel: pr.title, dateien, diff: text, gekuerzt });
@@ -108,9 +112,9 @@ async function main() {
       console.log("::warning::OpenAI-API-Kontingent erschöpft, Rückfall auf Claude");
     } else usd = kostenUsd({ eingabe: r.ein, ausgabe: r.aus }, preise);
   }
-  ergebnis = bewerte(ergebnis, dateien, gekuerzt);
+  ergebnis = bewerte(ergebnis, dateien, gekuerzt, DRY ? undefined : issue.body);
   const hinweis = DRY ? "**Trockenlauf: keine unabhängige Prüfung oder Live-Abnahme.**\n\n" : "";
-  writeFileSync(DRY ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md", hinweis + kommentar(ergebnis, genutzt, usd, reviewer) + `\n\nGeprüfter Commit: \`${head}\`\nGeprüfte Basis: \`${basis}\``);
+  writeFileSync(DRY ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md", hinweis + kommentar(ergebnis, genutzt, usd, reviewer) + `\n\n${!DRY && ergebnis.bestanden ? standMarker(head, issue.hash) : ""}\nGeprüfter Commit: \`${head}\`\nGeprüfte Basis: \`${basis}\``);
   if (hatHoch(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");
   await ledger(true, { modell: genutzt, reviewer, bestanden: ergebnis.bestanden, funde: ergebnis.funde.length, hoch: hatHoch(ergebnis), kosten_eur_usd: usd, issue: issueNr ?? null });
   console.log(`Prüfer: ${ergebnis.bestanden ? "bestanden" : "nicht bestanden"}, ${ergebnis.funde.length} Funde${usd === null ? "" : `, ${usd.toFixed(4)} $`}`);

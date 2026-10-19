@@ -21,7 +21,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { ausLinear, laufende, MAX_REPARATUR, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
@@ -468,10 +468,11 @@ async function reparaturLauf() {
   const pr = Number(arg("pr"));
   const lauf = arg("lauf") ?? "";
   const p = await gh<{ title: string; head: { ref: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
-  if (p.state !== "open" || !p.head.ref.startsWith("claude/")) return console.log(`PR #${pr}: nicht offen oder kein Claude-Branch.`);
+  if (p.state !== "open" || !istWorkerBranch(p.head.ref)) return console.log(`PR #${pr}: nicht offen oder kein Worker-Branch.`);
   const id = linearId(p.title);
   // SIN-832: issueweiter, dauerhafter Zähler; ohne lesbaren Stand keine weitere Runde (Stopp statt Raten).
   const speicher = id ? reservierungen() : null;
+  if (!id || !speicher) throw new Error("Reparatur gestoppt: Linear-Kennung oder dauerhafter Speicher fehlt");
   let stand = null;
   try {
     stand = id && speicher ? await speicher.laden(id) : null;
@@ -487,7 +488,10 @@ async function reparaturLauf() {
     await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `build ist nach ${MAX_REPARATUR} Reparaturrunden (issueweit gezählt) noch rot (${lauf}). Stopp, Sinan entscheidet.` } });
     if (id) {
       const issue = await issueNachKennung(id);
-      if (issue) await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) rot. ${lauf}`);
+      if (issue) {
+        await labelSetzen(issue.id, issue.team.id, "needs-human");
+        await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) rot. ${lauf}`);
+      }
     }
     await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: build nach ${MAX_REPARATUR} Reparaturrunden noch rot (${lauf})`) });
     // SIN-832: Stopp ist ein belegtes Ende des Workers; Claim lösen, Zähler bleibt, needs-human hält das Issue an.
@@ -504,7 +508,7 @@ async function reparaturLauf() {
   await gh(`/repos/${repo}/issues/${pr}/comments`, {
     method: "POST",
     body: {
-      body: `@claude Der Check build ist rot (${lauf}). Ursache im Log suchen, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von ${MAX_REPARATUR}.`,
+      body: `@${p.head.ref.startsWith("codex/") ? "codex" : "claude"} Der Check build ist rot (${lauf}). Ursache im Log suchen, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von ${MAX_REPARATUR}.`,
     },
   });
   await ereignis("repair", "start", { issue: id ?? undefined, pr });

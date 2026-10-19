@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { maxParallel, parallelAuswahl } from "./parallel";
+import { ladePrSchutz, maxParallel, parallelAuswahl } from "./parallel";
 import type { LinearIssue } from "./auswahl";
 
 const issue = (id: string, paths?: string[]): LinearIssue => ({
@@ -51,4 +51,26 @@ test("SIN-856: Worker konfiguriert genau einen lesenden Helfer ohne Rekursion", 
   assert.match(y, /CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS: "1"/);
   assert.match(y, /CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS: "1"/);
   assert.match(y, /CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: "1"/);
+});
+
+test("SIN-856: PR-Schutz liest alle Seiten, alte Namen umbenannter Dateien und sperrt unlesbare Listen", async () => {
+  const seiten: Record<number, { filename: string; previous_filename?: string }[][]> = {
+    1: [Array.from({ length: 100 }, (_, n) => ({ filename: `docs/x${n}.md` })), [{ filename: "src/app/neu.tsx", previous_filename: "src/app/alt.tsx" }]],
+    2: [[{ filename: "src/app/b/page.tsx" }]],
+  };
+  const [p1, p2, p3] = await ladePrSchutz([{ number: 1 }, { number: 2 }, { number: 3 }], async (pr, page) => {
+    if (pr === 3) throw new Error("503");
+    return seiten[pr][page - 1] ?? [];
+  });
+  assert.match(p1.description!, /src\/app\/alt\.tsx/, "alter Name bleibt geschützt");
+  assert.match(p1.description!, /src\/app\/neu\.tsx/, "Seite 2 wird gelesen");
+  assert.equal(p3.description, null);
+  assert.deepEqual(parallelAuswahl([issue("A", ["src/app/alt.tsx"])], [], 2, [p1]), [], "Umbenennung sperrt den alten Pfad");
+  assert.deepEqual(parallelAuswahl([issue("B", ["src/app/c"])], [], 2, [p2, p3]), [], "unlesbare Liste sperrt konservativ");
+  assert.deepEqual(parallelAuswahl([issue("B", ["src/app/c"])], [], 2, [p2]).map(i => i.id), ["B"]);
+});
+
+test("SIN-856: gekürzte Dateiliste (30 volle Seiten) bleibt exklusiv", async () => {
+  const [p] = await ladePrSchutz([{ number: 9 }], async () => Array.from({ length: 100 }, (_, n) => ({ filename: `docs/y${n}.md` })));
+  assert.equal(p.description, null);
 });

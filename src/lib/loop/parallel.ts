@@ -42,7 +42,7 @@ function schreibPfade(i: Pick<LinearIssue, "description">): string[] {
 }
 
 /** Kandidaten sind bereits nach Priorität/Kontingent sortiert. Auch wartende offene PRs schützen ihre Dateien. */
-export function parallelAuswahl(kandidaten: LinearIssue[], laufend: LinearIssue[], max: number, offenePrs: Pick<LinearIssue, "description">[] = laufend): LinearIssue[] {
+export function parallelAuswahl(kandidaten: LinearIssue[], laufend: LinearIssue[], max: number, offenePrs: Pick<LinearIssue, "description">[] = []): LinearIssue[] {
   const wahl: LinearIssue[] = [];
   for (const i of kandidaten) {
     if (wahl.length >= Math.max(0, max - laufend.length)) break;
