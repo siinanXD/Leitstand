@@ -9,6 +9,18 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-lauf-vertrag
+  produkt: leitstand
+  titel: Der Output-Vertrag für Agenten-Läufe prüft Schema und speichert idempotent (SIN-836, Pilot offen)
+  art: datei
+  pfad: src/lib/lauf/lauf.ts
+  enthaelt: schema_ungueltig
+- id: leitstand-stern-auswahl
+  produkt: leitstand
+  titel: Die Auswahl aus GitHub-Sternen begründet Nutzen und bewussten Verzicht (SIN-833)
+  art: datei
+  pfad: docs/decisions/SIN-833-github-sterne.md
+  enthaelt: 42 öffentlichen Sterne
 - id: leitstand-snapshot
   produkt: leitstand
   titel: Leitstand-Snapshot ist frisch und die Schlange gefüllt
@@ -244,6 +256,13 @@
   rest: loop_events?agent=eq.gedaechtnis&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
+- id: leitstand-rolle-botadvisor
+  produkt: leitstand
+  titel: Bot Advisor hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.botadvisor&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
 - id: leitstand-rolle-trend
   produkt: leitstand
   titel: Trend hat in den letzten 48 Stunden ein Ereignis geschrieben
@@ -452,6 +471,13 @@
   pfad: AGENTS.md
   enthaelt: docs/CODEX-WORKER.md
 
+- id: leitstand-pruefer-vertrauensbasis
+  produkt: leitstand
+  titel: Der Prüfer liest PR-Daten ohne Checkout des PR-Codes (SIN-827)
+  art: datei
+  pfad: src/lib/pruefer/git.ts
+  enthaelt: --no-textconv
+
 - id: leitstand-dev-audit-bewertung
   produkt: leitstand
   titel: Die offene Dev-Abhängigkeitslücke ist bewertet, nicht als behoben markiert (SIN-828)
@@ -472,3 +498,24 @@
   art: datei
   pfad: .github/workflows/claude.yml
   enthaelt: https://mcp.context7.com/mcp
+
+- id: leitstand-team-takt
+  produkt: leitstand
+  titel: Die Team-Ansicht zeigt alle Rollen mit Takt und letztem Lauf (SIN-829)
+  art: datei
+  pfad: src/app/team/page.tsx
+  enthaelt: Takt und letzter Lauf aller Rollen
+
+# CEO schaltet nach vollem FERTIG.md das nächste Produkt frei (SIN-831)
+- id: leitstand-ceo-freischalten
+  produkt: leitstand
+  titel: Der CEO setzt bei vollem FERTIG.md das Produkt auf fertig und schaltet SIN-705 frei (SIN-831)
+  art: datei
+  pfad: src/lib/ceo/ceo.ts
+  enthaelt: '{ leitstand: "SIN-705" }'
+- id: leitstand-ceo-freischalten-skript
+  produkt: leitstand
+  titel: Das CEO-Skript setzt das Label agent-ready am nächsten Issue (SIN-831)
+  art: datei
+  pfad: scripts/ceo/ceo.ts
+  enthaelt: Label agent-ready fehlt im Linear-Team
