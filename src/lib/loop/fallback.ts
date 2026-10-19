@@ -20,13 +20,14 @@ export type Ereignis = {
 
 /** Rohtext nur klassifizieren, niemals in Ereignisse, Kommentare oder Artefakte übernehmen. */
 export function fehlerklasse(f: { status?: number; text?: string; fachlich?: boolean }): Fehlerklasse {
+  if (f.fachlich) return "fachlich";
   if (f.status === 401 || f.status === 403) return "auth";
   const text = f.text ?? "";
   if (/authentication_error|invalid_api_key|unauthorized|token expired/i.test(text)) return "auth";
   if (/create an environment for this repo/i.test(text)) return "verbindung";
   if (f.status === 429 || istLimitMeldung(text)) return "kontingent";
   if ((f.status !== undefined && f.status >= 500) || /ECONNRESET|ETIMEDOUT|ENOTFOUND|network error|fetch failed/i.test(text)) return "netz";
-  return f.fachlich ? "fachlich" : "unbekannt";
+  return "unbekannt";
 }
 
 /** Höchstens zwei Wiederholungen nach initialem Ausfall. Auth/Verbindung/unklar brauchen neue Belege. */
@@ -54,8 +55,8 @@ export function planeFallback(a: Auftrag, staende: Record<Provider, ProviderStan
       (a.pr !== null && (!Number.isSafeInteger(a.pr) || a.pr <= 0)) || !Number.isFinite(jetzt.getTime())) throw new Error("Fallback-Auftrag ungültig");
   const e: Ereignis = { issue: a.issue, pr: a.pr, branch: a.branch, provider: a.worker?.provider ?? null,
     fehlerklasse: null, status: "wartend", zeitstempel: jetzt.toISOString(), nachweise: nachweise(links) };
-  if (a.reparaturen >= 2) return { ...e, status: "needs-human", fehlerklasse: "fachlich" };
   if (a.worker) return { ...e, status: "aktiv" };
+  if (a.reparaturen >= 2) return { ...e, status: "needs-human", fehlerklasse: "fachlich" };
   for (const provider of ["claude", "codex"] as const) {
     if (provider === "codex" && !a.codexGeeignet) continue;
     if (verfuegbar(staende[provider], jetzt)) return { ...e, provider, status: "startbereit" };

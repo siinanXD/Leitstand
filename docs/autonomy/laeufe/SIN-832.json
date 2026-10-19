@@ -3,13 +3,14 @@
   "issue": "SIN-832",
   "zeitpunkt": "2026-10-19T17:26:34Z",
   "status": "blockiert",
-  "zusammenfassung": "Fallback-Policy und atomarer Speichervertrag vorbereitet, zehn Simulationstests grün. Kein Produktionsadapter oder automatischer Providerwechsel belegt. Prüfer scheitert vor Modellaufruf an fehlenden Modell-/Preisvariablen, Ledger zusätzlich HTTP 400.",
+  "zusammenfassung": "Fallback-Policy und atomarer Speichervertrag vorbereitet, zwölf Simulationstests grün. Zwei unabhängige P2-Befunde mit Regressionen behoben, erste Nacharbeitsrunde. Kein Produktionsadapter oder automatischer Providerwechsel belegt. Prüfer scheitert vor Modellaufruf an fehlenden Modell-/Preisvariablen, Ledger zusätzlich HTTP 400.",
   "naechster_schritt": "Unabhängigen Review und CI prüfen. Codex-Kommentar-Zuordnung und dauerhaften issueweiten Speicher-/Startadapter nachweisen, Prüferkonfiguration und Ledger klären, danach Sicherheitsfreigabe und Live-Abnahme. SIN-832 bleibt offen.",
   "kosten_eur": 0,
   "quellen": [
     "https://linear.app/sinan-kahraman/issue/SIN-832",
     "https://github.com/siinanXD/Leitstand/pull/294#issuecomment-6272812637",
     "https://github.com/siinanXD/Leitstand/actions/runs/39252951628/job/118061027159",
+    "https://github.com/siinanXD/Leitstand/pull/294#pullrequestreview-5575299063",
     "docs/decisions/SIN-832-fallback.md"
   ],
   "art": "code",

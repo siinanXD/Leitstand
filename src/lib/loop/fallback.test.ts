@@ -62,6 +62,18 @@ test("Zwei erfolglose Reparaturen stoppen providerübergreifend", () => {
   assert.equal(plane({ ...auftrag(), reparaturen: 3 }).status, "needs-human");
 });
 
+test("Vorhandener Claim bleibt auch an der Reparaturgrenze aktiv", () => {
+  const a = { ...auftrag(), reparaturen: 2, worker: { provider: "claude" as const, claim: "run-1" } };
+  assert.equal(plane(a).status, "aktiv");
+  assert.equal(plane(a).provider, "claude");
+});
+
+test("Expliziter Fachfehler hat Vorrang vor Transportmustern im Testoutput", () => {
+  for (const f of [{ status: 503 }, { status: 401 }, { text: "network error" }, { text: "usage limit reached" }]) {
+    assert.equal(fehlerklasse({ ...f, fachlich: true }), "fachlich");
+  }
+});
+
 test("Fehlerklassen unterscheiden belegte Quota, Auth, Netz, Verbindung und Fachfehler", () => {
   assert.equal(fehlerklasse({ status: 429 }), "kontingent");
   assert.equal(fehlerklasse({ text: "usage limit reached" }), "kontingent");
