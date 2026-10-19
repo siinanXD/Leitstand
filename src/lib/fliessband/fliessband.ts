@@ -4,7 +4,7 @@ import type { Aufgabe } from "../aufgaben";
 import { projektKuerzel, stufeKuerzel, type SnapshotRow } from "../uebersicht";
 
 export const PRODUKTE = ["lernapp", "sjcode-website", "stromlauf-ai", "leitstand"] as const;
-export const STATIONEN = ["geplant", "baut", "pr-offen", "pruefung", "einspruchsfrist", "gemergt", "live-check", "fertig"] as const;
+export const STATIONEN = ["geplant", "baut", "pr-offen", "pruefung", "gemergt", "live-check", "fertig"] as const;
 export type Station = (typeof STATIONEN)[number];
 export type Farbe = "gruen" | "gelb" | "rot" | "blau";
 
@@ -73,7 +73,6 @@ export function fliessband({ aufgaben, snapshot, events, jetzt }: { aufgaben: Fl
     const gemergt = ev.find((e) => e.step === "MERGE" && !ROT.has(e.status ?? ""));
     // Live-Check: Probe nach dem Mergen, zum Issue oder (ohne Issue) zum Produkt.
     const live = gemergt && events.filter((e) => e.step === "ABNAHME" && (e.issue === a.issue || (e.issue === null && e.project === produkt)) && Date.parse(e.created_at) >= Date.parse(gemergt.created_at)).sort(neuZuerst)[0];
-    const gate = ev.find((e) => e.step === "GATE" && e.grund);
     const letzter = ev.reduce<string | null>((m, e) => spaeter(m, e.created_at), a.gestartet);
     const blockiert = snapshot.find((s) => s.issue === a.issue)?.blocked_by ?? [];
 
@@ -100,10 +99,7 @@ export function fliessband({ aufgaben, snapshot, events, jetzt }: { aufgaben: Fl
     } else if (pr) {
       seit = ev.at(-1)?.created_at ?? a.gestartet;
       const checkRot = !pr.ciGruen && ev.some((e) => e.step !== "GATE" && ROT.has(e.status ?? ""));
-      if (pr.labels.includes("einspruch")) {
-        station = "einspruchsfrist";
-        wartet(gate?.grund ?? pr.grund ?? "Die Einspruchsfrist läuft.");
-      } else if (pr.entwurf || (!pr.ciGruen && !checkRot)) {
+      if (pr.entwurf || (!pr.ciGruen && !checkRot)) {
         station = "pr-offen";
         if (pr.entwurf) wartet("Der PR ist noch ein Entwurf.");
       } else {

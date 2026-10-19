@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { brauchtInhalt, FRIST_MINUTEN, klassifiziere, stufe, wartezeitMs } from "../../../scripts/loop/risiko.mjs";
+import * as risiko from "../../../scripts/loop/risiko.mjs";
+import { brauchtInhalt, klassifiziere, stufe } from "../../../scripts/loop/risiko.mjs";
 
 const bekannt = new Set<string>();
 const WRITE = "name: x\npermissions:\n  contents: write\njobs: {}\n";
@@ -41,15 +42,17 @@ test("ohne Label und ohne Befund: medium", () => {
   assert.equal(klassifiziere({ files: [{ filename: "README.md", status: "modified", patch: "+x" }], bekannt }).high, false);
 });
 
-test("Fristen: low sofort, medium 30 Min, high nie automatisch", () => {
-  assert.equal(FRIST_MINUTEN.medium, 30);
-  const seit = "2026-10-17T10:00:00Z";
-  const t = new Date(seit).getTime();
-  assert.equal(wartezeitMs("low", seit, t), 0);
-  assert.equal(wartezeitMs("medium", seit, t), 30 * 60_000);
-  assert.equal(wartezeitMs("medium", seit, t + 10 * 60_000), 20 * 60_000);
-  assert.equal(wartezeitMs("medium", seit, t + 31 * 60_000), 0);
-  assert.equal(wartezeitMs("high", seit, t), null);
+test("Aufbauphase: keine feste Einspruchsfrist mehr (SIN-855)", () => {
+  assert.equal("wartezeitMs" in risiko, false);
+  assert.equal("FRIST_MINUTEN" in risiko, false);
+});
+
+test("automerge.yml wartet nicht auf Fristen, high ohne freigegeben, no-automerge und Draft bleiben gesperrt", () => {
+  const y = readFileSync(new URL("../../../.github/workflows/automerge.yml", import.meta.url), "utf8");
+  assert.doesNotMatch(y, /wartezeitMs|setTimeout/);
+  assert.match(y, /!pr\.draft/);
+  assert.match(y, /no-automerge/);
+  assert.match(y, /!high \|\| labels\.includes\("freigegeben"\)/);
 });
 
 test("Stufe: nur Doku/Tests ist low, Code medium, Gate high", () => {
@@ -74,11 +77,8 @@ test("Doku mit permissions oder Secret ist nicht low", () => {
   assert.equal(stufe({ files: [{ filename: "docs/x.md", status: "modified", patch: "+Token: secrets.NEU" }], bekannt }).stufe, "medium");
 });
 
-test("nur docs/ ist low und ohne Wartezeit", () => {
-  const r = stufe({ files: [{ filename: "docs/x.md", status: "modified", patch: "+text" }], bekannt });
-  assert.equal(r.stufe, "low");
-  const t = new Date("2026-10-17T10:00:00Z").getTime();
-  assert.equal(wartezeitMs(r.stufe, "2026-10-17T10:00:00Z", t), 0);
+test("nur docs/ ist low", () => {
+  assert.equal(stufe({ files: [{ filename: "docs/x.md", status: "modified", patch: "+text" }], bekannt }).stufe, "low");
 });
 
 test("dispatch.yml startet nach jedem Push auf main, auch bei Merge durch den Agent-Token", () => {

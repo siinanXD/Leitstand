@@ -5,7 +5,7 @@
 #     Workflow auf main nutzt, `pull_request_target` neu, Drittanbieter-Action außerhalb von actions/* und anthropics/*,
 #     Änderung am Gate selbst (automerge.yml), Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), Auth/Middleware, Service-Role-Key im Client.
 #   - Ein gesetztes `risk:high` senkt das Gate nie. Neue/umbenannte/kopierte Workflows werden komplett geprüft (SIN-623).
-#   - Einspruchsfrist (SIN-812): `risk:low` (nur Doku/Tests) sofort, `risk:medium` 30 Min nach dem letzten Commit, `risk:high` nur mit `freigegeben`.
+#   - Aufbauphase (SIN-855): keine feste Einspruchsfrist. `risk:low` und `risk:medium` mergen nach grünen Pflicht-Checks, `risk:high` nur mit `freigegeben`.
 #   - Nie: Draft-PRs, Label `no-automerge`.
 # Der Grund steht als Kommentar im PR und im Leitstand (wartende PRs).
 name: automerge
@@ -49,7 +49,7 @@ jobs:
             } catch (e) { core.warning(`Secrets auf main nicht lesbar: ${e.message}`); }
 
             // Neue/umbenannte/kopierte Workflows haben ggf. keine "+"-Zeilen: voller Inhalt vom PR-Head (SIN-623).
-            const { brauchtInhalt, stufe, wartezeitMs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/loop/risiko.mjs`);
+            const { brauchtInhalt, stufe } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/loop/risiko.mjs`);
             for (const f of files) {
               if (!brauchtInhalt(f)) continue;
               const { data } = await github.rest.repos.getContent({ owner: pr.head.repo.owner.login, repo: pr.head.repo.name, path: f.filename, ref: pr.head.sha });
@@ -73,18 +73,9 @@ jobs:
               else await github.rest.issues.createComment({ ...context.repo, issue_number: pr.number, body });
             }
 
-            // Einspruchsfrist (SIN-812): low sofort, medium 30 Min nach dem letzten Commit; danach Draft, Labels und Head neu prüfen.
-            let aktuell = pr;
-            const warte = high ? 0 : wartezeitMs(st, (await github.rest.git.getCommit({ ...context.repo, commit_sha: pr.head.sha })).data.committer.date);
-            if (warte) {
-              core.info(`Einspruchsfrist: ${Math.ceil(warte / 60000)} Min bis zum Merge (${risk}).`);
-              await new Promise((r) => setTimeout(r, warte));
-              aktuell = (await github.rest.pulls.get({ ...context.repo, pull_number: pr.number })).data;
-              if (aktuell.head.sha !== pr.head.sha || aktuell.state !== "open") return core.info("PR geändert oder geschlossen, der neue Lauf übernimmt.");
-              labels.splice(0, labels.length, ...aktuell.labels.map((l) => l.name));
-            }
-            pr.draft = aktuell.draft;
-            const allowed = !pr.draft &&!labels.includes("no-automerge") && (!high || labels.includes("freigegeben"));
+            // Aufbauphase (SIN-855): keine feste Einspruchsfrist; alte Marker einspruch:* und bis-Werte sperren nicht.
+            // Draft, no-automerge und high ohne freigegeben bleiben gesperrt; der Merge selbst wartet auf die Pflicht-Checks.
+            const allowed = !pr.draft && !labels.includes("no-automerge") && (!high || labels.includes("freigegeben"));
             const gql = github.graphql;
             if (allowed) {
               await gql(`mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) { clientMutationId } }`, { id: pr.node_id })

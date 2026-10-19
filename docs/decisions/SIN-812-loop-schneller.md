@@ -2,6 +2,8 @@
 
 Entscheidung Sinan, gleiche Lockerung wie in der Lern-App.
 
+> Überholt durch [SIN-855](SIN-855-aufbauphase-ohne-einspruchsfrist.md): In der Aufbauphase gibt es keine feste Einspruchsfrist mehr. Die Fristen unten gelten nicht mehr.
+
 ## Regel
 
 - `risk:low` (nur Doku und Tests): Auto-Merge sofort nach grünem `build`.
