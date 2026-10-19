@@ -37,6 +37,14 @@ Kommentare und eigene Pushes sind für diesen Eingang nicht als Auslöser aktivi
 
 ## Blocker und Freigaben
 
+### Aktueller Fallback-Stand (19.10.2026)
+
+Der spätere GitHub-Kommentar-Eingang ist getrennt vom oben belegten Draft-opened-Piloten. Selbst nach Veröffentlichung der Umgebung antwortet der Bot auf den [Verbindungstest](https://github.com/siinanXD/Leitstand/pull/294#issuecomment-6272808709) mit [„create an environment“](https://github.com/siinanXD/Leitstand/pull/294#issuecomment-6272812637). Eine funktionierende Cloud-Sitzung belegt diesen Eingang nicht. Kein wiederholter Startkommentar und kein neuer PR, um einen bestehenden Auftrag erneut auszulösen.
+
+Die [Fallback-Policy](../src/lib/loop/fallback.ts) ist eine vorbereitete, isoliert getestete Entscheidungskomponente. Sie führt keinen Worker aus. Der Speichervertrag verlangt issuebezogenes, dauerhaftes Compare-and-swap vor dem Start; Marker-Kommentare sind keine atomare Sperre. Ein Start mit unklarem Ergebnis behält seinen Claim bis zum belegten Ende/Abbruch, auch nach 30 Minuten ohne Commit. Automatische Übernahme ohne diesen Beleg würde zwei Worker erlauben.
+
+Fehlende Adapter, Prüferkonfiguration und aktuelle Live-Belege bleiben [Aktivierungsblocker](decisions/SIN-832-fallback.md). Die vorhandenen `repair:3`-/Wächter-Wege werden in PR #275 behandelt; die Policy-Grenze von zwei Fehlrunden ersetzt diese produktiven Pfade noch nicht.
+
 - Risikoarme Umsetzung, Tests und PR-Arbeit laufen ohne erneute Einzelfreigabe. Nach höchstens zwei gezielten Reparaturversuchen Ursache und nächsten Schritt im Auftrag festhalten.
 - Sicherheits-, Berechtigungs- oder Produktionsänderungen zuerst als getesteten Draft mit konkretem Diff vorbereiten; erst vor dem Wirksamwerden Freigabe einholen. Fehlende Zugänge oder Tools als Blocker melden, keine Rechte still erweitern.
 - Produktive GitHub-Secrets bleiben unverändert. Infisical-Migration und deren Smoke-Test-Neustarts bleiben gemäß SIN-611 bis zur Pfadklärung pausiert.

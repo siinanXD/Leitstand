@@ -122,8 +122,8 @@ export function tagSeite(e: Eingabe): string {
 /** Zeilen „Produkt: Art. Grund“ aus der letzten CEO-Entscheidung je Produkt (SIN-636). */
 export const ceoZeilen = (zeilen: { produkt: string; entscheidung: string; grund: string }[]): string[] => zeilen.map((z) => `- ${z.produkt}: ${z.entscheidung}. ${z.grund}`);
 
-export function entscheidungSeite(x: Entscheidung, jetzt: Date): string {
-  return [...kopf("entscheidung", x.projekt, tagBerlin(jetzt), "gilt", x.titel), `# ${x.id}: ${kurz(x.titel)}`, "", `Entscheidungsdatei: ${x.url}`, "", `[[Produkte/${dateiname(x.projekt)}]]`].join("\n") + "\n";
+export function entscheidungSeite(x: Entscheidung, jetzt: Date, produktName?: string): string {
+  return [...kopf("entscheidung", x.projekt, tagBerlin(jetzt), "gilt", x.titel), `# ${x.id}: ${kurz(x.titel)}`, "", `Entscheidungsdatei: ${x.url}`, "", ...(produktName ? [`[[Produkte/${dateiname(produktName)}]]`] : [])].join("\n") + "\n";
 }
 
 /** Linear zuerst (hat den Link); Snapshot-Punkte mit gleicher Kennung (SIN-123) zählen nicht doppelt. */
@@ -146,7 +146,7 @@ export function offenSeite(e: Eingabe): string {
 export function dateien(e: Eingabe): Dateien {
   const out: Dateien = { "00 Wo stehen wir.md": uebersicht(e), "Offen.md": offenSeite(e), [`Tage/${tagBerlin(e.jetzt)}.md`]: tagSeite(e) };
   for (const p of e.produkte) out[`Produkte/${dateiname(p.name)}.md`] = produktSeite(p, e.entscheidungen, e.jetzt);
-  for (const x of e.entscheidungen) out[`Entscheidungen/${dateiname(x.id)}.md`] = entscheidungSeite(x, e.jetzt);
+  for (const x of e.entscheidungen) out[`Entscheidungen/${dateiname(x.id)}.md`] = entscheidungSeite(x, e.jetzt, e.produkte.find((p) => p.id === x.projekt)?.name);
   return out;
 }
 

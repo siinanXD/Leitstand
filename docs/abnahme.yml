@@ -492,6 +492,35 @@
   pfad: docs/autonomy/ROLLEN-ABNAHME.md
   enthaelt: Momentaufnahme, kein Live-Status
 
+- id: gedaechtnis-historie-datum
+  produkt: gedaechtnis
+  titel: Historische Vault-Entscheidung behält ihr ursprüngliches Datum (SIN-615)
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: Entscheidungen/SIN-639.md
+  enthaelt: "datum: 2026-10-18"
+- id: gedaechtnis-historie-status
+  produkt: gedaechtnis
+  titel: Historische Vault-Entscheidung behält ihren Status (SIN-615)
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: Entscheidungen/SIN-639.md
+  enthaelt: "status: gilt"
+- id: gedaechtnis-historie-quelle
+  produkt: gedaechtnis
+  titel: Historische Vault-Entscheidung behält ihre Herkunft (SIN-615)
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: Entscheidungen/SIN-639.md
+  enthaelt: "Entscheidungsdatei: https://github.com/siinanXD/Leitstand/blob/main/docs/decisions/SIN-639-pruefer-zweites-modell.md"
+- id: gedaechtnis-historie-produktlink
+  produkt: gedaechtnis
+  titel: Historische Vault-Entscheidung hat einen korrekten Produktlink (SIN-615)
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: Entscheidungen/SIN-639.md
+  enthaelt: "[[Produkte/Leitstand]]"
+
 - id: leitstand-team-takt
   produkt: leitstand
   titel: Die Team-Ansicht zeigt alle Rollen mit Takt und letztem Lauf (SIN-829)
@@ -499,14 +528,26 @@
   pfad: src/app/team/page.tsx
   enthaelt: Takt und letzter Lauf aller Rollen
 
+# CEO schaltet nach vollem FERTIG.md das nächste Produkt frei (SIN-831)
 - id: leitstand-rolle-codex
   produkt: leitstand
-  titel: Codex ist als Rolle mit Takt in rollen.json geführt (SIN-832)
+  titel: Codex ist als Rolle mit Takt registriert - kein Ausführungsnachweis (SIN-832)
   art: datei
   pfad: docs/autonomy/rollen.json
   enthaelt: '"schritt": "codex"'
+- id: leitstand-fallback-policy
+  produkt: leitstand
+  titel: Fallback-Policy ist vorbereitet - kein Live-Nachweis (SIN-832)
+  art: datei
+  pfad: src/lib/loop/fallback.ts
+  enthaelt: kein ausführender Codex-Adapter
+- id: leitstand-fallback-blocker
+  produkt: leitstand
+  titel: Fallback-Aktivierungsblocker sind dokumentiert (SIN-832)
+  art: datei
+  pfad: docs/decisions/SIN-832-fallback.md
+  enthaelt: Produktionsrouting bleibt unverändert
 
-# CEO schaltet nach vollem FERTIG.md das nächste Produkt frei (SIN-831)
 - id: leitstand-ceo-freischalten
   produkt: leitstand
   titel: Der CEO setzt bei vollem FERTIG.md das Produkt auf fertig und schaltet SIN-705 frei (SIN-831)
