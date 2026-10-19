@@ -7,6 +7,8 @@ type Seite = { issues: { nodes: ProjektKnoten[]; pageInfo: { hasNextPage: boolea
 export async function ladeProjektIssues(
   linear: (query: string, variables: Record<string, unknown>) => Promise<Seite>,
   projekt: string,
+  /** Standard: offene Zustände (Planer, Dispatcher). Der Bestandsabgleich (SIN-858) liest alle. */
+  zustaende: string[] = ["backlog", "unstarted", "started"],
 ): Promise<ProjektKnoten[]> {
   const nodes: ProjektKnoten[] = [];
   const gesehen = new Set<string>();
@@ -14,7 +16,7 @@ export async function ladeProjektIssues(
   while (true) {
     const d = await linear(
       `query($p: String!, $after: String) {
-        issues(first: 25, after: $after, filter: { project: { name: { eq: $p } }, state: { type: { in: ["backlog", "unstarted", "started"] } } }) {
+        issues(first: 25, after: $after, filter: { project: { name: { eq: $p } }, state: { type: { in: ${JSON.stringify(zustaende)} } } }) {
           nodes { id identifier title description priority url createdAt startedAt team { id }
             labels { nodes { name } } state { type }
             inverseRelations { nodes { type issue { identifier state { type } } } } }
