@@ -9,6 +9,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-lauf-vertrag
+  produkt: leitstand
+  titel: Der Output-Vertrag für Agenten-Läufe prüft Schema und speichert idempotent (SIN-836, Pilot offen)
+  art: datei
+  pfad: src/lib/lauf/lauf.ts
+  enthaelt: schema_ungueltig
 - id: leitstand-stern-auswahl
   produkt: leitstand
   titel: Die Auswahl aus GitHub-Sternen begründet Nutzen und bewussten Verzicht (SIN-833)
