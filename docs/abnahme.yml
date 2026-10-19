@@ -573,3 +573,10 @@
   art: datei
   pfad: scripts/ceo/ceo.ts
   enthaelt: Label agent-ready fehlt im Linear-Team
+
+- id: leitstand-belege-lauf
+  produkt: leitstand
+  titel: Live - der Belege-Prüfer (belege.yml) hat mindestens einen erfolgreichen Lauf (SIN-846)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/belege.yml/runs?status=success&per_page=1
+  enthaelt: '"success"'

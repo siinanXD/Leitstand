@@ -4,6 +4,7 @@
  */
 
 import { passend, stufe } from "../kontingent/prioritaet";
+import { nurBelege } from "../belege/belege";
 import { istTeil } from "./haken";
 
 export const PROJEKT ="Leitstand";
@@ -87,7 +88,7 @@ const prGehoertZu = (pr: OffenerPr, i: LinearIssue) =>
  */
 export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssue[] {
   return issues.filter((i) => {
-    if (i.stateType !== "started" || !hatLabel(i)) return false;
+    if (i.stateType !== "started" || !hatLabel(i) || nurBelege(i.description)) return false;
     if (!belegung) return true;
     const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
     if (eigene.length) return !eigene.every(wartetAufSinan);
@@ -107,8 +108,9 @@ export function freigegebene(issues: LinearIssue[], belegung: Belegung): LinearI
 }
 
 // SIN-832: `needs-human` belegt nie einen Platz, sonst steht bei einem Platz die ganze Schlange.
+// SIN-846: Sind nur noch Belege-Haken offen, gehört das Issue dem Prüfer (belege.yml), nicht dem Bau-Worker.
 const startbar = (i: LinearIssue, gespiegelt: Set<string>) =>
-  i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier) && !i.labels.includes("needs-human");
+  i.stateType === "unstarted" && hatLabel(i) && !nurBelege(i.description) && !offenBlockiert(i) && !gespiegelt.has(i.identifier) && !i.labels.includes("needs-human");
 
 /** Startbare Todo-Issues, genau wie `waehle` sie sieht (SIN-736): Dispatcher und `loop_snapshot.queue.startable` zählen damit dasselbe. */
 export const startbare = (issues: LinearIssue[], gespiegelt: Set<string>): LinearIssue[] => issues.filter((i) => startbar(i, gespiegelt));
