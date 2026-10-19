@@ -110,7 +110,7 @@ jobs:
             echo 'Prüfergebnis veraltet: Head oder Basis geändert'
             exit 1
           fi
-          ALT=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --paginate -q '.[] | select(.body | startswith("<!-- pruefer-zweites-modell -->")) | .id' | head -1)
+          ALT=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --paginate --slurp -q '[.[][] | select((.user.login == "${{ github.repository_owner }}" or .user.login == "github-actions[bot]") and ((.body // "") | startswith("<!-- pruefer-zweites-modell -->\n")))] | last | .id // empty')
           if [ -n "$ALT" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$ALT" -F body=@pruefer-kommentar.md
           else
