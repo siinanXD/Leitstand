@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, istWorkerBranch, teilGemergte, waehle, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -208,6 +208,15 @@ test("SIN-846: nur offene Belege-Haken: kein Bau-Worker, kein Platz", () => {
   assert.deepEqual(waehle([issue({ identifier: "SIN-1", description: beleg })], new Set(), 5), []);
   assert.deepEqual(waehle([issue({ identifier: "SIN-2", description: beleg + "\n- [ ] Code bauen" })], new Set(), 5).map((i) => i.identifier), ["SIN-2"]);
   assert.equal(laufende([issue({ identifier: "SIN-1", description: beleg, stateType: "started" })]).length, 0);
+});
+
+test("codex/-Branch mit Linear-Kennung zählt im Reparaturzähler, nach 2 Runden Stopp (SIN-854)", () => {
+  assert.equal(istWorkerBranch("codex/auftrag-sin-854"), true);
+  assert.equal(istWorkerBranch("claude/sin-854"), true);
+  assert.equal(istWorkerBranch("feature/x"), false);
+  assert.equal(linearId("fix(loop): Gate (SIN-854)"), "SIN-854");
+  assert.deepEqual(reparatur([], 1), { runde: 2 });
+  assert.deepEqual(reparatur([], 2), { stopp: true });
 });
 
 test("loopZiele enthält Stromlauf AI (SIN-798)", () => {

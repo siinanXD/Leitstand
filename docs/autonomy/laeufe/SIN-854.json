@@ -1,0 +1,32 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-854",
+  "zeitpunkt": "2026-10-19T22:11:43Z",
+  "status": "blockiert",
+  "zusammenfassung": "Review-Blocker lokal korrigiert: aktueller Linear-Vertrag, vollständiger Hash, erfolgreicher Review-Stand, isolierte Gate-/Reparatur-CLI-Abnahme. 549 Tests nach Integration von SIN-855, Typecheck und Lint grün; synchroner SHA-gebundener Merge beseitigt ausstehende Auto-Merge-Freigaben. Kein produktiver Lauf nach Aktivierung belegt.",
+  "naechster_schritt": "Unabhängiges Review der Korrektur, Integration und Laufnachweis. Externe Codex-Umgebungszuordnung getrennt klären. Grenze der getrennten Linear-/GitHub-Transaktionen beachten.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://linear.app/sinan-kahraman/issue/SIN-854",
+    "https://github.com/siinanXD/Leitstand/pull/310#issuecomment-6277885114"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/310",
+  "geaendert": [
+    ".github/workflows/automerge.yml",
+    ".github/workflows/pruefer.yml",
+    ".github/workflows/repair.yml",
+    ".github/workflows/build.yml",
+    "scripts/loop/beleg-stand.mjs",
+    "scripts/loop/loop.ts",
+    "scripts/pruefer/pruefer.ts",
+    "src/lib/loop/beleg-stand.test.ts",
+    "src/lib/loop/merge-gate.test.ts",
+    "src/lib/loop/repair-cli.test.ts",
+    "src/lib/loop/fixtures/repair-fetch.mjs",
+    "docs/abnahme.yml",
+    "docs/decisions/SIN-854-aktuelle-belege.md",
+    "docs/autonomy/LEHREN.md",
+    "README.md"
+  ]
+}
