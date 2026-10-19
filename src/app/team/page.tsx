@@ -2,6 +2,7 @@
 
 import { agentKarte, bahnen, type AgentKarte } from "@/lib/agenten";
 import { useRollen } from "@/lib/aktionen-client";
+import { letzterLauf, ROLLEN, type Takt } from "@/lib/autonomy/rollen";
 import { useSitzung } from "@/lib/sitzung";
 import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
 import { MitMehr } from "../mit-mehr";
@@ -17,6 +18,31 @@ const GRUPPEN: { art: ZustandArt; farbe: string; titel: (n: number) => string }[
 ];
 
 const euro = (v: number) => `${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+
+const TAKT: Record<Takt, string> = { "15min": "viertelstündlich", stuendlich: "stündlich", "2h": "alle 2 Stunden", taeglich: "täglich", woechentlich: "wöchentlich", monatlich: "monatlich", ereignis: "bei Ereignis", aus: "aus" };
+
+/** Takt und letzter Lauf aller Rollen (SIN-829) aus docs/autonomy/rollen.json und loop_events; nie gesehen heißt „Noch kein Lauf“. */
+function Takte({ events, jetzt }: { events: readonly { step: string | null; agent?: string | null; created_at: string }[]; jetzt: Date }) {
+  return (
+    <section aria-labelledby="team-takt">
+      <h2 id="team-takt" className="karte-titel">
+        Alle {ROLLEN.length} Rollen
+      </h2>
+      <ul className="noten">
+        {ROLLEN.map((r) => {
+          const zuletzt = letzterLauf(r, events);
+          return (
+            <li key={r.schritt}>
+              <strong>{r.schritt}</strong>
+              <span>Takt: {TAKT[r.takt]}</span>
+              <span>{zuletzt === null ? "Noch kein Lauf" : `Letzter Lauf ${zeitInWorten(new Date(zuletzt).toISOString(), jetzt) ?? "früher"}`}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 
 /** Noten (SIN-637): je Rolle Note 1 bis 6 aus der gemeldeten Wirkung, Kosten der Woche, letzter Lauf. „ok“ allein gibt keine Note. */
 function Noten({ jetzt }: { jetzt: Date }) {
@@ -92,6 +118,7 @@ export default function Team() {
                 <MitMehr liste={ruhen} klasse="figuren" zeile={figur} />
               </section>
             )}
+            <Takte events={quelle.events} jetzt={jetzt} />
             <Noten jetzt={jetzt} />
           </main>
         );

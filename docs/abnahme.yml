@@ -477,3 +477,10 @@
   art: datei
   pfad: docs/autonomy/ROLLEN-ABNAHME.md
   enthaelt: Momentaufnahme, kein Live-Status
+
+- id: leitstand-team-takt
+  produkt: leitstand
+  titel: Die Team-Ansicht zeigt alle Rollen mit Takt und letztem Lauf (SIN-829)
+  art: datei
+  pfad: src/app/team/page.tsx
+  enthaelt: Takt und letzter Lauf aller Rollen
