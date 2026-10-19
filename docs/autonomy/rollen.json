@@ -8,6 +8,7 @@
     { "schritt": "automerge", "takt": "ereignis", "grenze_h": 24, "alias": ["merge"] },
     { "schritt": "botadvisor", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "build", "takt": "ereignis", "grenze_h": 24, "alias": [] },
+    { "schritt": "codex", "takt": "ereignis", "grenze_h": 24, "alias": ["codex-worker"] },
     { "schritt": "ceo", "takt": "taeglich", "grenze_h": 26, "alias": [] },
     { "schritt": "claude", "takt": "ereignis", "grenze_h": 24, "alias": ["worker", "work"] },
     { "schritt": "dispatch", "takt": "2h", "grenze_h": 5, "alias": [] },

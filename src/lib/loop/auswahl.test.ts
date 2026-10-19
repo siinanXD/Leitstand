@@ -126,12 +126,19 @@ test("issueText enthält Markierung, Link und Branch-Regel", () => {
   assert.match(t.body, /Beschreibung/);
 });
 
-test("reparatur: drei Runden, dann Stopp", () => {
+test("reparatur: zwei Runden, dann Stopp (SIN-840)", () => {
   assert.deepEqual(reparatur([]), { runde: 1 });
   assert.deepEqual(reparatur(["repair:1"]), { runde: 2 });
-  assert.deepEqual(reparatur(["repair:1", "repair:2"]), { runde: 3 });
+  assert.deepEqual(reparatur(["repair:1", "repair:2"]), { stopp: true });
   assert.deepEqual(reparatur(["repair:3"]), { stopp: true });
   assert.deepEqual(reparatur(["needs-human"]), { stopp: true });
+});
+
+test("reparatur (SIN-832): issueweiter Zähler gilt auch für einen neuen PR ohne Labels", () => {
+  assert.deepEqual(reparatur([], 1), { runde: 2 });
+  assert.deepEqual(reparatur([], 2), { stopp: true });
+  assert.deepEqual(reparatur(["repair:1"], 2), { stopp: true });
+  assert.deepEqual(reparatur([], Number.NaN), { runde: 1 });
 });
 
 test("ausLinear übernimmt Labels, Status und Blocker", () => {

@@ -529,6 +529,31 @@
   enthaelt: Takt und letzter Lauf aller Rollen
 
 # CEO schaltet nach vollem FERTIG.md das nächste Produkt frei (SIN-831)
+- id: leitstand-rolle-codex
+  produkt: leitstand
+  titel: Codex ist als Rolle mit Takt registriert - kein Ausführungsnachweis (SIN-832)
+  art: datei
+  pfad: docs/autonomy/rollen.json
+  enthaelt: '"schritt": "codex"'
+- id: leitstand-reservierung-live
+  produkt: leitstand
+  titel: Live - der Dispatcher hat mindestens eine dauerhafte Issue-Reservierung geschrieben (SIN-832)
+  art: db
+  rest: leitstand_aufgaben?claim_revision=gt.0&select=issue,claim_revision&order=claim_revision.desc&limit=1
+  nicht_leer: issue
+- id: leitstand-fallback-policy
+  produkt: leitstand
+  titel: Fallback-Policy ist vorbereitet - kein Live-Nachweis (SIN-832)
+  art: datei
+  pfad: src/lib/loop/fallback.ts
+  enthaelt: kein ausführender Codex-Adapter
+- id: leitstand-fallback-blocker
+  produkt: leitstand
+  titel: Fallback-Aktivierungsblocker sind dokumentiert (SIN-832)
+  art: datei
+  pfad: docs/decisions/SIN-832-fallback.md
+  enthaelt: Produktionsrouting bleibt unverändert
+
 - id: leitstand-ceo-freischalten
   produkt: leitstand
   titel: Der CEO setzt bei vollem FERTIG.md das Produkt auf fertig und schaltet SIN-705 frei (SIN-831)

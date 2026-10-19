@@ -51,3 +51,11 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:a11y` (Pl
 ## PR-Prüfer (SIN-827)
 
 Der vorgeschlagene gehärtete Prüfer lädt seine Implementierung und Abhängigkeiten vom Basis-Commit, liest Claude-/Codex-PRs nur als Diff und nennt den geprüften Commit. CLI: `node --import tsx scripts/pruefer/pruefer.ts <PR-Nummer> <Basis-SHA> <Head-SHA>`. Beide SHAs müssen vollständig sein. `DRY_RUN=1` unterdrückt Modell-/Ledger-Aufrufe. OpenAI-/Anthropic-API-Nutzung ist getrennt von Plus-/Max-Abos; vorhandene API-Konfiguration bleibt erforderlich.
+
+## Claude/Codex-Fallback (SIN-832)
+
+Die vorbereitete [Fallback-Policy](src/lib/loop/fallback.ts) unterscheidet Kontingent-, Auth-, Netzwerk-, Verbindungs- und fachliche Fehler, begrenzt Wiederholungen und erhält vorhandene PRs und Worker-Claims. `node --import tsx src/lib/loop/fallback.test.ts` führt die isolierten Simulationen ohne Modellaufruf aus.
+
+**Dauerhafte Reservierung (SIN-832):** Vor jedem Start reserviert der Dispatcher das Issue per Compare-and-swap in `leitstand_aufgaben` ([reservierung.ts](src/lib/loop/reservierung.ts), Spalten `claim_*`, `reparaturen`). Ohne bestätigte Reservierung startet nichts; Merge, Reparaturstopp und ein belegt verwaister Claim (Wächter: kein PR, kein Spiegel, kein laufender Worker, älter als 6 h) geben sie frei. Reparaturrunden zählen issueweit über PRs und Provider. Die Spalten kommen per Lern-App-Migration (Content-Agent-Lernapp #433) und müssen vor dem Merge angewendet sein.
+
+**Noch kein autonomer Produktionsfallback:** Ein Codex-Startweg fehlt (Kommentar-Eingang meldet Zuordnungsfehler); der Dispatcher startet nur Claude. Linear hält die bisherigen Aufträge. Datei-Proben und simulierte Reservierungen ersetzen keine Live-Abnahme. Belege und Wiederaufnahmebedingungen: [SIN-832-fallback.md](docs/decisions/SIN-832-fallback.md).
