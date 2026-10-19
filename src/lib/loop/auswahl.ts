@@ -149,7 +149,7 @@ export function issueText(i: LinearIssue, hinweise = ""): { title: string; body:
       "",
       "---",
       `Arbeite auf dem Branch \`claude/${kurz}\`. PR-Titel als Conventional Commit mit \`${i.identifier}\`, Commits mit \`Part of ${i.identifier}\`.`,
-      "Lies zuerst AGENTS.md. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test.",
+      "Lies zuerst AGENTS.md und docs/autonomy/AUFTRAGSABGLEICH.md. Lies vor Bau und vor jedem Push den aktuellen Linear-Auftrag inklusive Kommentaren/Eltern-/Masterauftrag neu; dieser Spiegel ist nur ein Startstand. Prüfe vorhandene PRs und Fehlerlogs vor einer Reparatur. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test.",
       ...(hinweise ? ["", hinweise] : []),
     ].join("\n"),
   };

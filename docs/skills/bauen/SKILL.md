@@ -1,6 +1,7 @@
 # Skill: Bauen (SIN-543)
 
 Es gilt `docs/STANDARD.md` (SIN-641).
+Verbindlicher Ablauf: `docs/autonomy/AUFTRAGSABGLEICH.md` (SIN-754). Vor Bau und vor jedem Push den aktuellen Linear-Auftrag mit Kommentaren/Eltern-/Masterauftrag lesen. Diagnose anhand vorhandener Logs/Register belegen; reversible Nacharbeit im Auftrag selbst erledigen. Fehlende Live-Probe getrennt von fehlender Implementierung ausweisen.
 
 Aufgabe: Code, Design aus Figma, Content und Video. `content`, `video` und `marketing` sind Aufgabenarten von Bauen, keine eigenen Agenten.
 

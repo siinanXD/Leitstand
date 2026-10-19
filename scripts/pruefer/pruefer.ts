@@ -11,6 +11,8 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatHoch, istKontingentFehler, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
+import { auftragStand, auftragText, ladeAuftrag } from "../../src/lib/loop/auftrag";
+import { linearId } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
 const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
@@ -21,6 +23,13 @@ if (!nummer || !basis) {
   process.exit(2);
 }
 const sh = (cmd: string, ...a: string[]) => execFileSync(cmd, a, { encoding: "utf8", maxBuffer: 50_000_000 });
+async function linear<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+  if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY fehlt: aktueller Auftrag nicht prüfbar");
+  const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { Authorization: env.LINEAR_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ query, variables }), signal: AbortSignal.timeout(20_000) });
+  const j = await res.json();
+  if (!res.ok || j.errors || !j.data) throw new Error(`Linear-Auftrag nicht lesbar: HTTP ${res.status}`);
+  return j.data;
+}
 
 async function modell(text: string, name: string): Promise<{ ergebnis: Ergebnis; ein: number; aus: number }> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -82,12 +91,17 @@ async function main() {
   if (!name || !preise) throw new Error("PRUEFER_MODELL, PRUEFER_PREIS_EIN und PRUEFER_PREIS_AUS fehlen (Repo-Variablen, Werte aus der OpenAI-Doku)");
   if (!DRY && !env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY fehlt");
 
-  const pr = JSON.parse(sh("gh", "pr", "view", nummer, "--json", "title,body")) as { title: string; body: string };
-  const issueNr = /Closes #(\d+)/i.exec(pr.body ?? "")?.[1];
-  const issue = issueNr ? (JSON.parse(sh("gh", "issue", "view", issueNr, "--json", "title,body")) as { title: string; body: string }) : null;
+  const pr = JSON.parse(sh("gh", "pr", "view", nummer, "--json", "title,body,headRefOid")) as { title: string; body: string; headRefOid: string };
+  const issueNr = linearId(pr.title);
+  if (!issueNr) throw new Error("Linear-Kennung im PR-Titel fehlt");
+  const auftrag = await ladeAuftrag(linear, issueNr);
+  const stand = { head: pr.headRefOid, auftrag: auftragStand(auftrag) };
+  const auftragInhalt = auftragText(auftrag);
+  const frei = maxDiffZeichen(preise) - auftragInhalt.length;
+  if (frei <= 0) throw new Error("Aktueller Auftrag überschreitet den bestehenden Prüf-Kostendeckel; Auftrag eingrenzen, nicht Kommentare abschneiden");
   const dateien = sh("git", "diff", "--name-only", `${basis}...HEAD`).split("\n").filter(Boolean);
-  const { text, gekuerzt } = begrenze(sh("git", "diff", "--unified=3", `${basis}...HEAD`), maxDiffZeichen(preise));
-  const eing = eingabe({ issue: issue ? `${issue.title}\n${issue.body}` : `(kein Issue verlinkt) ${pr.body ?? ""}`, titel: pr.title, dateien, diff: text, gekuerzt });
+  const { text, gekuerzt } = begrenze(sh("git", "diff", "--unified=3", `${basis}...HEAD`), frei);
+  const eing = eingabe({ issue: auftragInhalt, titel: pr.title, dateien, diff: text, gekuerzt });
 
   let ergebnis: Ergebnis = { bestanden: true, funde: [] };
   let usd: number | null = null;
@@ -107,7 +121,9 @@ async function main() {
     } else usd = kostenUsd({ eingabe: r.ein, ausgabe: r.aus }, preise);
   }
   ergebnis = bewerte(ergebnis, dateien, gekuerzt);
-  writeFileSync("pruefer-kommentar.md", kommentar(ergebnis, genutzt, usd, reviewer));
+  const aktuell = JSON.parse(sh("gh", "pr", "view", nummer, "--json", "headRefOid")) as { headRefOid: string };
+  if (aktuell.headRefOid !== stand.head || auftragStand(await ladeAuftrag(linear, issueNr)) !== stand.auftrag) throw new Error("Auftrag oder PR-Head während der Prüfung geändert; Ergebnis verworfen");
+  writeFileSync("pruefer-kommentar.md", kommentar(ergebnis, genutzt, usd, reviewer, DRY || !ergebnis.bestanden ? undefined : stand));
   if (hatHoch(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");
   await ledger(true, { modell: genutzt, reviewer, bestanden: ergebnis.bestanden, funde: ergebnis.funde.length, hoch: hatHoch(ergebnis), kosten_eur_usd: usd, issue: issueNr ?? null });
   console.log(`Prüfer: ${ergebnis.bestanden ? "bestanden" : "nicht bestanden"}, ${ergebnis.funde.length} Funde${usd === null ? "" : `, ${usd.toFixed(4)} $`}`);

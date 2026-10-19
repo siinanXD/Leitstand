@@ -16,6 +16,8 @@ The self-building loop is described in [`docs/decisions/SIN-413-loop.md`](docs/d
 
 Dispatcher und Planer lesen offene Linear-Projekt-Issues in Seiten zu 25 mit Cursor-Fortsetzung (SIN-825), damit verschachtelte Abfragen unter dem Komplexitätslimit bleiben.
 
+Worker und Prüfer gleichen den [aktuellen Auftrag](docs/autonomy/AUFTRAGSABGLEICH.md) inklusive Linear-Kommentaren und Eltern-/Masterauftrag ab. `npx tsx scripts/loop/loop.ts auftrag --issue SIN-830` liest ihn ohne Start oder Statusänderung. Abschlussbelege sind an Head und Auftragsinhalt gebunden; fehlende Live-Nachweise halten das Issue In Review, statt einen blinden Neubau auszulösen. Aktivierung erfordert weiterhin die unabhängige Security-Abnahme von SIN-827.
+
 ## Stack
 
 Next.js 16 · React 19 · TypeScript · Supabase (EU) · React Flow · GitHub Actions · Vercel · PWA with web push

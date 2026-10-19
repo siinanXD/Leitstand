@@ -41,6 +41,7 @@ jobs:
           npx tsx scripts/pruefer/pruefer.ts "$PR" "origin/$BASE"
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PRUEFER_CLAUDE_MODELL: ${{ vars.PRUEFER_CLAUDE_MODELL }}
@@ -52,8 +53,10 @@ jobs:
         continue-on-error: true
       - name: Kommentar und risk:high
         if: always() && hashFiles('pruefer-kommentar.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          ALT=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --paginate -q '.[] | select(.body | startswith("<!-- pruefer-zweites-modell -->")) | .id' | head -1)
+          ALT=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --paginate -q '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- pruefer-zweites-modell -->"))) | .id' | head -1)
           if [ -n "$ALT" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$ALT" -F body=@pruefer-kommentar.md
           else

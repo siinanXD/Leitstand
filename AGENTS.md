@@ -2,6 +2,10 @@
 
 Regeln für alle Agenten in diesem Repo. Sie ersetzen Rückfragen an Sinan. Dieses Repo übernimmt die Regeln der Lern-App, bis der Projekt-Starter (SIN-202) sie automatisch liefert.
 
+## Verbindlicher Auftragsabgleich (SIN-754)
+
+Für Worker, Prüfer und Abschluss gilt [docs/autonomy/AUFTRAGSABGLEICH.md](docs/autonomy/AUFTRAGSABGLEICH.md). Vor Bau und vor jedem Push Linear samt Kommentaren/Eltern-/Masterauftrag neu lesen, vorhandene Logs/PRs prüfen und notwendige reversible Nacharbeit im freigegebenen Umfang selbst erledigen. Nur echte neue Entscheidungen an Sinan geben. Kein Done ohne aktuelle Kriterien und unabhängige Belege; ausstehende Live-Abnahme ist In Review, kein Anlass für einen blinden Neubau. Dieser Abschnitt hat Vorrang vor älteren pauschalen Merge-/Done- und Wiederholungsbeschreibungen unten.
+
 ## Zuerst lesen
 
 1. Das zugewiesene Linear-Issue (SIN-304, SIN-305 unter SIN-242)

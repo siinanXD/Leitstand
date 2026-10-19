@@ -1,0 +1,10 @@
+# SIN-754: Aktuellen Auftrag prüfen statt alten Spiegel nachbauen
+
+Nutzerauftrag vom 19.10.2026: freigegebene Arbeit mit weniger manuellen Zwischenkorrekturen bis zum belegten Ergebnis führen. Vorhandene Loader-, Prüfer- und Hakenlogik erweitern; keine neue Agentenplattform oder Abhängigkeit.
+
+- Dispatcher/Prüfer lesen Linear-Kommentare vollständig sowie Eltern- und erkannte Masteraufträge. Nicht erreichbare oder während des Lesens geänderte Quellen bleiben offen. Mastererkennung per Titel ist begrenzt; weitere relevante Bezüge muss der Worker gezielt lesen.
+- Prüferergebnis an Head und Inhalts-Hash binden; aktuelle Kriterien einschließlich Nachträgen und bereits gesetzter Haken abgleichen. Nur Actions-Kommentare verwenden; alte Marker gelten nicht als abgeschlossen.
+- Code-Lücke geht begrenzt zurück, fehlende Prüfung/Live-Abnahme bleibt In Review. Der bestehende Dispatcher prüft spätere Belege auch im Leitstand nach; unveränderte Ergebnisse nicht doppelt zählen. Keine zusätzlichen Modellaufrufe, Budgets, Zeitpläne oder Worker durch dieses Änderungspaket eingerichtet.
+- Aktivierung erst nach Integration und unabhängiger Prüfung der vertrauenswürdigen Prüfer-Ausführung aus [PR269](https://github.com/siinanXD/Leitstand/pull/269); Botautor allein ist keine vollständige Provenienz. SIN-638/PR275 bleibt zuständig für den CI-Reparaturzähler.
+
+Kontrollfall: [SIN-830](https://linear.app/sinan-kahraman/issue/SIN-830) und [Lauf39219058277](https://github.com/siinanXD/Leitstand/actions/runs/39219058277): 72 Proben vollständig, 55 grün, danach Speicherfehler HTTP400. Detailregel und Grenzen: [AUFTRAGSABGLEICH](../autonomy/AUFTRAGSABGLEICH.md). Ein Dateicheck in docs/abnahme.yml ist nur Code-/Dokumentationsbeleg, keine ausgeführte Live-Abnahme.

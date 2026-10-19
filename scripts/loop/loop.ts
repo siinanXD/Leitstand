@@ -14,6 +14,7 @@ import { ladeProjektIssues, type ProjektKnoten } from "../../src/lib/loop/projek
  * Ohne Supabase-Secrets steht nur eine Warnung im Log (nie ein Abbruch).
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { LEHREN_ORDNER, leseLehre, workerHinweise } from "../../src/lib/lernen/lernen";
 import { aktivePause, pauseSatz } from "../../src/lib/kontingent/kontingent";
 import { PAUSE_SCHRITT, pauseStand, type PauseStand } from "../../src/lib/pause";
@@ -22,8 +23,9 @@ import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { ausLinear, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
-import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
+import { entscheide, istTeil, kommentarText, leseBelege, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
+import { auftragsHaken, auftragStand, auftragText, ladeAuftrag } from "../../src/lib/loop/auftrag";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -254,16 +256,15 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
       await ereignis("dispatch", "uebersprungen", { projekt, grund: `voraussetzung: ${fehlt}` });
       return;
     }
-    // Produkt-Repos haben kein loop-merge: gemergte PRs setzen das Linear-Issue hier auf Done.
-    const geschlossene = await gh<{ number: number; title: string; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
-    const fertig = gemergteFuerLaufende(issues, geschlossene.map((p) => ({ nummer: p.number, titel: p.title, gemergt: !!p.merged_at })));
-    for (const f of fertig) await gemergt(repo, f.pr, projekt);
-    issues = issues.filter((i) => !fertig.some((f) => f.identifier === i.identifier));
   }
+  // Auch im Leitstand spätere Abnahmebelege abgleichen; Warten braucht keinen neuen Build.
+  const zuletzt = await gh<{ number: number; title: string; body: string | null; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
+  const fertig = gemergteFuerLaufende(issues, zuletzt.map((p) => ({ nummer: p.number, titel: p.title, gemergt: !!p.merged_at })));
+  for (const f of fertig) await gemergt(repo, f.pr, projekt);
+  issues = issues.filter((i) => !fertig.some((f) => f.identifier === i.identifier));
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   const prs = await gh<{ title: string; head: { ref: string }; labels: { name: string }[] }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
   // Neueste zuerst: der jüngste gemergte PR eines Issues entscheidet, ob es nur auf Folge-Haken wartet (SIN-781).
-  const zuletzt = await gh<{ title: string; body: string | null; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
   const belegung: Belegung = {
     jetzt: new Date(),
     offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref, labels: p.labels.map((l) => l.name) })),
@@ -292,7 +293,8 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     return;
   }
   for (const i of wahl) {
-    const { title, body } = issueText(i, [eigenes ? lehrenHinweise(i) : "", wiederaufnahme(i.description)].filter(Boolean).join("\n\n"));
+    const auftrag = await ladeAuftrag(linear, i.identifier);
+    const { title, body } = issueText({ ...i, description: auftragText(auftrag) }, [eigenes ? lehrenHinweise(i) : "", wiederaufnahme(auftrag.description)].filter(Boolean).join("\n\n"));
     const team = nodes.find((n) => n.id === i.id)!.team.id;
     if (DRY) {
       console.log(`[trocken] würde starten: ${title}`);
@@ -308,15 +310,6 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   }
 }
 
-/** Issue mit Text und bisherigen Kommentaren, für den Haken-Abgleich (SIN-754). */
-async function issueMitHaken(identifier: string) {
-  const d = await linear<{ issue: { id: string; description: string | null; team: { id: string }; comments: { nodes: { body: string }[] } } | null }>(
-    `query($id: String!) { issue(id: $id) { id description team { id } comments(first: 100) { nodes { body } } } }`,
-    { id: identifier },
-  );
-  return d.issue;
-}
-
 /** Label am Linear-Issue setzen (z. B. needs-human). */
 async function labelSetzen(issueId: string, teamId: string, name: string) {
   const d = await linear<{ team: { labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { labels(first: 250) { nodes { id name } } } }`, { t: teamId });
@@ -327,20 +320,33 @@ async function labelSetzen(issueId: string, teamId: string, name: string) {
 }
 
 async function gemergt(repo: string, pr: number, projekt?: string) {
-  const p = await gh<{ title: string; body: string | null; html_url: string; merged: boolean }>(`/repos/${repo}/pulls/${pr}`);
+  const p = await gh<{ title: string; body: string | null; html_url: string; merged: boolean; head: { sha: string } }>(`/repos/${repo}/pulls/${pr}`);
   if (!p.merged) return console.log(`PR #${pr} ist nicht gemergt.`);
   const id = linearId(p.title);
   if (!id) return console.log(`PR #${pr}: keine Linear-Kennung im Titel.`);
-  const issue = await issueMitHaken(id);
-  if (!issue) return console.log(`${id} nicht in Linear gefunden.`);
+  const issue = await ladeAuftrag(linear, id);
+  const stand = { head: p.head.sha, auftrag: auftragStand(issue) };
   // SIN-754: Done nur, wenn alle Fertig-Kriterien belegt sind und der PR kein „Part of“ ist.
-  const belege = leseBelege((await gh<{ body: string }[]>(`/repos/${repo}/issues/${pr}/comments?per_page=100`)).map((c) => c.body));
-  const runde = issue.comments.nodes.filter((c) => c.body.includes(RUNDE_MARKER)).length + 1;
-  const e = entscheide({ haken: leseHaken(issue.description), belege, teil: istTeil(p.title, p.body), runde });
+  const kommentare = await gh<{ body: string; user: { login: string } }[]>(`/repos/${repo}/issues/${pr}/comments?per_page=100`);
+  const belege = leseBelege(kommentare.filter((c) => c.user.login === "github-actions[bot]").map((c) => c.body), stand);
+  if (belege === null) {
+    const marker = `<!-- abnahme-wartet:${stand.head}:${stand.auftrag} -->`;
+    if (!issue.kommentare.some((c) => c.body.includes(marker))) await kommentar(issue.id, `${marker}\n${p.html_url}: aktuelle Prüfung des Auftrags/Heads fehlt. In Review; kein blinder Neubau. Nächster Nachweis: unabhängiger Prüfer-Abgleich mit aktuellen Linear-Kommentaren und issuebezogenen Live-Belegen.`);
+    await setzeStatus(issue.id, issue.team.id, "In Review");
+    return;
+  }
+  const ergebnisMarker = `<!-- haken-stand:${stand.head}:${stand.auftrag}:${createHash("sha256").update(JSON.stringify(belege)).digest("hex")} -->`;
+  if (issue.kommentare.some((c) => c.body.includes(ergebnisMarker))) return console.log(`${id}: dieser Prüfstand ist bereits verarbeitet.`);
+  const runde = issue.kommentare.filter((c) => c.body.includes(RUNDE_MARKER)).length + 1;
+  const e = entscheide({ haken: auftragsHaken(issue), belege, teil: istTeil(p.title, p.body), runde });
   if (e.belegt.length && issue.description && !DRY) await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: setzeHaken(issue.description, e.belegt) });
-  await kommentar(issue.id, kommentarText(e, belege ?? [], runde, p.html_url));
+  await kommentar(issue.id, `${kommentarText(e, belege ?? [], runde, p.html_url)}\n${ergebnisMarker}`);
   if (e.status === "done") await setzeStatus(issue.id, issue.team.id, "Done");
-  else if (e.status === "needs-human") await labelSetzen(issue.id, issue.team.id, "needs-human");
+  else if (e.status === "wartet") await setzeStatus(issue.id, issue.team.id, "In Review");
+  else if (e.status === "needs-human") {
+    await labelSetzen(issue.id, issue.team.id, "needs-human");
+    await setzeStatus(issue.id, issue.team.id, "In Review");
+  }
   // Offen: zurück auf Todo, der nächste Dispatch gibt dem Worker die offenen Haken mit.
   else await setzeStatus(issue.id, issue.team.id, "Todo");
   // SIN-760: Spiegel schließen (falls `Closes #N` es nicht schon tat), sonst startet das Issue nie wieder.
@@ -381,10 +387,10 @@ async function reparaturLauf() {
 }
 
 const befehl = process.argv[2];
-const laeufe: Record<string, () => Promise<unknown>> = { dispatch, gemergt: () => gemergt(repo, Number(arg("pr"))), reparatur: reparaturLauf };
+const laeufe: Record<string, () => Promise<unknown>> = { auftrag: async () => console.log(auftragText(await ladeAuftrag(linear, arg("issue") ?? ""))), dispatch, gemergt: () => gemergt(repo, Number(arg("pr"))), reparatur: reparaturLauf };
 const lauf = laeufe[befehl ?? ""];
 if (!lauf) {
-  console.error("Befehl: dispatch | gemergt --pr N | reparatur --pr N --lauf URL");
+  console.error("Befehl: auftrag --issue SIN-N (nur lesen) | dispatch | gemergt --pr N | reparatur --pr N --lauf URL");
   process.exit(2);
 }
 lauf().catch(async (e: Error) => {

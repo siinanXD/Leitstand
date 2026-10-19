@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { entscheide, hakenMarker, istTeil, kommentarText, leseBelege, leseHaken, setzeHaken, wiederaufnahme, type Beleg } from "./haken";
+import { entscheide, hakenMarker, istTeil, kommentarText, leseBelege, leseHaken, MAX_RUNDEN, setzeHaken, wiederaufnahme, type Beleg } from "./haken";
 
 const text = "## Fertig-Kriterien\n\n- [ ] Erstens\n- [ ] Zweitens `x`\n- [x] Drittens\n\nSonst Text";
-const belegt = (t: string): Beleg => ({ text: t, belegt: true, beleg: "src/a.ts" });
+const belegt = (t: string): Beleg => ({ text: t, belegt: true, beleg: "src/a.ts", art: "code" });
 
 test("leseHaken liest alle Haken mit Stand", () => {
   assert.deepEqual(leseHaken(text).map((h) => h.erledigt), [false, false, true]);
@@ -33,9 +33,9 @@ test("PR belegt alle 3: Done", () => {
   assert.equal(entscheide({ haken, belege: ["A", "B", "C"].map(belegt), teil: false, runde: 1 }).status, "done");
 });
 
-test("frühere Runden zählen: erledigte Haken müssen nicht erneut belegt werden", () => {
+test("bereits gesetzte Haken brauchen weiterhin einen aktuellen Beleg", () => {
   const haken = leseHaken("- [x] A\n- [ ] B");
-  assert.equal(entscheide({ haken, belege: [belegt("B")], teil: false, runde: 2 }).status, "done");
+  assert.equal(entscheide({ haken, belege: [belegt("B")], teil: false, runde: 1 }).status, "offen");
 });
 
 test("Part of: nie Done, auch wenn alles belegt ist", () => {
@@ -46,15 +46,35 @@ test("Part of: nie Done, auch wenn alles belegt ist", () => {
   assert.equal(istTeil("feat: x (SIN-1)", "Closes #3"), false);
 });
 
-test("ohne Prüfer-Belege ist nichts belegt; ab Runde 4 needs-human", () => {
+test("ohne Prüfer-Belege ist nichts belegt; ab zwei Nacharbeitsrunden Stopp", () => {
   const haken = leseHaken("- [ ] A");
   assert.equal(entscheide({ haken, belege: null, teil: false, runde: 1 }).status, "offen");
-  assert.equal(entscheide({ haken, belege: null, teil: false, runde: 4 }).status, "needs-human");
+  assert.equal(MAX_RUNDEN, 2);
+  assert.equal(entscheide({ haken, belege: null, teil: false, runde: 2 }).status, "needs-human");
 });
 
-test("ohne Haken zählt nur Part of", () => {
-  assert.equal(entscheide({ haken: [], belege: null, teil: false, runde: 1 }).status, "done");
+test("fehlende Live-Probe wartet ohne neue Baurunde; URL allein ersetzt keine unabhängige Inhaltsprüfung", () => {
+  const haken = leseHaken("- [x] Live");
+  const e = entscheide({ haken, belege: [{ text: "Live", belegt: true, beleg: "Probe angelegt", art: "live" }], teil: false, runde: 9 });
+  assert.equal(e.status, "wartet");
+  assert.doesNotMatch(kommentarText(e, [], 9, "#5"), /<!-- haken-runde -->/);
+  assert.equal(entscheide({ haken, belege: [{ text: "Live", belegt: true, beleg: "https://example.test/run/1", art: "live" }], teil: false, runde: 1 }).status, "done");
+});
+
+test("ohne Kriterien gibt es keinen automatischen Abschluss", () => {
+  assert.equal(entscheide({ haken: [], belege: null, teil: false, runde: 1 }).status, "offen");
   assert.equal(entscheide({ haken: [], belege: null, teil: true, runde: 1 }).status, "offen");
+});
+
+test("leerer Beleg ist nicht belegt; alter Head oder Auftrag entwertet Marker", () => {
+  const haken = leseHaken("- [ ] A");
+  assert.equal(entscheide({ haken, belege: [{ text: "A", belegt: true, beleg: "  " }], teil: false, runde: 1 }).status, "offen");
+  const stand = { head: "sha1", auftrag: "hash1" };
+  const marker = hakenMarker([belegt("A")], stand);
+  assert.deepEqual(leseBelege([marker], stand), [belegt("A")]);
+  assert.equal(leseBelege([marker], { ...stand, head: "sha2" }), null);
+  assert.equal(leseBelege([marker], { ...stand, auftrag: "hash2" }), null);
+  assert.equal(leseBelege([hakenMarker([belegt("A")])], stand), null);
 });
 
 test("wiederaufnahme nennt offene Haken nur, wenn schon welche belegt sind", () => {
