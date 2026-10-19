@@ -19,7 +19,7 @@ const GRUPPEN: { art: ZustandArt; farbe: string; titel: (n: number) => string }[
 
 const euro = (v: number) => `${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
 
-const TAKT: Record<Takt, string> = { "15min": "alle 15 Minuten", stuendlich: "stündlich", "2h": "alle 2 Stunden", taeglich: "täglich", woechentlich: "wöchentlich", monatlich: "monatlich", ereignis: "bei Ereignis", aus: "aus" };
+const TAKT: Record<Takt, string> = { "15min": "viertelstündlich", stuendlich: "stündlich", "2h": "alle 2 Stunden", taeglich: "täglich", woechentlich: "wöchentlich", monatlich: "monatlich", ereignis: "bei Ereignis", aus: "aus" };
 
 /** Takt und letzter Lauf aller Rollen (SIN-829) aus docs/autonomy/rollen.json und loop_events; nie gesehen heißt „Noch kein Lauf“. */
 function Takte({ events, jetzt }: { events: readonly { step: string | null; agent?: string | null; created_at: string }[]; jetzt: Date }) {
