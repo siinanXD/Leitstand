@@ -66,8 +66,15 @@ if (!produkt || !bereich || !feature) {
   console.error("Aufruf: bestand.ts <produkt> <bereich> <feature> [begriff …]");
   process.exit(2);
 }
-const bericht = await sammle({ produkt, bereich, feature, ...(begriffe.length ? { begriffe } : {}) }, lader);
-mkdirSync(AUSGABE, { recursive: true });
-const datei = join(AUSGABE, `${produkt}-${bereich}.json`);
-writeFileSync(datei, `${JSON.stringify(bericht, null, 2)}\n`);
-console.log(`${datei}: ${bericht.vorhandene_bausteine.length} Bausteine, ${bericht.offene_arbeit.length} offen, ${bericht.quellfehler.length} Quellfehler`);
+// Kein Top-Level-await: tsx läuft im Repo als CJS.
+async function main() {
+  const bericht = await sammle({ produkt, bereich, feature, ...(begriffe.length ? { begriffe } : {}) }, lader);
+  mkdirSync(AUSGABE, { recursive: true });
+  const datei = join(AUSGABE, `${produkt}-${bereich}.json`);
+  writeFileSync(datei, `${JSON.stringify(bericht, null, 2)}\n`);
+  console.log(`${datei}: ${bericht.vorhandene_bausteine.length} Bausteine, ${bericht.offene_arbeit.length} offen, ${bericht.quellfehler.length} Quellfehler`);
+}
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
