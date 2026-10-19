@@ -9,6 +9,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-aufbauphase-integration
+  produkt: leitstand
+  titel: Gate-Simulation prüft Altfristen, high, Draft, Stopplabel und rote Checks; kein Live-Nachweis (SIN-855)
+  art: datei
+  pfad: /tmp/leitstand-aufbauphase.json
+  enthaelt: '"ok": true'
 - id: leitstand-hermes-realitaet
   produkt: leitstand
   titel: Der Hermes-Abgleich nennt die offenen Nacharbeiten zu SIN-512 und SIN-513 (SIN-835)

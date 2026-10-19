@@ -1,0 +1,13 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-855",
+  "zeitpunkt": "2026-10-19T22:09:27Z",
+  "status": "blockiert",
+  "zusammenfassung": "Gate-Integration mit neun simulierten GitHub-Szenarien belegt; UNSTABLE löst keinen Direkt-Merge mehr aus. Echter Folge-Merge und Produkt-Abgleich noch offen.",
+  "naechster_schritt": "Unabhängiges Review am neuen Head, dann nach regulärem Merge echten Folge-PR mit Head- und Run-Links prüfen; SIN-855 bis zur Live-Abnahme offen halten.",
+  "kosten_eur": 0,
+  "quellen": ["https://linear.app/sinan-kahraman/issue/SIN-855", "https://github.com/siinanXD/Leitstand/pull/306", "docs/abnahme.yml", "scripts/loop/aufbauphase-probe.mjs"],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/306",
+  "geaendert": [".github/workflows/automerge.yml", ".github/workflows/build.yml", ".github/workflows/abnahme.yml", "scripts/loop/aufbauphase-probe.mjs", "src/lib/loop/aufbauphase.test.ts", "docs/abnahme.yml", "docs/decisions/SIN-855-aufbauphase-ohne-einspruchsfrist.md", "README.md", "docs/autonomy/LEHREN.md", "docs/autonomy/laeufe/SIN-855.json"]
+}

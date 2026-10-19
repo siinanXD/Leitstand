@@ -23,6 +23,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - name: Aufbauphase-Gate mit Altfristen und Schutzgrenzen simulieren (SIN-855)
+        run: DRY_RUN=1 node scripts/loop/aufbauphase-probe.mjs
       - run: npm run build
       - name: Abnahme-Proben (Trockenlauf)
         run: DRY_RUN=1 npx tsx scripts/abnahme/abnahme.ts

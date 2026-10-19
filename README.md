@@ -1,5 +1,9 @@
 # Leitstand
 
+Gate-Integration für die Aufbauphase prüfen: `DRY_RUN=1 node scripts/loop/aufbauphase-probe.mjs`.
+Die Probe führt das echte Auto-Merge-Skript mit simuliertem GitHub aus; sie mergt
+nichts und ersetzt keinen Live-Nachweis. CI und Abnahme führen sie automatisch aus.
+
 A mobile-first control room that shows what a fleet of AI agents is building, what it costs, and what needs a human, for one person running several software products.
 
 <!-- Hero screenshot: pending, see "Ausgelassen" in the pull request. Playwright capture belongs to the designer role (SIN-561). -->

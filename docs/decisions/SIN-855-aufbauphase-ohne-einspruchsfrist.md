@@ -17,5 +17,24 @@ Erst nach separat dokumentierter, belegter Produktreife und Workflow-Abnahme. Ke
 
 ## Offen
 
+### Integration vor dem Merge
+
+`DRY_RUN=1 node scripts/loop/aufbauphase-probe.mjs` führt das wirkliche Skript aus
+`automerge.yml` gegen simulierte GitHub-Antworten aus. Es prüft low/medium mit
+Altlabels und gespeichertem Fristende 2099 sowie high, Freigabe, Draft, Stopplabel,
+rote und laufende Pflichtchecks. Rotes `UNSTABLE` darf keinen Direkt-Merge auslösen.
+CI und der stündliche Abnahme-Workflow erzeugen den Ergebnisbericht frisch;
+`leitstand-aufbauphase-integration` liest ihn. Das ist ein ausführbarer
+Integrationsnachweis, kein Beleg für einen echten Merge oder gültige Rulesets.
+
+### Aktivierung nach dem Merge
+
+Der echte Folge-PR kann erst das auf `main` aktivierte Gate belegen. Daher ist
+dies ein gesonderter Aktivierungsnachweis, kein vorweg behaupteter Erfolg und
+keine Aufforderung, Review oder Merge-Freigabe zu überspringen. SIN-855 bleibt
+bis dahin In Progress/In Review. Nachtragen: Folge-PR-URL, Head-SHA, erfolgreicher
+Auto-Merge-Run, erfolgreiche Pflichtcheck-Runs und Merge-Zeitpunkt. Zusätzlich
+Ruleset auf `main` prüfen; die simulierten GitHub-Antworten ersetzen das nicht.
+
 - Produkt-Repos (SJCODE-website, stromlauf-ai) nutzen die pr-gate-Vorlage aus SIN-812. Abgleich als eigener Auftrag, Verweis im PR.
 - Beleg für „Done“: ein Folge-PR, der ohne Frist mergt (Head- und Run-Link im PR nachtragen). Code-Merge allein ist kein Done.
