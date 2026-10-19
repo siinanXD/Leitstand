@@ -6,10 +6,19 @@ Migration auf main ≠ Migration in Supabase → nach Merge prüfen (SIN-592)
 Linear-Projektabfrage mit 100 Issues und verschachtelten Relationen überschreitet 10.000 Komplexitätspunkte → Seiten zu 25 vollständig über pageInfo/endCursor lesen (SIN-825).
 Verschachtelte Projekt-Metadatenabfrage multipliziert standardmäßig 50 Projekte × 250 Titel → bei exaktem Projektnamen first: 1 setzen; sonst bleibt der Planer nach erfolgreichem Issue-Lesen rot (SIN-825).
 Prüfer vom PR-HEAD mit Secrets ausführen → Basis-Commit/Lockfile auschecken, Install-Skripte sperren und PR ausschließlich als validierten SHA-Diff lesen (SIN-827).
+Relativer `import("./scripts/…")` in actions/github-script → löst gegen das Action-Verzeichnis auf, das Gate stürzt ab und kein PR mergt; lokale Module nur über `${process.env.GITHUB_WORKSPACE}/…` importieren (SIN-848).
+Ledger-Zeile mit Spalte `payload` an loop_events → PostgREST 400, Beleg verloren, Lauf trotzdem „ok“; roter Lauf nur als `exit 2` ohne Grund → `grund` ist Pflicht, Fehler zusätzlich als `::error::`-Annotation, neue Spalten per Migration (Lernapp wendet an, Leitstand prüft nur) (SIN-848).
 
 Research-CLI mit Top-Level-await startet im CommonJS-Projekt nicht, selbst trocken → async main mit Fehlerabschluss; den tatsächlichen CLI-Einstieg ohne Netz sowie mit positiven/negativen Quellen-Fixtures testen (SIN-826).
 Numerische Datumsangabe im Team-Link verletzt den bestehenden Verständlichkeits-Test → Beschriftung ohne nackte Ziffern, Prüfdatum im verlinkten Bericht belassen; Browser-Gate unverändert lassen (SIN-826).
 Zwei Fehlversuche sind Erstversuch plus eine Reparatur → Runtime-Grenze und alle Aufrufer aus derselben Konstanten ableiten, nicht drei Reparaturen zusätzlich erlauben (SIN-638).
+Gedächtnis-Sync darf historische Entscheidungen nicht zu Tages-Snapshots machen → bestehende Notizen samt Datum/Status erhalten; Produktlinks mit tatsächlichem Seitennamen erzeugen (SIN-615).
+
+
+### SIN-615: Dokumentationsprobe ersetzt keinen produktiven Writer-Nachweis
+
+Entscheidungshistorie und reparierte Produktlinks an einer vorhandenen historischen Notiz aus dem produktiven GitHub-Vault zurücklesen. Datum, Status und Herkunft getrennt gegen den gelesenen Ausgangsstand prüfen. Ein Text im lokalen Checkout oder selbst gesetzter Erfolgsmarker belegt keine ausgeführte Synchronisierung.
+
 
 
 ### SIN-827: sicherer Checkout reicht bei PR-kontrollierter Workflowdefinition nicht

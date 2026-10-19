@@ -142,6 +142,13 @@ export const ANSICHTEN: Dateien = {
  */
 export function abschliessen(vorhanden: Dateien, neu: Dateien, jetzt: Date, erzwingen = false): { dateien: Dateien; befunde: Befund[] | null } {
   const dateien: Dateien = { ...neu, "CLAUDE.md": REGELN, ...ANSICHTEN };
+  // Entscheidungen sind Historie, keine Tages-Snapshots. Nur den früher falsch erzeugten Produktlink reparieren.
+  for (const p of Object.keys(neu)) {
+    if (!p.startsWith("Entscheidungen/") || !(p in vorhanden)) continue;
+    const produkt = eigenschaften(vorhanden[p]).produkt;
+    const link = /\[\[Produkte\/[^\]]+\]\]/.exec(neu[p])?.[0];
+    dateien[p] = produkt && link ? vorhanden[p].replaceAll(`[[Produkte/${produkt}]]`, link) : vorhanden[p];
+  }
   const alle: Dateien = { ...vorhanden, ...dateien };
   const woche = erzwingen || istSonntag(jetzt);
   const befunde = woche ? pruefe(alle, jetzt) : null;
