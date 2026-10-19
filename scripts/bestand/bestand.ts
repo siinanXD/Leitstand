@@ -46,9 +46,9 @@ const lader: Lader = {
   },
   async code() {
     const sha = git("rev-parse", "HEAD");
-    const dateien = git("ls-tree", "-r", "--name-only", sha, "src", "scripts", "tests", "e2e", "docs/decisions").split("\n").filter(Boolean);
+    const dateien = git("ls-tree", "-r", "--name-only", sha, "src", "scripts", "tests", "e2e", "docs/decisions", ".github/workflows").split("\n").filter(Boolean);
     const eintraege = dateien.flatMap((titel): Fund[] => {
-      if (!/\.(tsx?|jsx?|py|md|json|yml)$/.test(titel)) return [];
+      if (!/\.(tsx?|jsx?|mjs|cjs|mts|cts|sh|py|md|json|ya?ml)$/.test(titel)) return [];
       const inhalt = git("show", `${sha}:${titel}`);
       const f = { titel, url: `https://github.com/${REPO}/blob/${sha}/${titel}`, sha, inhalt, inhalt_sha256: hash(inhalt) };
       return passt(f, wörter) ? [f] : [];

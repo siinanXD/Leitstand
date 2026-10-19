@@ -7,7 +7,7 @@ Teil von SIN-857. Lesender Sammler, noch keine Planer-/Fertig-Entscheidung, kein
 `npx tsx scripts/bestand/bestand.ts leitstand <bereich> <feature> [begriff …]`
 
 - Gedächtnis: Vault-Commit zuerst auflösen; index.md und Produktnotiz an genau diesem Stand lesen. Nur passende Katalog-/Entscheidungslinks nachladen. Kein kompletter Vault-Download.
-- Code: versionierte Textdateien im lokalen Git-Commit lesen, in Pfad **und Inhalt** suchen; Tests unter src/tests/e2e werden mitgelesen. Links zeigen auf die Commit-SHA. Inhaltshashes belegen die gelesenen Inhalte, keine Rohtexte verlassen den Leser.
+- Code: versionierte Textdateien im lokalen Git-Commit lesen, in Pfad **und Inhalt** suchen; Tests unter src/tests/e2e sowie Infrastruktur unter .github/workflows und Skripte in TS/JS einschließlich mjs/cjs/mts/cts, Shell und YAML werden mitgelesen. Links zeigen auf die Commit-SHA. Inhaltshashes belegen die gelesenen Inhalte, keine Rohtexte verlassen den Leser.
 - Linear: gezielt nach Begriffen in Titel/Beschreibung innerhalb des Produkts suchen, alle Zustände zulassen. Kleine Cursor-Seiten vollständig lesen; ungültige/wiederholte Cursor sind Fehler.
 - PRs: GitHub-Suche nach Begriffen in Titel/Beschreibung statt alle PR-Payloads zu laden; sämtliche Suchseiten lesen, Treffer deduplizieren, nur diese PRs samt vollem Head-SHA lesen. Unvollständige Suchergebnisse und das 1000-Treffer-Limit ergeben einen Quellfehler, nie ein scheinbar vollständiges Inventar.
 
