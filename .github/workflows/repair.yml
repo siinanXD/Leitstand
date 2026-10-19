@@ -1,5 +1,5 @@
-# Reparatur (SIN-413): Ist `build` auf einem Claude-PR rot, bittet der Loop @claude um eine Reparatur.
-# Höchstens 3 Runden (Labels repair:1 bis repair:3), danach Label needs-human und Hinweis in Linear.
+# Reparatur (SIN-413): Ist `build` auf einem Claude-/Codex-PR rot, bittet der Loop @claude um eine Reparatur.
+# Höchstens 2 issueweite Runden (leitstand_aufgaben), danach Label needs-human und Hinweis in Linear.
 name: repair
 
 on:

@@ -9,6 +9,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-aufbauphase-integration
+  produkt: leitstand
+  titel: Gate-Simulation prüft Altfristen, high, Draft, Stopplabel und rote Checks; kein Live-Nachweis (SIN-855)
+  art: datei
+  pfad: /tmp/leitstand-aufbauphase.json
+  enthaelt: '"ok": true'
 - id: leitstand-hermes-realitaet
   produkt: leitstand
   titel: Der Hermes-Abgleich nennt die offenen Nacharbeiten zu SIN-512 und SIN-513 (SIN-835)
@@ -589,8 +595,15 @@
 
 - id: leitstand-merge-aktuelle-belege
   produkt: leitstand
-  titel: Das Merge-Gate auf main prüft den Beleg gegen Head-SHA und Kriterien-Hash (SIN-854)
+  titel: Statisch - Das Merge-Gate auf main prüft den Beleg gegen Head-SHA und Kriterien-Hash (SIN-854)
   art: github
   repo: siinanXD/Leitstand
   pfad: .github/workflows/automerge.yml
   enthaelt: belegAktuell
+
+- id: leitstand-merge-beleg-cli-abnahme
+  produkt: leitstand
+  titel: CI - Gate und Reparatur-CLI gegen API-Fixtures auf main grün nach SIN-854-Korrektur, kein Live-Nachweis
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?status=success&event=push&branch=main&created=%3E%3D2026-10-19T22%3A06%3A22Z&per_page=1
+  enthaelt: '"conclusion": "success"'

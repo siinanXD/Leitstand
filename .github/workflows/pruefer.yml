@@ -10,6 +10,10 @@ on:
       pr:
         description: PR-Nummer (Trockenlauf ohne OpenAI)
         required: true
+      pruefen:
+        description: Echte erneute Prüfung des aktuellen Linear-Auftrags
+        type: boolean
+        default: false
 permissions:
   contents: read
   pull-requests: write
@@ -83,7 +87,8 @@ jobs:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           BASE_SHA: ${{ steps.ziel.outputs.basis }}
           HEAD_SHA: ${{ steps.ziel.outputs.head }}
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.pruefen && '1' || '' }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PRUEFER_CLAUDE_MODELL: ${{ vars.PRUEFER_CLAUDE_MODELL }}
@@ -111,7 +116,7 @@ jobs:
           else
             gh pr comment "$PR" --body-file pruefer-kommentar.md
           fi
-          if [ -f pruefer-hoch.txt ] && [ "${{ github.event_name }}" = "pull_request_target" ]; then
+          if [ -f pruefer-hoch.txt ] && [ "${{ github.event_name }}" = "pull_request_target" -o "${{ inputs.pruefen }}" = "true" ]; then
             gh pr edit "$PR" --add-label risk:high
           fi
       - name: Rot, wenn nicht bestanden oder Lauf gescheitert

@@ -4,15 +4,26 @@
 import { createHash } from "node:crypto";
 
 const STAND = /<!-- pruefer-stand:([0-9a-f]{40}):([0-9a-f]{16}) -->/;
-const ZEILE = /^\s*[-*]\s+\[[ xX]\]\s+(.+?)\s*$/;
 
-/** Hash über alle Haken (Text, ohne Formatierung und ohne Häkchen-Stand): Umformulieren, Hinzufügen oder Streichen ändert ihn. */
+
+/** Vollständiger Linear-Auftrag: auch nummerierte Kriterien, Fließtext und Code müssen Änderungen entwerten. */
 export function kriterienHash(beschreibung) {
-  const texte = String(beschreibung ?? "").split("\n").flatMap((z) => {
-    const m = ZEILE.exec(z);
-    return m ? [m[1].replace(/[`*_]/g, "").replace(/\s+/g, " ").trim().toLowerCase()] : [];
+  return createHash("sha256").update(String(beschreibung ?? "").replace(/\r\n/g, "\n").replace(/^(\s*[-*]\s+)\[[xX ]\]/gm, "$1[ ]")).digest("hex").slice(0, 16);
+}
+
+/** Der GitHub-Spiegel ist Startkontext, nie die aktuelle Quelle für den Merge. */
+export async function ladeAuftrag(titel, token, holen = fetch) {
+  const id = /\bSIN-\d+\b/.exec(titel)?.[0];
+  if (!id || !token) throw new Error("Aktueller Linear-Auftrag fehlt: Kennung oder LINEAR_API_KEY fehlt");
+  const res = await holen("https://api.linear.app/graphql", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: token },
+    body: JSON.stringify({ query: "query($id: String!) { issue(id: $id) { identifier title description } }", variables: { id } }),
+    signal: AbortSignal.timeout(20000),
   });
-  return createHash("sha256").update(JSON.stringify(texte)).digest("hex").slice(0, 16);
+  const json = await res.json();
+  const issue = json.data?.issue;
+  if (!res.ok || json.errors || issue?.identifier !== id || !issue.description?.trim()) throw new Error("Aktueller Linear-Auftrag nicht lesbar");
+  return { title: issue.title, body: issue.description, hash: kriterienHash(`${id}\n${issue.title}\n${issue.description}`) };
 }
 
 export const standMarker = (headSha, hash) => `<!-- pruefer-stand:${headSha.toLowerCase()}:${hash} -->`;
@@ -21,6 +32,7 @@ export const standMarker = (headSha, hash) => `<!-- pruefer-stand:${headSha.toLo
 export function leseStand(kommentare) {
   for (const k of [...kommentare].reverse()) {
     const m = STAND.exec(k);
+    if (k.startsWith("<!-- pruefer-zweites-modell -->") && (!m || !k.includes("### Prüfer (zweites Modell): bestanden"))) return null;
     if (m) return { sha: m[1], hash: m[2] };
   }
   return null;

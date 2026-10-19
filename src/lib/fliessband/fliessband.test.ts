@@ -44,9 +44,11 @@ test("Station Prüfung: CI grün; fehlende Haken sind gelb mit Grund", () => {
   assert.deepEqual([k?.station, k?.farbe, k?.grund], ["pruefung", "gelb", "Bewertungen fehlen: 1 von 3 Kriterien belegt."]);
 });
 
-test("Station Einspruchsfrist: gelb mit Frist aus dem Gate", () => {
-  const k = karte([aufgabe()], [ereignis({ step: "GATE", pr: 7, grund: "Einspruchsfrist bis 12:10" })], snapshot(pr({ labels: ["einspruch"] })));
-  assert.deepEqual([k?.station, k?.farbe, k?.grund], ["einspruchsfrist", "gelb", "Einspruchsfrist bis 12:10"]);
+test("Alte Einspruchslabels und zukünftige Gate-Fristen sperren in der Aufbauphase nicht (SIN-855)", () => {
+  for (const label of ["einspruch", "einspruch:2h", "einspruch:30m"]) {
+    const k = karte([aufgabe()], [ereignis({ step: "GATE", pr: 7, grund: "Einspruchsfrist bis 2099-12-31" })], snapshot(pr({ labels: [label] })));
+    assert.deepEqual([k?.station, k?.farbe, k?.grund], ["pruefung", "gruen", null], label);
+  }
 });
 
 test("Station gemergt: grün, nach 15 Minuten ohne Live-Check gelb", () => {
@@ -69,8 +71,8 @@ test("Station Fertig: grüne Probe oder Linear fertig; älter als 12 h fällt we
   assert.equal(karte([aufgabe({ status: "fertig", fertig: vor(13 * 60) })]), undefined);
 });
 
-test("alle 8 Stationen sind abgedeckt", () => {
-  assert.equal(STATIONEN.length, 8);
+test("Stationsvertrag bleibt kompatibel mit historischen Einspruchsfrist-Karten (SIN-855)", () => {
+  assert.deepEqual(STATIONEN, ["geplant", "baut", "pr-offen", "pruefung", "einspruchsfrist", "gemergt", "live-check", "fertig"]);
 });
 
 test("Farbe rot: länger als 90 Minuten ohne Fortschritt, needs-human, Check rot", () => {

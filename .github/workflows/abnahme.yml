@@ -28,6 +28,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Aufbauphase-Gate gegen GitHub-Fixtures prüfen (kein echter Merge)
+        run: DRY_RUN=1 node scripts/loop/aufbauphase-probe.mjs
       - name: Proben ausführen
         env:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}

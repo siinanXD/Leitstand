@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { belegAktuell, kriterienHash, leseStand, standMarker } from "../../../scripts/loop/beleg-stand.mjs";
+import { belegAktuell, kriterienHash, ladeAuftrag, leseStand, standMarker } from "../../../scripts/loop/beleg-stand.mjs";
 
 const alt = "a".repeat(40);
 const neu = "b".repeat(40);
@@ -26,7 +26,31 @@ test("geänderter Kriterien-Text ändert den Hash und erzwingt eine neue Runde",
   assert.equal(r.ok, false);
 });
 
-test("Häkchen setzen und Formatierung ändern den Hash nicht", () => {
-  assert.equal(kriterienHash("- [x] Erstens\n- [ ] `Zweitens`"), hash);
+test("Nur Häkchen-Stand ändert den Hash nicht, Code und Großschreibung bleiben relevant", () => {
+  assert.equal(kriterienHash("- [x] Erstens\n- [ ] Zweitens"), hash);
+  assert.notEqual(kriterienHash("- [ ] Erstens\n- [ ] `Zweitens`"), hash);
   assert.equal(kriterienHash(null), kriterienHash(""));
+});
+
+
+test("Nummerierte Kriterien, Absatz und Codeänderungen entwerten die Prüfung", () => {
+  for (const text of ["1. HTTP 200", "Nur GET", "`Foo` muss laufen"]) {
+    assert.notEqual(kriterienHash(text), kriterienHash(text + " und kein POST"));
+  }
+  assert.notEqual(kriterienHash("`Foo`"), kriterienHash("`foo`"));
+  assert.equal(leseStand([standMarker(alt, hash), "<!-- pruefer-zweites-modell -->\nNicht bestanden"]), null);
+});
+
+test("aktueller Linear-Auftrag ersetzt veralteten Spiegel; Fehler blockieren", async () => {
+  let description = "1. aktuelles Kriterium";
+  const holen = async () => new Response(JSON.stringify({ data: { issue: { identifier: "SIN-854", title: "Auftrag", description } } }));
+  const a = await ladeAuftrag("fix(loop): Auftrag (SIN-854)", "fixture", holen);
+  assert.equal(a.body, description);
+  description = "1. geändertes Kriterium";
+  const b = await ladeAuftrag("fix(loop): Auftrag (SIN-854)", "fixture", holen);
+  assert.notEqual(a.hash, b.hash);
+  assert.equal(belegAktuell({ stand: { sha: alt, hash: a.hash }, headSha: alt, hash: b.hash }).ok, false);
+  await assert.rejects(ladeAuftrag("ohne Kennung", "fixture", holen));
+  await assert.rejects(ladeAuftrag("SIN-854", "", holen));
+  await assert.rejects(ladeAuftrag("SIN-854", "fixture", async () => new Response("{}")));
 });

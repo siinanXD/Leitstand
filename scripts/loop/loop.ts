@@ -451,6 +451,7 @@ async function reparaturLauf() {
   const id = linearId(p.title);
   // SIN-832: issueweiter, dauerhafter Zähler; ohne lesbaren Stand keine weitere Runde (Stopp statt Raten).
   const speicher = id ? reservierungen() : null;
+  if (!id || !speicher) throw new Error("Reparatur gestoppt: Linear-Kennung oder dauerhafter Speicher fehlt");
   let stand = null;
   try {
     stand = id && speicher ? await speicher.laden(id) : null;
@@ -466,7 +467,10 @@ async function reparaturLauf() {
     await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `build ist nach ${MAX_REPARATUR} Reparaturrunden (issueweit gezählt) noch rot (${lauf}). Stopp, Sinan entscheidet.` } });
     if (id) {
       const issue = await issueNachKennung(id);
-      if (issue) await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) rot. ${lauf}`);
+      if (issue) {
+        await labelSetzen(issue.id, issue.team.id, "needs-human");
+        await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) rot. ${lauf}`);
+      }
     }
     await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: build nach ${MAX_REPARATUR} Reparaturrunden noch rot (${lauf})`) });
     // SIN-832: Stopp ist ein belegtes Ende des Workers; Claim lösen, Zähler bleibt, needs-human hält das Issue an.
