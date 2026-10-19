@@ -1,4 +1,4 @@
-import { MAX_REPARATUR } from "../../src/lib/loop/auswahl";
+import { execFileSync } from "node:child_process";
 /**
  * Projekt-Wächter (SIN-419). Aufruf aus waechter.yml:
  *
@@ -32,7 +32,6 @@ import {
   planungsIssue,
   pruefeNeuesProjekt,
   repoAusLinks,
-  reparaturText,
   snapshotGrundOhneProjekt,
   snapshotUebersprungenGrund,
   tagesstand,
@@ -314,20 +313,9 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
   }
 
   for (const a of erkennePrHaenger(prs, jetzt)) {
-    if (a.art === "reparatur") {
-      log(projekt.name, `PR #${a.pr.number} rot ohne Commit → @claude, Runde ${a.runde}`);
-      if (DRY) continue;
-      await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: [`repair:${a.runde}`] } });
-      await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, { method: "POST", body: { body: reparaturText(a.pr, a.runde) } });
-    } else {
-      log(projekt.name, `PR #${a.pr.number} nach ${MAX_REPARATUR} Reparaturrunde noch rot → needs-human`);
-      if (DRY) continue;
-      await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
-      await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, {
-        method: "POST",
-        body: { body: `Wächter: build ist nach ${MAX_REPARATUR} Reparaturrunde noch rot${a.pr.runUrl ? ` (${a.pr.runUrl})` : ""}. Stopp nach zwei roten Builds; Ursache und Zerlegungsvorschlag dokumentieren, kein weiterer Neustart.` },
-      });
-    }
+    log(projekt.name, `PR #${a.pr.number}: Reparaturgrenze zentral je Issue prüfen`);
+    if (DRY) continue;
+    execFileSync(process.execPath, ["--import", "tsx", "scripts/loop/loop.ts", "reparatur", "--pr", String(a.pr.number), "--lauf", a.pr.runUrl ?? ""], { stdio: "inherit", env: { ...env, GITHUB_REPOSITORY: repo } });
   }
 
   const zurueckgesetzt = new Set(haenger.filter((h) => h.art === "zuruecksetzen").map((h) => h.issue.identifier));

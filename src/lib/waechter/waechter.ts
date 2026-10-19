@@ -154,10 +154,12 @@ export function erkennePrHaenger(prs: PrInfo[], jetzt: Date): PrAktion[] {
     if (jetzt.getTime() - ms(pr.letzterCommitAt) < CI_WARTE_MINUTEN * MINUTE) continue;
     // Gerade erst gebeten: Wartezeit abwarten.
     if (pr.letzteReparaturAt && jetzt.getTime() - ms(pr.letzteReparaturAt) < CI_WARTE_MINUTEN * MINUTE) continue;
+    // Alter roter Head ist kein neuer fehlgeschlagener Reparaturlauf.
+    if (pr.letzteReparaturAt && ms(pr.letzterCommitAt) <= ms(pr.letzteReparaturAt)) continue;
     const schritt = reparatur(pr.labels);
     if ("stopp" in schritt) {
       // Die letzte Runde bekommt Zeit: Wurde danach gepusht, entscheidet erst der nächste rote Lauf.
-      if (pr.letzteReparaturAt && ms(pr.letzterCommitAt) > ms(pr.letzteReparaturAt)) continue;
+      if (pr.letzteReparaturAt && ms(pr.letzterCommitAt) <= ms(pr.letzteReparaturAt)) continue;
       r.push({ art: "stopp", pr });
     } else {
       r.push({ art: "reparatur", pr, runde: schritt.runde });

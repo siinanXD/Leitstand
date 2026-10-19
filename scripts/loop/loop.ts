@@ -21,7 +21,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { MAX_REPARATUR, ausLinear, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 
@@ -105,14 +105,6 @@ async function setzeStatus(issueId: string, teamId: string, name: string) {
 async function kommentar(issueId: string, body: string) {
   if (DRY) return console.log(`[trocken] Kommentar: ${body}`);
   await linear(`mutation($id: String!, $b: String!) { commentCreate(input: { issueId: $id, body: $b }) { success } }`, { id: issueId, b: body });
-}
-
-async function issueNachKennung(identifier: string) {
-  const d = await linear<{ issue: { id: string; team: { id: string } } | null }>(
-    `query($id: String!) { issue(id: $id) { id team { id } } }`,
-    { id: identifier },
-  );
-  return d.issue;
 }
 
 /** Backlog-Issue auf Todo mit Label `claude` setzen und das in Linear vermerken (SIN-417). */
@@ -350,34 +342,52 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
   else await ereignis("merge", "uebersprungen", { projekt, issue: id, pr, grund: `haken_offen: ${e.grund}` });
 }
 
-async function reparaturLauf() {
-  const pr = Number(arg("pr"));
-  const lauf = arg("lauf") ?? "";
-  const p = await gh<{ title: string; head: { ref: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
-  if (p.state !== "open" || !p.head.ref.startsWith("claude/")) return console.log(`PR #${pr}: nicht offen oder kein Claude-Branch.`);
-  const schritt = reparatur(p.labels.map((l) => l.name));
+async function reparaturLauf(offeneHaken?: string[], zielRepo = repo, nummer?: number) {
+  const repo = zielRepo;
+  const pr = nummer ?? Number(arg("pr"));
+  const lauf = arg("lauf") ?? "Prüfer: Kriterienbelege fehlen";
+  const p = await gh<{ title: string; head: { ref: string; sha: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
+  if (p.state !== "open" || !/^(claude|codex)\//.test(p.head.ref)) return;
+  if (arg("head") && arg("head") !== p.head.sha) return console.log("Veralteter roter Build; kein Reparaturversuch gezählt.");
   const id = linearId(p.title);
+  if (!id) throw new Error("Reparatur ohne Linear-Issue nicht zulässig");
+  const texte: string[] = [];
+  let after: string | null = null;
+  let issue!: { id: string; team: { id: string }; labels: { nodes: { name: string }[] } };
+  do {
+    const d: { issue: typeof issue & { comments: { nodes: { body: string }[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } } } = await linear(`query($id: String!, $after: String) { issue(id: $id) { id team { id } labels { nodes { name } } comments(first: 100, after: $after) { nodes { body } pageInfo { hasNextPage endCursor } } } }`, { id, after });
+    issue = d.issue;
+    texte.push(...d.issue.comments.nodes.map((c) => c.body));
+    if (!d.issue.comments.pageInfo.hasNextPage) break;
+    const next = d.issue.comments.pageInfo.endCursor;
+    if (!next || next === after) throw new Error("Reparaturzähler unvollständig");
+    after = next;
+  } while (true);
+  const marker = `<!-- repair-head:${p.head.sha} -->`;
+  if (texte.some((t) => t.includes(marker))) return console.log("Dieser Head hat bereits einen Reparaturauftrag; kein Doppelstart.");
+  const runden = texte.flatMap((t) => [...t.matchAll(/<!-- repair-runde:(\d+) -->/g)].map((m) => `repair:${m[1]}`));
+  const schritt = reparatur([...p.labels.map((l) => l.name), ...issue.labels.nodes.map((l) => l.name), ...runden]);
+  const grund = `${lauf}; ${offeneHaken?.length ? `offen: ${offeneHaken.join("; ")}` : "aktueller build rot; Ursache im verlinkten Log eingrenzen"}`;
   if ("stopp" in schritt) {
-    if (p.labels.some((l) => l.name === "needs-human")) return console.log(`PR #${pr}: wartet schon auf Sinan.`);
-    if (DRY) return console.log(`[trocken] Stopp für #${pr}`);
+    if (DRY) return console.log(`[trocken] needs-human: ${grund}`);
     await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
-    await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `build ist nach ${MAX_REPARATUR} Reparaturrunde noch rot (${lauf}). Stopp nach zwei roten Builds: Ursache und Vorschlag zum Zerlegen dokumentieren; kein weiterer Neustart.` } });
-    if (id) {
-      const issue = await issueNachKennung(id);
-      if (issue) await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunde rot. ${lauf}`);
-    }
-    await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: build nach ${MAX_REPARATUR} Reparaturrunde noch rot (${lauf})`) });
+    await labelSetzen(issue.id, issue.team.id, "needs-human");
+    await setzeStatus(issue.id, issue.team.id, "In Progress");
+    await kommentar(issue.id, `Blocker nach zwei erfolglosen Reparaturrunden: ${grund}. Stopp, kein weiterer Dispatch. needs-human.`);
+    await ereignis("repair", "fehler", { issue: id, pr, grund: `needs-human: ${grund}` });
     return;
   }
-  if (DRY) return console.log(`[trocken] Runde ${schritt.runde} für #${pr}`);
+  // Codex wird nicht durch eine Claude-Erwähnung ersetzt: genau ein Implementierer je Issue.
+  if (p.head.ref.startsWith("codex/")) {
+    await kommentar(issue.id, `Nacharbeit am bestehenden Codex-PR #${pr}: ${grund}. Derselbe Implementierer setzt fort; kein automatischer Claude-Wechsel.`);
+    return;
+  }
+  if (DRY) return console.log(`[trocken] Runde ${schritt.runde}: ${grund}`);
+  // Vor Auslösung dauerhaft reservieren: API-Fehler dürfen das Limit nie zurücksetzen.
+  await kommentar(issue.id, `<!-- repair-runde:${schritt.runde} -->\n${marker}\nReparaturrunde ${schritt.runde} von 2, bestehender PR #${pr}: ${grund}`);
   await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: [`repair:${schritt.runde}`] } });
-  await gh(`/repos/${repo}/issues/${pr}/comments`, {
-    method: "POST",
-    body: {
-      body: `@claude Der Check build ist rot (${lauf}). Ursache im Log suchen, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von ${MAX_REPARATUR}.`,
-    },
-  });
-  await ereignis("repair", "start", { issue: id ?? undefined, pr });
+  await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `@claude ${grund}. Vor Edit Auftrag samt neuesten Kommentaren, verlinkten PRs und Registern aktualisieren; Logs/loop_events lesen, Ursache belegen, dann gezielt Code, Tests und Doku korrigieren. Offene Haken dieses Issues vollständig als Kontext übernehmen. Vor Merge erneut abgleichen. Runde ${schritt.runde} von 2. Bei erneutem Misserfolg nach Runde 2 Stopp mit konkretem Blocker und needs-human.` } });
+  await ereignis("repair", "start", { issue: id, pr });
 }
 
 const befehl = process.argv[2];

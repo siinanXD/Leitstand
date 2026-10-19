@@ -131,7 +131,7 @@ test("Hänger: junges Issue, offener PR oder needs-human werden übersprungen", 
 test("PR-Hänger: rot und 30 Minuten ohne Commit → @claude, Runden zählen, dann Stopp", () => {
   assert.deepEqual(erkennePrHaenger([pr()], jetzt).map((a) => a.art), ["reparatur"]);
   const a = erkennePrHaenger([pr({ labels: ["repair:1"] })], jetzt)[0];
-  assert.equal(a.art, "stopp", "zweiter roter Build startet keine zweite Reparatur");
+  assert.equal(a.art, "reparatur", "nach erster Reparatur ist die zweite zulässig");
   assert.deepEqual(erkennePrHaenger([pr({ labels: ["repair:3"] })], jetzt).map((x) => x.art), ["stopp"]);
 });
 
@@ -140,7 +140,7 @@ test("PR-Hänger: grün, frischer Commit, frische Bitte oder needs-human → nic
   assert.equal(erkennePrHaenger([pr({ letzterCommitAt: vor(0.2) })], jetzt).length, 0);
   assert.equal(erkennePrHaenger([pr({ letzteReparaturAt: vor(0.1) })], jetzt).length, 0);
   assert.equal(erkennePrHaenger([pr({ labels: ["needs-human"] })], jetzt).length, 0);
-  assert.equal(erkennePrHaenger([pr({ labels: ["repair:3"], letzteReparaturAt: vor(3), letzterCommitAt: vor(2) })], jetzt).length, 0);
+  assert.equal(erkennePrHaenger([pr({ labels: ["repair:2"], letzteReparaturAt: vor(2), letzterCommitAt: vor(3) })], jetzt).length, 0);
 });
 
 test("Neues Projekt: fehlende Felder ergänzen und Einrichten-Issue", () => {
@@ -253,4 +253,8 @@ test("Entscheidung: im Linear-Kommentar führt zu Label und PR-Kommentar (SIN-65
 
 test("Ohne passenden Kommentar bleibt die Frage offen (SIN-651)", () => {
   assert.deepEqual(entscheidungenAusKommentaren(["siinanXD/Content-Agent-Lernapp#350 ja", "Hinweis: siinanXD/Content-Agent-Lernapp#350", "Entscheidung: ja, ohne PR"]), []);
+});
+
+test("SIN-840: neuer roter Reparatur-Head stoppt nach zwei Runden", () => {
+  assert.equal(erkennePrHaenger([pr({labels:["repair:2"],letzteReparaturAt:vor(3),letzterCommitAt:vor(2)})],jetzt)[0]?.art,"stopp");
 });
