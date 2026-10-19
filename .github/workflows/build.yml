@@ -24,6 +24,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - name: Parallel-Auswahl (isolierte CLI-Probe, kein Live-Start)
+        run: DRY_RUN=1 PROBE_BERICHT=/tmp/leitstand-parallel-probe.json node scripts/loop/parallel-probe.mjs
       - name: Abnahme-Proben (Trockenlauf)
         run: DRY_RUN=1 npx tsx scripts/abnahme/abnahme.ts
       - run: npx playwright install --with-deps chromium

@@ -28,6 +28,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Parallel-Auswahl (isolierte CLI-Probe, kein Live-Start)
+        run: DRY_RUN=1 PROBE_BERICHT=/tmp/leitstand-parallel-probe.json node scripts/loop/parallel-probe.mjs
       - name: Proben ausführen
         env:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}

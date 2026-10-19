@@ -17,3 +17,9 @@ Quelle für CLI-Definition, tools, maxTurns und Grenzen: https://code.claude.com
 Tests: getrennte Pfade, Datei-/Verzeichnisüberschneidung, gemeinsames Gate, unbekannter/ungültiger Scope, wartender PR, Leitstand-Limit und unveränderte Produktlimits. CLI-Konfiguration separat auf lesende Tools und Grenzen geprüft.
 
 Offen: tatsächlicher Actions-Variablenwert, zwei echte parallele Issue-Läufe und ein protokollierter Subagent-Aufruf. Bestehende Issues ohne Scope-Marker werden nicht automatisch umgeschrieben und laufen weiter einzeln. Mehr Worker erhöhen das verfügbare Claude-Kontingent nicht. SIN-856 bleibt bis zum Live-Nachweis offen.
+
+## Reparatur der Review-Blocker, 20.10.2026
+
+Offene PRs werden unabhängig von Linear-Kennungen über die paginierte GitHub-Dateiliste geprüft, einschließlich alter Namen bei Umbenennungen. Lesefehler, leere Listen und die GitHub-Grenze von 3000 Dateien sperren konservativ. Dauerhafte Claims werden gegen alle geladenen Leitstand-Issues geprüft.
+
+Der echte Dispatch-CLI durchläuft acht isolierte Netz-Fixtures: zwei getrennte Starts, Überschneidung, ein/zwei bestehende Claims, unbekannter Claim-Scope, unzugeordneter PR, zweite Dateiseite und Lesefehler. Die Fixture fing vor dem Fix den fehlenden Start bei unabhängiger PR-Prüfung ab. CI und stündliche Abnahme erzeugen den Bericht frisch unter `/tmp`; er belegt Simulation, keinen Live-Worker oder Subagent-Aufruf.

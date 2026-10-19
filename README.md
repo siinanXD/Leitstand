@@ -69,4 +69,4 @@ Parallel werden nur Issues mit explizit getrennten Schreibpfaden ausgewählt: `<
 
 Claude bekommt einen `lese-assistent` für abgegrenzte Recherche und Testanalyse (Read/Grep/Glob, gleiches Modell, 12 Turns). Ein Subagent gleichzeitig, keine Rekursion; Implementierung bleibt beim Hauptworker, Abschlussreview unabhängig. Subagents verbrauchen dasselbe Kontingent. Die konfigurierten CLI-Grenzen benötigen eine passende Claude-Code-Version; erst ein echter Worker-Lauf belegt ihre Wirkung.
 
-Abnahme: lokale Auswahltests und CI prüfen die Konfiguration. Zwei echte parallele Issues und ein protokollierter Subagent-Lauf sind für den Live-Nachweis von SIN-856 noch erforderlich.
+Abnahme: Der echte Dispatch-CLI läuft in CI mit isolierten Netz-Fixtures (Claims, zwei Plätze, Konflikte, unabhängig paginierte PR-Dateien und Lesefehler). Zwei echte parallele Issues und ein protokollierter Subagent-Lauf sind für den Live-Nachweis von SIN-856 noch erforderlich.

@@ -1,6 +1,25 @@
 import type { LinearIssue } from "./auswahl";
 import { gemeinsam } from "../vorarbeiter/vorarbeiter";
 
+/** Offene PRs schützen die tatsächlichen Diff-Pfade, unabhängig von Linear-Zuordnung oder Beschreibung. */
+export async function ladePrSchutz(prs: { number: number }[], lade: (pr: number, page: number) => Promise<{ filename: string; previous_filename?: string }[]>): Promise<Pick<LinearIssue, "description">[]> {
+  return Promise.all(prs.map(async pr => {
+    try {
+      const pfade: string[] = [];
+      for (let page = 1; ; page++) {
+        const files = await lade(pr.number, page);
+        for (const f of files) pfade.push(f.filename, ...(f.previous_filename ? [f.previous_filename] : []));
+        if (files.length < 100) break;
+        // GitHub liefert höchstens 3000 Dateien; unvollständige Diffs bleiben exklusiv.
+        if (page === 30) throw new Error("PR-Dateiliste möglicherweise gekürzt");
+      }
+      return { description: pfade.length ? `<!-- worker-pfade: ${JSON.stringify([...new Set(pfade)])} -->` : null };
+    } catch {
+      return { description: null };
+    }
+  }));
+}
+
 /** SIN-856: nur Leitstand auf zwei erhöhen; alte Produktlimits bleiben unverändert. */
 export function maxParallel(repo: string, produkt?: string, leitstand?: string): number {
   const eigenes = repo.toLowerCase() === "siinanxd/leitstand";

@@ -29,3 +29,5 @@ Ein pull_request-Workflow nutzt die YAML-Definition aus dem PR-Merge-Commit. Vor
 Ein always-Schritt läuft nicht, wenn die Job-Bedingung den Draft vorher ausschließt: Basiswechsel zur Entwertung zulassen, Modellschritt weiter durch Zielvalidierung sperren; echte Job-Bedingung mit Draft-/Titel-/Fork-Gegenproben testen (SIN-827).
 
 - Die globale Worker-Grenze erhöhen → verändert auch Produkt-Repos und verhindert keine Dateikonflikte. Richtig: Leitstand separat auf zwei begrenzen, explizite Schreibpfade prüfen, unklare Aufgaben allein starten; lesende Subagents ersetzen keinen unabhängigen Prüfer. (SIN-856)
+
+- SIN-856: Geplante Schreibpfade allein erkennen keine unabhängigen PRs. Tatsächliche GitHub-Dateilisten vollständig laden und den echten Dispatcher mit Claims testen; Fixture-Erfolg bleibt vom Live-Nachweis getrennt.

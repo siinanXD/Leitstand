@@ -583,7 +583,7 @@
 
 - id: leitstand-parallel-konfiguration
   produkt: leitstand
-  titel: Schreibpfade werden vor parallelem Start geprüft (SIN-856, Konfiguration)
+  titel: Dispatch-CLI prüft Claims und PR-Dateien (SIN-856, Fixture ohne Live-Start)
   art: datei
-  pfad: src/lib/loop/parallel.ts
-  enthaelt: worker-pfade
+  pfad: /tmp/leitstand-parallel-probe.json
+  enthaelt: '"ok": true'

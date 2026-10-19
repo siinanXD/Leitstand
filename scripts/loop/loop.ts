@@ -27,7 +27,7 @@ import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
 import { auftragAus, blockiert, supabaseReservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
-import { maxParallel, parallelAuswahl } from "../../src/lib/loop/parallel";
+import { ladePrSchutz, maxParallel, parallelAuswahl } from "../../src/lib/loop/parallel";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -324,7 +324,13 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     issues = issues.filter((i) => !fertig.some((f) => f.identifier === i.identifier));
   }
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
-  const prs = await gh<{ title: string; head: { ref: string }; labels: { name: string }[] }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
+  let prs = await gh<{ number: number; title: string; head: { ref: string }; labels: { name: string }[] }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
+  if (repo.toLowerCase() === "siinanxd/leitstand") {
+    for (let page = 2; prs.length === (page - 1) * 100; page++) {
+      const weitere = await gh<typeof prs>(`/repos/${repo}/pulls?state=open&per_page=100&page=${page}`);
+      prs = [...prs, ...weitere];
+    }
+  }
   // Neueste zuerst: der jüngste gemergte PR eines Issues entscheidet, ob es nur auf Folge-Haken wartet (SIN-781).
   const zuletzt = await gh<{ title: string; body: string | null; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
   const belegung: Belegung = {
@@ -333,20 +339,21 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     teilGemergt: teilGemergte(zuletzt.map((p) => ({ titel: p.title, body: p.body, gemergt: !!p.merged_at }))),
   };
   const max = maxParallel(repo, env.LOOP_MAX_PARALLEL, env.LEITSTAND_MAX_PARALLEL);
-  const schutz = prs.map(p => ({ description: issues.find(i => linearId(p.title) === i.identifier || p.head.ref.toLowerCase().includes(i.identifier.toLowerCase()))?.description ?? null }));
+  const schutz = repo.toLowerCase() === "siinanxd/leitstand"
+    ? await ladePrSchutz(prs, (pr, page) => gh(`/repos/${repo}/pulls/${pr}/files?per_page=100&page=${page}`)) : [];
   let claims: LinearIssue[] = [];
   const gespiegelt = gespiegelteIds(ghIssues);
   // SIN-832: Issues mit aktivem Claim oder ausgeschöpften Reparaturen belegen keinen Startplatz (sonst steht die Schlange).
   if (!DRY) {
     const speicher = reservierungen();
-    const todo = issues.map((i) => i.identifier);
+    const ids = issues.filter(i => repo.toLowerCase() === "siinanxd/leitstand" || i.stateType === "unstarted").map(i => i.identifier);
     if (!speicher) {
       await ereignis("dispatch", "uebersprungen", { projekt, grund: "reservierung_fehlt: SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt, kein Start ohne dauerhafte Sperre (SIN-832)" });
       return;
     }
     let staende;
     try {
-      staende = await speicher.staende(todo);
+      staende = await speicher.staende(ids);
     } catch (e) {
       await ereignis("dispatch", "fehler", { projekt, grund: fehlergrund(`reservierung_unlesbar: ${(e as Error).message}`) });
       return;
