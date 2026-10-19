@@ -491,3 +491,17 @@
   art: datei
   pfad: src/app/team/page.tsx
   enthaelt: Takt und letzter Lauf aller Rollen
+
+# CEO schaltet nach vollem FERTIG.md das nächste Produkt frei (SIN-831)
+- id: leitstand-ceo-freischalten
+  produkt: leitstand
+  titel: Der CEO setzt bei vollem FERTIG.md das Produkt auf fertig und schaltet SIN-705 frei (SIN-831)
+  art: datei
+  pfad: src/lib/ceo/ceo.ts
+  enthaelt: '{ leitstand: "SIN-705" }'
+- id: leitstand-ceo-freischalten-skript
+  produkt: leitstand
+  titel: Das CEO-Skript setzt das Label agent-ready am nächsten Issue (SIN-831)
+  art: datei
+  pfad: scripts/ceo/ceo.ts
+  enthaelt: Label agent-ready fehlt im Linear-Team
