@@ -69,6 +69,21 @@ test("Basiswechsel löst neue Prüfung aus und Veröffentlichung bindet Basis un
   assert.match(workflow, /if: always\(\) && github.event_name == 'pull_request_target' && github.event.changes.base/);
 });
 
+test("Draft-Basiswechsel erreicht die Entwertung, normale Draft-Ereignisse und Titeländerungen nicht", async () => {
+  const bedingung = workflow.match(/  pruefen:\n    if: (.+)/)![1];
+  const job = new Function("github", "startsWith", `return Boolean(${bedingung});`);
+  const ereignis = (draft: boolean, action: string, basiswechsel = false, fremd = false) => ({
+    ref: "refs/heads/main", event_name: "pull_request_target", head_ref: "codex/sin-827", repository: repo.full_name,
+    event: { action, changes: basiswechsel ? { base: {} } : {}, pull_request: { draft, head: { repo: fremd ? { full_name: "fremd/Leitstand" } : repo } } },
+  });
+  const startet = (g: ReturnType<typeof ereignis>) => job(g, (s: string, prefix: string) => s.startsWith(prefix));
+  assert.equal(startet(ereignis(true, "edited", true)), true);
+  assert.equal(startet(ereignis(false, "edited", true)), true);
+  for (const g of [ereignis(true, "synchronize"), ereignis(true, "edited"), ereignis(false, "edited"), ereignis(true, "edited", true, true)]) assert.equal(startet(g), false);
+  assert.equal(startet(ereignis(false, "ready_for_review")), true);
+  await assert.rejects(ziel({ ...pr(), draft: true }), /Draft/);
+});
+
 test("Basiswechsel entwertet alte Prüferbelege auch bei ungültigem neuem Ziel, nicht fremde Kommentare", async () => {
   const scripts = [...workflow.matchAll(/          script: \|\n((?:            .*\n)+)/g)];
   const invalidate = new Function("github", "context", "process", `return (async () => {${scripts[1][1].split("\n").map(s => s.slice(12)).join("\n")}})();`);

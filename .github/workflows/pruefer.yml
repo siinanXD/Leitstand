@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   pruefen:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || ((startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'codex/')) && github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && (github.event.action != 'edited' || github.event.changes.base)))
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || ((startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'codex/')) && github.event.pull_request.head.repo.full_name == github.repository && ((github.event.action == 'edited' && github.event.changes.base) || (!github.event.pull_request.draft && github.event.action != 'edited'))))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

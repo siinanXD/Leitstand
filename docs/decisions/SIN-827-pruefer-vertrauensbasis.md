@@ -56,3 +56,7 @@ Quelle, gelesen 19.10.2026: https://docs.github.com/en/actions/reference/securit
 Grenzen: protected allein belegt keine ausreichende unabhängige Freigabe der Default-Branch-Änderungen. SIN-624 bleibt deshalb offen. Ein privilegierter Target-Workflow-Lauf ist außerdem kein Head-gebundener Pflichtstatus; diesen Check nicht ungeprüft als Required-Check hinzufügen. Bestehendes Gate/Review-Provenienz unter SIN-624/SIN-754 weiter absichern. Kein Modell-API-Lauf, kein produktiver Secret- oder Ruleset-Wechsel; echte negative Live-Proben erst nach Freigabe.
 
 Regressionen zuerst rot (3 erwartete Fehler), anschließend gezielte Workflow-/Git-/CLI-Gegenproben grün. Gesamtprüfung und unabhängiger Folge-Review separat mit Head/Workflow-Lauf dokumentieren.
+
+## Draft-Retargeting, 19.10.2026 morgens
+
+Unabhängiger Folge-Review auf c7a4293: Die Job-Bedingung verhinderte bei Drafts die Entwertung alter Prüferkommentare. Basiswechsel erreichen jetzt den Job auch als Draft; die unveränderte Zielvalidierung stoppt anschließend vor Checkout, Installation und Modell-Secrets. Der always-Schritt entwertet den bisherigen Beleg. Normale Draft-Ereignisse, reine Titeländerungen und Forks bleiben ausgeschlossen. Regression wertet die tatsächliche Job-Bedingung mit positiven und negativen Ereignissen aus und prüft weiterhin die Draft-Sperre der Zielvalidierung; zuerst rot, nach Korrektur grün. Kein neuer Trigger, keine Rechte-/Secret-/Gate-Änderung; gesamter Sicherheits-Diff bleibt Draft zur unabhängigen Prüfung.
