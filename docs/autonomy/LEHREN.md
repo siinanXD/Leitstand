@@ -27,3 +27,5 @@ Entscheidungshistorie und reparierte Produktlinks an einer vorhandenen historisc
 Ein pull_request-Workflow nutzt die YAML-Definition aus dem PR-Merge-Commit. Vor produktiven Secrets muss auch die Definition aus dem vertrauenswürdigen Default-Branch stammen. Zielbranch, Schutzmerkmal und Workflow-/Basis-/Head-Bindung vor Checkout prüfen. Retargeting entwertet alte Ergebnisse; vor Veröffentlichung erneut gegen die aktuelle API vergleichen. pull_request_target allein ersetzt weder sichere Datenbehandlung noch unabhängigen Schutz des Default-Branches. Quelle: docs/decisions/SIN-827-pruefer-vertrauensbasis.md.
 
 Ein always-Schritt läuft nicht, wenn die Job-Bedingung den Draft vorher ausschließt: Basiswechsel zur Entwertung zulassen, Modellschritt weiter durch Zielvalidierung sperren; echte Job-Bedingung mit Draft-/Titel-/Fork-Gegenproben testen (SIN-827).
+
+- Die globale Worker-Grenze erhöhen → verändert auch Produkt-Repos und verhindert keine Dateikonflikte. Richtig: Leitstand separat auf zwei begrenzen, explizite Schreibpfade prüfen, unklare Aufgaben allein starten; lesende Subagents ersetzen keinen unabhängigen Prüfer. (SIN-856)

@@ -53,7 +53,7 @@ Regeln für alle Agenten in diesem Repo. Sie ersetzen Rückfragen an Sinan. Dies
 
 Der Leitstand baut sich selbst wie die Lern-App, in schlanker Form:
 
-1. `dispatch.yml` (alle 2 Stunden, von Hand und nach jedem Merge) holt aus Linear die Todo-Issues im Projekt „Leitstand“ mit Label `claude`, die nicht blockiert sind. Höchstens `LOOP_MAX_PARALLEL` (Standard 1) laufen gleichzeitig.
+1. `dispatch.yml` (alle 2 Stunden, von Hand und nach jedem Merge) holt aus Linear die Todo-Issues im Projekt „Leitstand“ mit Label `claude`, die nicht blockiert sind. Im Leitstand laufen höchstens zwei unabhängige Bau-Worker gleichzeitig (`LEITSTAND_MAX_PARALLEL`, Standard 2, Deckel 2; Wert 1 serialisiert). Andere Produkte behalten `LOOP_MAX_PARALLEL` (Standard 1).
 2. Für jedes gewählte Issue entsteht ein GitHub-Issue mit Label `claude`. Das startet `claude.yml`. Linear springt auf „In Progress“.
 3. Der Worker öffnet den PR. `build` prüft, `automerge.yml` mergt per Squash, sobald `build` grün ist.
 4. `loop-merge.yml` setzt das Linear-Issue aus dem PR-Titel auf „Done“ und startet sofort das nächste.
@@ -66,6 +66,14 @@ Regeln:
 - Risiko setzt `automerge.yml` als Label (Sinan, 13.10.2026, wie SIN-547 in der Lern-App). `risk:medium` (Standard): Auto-Merge nach grünem `build`, auch bei Workflow-Änderungen (Schritte, Skripte, Zeitpläne, bekannte Secrets). `risk:high` wartet auf Sinans Label `freigegeben`: Workflow-Rechte erweitert (`write`), neues Secret ohne Verwendung auf main, `pull_request_target`, Drittanbieter-Action außerhalb `actions/*`, `anthropics/*`, `github/*`, Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), `src/middleware`, `src/lib/auth`, `src/lib/kopplung`, Service-Role-Key im Client. Der Grund steht als PR-Kommentar. `no-automerge` und Draft stoppen immer.
 - Ereignisse landen in `loop_events` mit Projekt `leitstand`, sobald die Secrets `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` im Repo stehen. Ohne sie gibt es nur eine Warnung im Log.
 - Logik in `src/lib/loop/auswahl.ts` (rein, mit Tests), Netz in `scripts/loop/loop.ts`.
+
+## Parallel bauen und Subagents (SIN-856)
+
+- Ein Implementierer und Branch je Issue. Vor dem Start benennt der Planer die tatsächlichen Schreibpfade in der Issue-Beschreibung, z. B. `<!-- worker-pfade: ["src/app/ablauf", "src/lib/ablauf"] -->`. Alle voraussichtlich geänderten Dateien einschließen, auch Tests und gemeinsame Doku. Ein unklarer oder fehlender Scope läuft allein.
+- Dispatcher startet nur Aufgaben ohne überlappende Schreibpfade. Auch offene, auf Freigabe wartende PRs schützen ihre Dateien. Gate/Dispatcher/Loop-Änderungen laufen untereinander nacheinander. Ohne sichere Abgrenzung keine Parallelität erzwingen; der Worker hält den angegebenen Schreib-Scope ein.
+- Für eine sinnvoll abtrennbare lesende Recherche oder Testanalyse darf ein Bau-Worker den konfigurierten `lese-assistent` nutzen: höchstens einer gleichzeitig, 12 Turns, nur Read/Grep/Glob, keine weiteren Subagents. Kleine Aufgaben direkt bearbeiten. Gleicher Modellzugang und gemeinsames Kontingent; keine neue API-Spur.
+- Der Hauptworker schreibt allein, führt Tests aus und verantwortet den PR. Eine Analyse im Subagent ersetzt weder das unabhängige Abschlussreview noch den Live-Nachweis. Im Laufprotokoll Teilfrage, benutzte Dateien und Ergebnis kurz benennen.
+- Die Angaben zu Schreibpfaden sind eine Planungsgrenze, keine Dateisystem-Sandbox. Ändert sich der Scope, vor weiteren Edits neu auf Überschneidung prüfen.
 
 ## Qualitätsstandard (SIN-641)
 

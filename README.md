@@ -60,3 +60,13 @@ Die vorbereitete [Fallback-Policy](src/lib/loop/fallback.ts) unterscheidet Konti
 **Dauerhafte Reservierung (SIN-832):** Vor jedem Start reserviert der Dispatcher das Issue per Compare-and-swap in `leitstand_aufgaben` ([reservierung.ts](src/lib/loop/reservierung.ts), Spalten `claim_*`, `reparaturen`). Ohne bestätigte Reservierung startet nichts; Merge, Reparaturstopp und ein belegt verwaister Claim (Wächter: kein PR, kein Spiegel, kein laufender Worker, älter als 6 h) geben sie frei. Reparaturrunden zählen issueweit über PRs und Provider. Die Spalten kommen per Lern-App-Migration (Content-Agent-Lernapp #433) und müssen vor dem Merge angewendet sein.
 
 **Noch kein autonomer Produktionsfallback:** Ein Codex-Startweg fehlt (Kommentar-Eingang meldet Zuordnungsfehler); der Dispatcher startet nur Claude. Linear hält die bisherigen Aufträge. Datei-Proben und simulierte Reservierungen ersetzen keine Live-Abnahme. Belege und Wiederaufnahmebedingungen: [SIN-832-fallback.md](docs/decisions/SIN-832-fallback.md).
+
+## Zwei Bau-Worker und lesende Subagents (SIN-856)
+
+Der Leitstand-Dispatcher hat maximal zwei Plätze (`LEITSTAND_MAX_PARALLEL`, Standard 2, Deckel 2); mit 1 lässt sich serialisieren. Die vorhandene Variable `LOOP_MAX_PARALLEL` bleibt für andere Produkt-Repos wirksam. Dispatcher, Merge-Nachlauf und Wächter lesen dieselbe Grenze.
+
+Parallel werden nur Issues mit explizit getrennten Schreibpfaden ausgewählt: `<!-- worker-pfade: ["src/app/ablauf", "src/lib/ablauf"] -->` in Linear. Gemeinsame Dateien, offene PRs und Steuerungsänderungen werden berücksichtigt; fehlt die Angabe, läuft die Aufgabe allein. Der Marker muss alle geplanten Änderungen umfassen und wird vom Worker eingehalten; er ist keine Sandbox.
+
+Claude bekommt einen `lese-assistent` für abgegrenzte Recherche und Testanalyse (Read/Grep/Glob, gleiches Modell, 12 Turns). Ein Subagent gleichzeitig, keine Rekursion; Implementierung bleibt beim Hauptworker, Abschlussreview unabhängig. Subagents verbrauchen dasselbe Kontingent. Die konfigurierten CLI-Grenzen benötigen eine passende Claude-Code-Version; erst ein echter Worker-Lauf belegt ihre Wirkung.
+
+Abnahme: lokale Auswahltests und CI prüfen die Konfiguration. Zwei echte parallele Issues und ein protokollierter Subagent-Lauf sind für den Live-Nachweis von SIN-856 noch erforderlich.
