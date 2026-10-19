@@ -1,5 +1,5 @@
 # Reparatur (SIN-413): Ist `build` auf einem Claude-PR rot, bittet der Loop @claude um eine Reparatur.
-# Höchstens 3 Runden (Labels repair:1 bis repair:3), danach Label needs-human und Hinweis in Linear.
+# Höchstens zwei erfolglose Reparaturrunden je Issue (SIN-840).
 name: repair
 
 on:
@@ -9,6 +9,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: dispatch
+  cancel-in-progress: false
 
 jobs:
   repair:
@@ -31,8 +35,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PRS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
+          HEAD: ${{ github.event.workflow_run.head_sha }}
           LAUF: ${{ github.event.workflow_run.html_url }}
         run: |
           for pr in $(echo "$PRS" | jq -r '.[].number'); do
-            npx tsx scripts/loop/loop.ts reparatur --pr "$pr" --lauf "$LAUF"
+            npx tsx scripts/loop/loop.ts reparatur --pr "$pr" --lauf "$LAUF" --head "$HEAD"
           done

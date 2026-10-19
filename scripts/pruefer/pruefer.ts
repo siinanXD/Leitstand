@@ -12,7 +12,7 @@ import { lesePrDiff } from "../../src/lib/pruefer/git";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatHoch, istKontingentFehler, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
-import { auftragStand, auftragText, ladeAuftrag } from "../../src/lib/loop/auftrag";
+import { auftragsHaken, auftragStand, auftragText, ladeAuftrag } from "../../src/lib/loop/auftrag";
 import { linearId } from "../../src/lib/loop/auswahl";
 
 const env = process.env;
@@ -97,8 +97,8 @@ async function main() {
   if (!issueNr) throw new Error("Linear-Kennung im PR-Titel fehlt");
   const auftrag = await ladeAuftrag(linear, issueNr);
   if (pr.headRefOid !== head) throw new Error("PR-Head entspricht nicht dem validierten Head");
-  const stand = { head, auftrag: auftragStand(auftrag) };
-  const auftragInhalt = auftragText(auftrag);
+  const stand = { head, basis, auftrag: auftragStand(auftrag) };
+  const auftragInhalt = auftragText(auftrag) + "\n\n# Maßgebliche Kriterien (text exakt übernehmen)\n" + JSON.stringify(auftragsHaken(auftrag).map((h) => h.text));
   const frei = maxDiffZeichen(preise) - auftragInhalt.length;
   if (frei <= 0) throw new Error("Aktueller Auftrag überschreitet den bestehenden Prüf-Kostendeckel; Auftrag eingrenzen, nicht Kommentare abschneiden");
   const { dateien, diff } = lesePrDiff(basis, head);

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { entscheide, hakenMarker, istTeil, kommentarText, leseBelege, leseHaken, MAX_RUNDEN, setzeHaken, wiederaufnahme, type Beleg } from "./haken";
 
 const text = "## Fertig-Kriterien\n\n- [ ] Erstens\n- [ ] Zweitens `x`\n- [x] Drittens\n\nSonst Text";
-const belegt = (t: string): Beleg => ({ text: t, belegt: true, beleg: "src/a.ts", art: "code" });
+const belegt = (t: string): Beleg => ({ text: t, belegt: true, beleg: "https://github.com/fixture/repo/blob/head/src/a.ts", art: "code" });
 
 test("leseHaken liest alle Haken mit Stand", () => {
   assert.deepEqual(leseHaken(text).map((h) => h.erledigt), [false, false, true]);
@@ -79,7 +79,7 @@ test("leerer Beleg ist nicht belegt; alter Head oder Auftrag entwertet Marker", 
 });
 
 test("wiederaufnahme nennt offene Haken nur, wenn schon welche belegt sind", () => {
-  assert.equal(wiederaufnahme("- [ ] A\n- [ ] B"), "");
+  assert.match(wiederaufnahme("- [ ] A\n- [ ] B"), /A.*B/);
   assert.match(wiederaufnahme("- [x] A\n- [ ] B"), /Nur noch offen: B/);
 });
 

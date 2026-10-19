@@ -518,3 +518,17 @@
   art: datei
   pfad: scripts/ceo/ceo.ts
   enthaelt: Label agent-ready fehlt im Linear-Team
+
+- id: leitstand-reparatur-definition
+  produkt: leitstand
+  titel: Zwei Reparaturrunden je Issue sind definiert (SIN-840)
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: MAX_REPARATUR = 2
+
+- id: leitstand-merge-belegpflicht
+  produkt: leitstand
+  titel: Merge verlangt aktuelle Kriterienbelege (SIN-840)
+  art: datei
+  pfad: scripts/loop/loop.ts
+  enthaelt: merge-pruefen

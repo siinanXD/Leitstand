@@ -1,5 +1,20 @@
 # AGENTS.md (Leitstand)
 
+## Verbindliche Grundregel (SIN-840)
+
+**Grundregel:** Ein freigegebener Auftrag umfasst Diagnose, Umsetzung, Prüfungen und notwendige Nacharbeit innerhalb seines Umfangs. Vor Abschluss werden die neuesten Anforderungen erneut gelesen und unabhängig gegen konkrete Belege geprüft. Rückfragen erfolgen nur bei einer neuen Entscheidung oder einer erreichten Ausführungsgrenze.
+
+## Die fünf Regeln (verbindlich für Worker, Prüfer, Abschluss)
+
+1. **Vor dem Start den Auftrag aktualisieren.** Worker liest Issue inkl. neuester Kommentare, Masterauftrag, vorhandene PRs, relevante Register (rollen.json, agents.json, abnahme.yml). Ändern sich Kriterien während der Arbeit: vor Merge erneuter Abgleich.
+2. **Behauptungen zuerst gegen Belege prüfen.** Vor einer Reparatur vorhandene Logs/loop_events lesen und Ursache eingrenzen. Diagnose gehört in den bestehenden Auftrag, nicht in ein neues Issue.
+3. **Begrenzte Reparaturen automatisch.** Innerhalb des freigegebenen Auftrags darf der Worker Code, Regressionstests und Doku korrigieren und vorhandene Prüfungen ausführen. Höchstens zwei erfolglose Reparaturrunden, dann Stopp mit konkretem Blocker. Kein Extra-Issue für kleine Fixes.
+4. **Abschluss unabhängig prüfen.** Prüfer gleicht jedes aktuelle Fertig-Kriterium mit einem Beleg ab: Commit, Workflow-Lauf, gespeichertes Ergebnis (Supabase-Zeile) oder Live-Ausgabe (Vercel, Screenshot). Fehlender Beleg hält das Issue offen und geht automatisch als Nacharbeit an denselben Worker. „PR gemergt“ reicht nicht.
+5. **Nur echte Entscheidungen an Sinan.** Rückfrage bei neuen Kosten, Secrets, Rechten, Löschungen, wesentlich geändertem Umfang, vorbehaltenen Produktionsaktionen. Routinefehler laufen innerhalb der Freigabe. Meldung an Sinan kurz: erledigt / belegt / blockiert.
+
+Diese Regeln haben Vorrang vor älteren Wiederholungs- und Abschlussregeln. Fehlender Beleg: kein Merge, In Progress. „Part of“: nie Done.
+
+
 Regeln für alle Agenten in diesem Repo. Sie ersetzen Rückfragen an Sinan. Dieses Repo übernimmt die Regeln der Lern-App, bis der Projekt-Starter (SIN-202) sie automatisch liefert.
 
 ## Verbindlicher Auftragsabgleich (SIN-754)
@@ -61,7 +76,7 @@ Der Leitstand baut sich selbst wie die Lern-App, in schlanker Form:
 2. Für jedes gewählte Issue entsteht ein GitHub-Issue mit Label `claude`. Das startet `claude.yml`. Linear springt auf „In Progress“.
 3. Der Worker öffnet den PR. `build` prüft, `automerge.yml` mergt per Squash, sobald `build` grün ist.
 4. `loop-merge.yml` setzt das Linear-Issue aus dem PR-Titel auf „Done“ und startet sofort das nächste.
-5. `repair.yml`: Ist `build` auf einem `claude/`-PR rot, bittet der Loop `@claude` um Reparatur. Höchstens 3 Runden (`repair:1` bis `repair:3`), dann `needs-human` und Hinweis in Linear.
+5. `repair.yml`: Ist `build` auf einem `claude/`-PR rot, bittet der Loop `@claude` um Reparatur. Nach dem ersten roten Build genau eine Reparatur (`repair:1`); ist der nächste Build wieder rot, Stopp mit `needs-human`, Ursache und Zerlegungsvorschlag in Linear.
 
 Regeln:
 
@@ -111,7 +126,7 @@ Risikoarme Aufgaben können bestehende Agenten über einen Draft-PR gemäß [doc
 - Ein PR pro Linear-Issue. Titel als Conventional Commit mit Linear-ID, z. B. `feat(uebersicht): Projekt-Karten (SIN-304)`.
 - Commit-Nachrichten enthalten `Part of SIN-xxx`.
 - Vor dem Push: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`.
-- Höchstens 3 Reparaturrunden pro PR, dann stoppen und Blocker melden.
+- Höchstens zwei rote Builds pro PR insgesamt (Erstversuch plus eine Reparatur), dann stoppen, Ursache und Zerlegungsvorschlag melden.
 - Nie selbst mergen.
 
 ## Projekt-Wächter (SIN-419)

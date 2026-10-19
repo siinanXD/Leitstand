@@ -11,7 +11,14 @@ name: automerge
 
 on:
   pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled, edited]
+  workflow_run:
+    workflows: [build, pruefer]
+    types: [completed]
+
+concurrency:
+  group: dispatch
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -22,12 +29,33 @@ jobs:
     steps:
       # pull_request_target checkt den Basis-Branch aus, nie den PR-Code.
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Risiko bestimmen, Auto-Merge einschalten oder ausschalten
         uses: actions/github-script@v7
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         with:
           github-token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           script: |
-            const pr = context.payload.pull_request;
+            const number = context.payload.pull_request?.number || context.payload.workflow_run?.pull_requests?.[0]?.number;
+            if (!number) return core.info('Kein zugeordneter PR; nichts mergen.');
+            const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: number});
+            // Keine verzögerte Freigabe: bestehendes Auto-Merge zuerst ausschalten, auch bei Lesefehlern danach.
+            await github.graphql(`mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }`, {id: pr.node_id});
+            const {data: main} = await github.rest.repos.getBranch({...context.repo, branch: 'main'});
+            if (!main.protected || main.commit.sha !== context.sha || pr.base.sha !== context.sha || pr.base.ref !== 'main' || pr.head.repo?.full_name !== pr.base.repo?.full_name) throw new Error('Unvertrauenswürdiger oder veralteter Basisstand');
+            if (context.payload.workflow_run && context.payload.workflow_run.name !== 'pruefer' && context.payload.workflow_run.head_sha !== pr.head.sha) return core.info('Veralteter Workflow-Lauf.');
+
             const labels = (pr.labels || []).map((l) => l.name);
             const files = await github.paginate(github.rest.pulls.listFiles, { ...context.repo, pull_number: pr.number, per_page: 100 });
 
@@ -66,20 +94,17 @@ jobs:
               else await github.rest.issues.createComment({ ...context.repo, issue_number: pr.number, body });
             }
 
-            const allowed = !pr.draft && !labels.includes("no-automerge") && (!high || labels.includes("freigegeben"));
-            const gql = github.graphql;
-            if (allowed) {
-              await gql(`mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) { clientMutationId } }`, { id: pr.node_id })
-                .then(() => core.info(`Auto-Merge an (${risk}).`))
-                .catch(async (e) => {
-                  // Alle Pflicht-Checks schon grün: GitHub lehnt Auto-Merge ab, also direkt mergen.
-                  if (!/(clean|unstable) status/i.test(e.message)) return core.warning(`Auto-Merge nicht gesetzt: ${e.message}`);
-                  await github.rest.pulls.merge({ ...context.repo, pull_number: pr.number, merge_method: "squash", sha: pr.head.sha })
-                    .then(() => core.info(`Direkt gemergt (${risk}, clean status).`))
-                    .catch((m) => core.warning(`Direkt-Merge fehlgeschlagen: ${m.message}`));
-                });
-            } else {
-              await gql(`mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }`, { id: pr.node_id })
-                .then(() => core.info(`Auto-Merge aus (${pr.draft ? "Draft" : labels.includes("no-automerge") ? "no-automerge" : "risk:high ohne freigegeben"}).`))
-                .catch(() => core.info("Auto-Merge war nicht an."));
-            }
+            const allowed = pr.state === 'open' && !pr.draft && !labels.includes('no-automerge') && !labels.includes('needs-human') && (!high || labels.includes('freigegeben'));
+            if (!allowed) return core.info('Merge gesperrt: Draft, Stopp oder Freigabe fehlt.');
+            const checks = await github.paginate(github.rest.checks.listForRef, {...context.repo, ref: pr.head.sha, per_page: 100});
+            const build = checks.filter(c => c.name === 'build' && c.app?.slug === 'github-actions').sort((a,b) => b.id-a.id)[0];
+            if (!build || build.status !== 'completed' || build.conclusion !== 'success') return core.info('Aktueller build nicht grün.');
+            const {execFileSync} = require('node:child_process');
+            const output = execFileSync(process.execPath, ['--import', 'tsx', 'scripts/loop/loop.ts', 'merge-pruefen', '--pr', String(pr.number)], {encoding: 'utf8', env: process.env});
+            core.info(output);
+            const gate = JSON.parse(output.trim().split('\n').at(-1));
+            if (!gate.allowed || gate.head !== pr.head.sha || gate.basis !== pr.base.sha) return core.info('Merge gesperrt: aktuelle Kriterien nicht vollständig belegt.');
+            const {data: aktuell} = await github.rest.pulls.get({...context.repo, pull_number: pr.number});
+            if (aktuell.state !== 'open' || aktuell.draft || aktuell.head.sha !== gate.head || aktuell.base.sha !== gate.basis || aktuell.title !== pr.title || aktuell.body !== pr.body || JSON.stringify(aktuell.labels) !== JSON.stringify(pr.labels)) throw new Error('PR während Abschlussprüfung geändert');
+            // Kein enablePullRequestAutoMerge: später geänderte Linear-Kriterien dürfen keine wartende Freigabe erben.
+            await github.rest.pulls.merge({...context.repo, pull_number: pr.number, merge_method: 'squash', sha: gate.head});

@@ -34,3 +34,12 @@ test("Linear-Kommentare vollständig paginieren; fehlerhafte Cursor oder geände
   await assert.rejects(ladeAuftrag(async (_q, v) => ({ issue: { ...seite(v.after).issue, updatedAt: v.after ? "t2" : "t1" } }), "SIN-830"), /geändert/);
   await assert.rejects(ladeAuftrag(async () => ({ issue: null }), "SIN-830"), /nicht gefunden/);
 });
+
+test('SIN-840: Zusatzkriterium ohne Checkbox zählt; Reparaturprotokoll ändert den Auftrag nicht', () => {
+ const a: Auftrag = {id:'uuid',identifier:'SIN-840',title:'Auftrag',description:'- [ ] A',team:{id:'team'},kommentare:[],parent:null};
+ const zusatz = '**Zusatzkriterium (Sinan):** Drei Wirkungszahlen anzeigen.';
+ const neu={...a,kommentare:[{id:'neu',body:zusatz}]};
+ assert.ok(auftragsHaken(neu).some(h=>h.text===zusatz));
+ assert.notEqual(auftragStand(a),auftragStand(neu));
+ assert.equal(auftragStand(a),auftragStand({...a,kommentare:[{id:'status',body:'<!-- repair-runde:1 -->\nFehler wird repariert'}]}));
+});

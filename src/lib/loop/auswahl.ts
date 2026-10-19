@@ -8,7 +8,8 @@ import { istTeil } from "./haken";
 
 export const PROJEKT ="Leitstand";
 export const LABEL = "claude";
-export const MAX_REPARATUR = 3;
+/** Höchstens zwei erfolglose Reparaturrunden je Issue (SIN-840 ersetzt die frühere Build-Zählung). */
+export const MAX_REPARATUR = 2;
 /** Ab hier gilt ein Issue „In Progress“ ohne offenen PR als Hänger (gleiche Grenze wie der Wächter, SIN-419). */
 export const HAENGER_STUNDEN = 6;
 /** Ohne offenen PR belegt ein laufendes Issue den Platz höchstens so lange (SIN-759). */
@@ -149,7 +150,7 @@ export function issueText(i: LinearIssue, hinweise = ""): { title: string; body:
       "",
       "---",
       `Arbeite auf dem Branch \`claude/${kurz}\`. PR-Titel als Conventional Commit mit \`${i.identifier}\`, Commits mit \`Part of ${i.identifier}\`.`,
-      "Lies zuerst AGENTS.md und docs/autonomy/AUFTRAGSABGLEICH.md. Lies vor Bau und vor jedem Push den aktuellen Linear-Auftrag inklusive Kommentaren/Eltern-/Masterauftrag neu; dieser Spiegel ist nur ein Startstand. Prüfe vorhandene PRs und Fehlerlogs vor einer Reparatur. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test.",
+      `Auftrag aktualisieren – vor dem ersten Edit: Lies AGENTS.md und docs/autonomy/AUFTRAGSABGLEICH.md. Führe vor dem ersten Edit npx tsx scripts/loop/loop.ts auftrag --issue ${i.identifier} aus und speichere die Ausgabe als Lauf-Beleg. Lies Issue, neueste Linear-Kommentare, Masterauftrag, verlinkte PRs sowie docs/autonomy/rollen.json, docs/autonomy/agents.json und docs/abnahme.yml; vorhandenen PR wiederverwenden. Lies vor Bau und vor jedem Push den aktuellen Linear-Auftrag inklusive Kommentaren/Eltern-/Masterauftrag neu; dieser Spiegel ist nur ein Startstand. Prüfe vorhandene PRs, Logs/loop_events und Ursache vor einer Reparatur. Vor Merge erneut aktuellen Auftrag und sämtliche Kriterien abgleichen. Nach höchstens zwei erfolglosen Reparaturrunden je Issue mit konkretem Blocker und needs-human stoppen. Vor dem Push: npm ci, npm run typecheck, npm run lint, npm test.`,
       ...(hinweise ? ["", hinweise] : []),
     ].join("\n"),
   };

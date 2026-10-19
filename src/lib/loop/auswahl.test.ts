@@ -126,10 +126,10 @@ test("issueText enthält Markierung, Link und Branch-Regel", () => {
   assert.match(t.body, /Beschreibung/);
 });
 
-test("reparatur: drei Runden, dann Stopp", () => {
+test("reparatur: erster roter Build erlaubt eine Reparatur, zweiter roter Build stoppt", () => {
   assert.deepEqual(reparatur([]), { runde: 1 });
   assert.deepEqual(reparatur(["repair:1"]), { runde: 2 });
-  assert.deepEqual(reparatur(["repair:1", "repair:2"]), { runde: 3 });
+  assert.deepEqual(reparatur(["repair:1", "repair:2"]), { stopp: true });
   assert.deepEqual(reparatur(["repair:3"]), { stopp: true });
   assert.deepEqual(reparatur(["needs-human"]), { stopp: true });
 });

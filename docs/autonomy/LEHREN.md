@@ -17,3 +17,7 @@ Alter GitHub-Spiegel und angenommener Fehler führen zu Nachbau statt Reparatur 
 Ein pull_request-Workflow nutzt die YAML-Definition aus dem PR-Merge-Commit. Vor produktiven Secrets muss auch die Definition aus dem vertrauenswürdigen Default-Branch stammen. Zielbranch, Schutzmerkmal und Workflow-/Basis-/Head-Bindung vor Checkout prüfen. Retargeting entwertet alte Ergebnisse; vor Veröffentlichung erneut gegen die aktuelle API vergleichen. pull_request_target allein ersetzt weder sichere Datenbehandlung noch unabhängigen Schutz des Default-Branches. Quelle: docs/decisions/SIN-827-pruefer-vertrauensbasis.md.
 
 Ein always-Schritt läuft nicht, wenn die Job-Bedingung den Draft vorher ausschließt: Basiswechsel zur Entwertung zulassen, Modellschritt weiter durch Zielvalidierung sperren; echte Job-Bedingung mit Draft-/Titel-/Fork-Gegenproben testen (SIN-827).
+
+- SIN-840: Risiko/Build allein sind kein Merge-Beleg → jeden aktuellen Haken samt Link vor Merge prüfen; alte Haken ohne Beleg wieder öffnen, keine verzögerte Auto-Merge-Freigabe.
+
+- SIN-638/SIN-840: Zwei erfolglose Reparaturrunden je Issue statt PR-Labels allein zählen; nur aktuellen roten Head bewerten, CI und Wächter verwenden denselben Reparaturpfad.

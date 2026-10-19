@@ -66,6 +66,15 @@ async function gh<T>(path: string, init: { method?: string; body?: unknown } = {
   return (res.status === 204 ? null : await res.json()) as T;
 }
 
+async function ghSeiten<T>(path: string): Promise<T[]> {
+  const alle: T[] = [];
+  for (let page = 1; ; page++) {
+    const seite = await gh<T[]>(`${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`);
+    alle.push(...seite);
+    if (seite.length < 100) return alle;
+  }
+}
+
 /** Ein Ereignis in loop_events (SIN-303). Fehler werden nur gemeldet. */
 type Extra = { issue?: string; pr?: number; grund?: string; projekt?: string };
 /** `uebersprungen` und `fehler` brauchen immer einen Grund (SIN-654, SIN-617), sonst ist im Leitstand nicht erkennbar, warum nichts lief. */
@@ -110,14 +119,6 @@ async function setzeStatus(issueId: string, teamId: string, name: string) {
 async function kommentar(issueId: string, body: string) {
   if (DRY) return console.log(`[trocken] Kommentar: ${body}`);
   await linear(`mutation($id: String!, $b: String!) { commentCreate(input: { issueId: $id, body: $b }) { success } }`, { id: issueId, b: body });
-}
-
-async function issueNachKennung(identifier: string) {
-  const d = await linear<{ issue: { id: string; team: { id: string } } | null }>(
-    `query($id: String!) { issue(id: $id) { id team { id } } }`,
-    { id: identifier },
-  );
-  return d.issue;
 }
 
 /** Backlog-Issue auf Todo mit Label `claude` setzen und das in Linear vermerken (SIN-417). */
@@ -261,7 +262,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     }
   }
   // Auch im Leitstand spätere Abnahmebelege abgleichen; Warten braucht keinen neuen Build.
-  const zuletzt = await gh<{ number: number; title: string; body: string | null; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
+  const zuletzt = await ghSeiten<{ number: number; title: string; body: string | null; merged_at: string | null }>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc`);
   const fertig = gemergteFuerLaufende(issues, zuletzt.map((p) => ({ nummer: p.number, titel: p.title, gemergt: !!p.merged_at })));
   for (const f of fertig) await gemergt(repo, f.pr, projekt);
   issues = issues.filter((i) => !fertig.some((f) => f.identifier === i.identifier));
@@ -331,12 +332,12 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
   const issue = await ladeAuftrag(linear, id);
   const stand = { head: p.head.sha, auftrag: auftragStand(issue) };
   // SIN-754: Done nur, wenn alle Fertig-Kriterien belegt sind und der PR kein „Part of“ ist.
-  const kommentare = await gh<{ body: string; user: { login: string } }[]>(`/repos/${repo}/issues/${pr}/comments?per_page=100`);
+  const kommentare = await ghSeiten<{ body: string; user: { login: string } }>(`/repos/${repo}/issues/${pr}/comments`);
   let belege = leseBelege(kommentare.filter((c) => c.user.login === "github-actions[bot]").map((c) => c.body), stand);
   if (belege === null) {
     const marker = `<!-- abnahme-wartet:${stand.head}:${stand.auftrag} -->`;
-    if (!issue.kommentare.some((c) => c.body.includes(marker))) await kommentar(issue.id, `${marker}\n${p.html_url}: aktuelle Prüfung des Auftrags/Heads fehlt. In Review; kein blinder Neubau. Nächster Nachweis: unabhängiger Prüfer-Abgleich mit aktuellen Linear-Kommentaren und issuebezogenen Live-Belegen.`);
-    await setzeStatus(issue.id, issue.team.id, "In Review");
+    if (!issue.kommentare.some((c) => c.body.includes(marker))) await kommentar(issue.id, `${marker}\n${p.html_url}: aktuelle Prüfung des Auftrags/Heads fehlt. In Progress; kein blinder Neubau. Nächster Nachweis: unabhängiger Prüfer-Abgleich mit aktuellen Linear-Kommentaren und issuebezogenen Live-Belegen.`);
+    await setzeStatus(issue.id, issue.team.id, "In Progress");
     return;
   }
   if (belege.some((b) => b.art === "live")) {
@@ -350,15 +351,15 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
   if (issue.kommentare.some((c) => c.body.includes(ergebnisMarker))) return console.log(`${id}: dieser Prüfstand ist bereits verarbeitet.`);
   const runde = issue.kommentare.filter((c) => c.body.includes(RUNDE_MARKER)).length + 1;
   const e = entscheide({ haken: auftragsHaken(issue), belege, teil: istTeil(p.title, p.body), runde, liveGeprueft: true });
-  if (e.belegt.length && issue.description && !DRY) await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: setzeHaken(issue.description, e.belegt) });
+  if (issue.description && !DRY) await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: setzeHaken(issue.description, e.belegt) });
   if (e.status === "done") await setzeStatus(issue.id, issue.team.id, "Done");
-  else if (e.status === "wartet") await setzeStatus(issue.id, issue.team.id, "In Review");
+  else if (e.status === "wartet") await setzeStatus(issue.id, issue.team.id, "In Progress");
   else if (e.status === "needs-human") {
     await labelSetzen(issue.id, issue.team.id, "needs-human");
-    await setzeStatus(issue.id, issue.team.id, "In Review");
+    await setzeStatus(issue.id, issue.team.id, "In Progress");
   }
   // Offen: zurück auf Todo, der nächste Dispatch gibt dem Worker die offenen Haken mit.
-  else await setzeStatus(issue.id, issue.team.id, "Todo");
+  else await setzeStatus(issue.id, issue.team.id, "In Progress");
   // SIN-760: Spiegel schließen (falls `Closes #N` es nicht schon tat), sonst startet das Issue nie wieder.
   const offene = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   for (const n of offeneSpiegel(offene, id)) await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
@@ -368,38 +369,106 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
   else await ereignis("merge", "uebersprungen", { projekt, issue: id, pr, grund: `haken_offen: ${e.grund}` });
 }
 
-async function reparaturLauf() {
+/** SIN-840: vor jedem Merge neu lesen, niemals ein verzögertes Auto-Merge freischalten. */
+async function mergePruefen() {
   const pr = Number(arg("pr"));
-  const lauf = arg("lauf") ?? "";
-  const p = await gh<{ title: string; head: { ref: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
-  if (p.state !== "open" || !p.head.ref.startsWith("claude/")) return console.log(`PR #${pr}: nicht offen oder kein Claude-Branch.`);
-  const schritt = reparatur(p.labels.map((l) => l.name));
+  if (!Number.isSafeInteger(pr) || pr <= 0) throw new Error("Ungültige PR-Nummer");
+  type Pr = { title: string; body: string; state: string; draft: boolean; head: { sha: string; repo: { full_name: string } }; base: { ref: string; sha: string; repo: { full_name: string } } };
+  const p = await gh<Pr>(`/repos/${repo}/pulls/${pr}`);
   const id = linearId(p.title);
+  if (!id || p.state !== "open" || p.draft || p.base.ref !== "main" || [p.head.repo, p.base.repo].some((r) => r.full_name.toLowerCase() !== repo.toLowerCase())) return console.log(JSON.stringify({ allowed: false, grund: "PR-Ziel/Draft ungültig" }));
+  const issue = await ladeAuftrag(linear, id);
+  const stand = { head: p.head.sha, basis: p.base.sha, auftrag: auftragStand(issue) };
+  const kommentare = await ghSeiten<{ body: string; user: { login: string } }>(`/repos/${repo}/issues/${pr}/comments`);
+  const belege = leseBelege(kommentare.filter((c) => c.user.login === "github-actions[bot]").map((c) => c.body), stand);
+  // Live-Belege werden nur aus der vertrauenswürdigen Basis gemessen, niemals PR-Code ausführen.
+  let gemessen = belege;
+  if (belege?.some((b) => b.art === "live")) {
+    const datei = await gh<{ content: string; encoding: string }>(`/repos/${repo}/contents/docs/abnahme.yml?ref=${p.base.sha}`);
+    if (datei.encoding !== "base64") throw new Error("Live-Proben nicht lesbar");
+    const runUrl = env.GITHUB_RUN_ID ? `https://github.com/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : null;
+    gemessen = await pruefeLive({ belege, proben: parseProben(Buffer.from(datei.content, "base64").toString("utf8")), issue: id, runUrl });
+  }
+  const e = entscheide({ haken: auftragsHaken(issue), belege: gemessen, teil: istTeil(p.title, p.body), runde: 0, liveGeprueft: true });
+  const aktuell = await gh<Pr>(`/repos/${repo}/pulls/${pr}`);
+  if (aktuell.state !== "open" || aktuell.draft || aktuell.head.sha !== stand.head || aktuell.base.sha !== stand.basis || aktuell.base.ref !== "main" || aktuell.title !== p.title || aktuell.body !== p.body || auftragStand(await ladeAuftrag(linear, id)) !== stand.auftrag) throw new Error("Auftrag oder PR während Merge-Prüfung geändert");
+  if (e.status !== "done") {
+    await setzeStatus(issue.id, issue.team.id, "In Progress");
+    if (issue.description && !DRY) await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: setzeHaken(issue.description, e.belegt) });
+    const marker = `<!-- abnahme-wartet:merge:${stand.head}:${stand.auftrag} -->`;
+    if (!issue.kommentare.some((c) => c.body.includes(marker))) await kommentar(issue.id, `${marker}\nMerge gesperrt: ${e.grund}. Derselbe Auftrag und PR bleiben bestehen.\nOffene Haken für den nächsten Dispatch:\n${e.offen.map((t) => `- [ ] ${t}`).join("\n")}`);
+    if (belege && e.offen.some((t) => belege.some((b) => b.text === t && b.art === "code" && !b.belegt))) await reparaturLauf(e.offen, repo, pr);
+  }
+  console.log(JSON.stringify({ allowed: e.status === "done", ...stand, offen: e.offen, grund: e.grund }));
+}
+
+async function reparaturLauf(offeneHaken?: string[], zielRepo = repo, nummer?: number) {
+  const repo = zielRepo;
+  const pr = nummer ?? Number(arg("pr"));
+  const lauf = arg("lauf") ?? "Prüfer: Kriterienbelege fehlen";
+  const p = await gh<{ title: string; head: { ref: string; sha: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
+  if (p.state !== "open" || !/^(claude|codex)\//.test(p.head.ref)) return;
+  if (arg("head") && arg("head") !== p.head.sha) return console.log("Veralteter roter Build; kein Reparaturversuch gezählt.");
+  const id = linearId(p.title);
+  if (!id) throw new Error("Reparatur ohne Linear-Issue nicht zulässig");
+  const texte: string[] = [];
+  let after: string | null = null;
+  let issue!: { id: string; team: { id: string }; labels: { nodes: { name: string }[] } };
+  do {
+    const d: { issue: typeof issue & { comments: { nodes: { body: string }[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } } } = await linear(`query($id: String!, $after: String) { issue(id: $id) { id team { id } labels { nodes { name } } comments(first: 100, after: $after) { nodes { body } pageInfo { hasNextPage endCursor } } } }`, { id, after });
+    issue = d.issue;
+    texte.push(...d.issue.comments.nodes.map((c) => c.body));
+    if (!d.issue.comments.pageInfo.hasNextPage) break;
+    const next = d.issue.comments.pageInfo.endCursor;
+    if (!next || next === after) throw new Error("Reparaturzähler unvollständig");
+    after = next;
+  } while (true);
+  const marker = `<!-- repair-head:${p.head.sha} -->`;
+  if (texte.some((t) => t.includes(marker))) return console.log("Dieser Head hat bereits einen Reparaturauftrag; kein Doppelstart.");
+  const runden = texte.flatMap((t) => [...t.matchAll(/<!-- repair-runde:(\d+) -->/g)].map((m) => `repair:${m[1]}`));
+  const schritt = reparatur([...p.labels.map((l) => l.name), ...issue.labels.nodes.map((l) => l.name), ...runden]);
+  const grund = `${lauf}; ${offeneHaken?.length ? `offen: ${offeneHaken.join("; ")}` : "aktueller build rot; Ursache im verlinkten Log eingrenzen"}`;
   if ("stopp" in schritt) {
-    if (p.labels.some((l) => l.name === "needs-human")) return console.log(`PR #${pr}: wartet schon auf Sinan.`);
-    if (DRY) return console.log(`[trocken] Stopp für #${pr}`);
+    if (DRY) return console.log(`[trocken] needs-human: ${grund}`);
     await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
-    await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `build ist nach 3 Reparaturrunden noch rot (${lauf}). Stopp, Sinan entscheidet.` } });
-    if (id) {
-      const issue = await issueNachKennung(id);
-      if (issue) await kommentar(issue.id, `Blocker: PR #${pr} nach 3 Reparaturrunden rot. ${lauf}`);
-    }
-    await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: build nach 3 Reparaturrunden noch rot (${lauf})`) });
+    await labelSetzen(issue.id, issue.team.id, "needs-human");
+    await setzeStatus(issue.id, issue.team.id, "In Progress");
+    await kommentar(issue.id, `Blocker nach zwei erfolglosen Reparaturrunden: ${grund}. Stopp, kein weiterer Dispatch. needs-human.`);
+    await ereignis("repair", "fehler", { issue: id, pr, grund: `needs-human: ${grund}` });
     return;
   }
-  if (DRY) return console.log(`[trocken] Runde ${schritt.runde} für #${pr}`);
+  // Codex wird nicht durch eine Claude-Erwähnung ersetzt: genau ein Implementierer je Issue.
+  if (p.head.ref.startsWith("codex/")) {
+    await kommentar(issue.id, `<!-- repair-head:${p.head.sha} -->\nNacharbeit am bestehenden Codex-PR #${pr}: ${grund}. Derselbe Implementierer setzt fort; kein automatischer Claude-Wechsel.`);
+    return;
+  }
+  if (DRY) return console.log(`[trocken] Runde ${schritt.runde}: ${grund}`);
+  // Vor Auslösung dauerhaft reservieren: API-Fehler dürfen das Limit nie zurücksetzen.
+  await kommentar(issue.id, `<!-- repair-runde:${schritt.runde} -->\n${marker}\nReparaturrunde ${schritt.runde} von 2, bestehender PR #${pr}: ${grund}`);
   await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: [`repair:${schritt.runde}`] } });
-  await gh(`/repos/${repo}/issues/${pr}/comments`, {
-    method: "POST",
-    body: {
-      body: `@claude Der Check build ist rot (${lauf}). Ursache im Log suchen, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von 3.`,
-    },
-  });
-  await ereignis("repair", "start", { issue: id ?? undefined, pr });
+  await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `@claude ${grund}. Vor Edit Auftrag samt neuesten Kommentaren, verlinkten PRs und Registern aktualisieren; Logs/loop_events lesen, Ursache belegen, dann gezielt Code, Tests und Doku korrigieren. Offene Haken dieses Issues vollständig als Kontext übernehmen. Vor Merge erneut abgleichen. Runde ${schritt.runde} von 2. Bei erneutem Misserfolg nach Runde 2 Stopp mit konkretem Blocker und needs-human.` } });
+  await ereignis("repair", "start", { issue: id, pr });
+}
+
+async function auftragAktualisieren() {
+  const a = await ladeAuftrag(linear, arg("issue") ?? "");
+  const text = auftragText(a);
+  console.log(text);
+  const links = [...new Set([...text.matchAll(/https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/(\d+)/g)].map((m) => `${m[1]}/pulls/${m[2]}`))];
+  for (const link of links) {
+    const p = await gh<{ title: string; body: string; head: { sha: string }; html_url: string }>(`/repos/${link}`);
+    const kommentare = await ghSeiten<{ body: string }>(`/repos/${link.replace("/pulls/", "/issues/")}/comments`);
+    console.log(JSON.stringify({ quelle: p.html_url, title: p.title, head: p.head.sha, body: p.body, kommentare: kommentare.map((c) => c.body) }));
+  }
+  for (const pfad of ["docs/autonomy/rollen.json", "docs/autonomy/agents.json", "docs/abnahme.yml"]) {
+    const inhalt = readFileSync(pfad, "utf8");
+    console.log(`Register ${pfad}:\n${inhalt}`);
+  }
+  console.log(JSON.stringify({ phase: "auftrag-aktualisiert-vor-edit", issue: a.identifier, auftrag: auftragStand(a), kommentare: a.kommentare.length, verlinktePrs: links.length }));
 }
 
 const befehl = process.argv[2];
-const laeufe: Record<string, () => Promise<unknown>> = { auftrag: async () => console.log(auftragText(await ladeAuftrag(linear, arg("issue") ?? ""))), dispatch, gemergt: () => gemergt(repo, Number(arg("pr"))), reparatur: reparaturLauf };
+const laeufe: Record<string, () => Promise<unknown>> = { "merge-pruefen": mergePruefen, auftrag: auftragAktualisieren, dispatch, gemergt: () => gemergt(repo, Number(arg("pr"))), reparatur: reparaturLauf };
 const lauf = laeufe[befehl ?? ""];
 if (!lauf) {
   console.error("Befehl: auftrag --issue SIN-N (nur lesen) | dispatch | gemergt --pr N | reparatur --pr N --lauf URL");
@@ -407,6 +476,6 @@ if (!lauf) {
 }
 lauf().catch(async (e: Error) => {
   console.error(`::error::${e.message}`);
-  if (befehl !== "auftrag") await ereignis(befehl === "reparatur" ? "repair" : befehl === "gemergt" ? "merge" : "dispatch", "fehler", { grund: fehlergrund(e.message) });
+  if (!["auftrag", "merge-pruefen"].includes(befehl)) await ereignis(befehl === "reparatur" ? "repair" : befehl === "gemergt" ? "merge" : "dispatch", "fehler", { grund: fehlergrund(e.message) });
   process.exit(1);
 });

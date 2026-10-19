@@ -11,7 +11,7 @@ const ZEILE = /^(\s*[-*]\s+\[)([ xX])(\]\s+)(.+?)\s*$/;
 
 export type Haken = { text: string; erledigt: boolean };
 export type Beleg = { text: string; belegt: boolean; beleg: string; art?: "code" | "live" | "entscheidung" };
-export type PruefStand = { head: string; auftrag: string };
+export type PruefStand = { head: string; auftrag: string; basis?: string };
 
 const norm = (s: string) => s.replace(/[`*_]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -22,12 +22,12 @@ export function leseHaken(beschreibung: string | null | undefined): Haken[] {
   });
 }
 
-/** Setzt die belegten Haken auf `- [x]`; erledigte bleiben erledigt. */
+/** Setzt die belegten Haken auf `- [x]`; unbelegte werden wieder geöffnet. */
 export function setzeHaken(beschreibung: string, belegte: string[]): string {
   const ziel = new Set(belegte.map(norm));
   return beschreibung.split("\n").map((z) => {
     const m = ZEILE.exec(z);
-    return m && ziel.has(norm(m[4])) ? `${m[1]}x${m[3]}${m[4]}` : z;
+    return m ? `${m[1]}${ziel.has(norm(m[4])) ? "x" : " "}${m[3]}${m[4]}` : z;
   }).join("\n");
 }
 
@@ -42,7 +42,8 @@ export type Entscheidung = { status: "done" | "offen" | "wartet" | "needs-human"
  * `belege` fehlt (Prüfer nicht gelaufen) = nichts belegt.
  */
 export function entscheide(a: { haken: Haken[]; belege: Beleg[] | null; teil: boolean; runde: number; liveGeprueft?: boolean }): Entscheidung {
-  const belegtSet = new Set((a.belege ?? []).filter((b) => b.belegt && b.beleg.trim() && (b.art !== "live" || a.liveGeprueft === true)).map((b) => norm(b.text)));
+  const widerspruch = new Set((a.belege ?? []).filter((b) => !b.belegt).map((b) => norm(b.text)));
+  const belegtSet = new Set((a.belege ?? []).filter((b) => b.belegt && !widerspruch.has(norm(b.text)) && /^https:\/\/[^\s]+/i.test(b.beleg) && (b.art !== "live" || a.liveGeprueft === true)).map((b) => norm(b.text)));
   const offeneHaken = a.haken;
   const belegt = offeneHaken.filter((h) => belegtSet.has(norm(h.text))).map((h) => h.text);
   const offen = offeneHaken.filter((h) => !belegtSet.has(norm(h.text))).map((h) => h.text);
@@ -58,7 +59,7 @@ export function kommentarText(e: Entscheidung, belege: Beleg[], runde: number, p
   const zeilen = belege.filter((b) => b.belegt && e.belegt.includes(b.text)).map((b) => `- [x] ${b.text} (${b.beleg})`);
   return [
     e.status === "wartet" ? "<!-- abnahme-wartet:nachweis -->" : RUNDE_MARKER,
-    `${e.status === "wartet" ? "In Review" : `Runde ${runde} von ${MAX_RUNDEN}`}, ${pr}: ${e.status === "done" ? "alle Fertig-Kriterien belegt, Done." : `${e.grund}.`}`,
+    `${e.status === "wartet" ? "In Progress" : `Runde ${runde} von ${MAX_RUNDEN}`}, ${pr}: ${e.status === "done" ? "alle Fertig-Kriterien belegt, Done." : `${e.grund}.`}`,
     ...zeilen,
     ...(e.offen.length ? ["", "Offen:", ...e.offen.map((o) => `- [ ] ${o}`)] : []),
     ...belege.filter((b) => !b.belegt && b.beleg.trim()).map((b) => `Nächster Nachweis für „${b.text}“: ${b.beleg}`),
@@ -70,7 +71,7 @@ export function kommentarText(e: Entscheidung, belege: Beleg[], runde: number, p
 export function wiederaufnahme(beschreibung: string | null | undefined): string {
   const haken = leseHaken(beschreibung);
   const offen = haken.filter((h) => !h.erledigt);
-  if (!offen.length || offen.length === haken.length) return "";
+  if (!offen.length) return "";
   return `Wiederaufnahme (SIN-754): ${zaehler(haken)} belegt. Nur noch offen: ${offen.map((h) => h.text).join("; ")}`;
 }
 
@@ -84,7 +85,7 @@ export function leseBelege(kommentare: string[], stand?: PruefStand): Beleg[] | 
     if (!m) continue;
     try {
       const roh = JSON.parse(Buffer.from(m[1], "base64").toString("utf8"));
-      if (stand && (roh?.head !== stand.head || roh?.auftrag !== stand.auftrag)) return null;
+      if (stand && (roh?.head !== stand.head || roh?.auftrag !== stand.auftrag || (stand.basis && roh?.basis !== stand.basis))) return null;
       const j = stand ? roh.belege : roh;
       if (stand && (!Array.isArray(j) || !j.every((b) => typeof b?.text === "string" && typeof b?.belegt === "boolean" && typeof b?.beleg === "string" && ["code", "live", "entscheidung"].includes(b?.art)))) return null;
       return Array.isArray(j) ? j.filter((b): b is Beleg => typeof b?.text === "string" && typeof b?.belegt === "boolean").map((b) => ({ text: b.text, belegt: b.belegt, beleg: String(b.beleg ?? ""), ...(["code", "live", "entscheidung"].includes(b.art ?? "") ? { art: b.art } : {}) })) : null;

@@ -32,3 +32,7 @@ test("wartendePrs: ohne open_prs leer; tabTitel zeigt die Zahl", () => {
   assert.equal(tabTitel(4), "(4) Leitstand");
   assert.equal(tabTitel(0), "Leitstand");
 });
+
+test("SIN-840: Reparatur-Stopp bleibt bei roter CI und Draft im bestehenden Push-Eingang sichtbar", () => {
+  assert.deepEqual(nr([pr(9, {labels:["needs-human"],ci:"failure",draft:true}),pr(10,{labels:["needs-human","freigegeben"],ci:"failure"})]),[9,10]);
+});
