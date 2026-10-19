@@ -1,30 +1,35 @@
 # SIN-858: Bestandsabgleich 1/3, Evidenz sammeln
 
-Teil von SIN-857. Erweitert den bestehenden Planer-Pfad um einen lesenden Sammler; kein neuer Agent, keine neue Datenbank, keine Modell-API.
+Teil von SIN-857. Lesender Sammler, noch keine Planer-/Fertig-Entscheidung, keine neue Datenbank oder Modell-API.
 
-## Schreibscope
+## Quellen gezielt lesen
 
-- `src/lib/bestand/bestand.ts` (rein, getestet): JSON-Vertrag, Quellenisolation, Pagination (`holeSeiten`), Geheimnis-Prüfung (`mitGeheimnis`).
-- `scripts/bestand/bestand.ts` (Netz, nur lesend): `npx tsx scripts/bestand/bestand.ts <produkt> <bereich> <feature> [begriff …]` schreibt `bestand-ausgabe/<produkt>-<bereich>.json`.
-- `src/lib/loop/projekt-issues.ts`: optionaler Parameter für die Linear-Zustände (Standard unverändert), damit der Sammler auch erledigte Aufträge liest.
-- `.github/workflows/build.yml`: Trockenlauf des Skripts (`DRY_RUN=1`, SIN-574).
-- Nicht angefasst: Planer-Prompt und Planer-Entscheidung (das ist 2/3 und 3/3), Rechte, Secrets, Schema.
+`npx tsx scripts/bestand/bestand.ts leitstand <bereich> <feature> [begriff …]`
 
-## Vertrag
+- Gedächtnis: Vault-Commit zuerst auflösen; index.md und Produktnotiz an genau diesem Stand lesen. Nur passende Katalog-/Entscheidungslinks nachladen. Kein kompletter Vault-Download.
+- Code: versionierte Textdateien im lokalen Git-Commit lesen, in Pfad **und Inhalt** suchen; Tests unter src/tests/e2e werden mitgelesen. Links zeigen auf die Commit-SHA. Inhaltshashes belegen die gelesenen Inhalte, keine Rohtexte verlassen den Leser.
+- Linear: gezielt nach Begriffen in Titel/Beschreibung innerhalb des Produkts suchen, alle Zustände zulassen. Kleine Cursor-Seiten vollständig lesen; ungültige/wiederholte Cursor sind Fehler.
+- PRs: GitHub-Suche nach Begriffen in Titel/Beschreibung statt alle PR-Payloads zu laden; sämtliche Suchseiten lesen, Treffer deduplizieren, nur diese PRs samt vollem Head-SHA lesen. Unvollständige Suchergebnisse und das 1000-Treffer-Limit ergeben einen Quellfehler, nie ein scheinbar vollständiges Inventar.
 
-`produkt, bereich, feature, quellen, vorhandene_bausteine, offene_arbeit, fehlende_nachweise, quellfehler`. Jede Quelle trägt `ref`, `sha` (Commit-SHA bzw. Vault-SHA; Linear hat keine, PR-Köpfe stehen als `Head <sha>` im Titel) und `status`. Berichte enthalten nur Titel und Links, keine Notizinhalte, keine Beschreibungen, keine Repo-Kopie. Ein Treffer mit Geheimnis verwirft die ganze Quelle als Quellfehler.
+`produkt` ist derzeit ausdrücklich auf den vorhandenen Leitstand-Checkout begrenzt. Andere Produkte benötigen ihren eigenen Checkout/Adapter; es wird kein falscher Produktbestand behauptet. Jeder Bereich bleibt ein eigener Bericht (`sammleAlle`).
 
-## Verhalten bei Fehlern
+## Vertrag und Datenschutz
 
-Jede Quelle wird einzeln gelesen. Fällt eine aus, bleibt sie als `quellfehler` und als `fehlende_nachweise` („nicht lesbar, keine Aussage möglich“) im Bericht, die anderen bleiben auswertbar; ein anderer Bereich ist ohnehin ein eigener Bericht (`sammleAlle`). Pagination liefert bei Fehler auf einer Folgeseite oder mehr als 100 Seiten keine Teilmenge.
+`produkt, bereich, feature, quellen, vorhandene_bausteine, offene_arbeit, fehlende_nachweise, quellfehler`.
+Quellen tragen ref/SHA/Fehlerstatus, einzelne PRs ihren Head. Linear hat keine SHA. Rohinhalte werden nur im Arbeitsspeicher zum Suchen verwendet. Berichte enthalten Pfade/Titel, Links, Zustände und Inhaltshashes. Nur diese ausgehenden Metadaten werden auf Geheimnisse geprüft. Rohfehler werden nicht gespeichert; eine defekte Quelle verhindert Aussagen zu ihr, die übrigen bleiben auswertbar.
 
-## Grenzen
+Ausgabe: `docs/bestand/<produkt>-<bereich>.json`, mit Modus 0600. Automatische Berichte sind gitignoriert; kein privater Inventarnachweis wird ohne ausdrückliche Veröffentlichungsfreigabe versioniert. Bereichsnamen erlauben keine Pfadtraversierung. Bei Quellfehlern liefert ein echter Lauf Exit-Code 1. Suchbegriffe sind Pflicht, mindestens vier Zeichen.
 
-- Evidenz, keine Fertig-Entscheidung. „Kein Test gefunden“ heißt nur: kein Dateiname mit dem Begriff.
-- Trefferlogik ist ein Wortvergleich auf Titel und Pfad (`begriffe`, sonst Wörter ab 4 Zeichen aus `feature`). shortcut: Wortvergleich statt Suche, ausbauen wenn 2/3 Fehlalarme zeigt.
-- Kein Caching, deshalb keine behauptete Aktualität; jede Zahl hat die SHA des Laufs.
-- Linear: Seitenweise Abfrage wie in SIN-825 (25 je Seite, Cursor-Prüfung), nur mit allen Zustandstypen.
+## Unabhängige Abnahme
 
-## Offen für den Live-Nachweis
+`DRY_RUN=1 npx tsx scripts/bestand/probe.ts` startet den echten CLI-Prozess: einmal mit externer Quellen-Fixture und echtem lokalen Git, einmal mit fehlenden externen Quellen. Es prüft den JSON-Vertrag, Testfunde mit Inhaltshash, offene Arbeit, Geheimhaltung der Rohtexte und die drei erwarteten Quellfehler. Die Probe läuft in build-CI; die HTTP-Probe `leitstand-bestand-ci` registriert erfolgreiche main-CI an der aktuellen `${GITHUB_SHA}`. Fehlende SHA oder fehlender Lauf bleibt rot; alte main-Läufe zählen nicht. Sie ist ausdrücklich **kein** Live-Netz-Inventar.
 
-Das echte lesende Inventar (verlinktes JSON) fehlt noch: in der Worker-Umgebung konnte das Skript nicht gestartet werden. Aufgabe für Sinan: einmal `Bestandsabgleich` mit `GH_TOKEN` und `LINEAR_API_KEY` laufen lassen, das JSON nach `docs/bestand/` legen und hier verlinken. Regel und Tests allein sind kein Live-Nachweis, das Issue bleibt bis dahin „In Review“.
+## Live-Inventar bleibt offen
+
+Ein verlinkter, für die Veröffentlichung freigegebener echter Inventarnachweis fehlt noch. Private Connector-Daten bleiben lokal und werden nicht ins Repository übertragen. Der generische `BESTAND_CONNECTOR_INPUT`-Adapter kann einen gezielten Einzel-Snapshot lesen; er ersetzt keinen vollständigen Live-API-Lauf.
+
+Die HTTP-Transportwege, Index-Linkauflösung und echte mehrseitige API-Antworten sind noch nicht live geprüft. Fixture-/Paginationtests ersetzen diese Aktivierungsprüfung nicht. Kein Done vor grüner Live-Probe.
+
+## Schreibscope / Grenzen
+
+Geändert: Sammler/CLI, CLI-Probe und Fixture, Unit-Tests, build-Trockenlauf, bestehende Abnahme-Liste und Dokumentation/Ausgabe-Ignorierung. Keine Rechte/Secrets/Migrationen; die geteilte Abnahme-Engine bleibt unverändert. Wortvergleich statt semantischer Suche; Testfunde bedeuten vorhandenen Testcode, nicht bestandene Laufzeit-Abnahme.

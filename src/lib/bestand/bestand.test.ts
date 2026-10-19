@@ -31,7 +31,7 @@ test("teilweise vorhandenes Feature: Code ohne Test und ohne Notiz meldet fehlen
 
 test("unlesbare Quelle wird benannt, die übrigen bleiben auswertbar", async () => {
   const b = await sammle(anfrage, { ...voll, linear: kaputt("Linear: 400"), prs: kaputt("GitHub: 403") });
-  assert.deepEqual(b.quellfehler, ["linear: Linear: 400", "prs: GitHub: 403"]);
+  assert.deepEqual(b.quellfehler, ["linear: Quelle nicht lesbar", "prs: Quelle nicht lesbar"]);
   assert.equal(b.quellen.find((q) => q.art === "linear")?.status, "fehler");
   assert.equal(b.vorhandene_bausteine.length, 3);
   assert.deepEqual(b.offene_arbeit, []);
@@ -63,4 +63,12 @@ test("Pagination liest alle Seiten bis zur kurzen Seite", async () => {
 test("Pagination: Fehler auf Folgeseite liefert keine Teilmenge, Endlosschleife bricht ab", async () => {
   await assert.rejects(holeSeiten(async (n) => { if (n === 2) throw new Error("GitHub: 502"); return [1, 2]; }, 2), /502/);
   await assert.rejects(holeSeiten(async () => [1, 2], 2, 5), /Seiten/);
+});
+
+
+test("Inhalt trifft auch bei anderem Dateinamen; Rohtext und Fehlergeheimnisse bleiben privat", async () => {
+  const b = await sammle(anfrage, { ...voll, code: ok([{ titel: "src/anderer-name.ts", url: "https://example.invalid/code", inhalt: "Bestandsabgleich private details", inhalt_sha256: "hash", sha: "commit" }]), linear: kaputt("private details") });
+  assert.equal(b.vorhandene_bausteine.find((x) => x.quelle === "code")?.sha, "commit");
+  assert.ok(!JSON.stringify(b).includes("private details"));
+  await assert.rejects(sammle({ ...anfrage, begriffe: [] }, voll), /Suchbegriffe/);
 });

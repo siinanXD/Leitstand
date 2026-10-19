@@ -5,7 +5,7 @@ import { mitGeheimnis } from "../gedaechtnis/gedaechtnis";
 /** `begriffe` ersetzt die Wörter aus `feature`, wenn Dateien anders heißen als das Feature (z. B. "bestand" statt "Bestandsabgleich"). */
 export type Anfrage = { produkt: string; bereich: string; feature: string; begriffe?: string[] };
 export type QuellArt = "gedaechtnis" | "code" | "linear" | "prs";
-export type Fund = { titel: string; url: string; /** Linear-Status-Typ bzw. PR-Zustand. */ zustand?: string };
+export type Fund = { titel: string; url: string; /** Linear-Status-Typ bzw. PR-Zustand. */ zustand?: string; sha?: string; /** Nur im Speicher zum Suchen, nie im Bericht. */ inhalt?: string; inhalt_sha256?: string };
 /** `ref` = Repo, Vault oder Linear-Projekt; `sha` = Commit-SHA bzw. Vault-SHA, `null` wenn die Quelle keine hat (Linear). PRs tragen den Head im Fund. */
 export type Gelesen = { ref: string; sha: string | null; eintraege: Fund[] };
 export type Lader = Record<QuellArt, () => Promise<Gelesen>>;
@@ -26,8 +26,8 @@ const ARTEN: QuellArt[] = ["gedaechtnis", "code", "linear", "prs"];
 const ERLEDIGT = new Set(["completed", "canceled", "closed", "merged"]);
 const TEST = /\.test\.|(^|\/)tests?\//;
 /** Wörter unter 4 Zeichen (SIN, feat, 1/3) treffen zu viel. */
-const stichwoerter = (feature: string) => feature.toLowerCase().split(/[^a-zäöüß0-9]+/).filter((w) => w.length >= 4);
-const passt = (f: Fund, wörter: string[]) => wörter.some((w) => `${f.titel} ${f.url}`.toLowerCase().includes(w));
+export const stichwoerter = (feature: string) => feature.toLowerCase().split(/[^a-zäöüß0-9]+/).filter((w) => w.length >= 4);
+export const passt = (f: Fund, wörter: string[]) => wörter.some((w) => `${f.titel} ${f.url} ${f.inhalt ?? ""}`.toLowerCase().includes(w));
 
 /** Liest Seite für Seite, bis eine Seite kürzer als `proSeite` ist. Fehler oder Überlauf liefern nie eine Teilmenge. */
 export async function holeSeiten<T>(seite: (nummer: number) => Promise<T[]>, proSeite: number, maxSeiten = 50): Promise<T[]> {
@@ -45,11 +45,12 @@ type Ergebnis = { art: QuellArt; g: Gelesen } | { art: QuellArt; fehler: string 
 /** Eine Anfrage: jede Quelle einzeln, ein Fehler dort lässt die anderen stehen. */
 export async function sammle(anfrage: Anfrage, lader: Lader): Promise<Bestand> {
   const wörter = (anfrage.begriffe ?? stichwoerter(anfrage.feature)).map((w) => w.toLowerCase());
+  if (!wörter.length || wörter.some((w) => !/^[a-zäöüß0-9_-]{4,60}$/i.test(w))) throw new Error("Gezielte Suchbegriffe ab 4 Zeichen erforderlich");
   const b: Bestand = { produkt: anfrage.produkt, bereich: anfrage.bereich, feature: anfrage.feature, quellen: [], vorhandene_bausteine: [], offene_arbeit: [], fehlende_nachweise: [], quellfehler: [] };
   const ergebnisse: Ergebnis[] = await Promise.all(
     ARTEN.map((art) => lader[art]().then(
-      (g): Ergebnis => (mitGeheimnis({ x: JSON.stringify(g) }).length ? { art, fehler: "Geheimnis im Treffer, verworfen" } : { art, g }),
-      (e: unknown): Ergebnis => ({ art, fehler: e instanceof Error ? e.message : String(e) }),
+      (g): Ergebnis => (mitGeheimnis({ x: JSON.stringify({ ...g, eintraege: g.eintraege.map(({ inhalt: _inhalt, ...metadaten }) => { void _inhalt; return metadaten; }) }) }).length ? { art, fehler: "Geheimnis im Treffer, verworfen" } : { art, g }),
+      (): Ergebnis => ({ art, fehler: "Quelle nicht lesbar" }),
     )),
   );
   for (const r of ergebnisse) {
@@ -62,7 +63,9 @@ export async function sammle(anfrage: Anfrage, lader: Lader): Promise<Bestand> {
     const treffer = r.g.eintraege.filter((f) => passt(f, wörter));
     b.quellen.push({ art: r.art, ref: r.g.ref, sha: r.g.sha, status: "ok", anzahl: treffer.length });
     for (const f of treffer) {
-      const x = { quelle: r.art, ...f };
+      const { inhalt: _inhalt, ...metadaten } = f;
+      void _inhalt;
+      const x = { quelle: r.art, ...metadaten };
       if ((r.art === "linear" || r.art === "prs") && !ERLEDIGT.has(f.zustand ?? "")) b.offene_arbeit.push(x);
       else b.vorhandene_bausteine.push(x);
     }
