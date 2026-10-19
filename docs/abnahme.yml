@@ -256,6 +256,13 @@
   rest: loop_events?agent=eq.gedaechtnis&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
+- id: leitstand-rolle-botadvisor
+  produkt: leitstand
+  titel: Bot Advisor hat in den letzten 48 Stunden ein Ereignis geschrieben
+  art: db
+  rest: loop_events?agent=eq.botadvisor&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
 - id: leitstand-rolle-trend
   produkt: leitstand
   titel: Trend hat in den letzten 48 Stunden ein Ereignis geschrieben
