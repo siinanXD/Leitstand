@@ -14,7 +14,7 @@ import { readFile } from "node:fs/promises";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
 import { ladePausenAlle } from "../kontingent/pausen";
 import { PROJEKTE } from "../../src/lib/projekte";
-import { ausLinear, gespiegelteIds, LABEL, linearId, offeneSpiegel, type GithubIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, gespiegelteIds, LABEL, linearId, MAX_REPARATUR, offeneSpiegel, type GithubIssue } from "../../src/lib/loop/auswahl";
 import { supabaseReservierung, verwaist, type Reservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 import {
   entscheidungenAusKommentaren,
@@ -281,11 +281,27 @@ async function claimsAufraeumen(projekt: string, repo: string, ids: string[], pr
   if (!speicher || !stand.length) return;
   const laeuft = await workerLaeuft(repo);
   const mitPr = new Set(prs.map((p) => linearId(p.titel)).filter((x): x is string => !!x));
-  for (const r of stand.filter((x) => ids.includes(x.issue))) {
+  for (const r of stand.filter((x) => x.claim && ids.includes(x.issue))) {
     if (!verwaist(r, { offenerPr: mitPr.has(r.issue), gespiegelt: gespiegelt.has(r.issue), workerLaeuft: laeuft, jetzt })) continue;
     log(projekt, `${r.issue}: Claim ${r.claim} verwaist (kein PR, kein Spiegel, kein laufender Worker, seit ${r.seit}) → freigeben`);
     if (DRY || !beleg) continue;
     if (!(await speicher.freigeben(r, beleg))) log(projekt, `${r.issue}: Freigabe verloren (Stand geändert), nächster Lauf prüft erneut`);
+  }
+}
+
+/**
+ * Nach dem Zurücksetzen auf Todo (Kontingent-Abbruch oder 6 h ohne PR, Spiegel gerade geschlossen) den Claim im selben
+ * Schritt lösen; Beleg ist dieser Wächter-Lauf. Ohne Lauf-URL (lokal) oder Supabase bleibt er.
+ */
+async function claimNachZuruecksetzen(projekt: string, id: string) {
+  const speicher = reservierungen();
+  if (!speicher || !env.GITHUB_RUN_ID) return;
+  const beleg = `https://github.com/${env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand"}/actions/runs/${env.GITHUB_RUN_ID}`;
+  try {
+    const r = await speicher.laden(id);
+    if (r.claim && !(await speicher.freigeben(r, beleg))) log(projekt, `${id}: Claim nach Zurücksetzen nicht gelöst (Stand geändert)`);
+  } catch (e) {
+    log(projekt, `${id}: Claim nach Zurücksetzen nicht lesbar: ${e instanceof Error ? e.message : e}`);
   }
 }
 
@@ -333,6 +349,7 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       if (todo) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: todo });
       await kommentar(h.issue.id, "Wächter: Der Lauf scheiterte am Claude-Kontingent, kein Hänger. Zurück auf Todo, startet nach der Pause von selbst.");
       await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
+      await claimNachZuruecksetzen(projekt.name, h.issue.identifier);
     } else if (h.art === "zuruecksetzen") {
       log(projekt.name, `${h.issue.identifier} hängt seit über 6 h ohne PR → zurück auf Todo`);
       if (DRY) continue;
@@ -340,6 +357,7 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       if (todo) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: todo });
       await kommentar(h.issue.id, `Wächter: seit über 6 Stunden In Progress ohne offenen PR. Zurück auf Todo (einmalig). ${MARKER_ZURUECK}`);
       await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
+      await claimNachZuruecksetzen(projekt.name, h.issue.identifier);
     } else {
       log(projekt.name, `${h.issue.identifier} hängt erneut → needs-human`);
       if (DRY) continue;
@@ -352,7 +370,9 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
   // SIN-832: dauerhafte Claims und Reparaturzähler dieses Projekts; nicht lesbar = keine Reparatur, kein Aufräumen.
   const speicher = reservierungen();
   const ids = issues.map((i) => i.identifier);
-  const stand = speicher ? await teil("reservierung", () => speicher.aktive(ids), [] as Reservierung[]) : [];
+  // Alle Issues mit offenem PR und alle mit Claim: der Zähler gilt auch ohne aktiven Claim (Befund 4).
+  const mitPr = prs.map((p) => linearId(p.titel)).filter((x): x is string => !!x);
+  const stand = speicher ? await teil("reservierung", () => speicher.staende([...ids, ...mitPr]), [] as Reservierung[]) : [];
   const zaehler = new Map(stand.map((r) => [r.issue, r.reparaturen]));
   const reservierungLesbar = !!speicher && !fehler.some((f) => f.startsWith("reservierung:"));
 
@@ -365,7 +385,12 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       const id = linearId(a.pr.titel);
       if (id && speicher) {
         const r = reservierungLesbar ? await speicher.laden(id).catch(() => null) : null;
-        if (!r || !(await speicher.zaehleReparatur(r).catch(() => false))) {
+        // Frisch geladenen Stand erneut gegen die Grenze prüfen, bevor gezählt wird.
+        if (r && r.reparaturen >= MAX_REPARATUR) {
+          log(projekt.name, `PR #${a.pr.number}: ${id} hat ${r.reparaturen} Runden (issueweit) → keine weitere`);
+          continue;
+        }
+        if (!r || !(await speicher.zaehleReparatur(r, a.pr.titel).catch(() => false))) {
           log(projekt.name, `PR #${a.pr.number}: Reparaturzähler für ${id} nicht gezählt (Stand fehlt oder geändert) → keine Runde`);
           continue;
         }
@@ -373,12 +398,12 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: [`repair:${a.runde}`] } });
       await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, { method: "POST", body: { body: reparaturText(a.pr, a.runde) } });
     } else {
-      log(projekt.name, `PR #${a.pr.number} nach 3 Runden noch rot → needs-human`);
+      log(projekt.name, `PR #${a.pr.number} nach ${MAX_REPARATUR} Runden noch rot → needs-human`);
       if (DRY) continue;
       await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
       await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, {
         method: "POST",
-        body: { body: `Wächter: build ist nach 3 Reparaturrunden noch rot${a.pr.runUrl ? ` (${a.pr.runUrl})` : ""}. Stopp, Sinan entscheidet.` },
+        body: { body: `Wächter: build ist nach ${MAX_REPARATUR} Reparaturrunden noch rot${a.pr.runUrl ? ` (${a.pr.runUrl})` : ""}. Stopp, Sinan entscheidet.` },
       });
     }
   }

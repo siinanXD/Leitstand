@@ -75,14 +75,20 @@ export function verwaist(r: Reservierung, lage: { offenerPr: boolean; gespiegelt
   return lage.jetzt.getTime() - Date.parse(r.seit) >= VERWAIST_STUNDEN * 3_600_000;
 }
 
+/** Belegt das Issue keinen Startplatz? Aktiver Claim oder ausgeschöpfte Reparaturen (SIN-832, Befund: sonst steht die Schlange). */
+export const blockiert = (r: Reservierung, max: number) => !!r.claim || r.reparaturen >= max;
+
 export type ReservierungsSpeicher = Speicher & {
   laden(issue: string): Promise<Reservierung>;
-  /** Aktive Claims unter den genannten Issues (für den Wächter). */
-  aktive(issues: string[]): Promise<Reservierung[]>;
-  /** Claim beenden; nur mit Beleg (Merge-PR, Stopp-Kommentar, Wächter-Lauf). Der Reparaturzähler bleibt stehen. */
-  freigeben(r: Reservierung, nachweis: string): Promise<boolean>;
-  /** Eine Reparaturrunde issueweit zählen, egal welcher Provider repariert. */
-  zaehleReparatur(r: Reservierung): Promise<boolean>;
+  /** Gespeicherter Stand der genannten Issues (alle Zeilen, auch ohne Claim); fehlende Zeilen fehlen in der Liste. */
+  staende(issues: string[]): Promise<Reservierung[]>;
+  /**
+   * Claim beenden; nur mit Beleg (Merge-PR, Stopp-Kommentar, Wächter-Lauf). Der Reparaturzähler bleibt stehen, außer
+   * `erfolg`: nach einem Merge waren die Runden davor nicht erfolglos, der nächste PR des Issues beginnt bei null.
+   */
+  freigeben(r: Reservierung, nachweis: string, erfolg?: boolean): Promise<boolean>;
+  /** Eine Reparaturrunde issueweit zählen, egal welcher Provider repariert. Fehlt die Zeile, wird sie mit `titel` angelegt. */
+  zaehleReparatur(r: Reservierung, titel?: string): Promise<boolean>;
 };
 
 type Konfig = {
@@ -103,7 +109,7 @@ export function supabaseReservierung(k: Konfig): ReservierungsSpeicher {
   const anfrage = async (pfad: string, init: RequestInit): Promise<Zeile[]> => {
     const res = await holen(`${basis}${pfad}`, { ...init, headers: { ...kopf, ...(init.headers as Record<string, string>) }, signal: AbortSignal.timeout(15_000) });
     // Rohtext nicht weitergeben: kann Schema- oder Konfigurationsdetails enthalten.
-    if (!res.ok) throw new Error(`Reservierung: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(res.status === 400 ? "Reservierung: HTTP 400 (Spalten claim_* fehlen? Migration 20261019200000 bzw. Lern-App #433 prüfen)" : `Reservierung: HTTP ${res.status}`);
     const daten = (await res.json()) as unknown;
     if (!Array.isArray(daten)) throw new Error("Reservierung: unerwartete Antwort");
     return daten as Zeile[];
@@ -132,12 +138,12 @@ export function supabaseReservierung(k: Konfig): ReservierungsSpeicher {
       return ausZeile(issue, zeilen[0]);
     },
 
-    async aktive(issues) {
+    async staende(issues) {
       const ids = [...new Set(issues)];
       ids.forEach(pruefeIssue);
       if (!ids.length) return [];
-      const zeilen = await anfrage(`?issue=in.(${ids.map(encodeURIComponent).join(",")})&claim_id=not.is.null&select=${SPALTEN}`, { method: "GET" });
-      return zeilen.map((z) => ausZeile(z.issue, z)).filter((r) => r.claim);
+      const zeilen = await anfrage(`?issue=in.(${ids.map(encodeURIComponent).join(",")})&select=${SPALTEN}`, { method: "GET" });
+      return zeilen.map((z) => ausZeile(z.issue, z));
     },
 
     async tausche(issue, revision, neu) {
@@ -162,13 +168,21 @@ export function supabaseReservierung(k: Konfig): ReservierungsSpeicher {
       return zeilen.length === 1;
     },
 
-    async freigeben(r, nachweis) {
-      if (!r.claim || !istNachweis(nachweis)) return false;
-      return cas(r.issue, r.revision, { claim_provider: null, claim_id: null, claim_at: null, claim_nachweis: nachweis });
+    async freigeben(r, nachweis, erfolg = false) {
+      if (!istNachweis(nachweis) || (!r.claim && !(erfolg && r.reparaturen > 0))) return false;
+      return cas(r.issue, r.revision, { claim_provider: null, claim_id: null, claim_at: null, claim_nachweis: nachweis, ...(erfolg ? { reparaturen: 0 } : {}) });
     },
 
-    async zaehleReparatur(r) {
-      return cas(r.issue, r.revision, { reparaturen: r.reparaturen + 1 });
+    async zaehleReparatur(r, titel) {
+      if (await cas(r.issue, r.revision, { reparaturen: r.reparaturen + 1 })) return true;
+      if (r.revision !== 0 || !titel) return false;
+      // Zeile fehlt (Spiegel lief nicht, PR ohne Dispatcher-Start): mit erster Runde anlegen, ein Gewinner.
+      const zeilen = await anfrage(`?select=${SPALTEN}`, {
+        method: "POST",
+        headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+        body: JSON.stringify({ issue: r.issue, titel, status: "laeuft", labels: [], claim_revision: 1, reparaturen: r.reparaturen + 1 }),
+      });
+      return zeilen.length === 1;
     },
   };
 }

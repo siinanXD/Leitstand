@@ -147,7 +147,7 @@ export function erkenneIssueHaenger(issues: WaechterIssue[], offenePrs: PrInfo[]
 export type PrAktion = { art: "reparatur"; pr: PrInfo; runde: number } | { art: "stopp"; pr: PrInfo };
 
 /**
- * Offener PR mit roter CI und seit 30 Minuten ohne neuen Commit: @claude bitten (höchstens 3 Runden), danach needs-human.
+ * Offener PR mit roter CI und seit 30 Minuten ohne neuen Commit: @claude bitten (höchstens MAX_REPARATUR Runden), danach needs-human.
  * `issueweit`: dauerhaft gezählte Runden je Linear-Issue (SIN-832), damit ein neuer PR oder Provider nicht bei null beginnt.
  */
 export function erkennePrHaenger(prs: PrInfo[], jetzt: Date, issueweit: Map<string, number> = new Map()): PrAktion[] {

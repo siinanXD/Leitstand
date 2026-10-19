@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { planeFallback, reserviere, type ProviderStand } from "./fallback";
-import { auftragAus, supabaseReservierung, verwaist, type Reservierung } from "./reservierung";
+import { auftragAus, blockiert, supabaseReservierung, verwaist, type Reservierung } from "./reservierung";
 
 /**
  * Simulation von PostgREST mit echter CAS-Semantik (UPDATE … WHERE claim_revision = alt, INSERT ignore-duplicates).
@@ -20,7 +20,11 @@ function fakePostgrest() {
     const issue = url.searchParams.get("issue")?.replace(/^eq\./, "");
     const rev = url.searchParams.get("claim_revision")?.replace(/^eq\./, "");
     const antwort = (r: Record<string, unknown>[]) => new Response(JSON.stringify(r), { status: 200 });
-    if (method === "GET") return antwort(issue && zeilen.has(issue) ? [zeilen.get(issue)!] : []);
+    if (method === "GET") {
+      const liste = url.searchParams.get("issue")?.match(/^in\.\((.*)\)$/)?.[1].split(",");
+      if (liste) return antwort(liste.filter((id) => zeilen.has(id)).map((id) => zeilen.get(id)!));
+      return antwort(issue && zeilen.has(issue) ? [zeilen.get(issue)!] : []);
+    }
     if (method === "PATCH") {
       const z = issue ? zeilen.get(issue) : undefined;
       if (!z || String(z.claim_revision) !== rev) return antwort([]);
@@ -143,4 +147,45 @@ test("Ungültige Kennung erreicht den Speicher nicht", async () => {
   const f = fakePostgrest();
   await assert.rejects(speicher(f).laden("SIN-1&claim_revision=gt.0"));
   assert.equal(f.anfragen.length, 0);
+});
+
+test("Befund 3: fehlt die Zeile, legt die erste Reparaturrunde sie an (mit Titel), ohne Titel keine Runde", async () => {
+  const f = fakePostgrest();
+  const s = speicher(f);
+  const leer = await s.laden("SIN-900");
+  assert.equal(await s.zaehleReparatur(leer), false);
+  assert.equal(await s.zaehleReparatur(leer, "fix(x): y (SIN-900)"), true);
+  assert.equal((await s.laden("SIN-900")).reparaturen, 1);
+  assert.equal(await s.zaehleReparatur(leer, "fix(x): y (SIN-900)"), false, "zweiter Schreiber mit altem Stand verliert");
+});
+
+test("Befund 1: Claim oder ausgeschöpfte Reparaturen blockieren den Startplatz", () => {
+  const r: Reservierung = { issue: "SIN-1", revision: 3, provider: null, claim: null, seit: null, reparaturen: 0, nachweis: null };
+  assert.equal(blockiert(r, 2), false);
+  assert.equal(blockiert({ ...r, reparaturen: 2 }, 2), true);
+  assert.equal(blockiert({ ...r, claim: "x", provider: "claude" }, 2), true);
+});
+
+test("Merge setzt Zähler zurück, Stopp nicht", async () => {
+  const f = fakePostgrest();
+  await starte(f, "lauf-1");
+  const s = speicher(f);
+  await s.zaehleReparatur(await s.laden("SIN-832"));
+  assert.equal(await s.freigeben(await s.laden("SIN-832"), "https://github.com/siinanXD/Leitstand/pull/1"), true);
+  assert.equal((await s.laden("SIN-832")).reparaturen, 1, "Stopp/Freigabe ohne Erfolg behält den Zähler");
+  assert.equal(await s.freigeben(await s.laden("SIN-832"), "https://github.com/siinanXD/Leitstand/pull/2", true), true);
+  assert.equal((await s.laden("SIN-832")).reparaturen, 0, "Merge: Runden davor waren nicht erfolglos");
+});
+
+test("Befund 6: HTTP 400 nennt die fehlende Migration", async () => {
+  const f = fakePostgrest();
+  f.setzeAusfall(400);
+  await assert.rejects(speicher(f).laden("SIN-832"), /Migration 20261019200000/);
+});
+
+test("staende liefert auch Zeilen ohne Claim (Zähler für den Wächter)", async () => {
+  const f = fakePostgrest();
+  f.zeilen.set("SIN-5", { issue: "SIN-5", titel: "T", status: "offen", claim_revision: 2, reparaturen: 2 });
+  const st = await speicher(f).staende(["SIN-5", "SIN-6"]);
+  assert.deepEqual(st.map((r) => [r.issue, r.reparaturen, r.claim]), [["SIN-5", 2, null]]);
 });
