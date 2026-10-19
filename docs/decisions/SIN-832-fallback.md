@@ -40,3 +40,20 @@ Die zusätzlichen `docs/abnahme.yml`-Proben prüfen Dateien/Registrierung. **Kei
 - Prüferkonfiguration mit tatsächlich gewähltem Modell und dokumentierten Preisen herstellen; keine Werte/Budgets erfinden. Ledger-Schema gemäß #296 prüfen; keine Migration in diesem Auftrag angewendet.
 - Nach unabhängiger Sicherheitsabnahme und erforderlicher Freigabe Live-Szenarien ausführen; bis dahin weder Merge noch Done. Reparaturgrenzen in #291/#275 nicht zurücksetzen.
 - Folge-PRs #296, #291, #275, #294, #271 erst nach technischer Bereitschaft bearbeiten. Aktuelle Blocker bleiben erhalten; keine konkurrierenden PRs eröffnen.
+
+## Nachtrag 19.10.2026 abends: Reservierung angebunden (Claude, zweite Sitzung)
+
+Claim https://github.com/siinanXD/Leitstand/pull/294#issuecomment-6273897553, Basis Head `454f1bc5`.
+
+- **Speicher:** vorhandene Tabelle `leitstand_aufgaben` (Zeile je Linear-Issue) mit additiven Spalten `claim_revision`, `claim_provider`, `claim_id`, `claim_at`, `reparaturen`, `claim_nachweis` (Migration `20261019200000_aufgaben_reservierung`; angewendet über Lern-App #433, weil nur dort Migrationen laufen, wie SIN-848). Keine neue Tabelle, Queue oder Abhängigkeit. Der Aufgaben-Spiegel schreibt diese Spalten nie.
+- **Compare-and-swap:** `src/lib/loop/reservierung.ts` setzt den `Speicher`-Vertrag um: `PATCH … ?issue=eq.X&claim_revision=eq.R` mit `return=representation`; genau eine Zeile zurück heißt gewonnen. Fehlt die Zeile, legt der erste Start sie mit echtem Linear-Titel an (Primärschlüssel: ein Gewinner); ohne Titel keine Platzhalterzeile, kein Start. HTTP-/Netzfehler werfen, Rohtexte werden nicht weitergegeben.
+- **Dispatcher:** reserviert vor dem Anlegen des GitHub-Spiegels. Ohne Supabase, bei Lesefehler, vorhandenem Claim oder verlorenem CAS kein Start; Grund als strukturiertes JSON-Ereignis im vorhandenen Feld `loop_events.grund`. Scheitert der Start nach der Reservierung, bleibt der Claim (Ausgang unklar).
+- **Freigabe nur mit Beleg:** Merge (`gemergt`, Beleg PR-URL), Reparaturstopp (`needs-human`, Beleg PR-URL), Wächter für verwaiste Claims (kein offener PR, kein offener Spiegel, kein laufender oder wartender `claude.yml`-Lauf, älter als 6 h; Beleg Wächter-Lauf). Unbekannter Worker-Zustand hält den Claim.
+- **Reparaturgrenze:** `reparatur(labels, issueweit)` nimmt das Maximum aus Labels und dauerhaftem Zähler; Dispatcher (`planeFallback`, ab 2 `needs-human`), `repair.yml` und Wächter zählen dieselbe Spalte. Erst zählen, dann um Reparatur bitten; verlorener CAS = keine Runde. PRs ohne Linear-Kennung (Dependabot) zählen wie bisher über Labels. `MAX_REPARATUR` bleibt bis #275 bei 3 für PR-Runden; der Dispatcher stoppt issueweit schon bei 2.
+- **Zurücksetzen:** Nur Sinan setzt `reparaturen` nach einer Entscheidung zurück (SQL im Supabase-Editor), sonst bleibt ein Issue mit 2 erfolglosen Runden angehalten.
+
+Tests: `src/lib/loop/reservierung.test.ts` (neun Simulationen gegen einen PostgREST-Nachbau mit echter CAS-Semantik: Anlegen, Doppelstart, paralleler CAS, Speicherfehler ohne Rohtext, kein Platzhalter, Zähler über Provider, Beleg-Pflicht, veralteter Stand, Verwaist-Regel, Injektion). Neue Regressionen in `auswahl.test.ts` und `waechter.test.ts` waren auf dem alten Code rot. **Simulation, kein Live-Nachweis.** Live-Probe `leitstand-reservierung-live` (db) wird erst nach Migration und erstem echten Dispatch grün.
+
+Weiter offen: Codex-Startweg (Zuordnungsfehler, unverändert), Prüfer-Repo-Variablen (Werte unten belegt, Setzen durch Sinan, weil Actions-Variablen über den Sitzungs-Proxy nicht schreibbar sind), Live-Szenarien beide Richtungen und beide-leer.
+
+Prüfer-Werte aus bestehender Entscheidung und offizieller Doku (19.10.2026): Modell `gpt-5.4-mini` (wie Lern-App-Review, `scripts/autonomy/review.mjs`), Preise 0.75 USD Eingabe und 4.50 USD Ausgabe je 1 Mio. Tokens ([Modellseite](https://developers.openai.com/api/docs/models/gpt-5.4-mini), [Ankündigung](https://openai.com/index/introducing-gpt-5-4-mini-and-nano/)). Ledger-HTTP 400 ist seit Lern-App #431 (Spalte `payload` live) behoben; #296 ergänzt `grund` und Annotation.

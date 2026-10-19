@@ -3,6 +3,7 @@ enableAutoMerge bei grünen Checks → clean status → direkt mergen (SIN-585)
 Geplanter GitHub-Cron fällt unter Last aus → wichtige Läufe zusätzlich per workflow_run nach dem Merge starten (SIN-593)
 Push-Fenster kürzer als Ruhezeit → nachts Gemergtes verfällt; Fenster ab Merge in der Ruhe auf 10 h (SIN-593)
 Migration auf main ≠ Migration in Supabase → nach Merge prüfen (SIN-592)
+Claim als Kommentar oder Label → zwei Worker am selben Issue möglich, Reparaturzähler beginnt je PR bei null → Reservierung per Compare-and-swap auf `leitstand_aufgaben.claim_revision` vor dem Start, Freigabe nur mit Beleg, Reparaturen issueweit zählen (SIN-832).
 Linear-Projektabfrage mit 100 Issues und verschachtelten Relationen überschreitet 10.000 Komplexitätspunkte → Seiten zu 25 vollständig über pageInfo/endCursor lesen (SIN-825).
 Verschachtelte Projekt-Metadatenabfrage multipliziert standardmäßig 50 Projekte × 250 Titel → bei exaktem Projektnamen first: 1 setzen; sonst bleibt der Planer nach erfolgreichem Issue-Lesen rot (SIN-825).
 Prüfer vom PR-HEAD mit Secrets ausführen → Basis-Commit/Lockfile auschecken, Install-Skripte sperren und PR ausschließlich als validierten SHA-Diff lesen (SIN-827).

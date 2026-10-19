@@ -134,6 +134,13 @@ test("reparatur: drei Runden, dann Stopp", () => {
   assert.deepEqual(reparatur(["needs-human"]), { stopp: true });
 });
 
+test("reparatur (SIN-832): issueweiter Zähler gilt auch für einen neuen PR ohne Labels", () => {
+  assert.deepEqual(reparatur([], 2), { runde: 3 });
+  assert.deepEqual(reparatur([], 3), { stopp: true });
+  assert.deepEqual(reparatur(["repair:1"], 2), { runde: 3 });
+  assert.deepEqual(reparatur([], Number.NaN), { runde: 1 });
+});
+
 test("ausLinear übernimmt Labels, Status und Blocker", () => {
   const i = ausLinear({
     id: "x",

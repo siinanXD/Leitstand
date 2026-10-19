@@ -535,6 +535,12 @@
   art: datei
   pfad: docs/autonomy/rollen.json
   enthaelt: '"schritt": "codex"'
+- id: leitstand-reservierung-live
+  produkt: leitstand
+  titel: Live - der Dispatcher hat mindestens eine dauerhafte Issue-Reservierung geschrieben (SIN-832)
+  art: db
+  rest: leitstand_aufgaben?claim_revision=gt.0&select=issue,claim_revision&order=claim_revision.desc&limit=1
+  nicht_leer: issue
 - id: leitstand-fallback-policy
   produkt: leitstand
   titel: Fallback-Policy ist vorbereitet - kein Live-Nachweis (SIN-832)

@@ -14,7 +14,8 @@ import { readFile } from "node:fs/promises";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
 import { ladePausenAlle } from "../kontingent/pausen";
 import { PROJEKTE } from "../../src/lib/projekte";
-import { ausLinear, gespiegelteIds, LABEL, offeneSpiegel, type GithubIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, gespiegelteIds, LABEL, linearId, offeneSpiegel, type GithubIssue } from "../../src/lib/loop/auswahl";
+import { supabaseReservierung, verwaist, type Reservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 import {
   entscheidungenAusKommentaren,
   entscheidungsText,
@@ -252,6 +253,42 @@ async function schliesseSpiegel(repo: string, offene: GithubIssue[], identifier:
   }
 }
 
+// ------------------------------------------------------------------ Reservierung (SIN-832)
+
+const reservierungen = (): ReservierungsSpeicher | null =>
+  env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY ? supabaseReservierung({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY }) : null;
+
+/** Läuft oder wartet im Repo ein Worker-Lauf (claude.yml)? `null`, wenn das nicht lesbar ist: dann bleibt jeder Claim. */
+async function workerLaeuft(repo: string): Promise<boolean | null> {
+  try {
+    for (const status of ["in_progress", "queued"]) {
+      const d = await gh<{ total_count: number }>(`/repos/${repo}/actions/workflows/claude.yml/runs?status=${status}&per_page=1`);
+      if (d.total_count > 0) return true;
+    }
+    return false;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verwaiste Claims mit Beleg lösen (kein offener PR, kein Spiegel, kein laufender Worker, älter als 6 h).
+ * Beleg ist dieser Wächter-Lauf; ohne Lauf-URL (lokal) wird nichts freigegeben.
+ */
+async function claimsAufraeumen(projekt: string, repo: string, ids: string[], prs: PrInfo[], gespiegelt: Set<string>, stand: Reservierung[]) {
+  const speicher = reservierungen();
+  const beleg = env.GITHUB_RUN_ID ? `https://github.com/${env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand"}/actions/runs/${env.GITHUB_RUN_ID}` : null;
+  if (!speicher || !stand.length) return;
+  const laeuft = await workerLaeuft(repo);
+  const mitPr = new Set(prs.map((p) => linearId(p.titel)).filter((x): x is string => !!x));
+  for (const r of stand.filter((x) => ids.includes(x.issue))) {
+    if (!verwaist(r, { offenerPr: mitPr.has(r.issue), gespiegelt: gespiegelt.has(r.issue), workerLaeuft: laeuft, jetzt })) continue;
+    log(projekt, `${r.issue}: Claim ${r.claim} verwaist (kein PR, kein Spiegel, kein laufender Worker, seit ${r.seit}) → freigeben`);
+    if (DRY || !beleg) continue;
+    if (!(await speicher.freigeben(r, beleg))) log(projekt, `${r.issue}: Freigabe verloren (Stand geändert), nächster Lauf prüft erneut`);
+  }
+}
+
 // ------------------------------------------------------------------ Ablauf
 
 async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | null; teamId: string }, repo: string) {
@@ -312,10 +349,27 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
     }
   }
 
-  for (const a of erkennePrHaenger(prs, jetzt)) {
+  // SIN-832: dauerhafte Claims und Reparaturzähler dieses Projekts; nicht lesbar = keine Reparatur, kein Aufräumen.
+  const speicher = reservierungen();
+  const ids = issues.map((i) => i.identifier);
+  const stand = speicher ? await teil("reservierung", () => speicher.aktive(ids), [] as Reservierung[]) : [];
+  const zaehler = new Map(stand.map((r) => [r.issue, r.reparaturen]));
+  const reservierungLesbar = !!speicher && !fehler.some((f) => f.startsWith("reservierung:"));
+
+  for (const a of erkennePrHaenger(prs, jetzt, zaehler)) {
     if (a.art === "reparatur") {
       log(projekt.name, `PR #${a.pr.number} rot ohne Commit → @claude, Runde ${a.runde}`);
       if (DRY) continue;
+      // Erst issueweit zählen, dann bitten. Ohne lesbaren Stand oder bei verlorenem Compare-and-swap keine Runde.
+      // PRs ohne Linear-Kennung (z. B. Dependabot) und Läufe ohne Supabase zählen wie bisher nur über Labels.
+      const id = linearId(a.pr.titel);
+      if (id && speicher) {
+        const r = reservierungLesbar ? await speicher.laden(id).catch(() => null) : null;
+        if (!r || !(await speicher.zaehleReparatur(r).catch(() => false))) {
+          log(projekt.name, `PR #${a.pr.number}: Reparaturzähler für ${id} nicht gezählt (Stand fehlt oder geändert) → keine Runde`);
+          continue;
+        }
+      }
       await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: [`repair:${a.runde}`] } });
       await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, { method: "POST", body: { body: reparaturText(a.pr, a.runde) } });
     } else {
@@ -328,6 +382,8 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       });
     }
   }
+
+  if (!fehler.length) await claimsAufraeumen(projekt.name, repo, ids, prs, gespiegelt, stand);
 
   const zurueckgesetzt = new Set(haenger.filter((h) => h.art === "zuruecksetzen").map((h) => h.issue.identifier));
   const aktion = planeSchlange(

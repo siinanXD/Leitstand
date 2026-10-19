@@ -190,10 +190,13 @@ export function teilGemergte(prs: { titel: string; body?: string | null; gemergt
   return teil;
 }
 
-/** Nächster Schritt der Reparatur nach rotem `build`: nächste Runde oder Stopp. */
-export function reparatur(labels: string[]): { runde: number } | { stopp: true } {
+/**
+ * Nächster Schritt der Reparatur nach rotem `build`: nächste Runde oder Stopp.
+ * `issueweit`: dauerhaft gezählte Runden des Issues (SIN-832, `leitstand_aufgaben.reparaturen`), gilt über PRs und Provider hinweg.
+ */
+export function reparatur(labels: string[], issueweit = 0): { runde: number } | { stopp: true } {
   const runden = labels.map((l) => /^repair:(\d+)$/.exec(l)).filter(Boolean).map((m) => Number(m![1]));
-  const bisher = runden.length ? Math.max(...runden) : 0;
+  const bisher = Math.max(0, ...runden, Number.isSafeInteger(issueweit) ? issueweit : 0);
   if (labels.includes("needs-human") || bisher >= MAX_REPARATUR) return { stopp: true };
   return { runde: bisher + 1 };
 }

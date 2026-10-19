@@ -3,7 +3,7 @@
  * Das Skript scripts/waechter/waechter.ts holt Daten aus Linear und GitHub und führt die geplanten Aktionen aus.
  */
 import { istRepo, type RepoName } from "../freigabe";
-import { HAENGER_STUNDEN, LABEL, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, startbare, type LinearIssue } from "../loop/auswahl";
+import { HAENGER_STUNDEN, LABEL, linearId, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, startbare, type LinearIssue } from "../loop/auswahl";
 
 export const PLANUNG_TITEL = "Nächste Schritte planen";
 export const EINRICHTEN_TITEL = "Projekt einrichten";
@@ -146,15 +146,18 @@ export function erkenneIssueHaenger(issues: WaechterIssue[], offenePrs: PrInfo[]
 
 export type PrAktion = { art: "reparatur"; pr: PrInfo; runde: number } | { art: "stopp"; pr: PrInfo };
 
-/** Offener PR mit roter CI und seit 30 Minuten ohne neuen Commit: @claude bitten (höchstens 3 Runden), danach needs-human. */
-export function erkennePrHaenger(prs: PrInfo[], jetzt: Date): PrAktion[] {
+/**
+ * Offener PR mit roter CI und seit 30 Minuten ohne neuen Commit: @claude bitten (höchstens 3 Runden), danach needs-human.
+ * `issueweit`: dauerhaft gezählte Runden je Linear-Issue (SIN-832), damit ein neuer PR oder Provider nicht bei null beginnt.
+ */
+export function erkennePrHaenger(prs: PrInfo[], jetzt: Date, issueweit: Map<string, number> = new Map()): PrAktion[] {
   const r: PrAktion[] = [];
   for (const pr of prs) {
     if (!pr.ciRot || pr.labels.includes("needs-human")) continue;
     if (jetzt.getTime() - ms(pr.letzterCommitAt) < CI_WARTE_MINUTEN * MINUTE) continue;
     // Gerade erst gebeten: Wartezeit abwarten.
     if (pr.letzteReparaturAt && jetzt.getTime() - ms(pr.letzteReparaturAt) < CI_WARTE_MINUTEN * MINUTE) continue;
-    const schritt = reparatur(pr.labels);
+    const schritt = reparatur(pr.labels, issueweit.get(linearId(pr.titel) ?? "") ?? 0);
     if ("stopp" in schritt) {
       // Die letzte Runde bekommt Zeit: Wurde danach gepusht, entscheidet erst der nächste rote Lauf.
       if (pr.letzteReparaturAt && ms(pr.letzterCommitAt) > ms(pr.letzteReparaturAt)) continue;
