@@ -9,7 +9,7 @@ Entscheidung Sinan, 19.10.2026, 22:41 Europe/Berlin. Ersetzt die Fristen aus SIN
 - Unverändert gesperrt: `risk:high` ohne `freigegeben`, `no-automerge`, Draft, rote Pflicht-Checks, Secret-, Datenverlust- und Geldgrenzen.
 - Tests, Sicherheitsprüfung, unabhängiges Review und Kriterienbelege entfallen nicht.
 - Nach jedem Merge startet `dispatch.yml` sofort; ein Worker startet nur bei freiem Platz, Kontingent und startbarem Issue.
-- Technik: `wartezeitMs` und `FRIST_MINUTEN` sind aus `scripts/loop/risiko.mjs` entfernt, `automerge.yml` wartet nicht mehr. Die Station „Einspruchsfrist“ im Fließband (`src/lib/fliessband`) entfällt.
+- Technik: `wartezeitMs` und `FRIST_MINUTEN` sind aus `scripts/loop/risiko.mjs` entfernt, `automerge.yml` wartet nicht mehr. Der historische Stationswert `einspruchsfrist` bleibt im API-/Typvertrag des Fließbands erhalten. Alte Einspruchslabels werden weiter eingelesen, routen Karten in der Aufbauphase aber nicht mehr in eine Wartestation. Bestehende Verbraucher und historische Daten behalten ihren Vertrag.
 
 ## Rückkehr zu Fristen
 
@@ -36,5 +36,5 @@ bis dahin In Progress/In Review. Nachtragen: Folge-PR-URL, Head-SHA, erfolgreich
 Auto-Merge-Run, erfolgreiche Pflichtcheck-Runs und Merge-Zeitpunkt. Zusätzlich
 Ruleset auf `main` prüfen; die simulierten GitHub-Antworten ersetzen das nicht.
 
-- Produkt-Repos (SJCODE-website, stromlauf-ai) nutzen die pr-gate-Vorlage aus SIN-812. Abgleich als eigener Auftrag, Verweis im PR.
+- Produkt-Code abgeglichen am 20.10.2026: `SJCODE-website` (`main`) und `stromlauf-ai` (`master`) haben bereits keine feste Frist. Beide `.github/workflows/pr-gate.yml` besitzen Blob-SHA `ac63d73b000425197b63fbeccb2d0a98c55c8386`: low/medium aktivieren Auto-Merge nach Pflichtchecks, high verlangt Owner-Freigabe am aktuellen Commit. Kein Änderungsauftrag zum Entfernen nicht vorhandener Timer. Actions-Aktivierung und Repo-Einstellungen sind damit noch nicht live geprüft.
 - Beleg für „Done“: ein Folge-PR, der ohne Frist mergt (Head- und Run-Link im PR nachtragen). Code-Merge allein ist kein Done.

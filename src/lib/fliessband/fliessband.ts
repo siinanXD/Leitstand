@@ -4,7 +4,8 @@ import type { Aufgabe } from "../aufgaben";
 import { projektKuerzel, stufeKuerzel, type SnapshotRow } from "../uebersicht";
 
 export const PRODUKTE = ["lernapp", "sjcode-website", "stromlauf-ai", "leitstand"] as const;
-export const STATIONEN = ["geplant", "baut", "pr-offen", "pruefung", "gemergt", "live-check", "fertig"] as const;
+// Historische API-Daten behalten den Stationswert; in der Aufbauphase wird keine Karte dorthin geroutet.
+export const STATIONEN = ["geplant", "baut", "pr-offen", "pruefung", "einspruchsfrist", "gemergt", "live-check", "fertig"] as const;
 export type Station = (typeof STATIONEN)[number];
 export type Farbe = "gruen" | "gelb" | "rot" | "blau";
 
