@@ -81,8 +81,8 @@ test("Rückfall: Codex ok bleibt Codex, Kontingent leer geht an Claude, echter F
 });
 
 test("reviewerZeile und kommentar nennen den Reviewer", () => {
-  assert.equal(reviewerZeile("codex"), "Reviewer: Codex");
-  assert.equal(reviewerZeile("claude"), "Reviewer: Claude (Rückfall, Codex-Kontingent erschöpft)");
-  assert.match(kommentar(gut, "m", null, "claude"), /Reviewer: Claude \(Rückfall/);
-  assert.match(kommentar(gut, "m", null), /Reviewer: Codex/);
+  assert.equal(reviewerZeile("codex"), "Reviewer: OpenAI API");
+  assert.equal(reviewerZeile("claude"), "Reviewer: Anthropic API (Rückfall, OpenAI-API-Kontingent erschöpft)");
+  assert.match(kommentar(gut, "m", null, "claude"), /Reviewer: Anthropic API \(Rückfall/);
+  assert.match(kommentar(gut, "m", null), /Reviewer: OpenAI API/);
 });
