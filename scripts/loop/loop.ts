@@ -21,9 +21,11 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { ausLinear, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, MAX_REPARATUR, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
+import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
+import { auftragAus, blockiert, supabaseReservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -85,6 +87,65 @@ async function ereignis(step: string, status: "start" | "ok" | "fehler" | "ueber
     body: JSON.stringify({ project: extra.projekt ?? "leitstand", step, status, grund: extra.grund ?? null, issue: extra.issue ?? null, pr: extra.pr ?? null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
   }).catch((e: Error) => ({ ok: false, status: 0, text: async () => e.message }));
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
+}
+
+// ------------------------------------------------------------------ Reservierung (SIN-832)
+
+/** Dauerhafte issueweite Sperre in `leitstand_aufgaben`. Ohne Supabase gibt es keine Sperre und damit keinen Start. */
+function reservierungen(titel?: Map<string, string>): ReservierungsSpeicher | null {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  return supabaseReservierung({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY, titel: (id) => titel?.get(id) });
+}
+
+const laufUrl = () => (env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : null);
+/** Claude: der Dispatcher läuft nur ohne aktive Claude-Pause (oben geprüft). Codex: kein belegter Start-Adapter (SIN-832, Zuordnungsfehler). */
+const CLAUDE_FREI: ProviderStand = { adapter: true, fehler: null, bis: null, versuche: 0 };
+const CODEX_OHNE_ADAPTER: ProviderStand = { adapter: false, fehler: null, bis: null, versuche: 0 };
+/** Strukturiertes Ereignis als JSON im vorhandenen Feld `grund` (loop_events hat keine payload-Spalte, SIN-848). */
+const alsGrund = (art: string, e: Ereignis) => `reservierung_${art}: ${JSON.stringify(e)}`;
+
+/**
+ * Vor dem Start: Stand laden, Policy fragen, atomar reservieren. Nur bei bestätigter Reservierung startet ein Worker.
+ * Speicherfehler, verlorener Compare-and-swap oder ein vorhandener Claim verhindern den Start; nichts wird blind freigegeben.
+ */
+async function reserviereStart(speicher: ReservierungsSpeicher | null, i: LinearIssue, projekt: string): Promise<boolean> {
+  if (!speicher) {
+    await ereignis("dispatch", "uebersprungen", { projekt, issue: i.identifier, grund: "reservierung_fehlt: SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt, kein Start ohne dauerhafte Sperre (SIN-832)" });
+    return false;
+  }
+  const links = [laufUrl()].filter((x): x is string => !!x);
+  let stand;
+  try {
+    stand = await speicher.laden(i.identifier);
+  } catch (e) {
+    await ereignis("dispatch", "fehler", { projekt, issue: i.identifier, grund: fehlergrund(`reservierung_unlesbar: ${(e as Error).message}`) });
+    return false;
+  }
+  const a = auftragAus(stand, { pr: null, branch: null, codexGeeignet: false });
+  const e = planeFallback(a, { claude: CLAUDE_FREI, codex: CODEX_OHNE_ADAPTER }, new Date(), links);
+  if (e.status !== "startbereit") {
+    await ereignis("dispatch", "uebersprungen", { projekt, issue: i.identifier, grund: alsGrund(e.status, e) });
+    return false;
+  }
+  const claim = `gh-${env.GITHUB_RUN_ID ?? "lokal"}-${i.identifier}`;
+  if (!(await reserviere(a, e, claim, speicher))) {
+    await ereignis("dispatch", "uebersprungen", { projekt, issue: i.identifier, grund: alsGrund("verloren", { ...e, status: "wartend" }) });
+    return false;
+  }
+  console.log(`Reserviert: ${i.identifier} (${claim}, Revision ${a.revision + 1}).`);
+  return true;
+}
+
+/** Nach belegtem Ende (Merge, Stopp): Claim lösen. Fehler werden gemeldet, der Reparaturzähler bleibt stehen. */
+async function gibFrei(id: string, nachweis: string, projekt?: string, erfolg = false) {
+  const speicher = reservierungen();
+  if (!speicher || DRY) return;
+  try {
+    const r = await speicher.laden(id);
+    if ((r.claim || (erfolg && r.reparaturen > 0)) && !(await speicher.freigeben(r, nachweis, erfolg))) console.log(`::warning::${id}: Claim nicht freigegeben (Stand geändert oder Beleg ungültig).`);
+  } catch (e) {
+    await ereignis("merge", "fehler", { projekt, issue: id, grund: fehlergrund(`reservierung_freigabe: ${(e as Error).message}`) });
+  }
 }
 
 async function projektIssues(projekt: string): Promise<ProjektKnoten[]> {
@@ -271,6 +332,33 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   };
   const max = Number(env.LOOP_MAX_PARALLEL ?? 1);
   const gespiegelt = gespiegelteIds(ghIssues);
+  // SIN-832: Issues mit aktivem Claim oder ausgeschöpften Reparaturen belegen keinen Startplatz (sonst steht die Schlange).
+  if (!DRY) {
+    const speicher = reservierungen();
+    const todo = issues.filter((i) => i.stateType === "unstarted").map((i) => i.identifier);
+    if (!speicher) {
+      await ereignis("dispatch", "uebersprungen", { projekt, grund: "reservierung_fehlt: SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt, kein Start ohne dauerhafte Sperre (SIN-832)" });
+      return;
+    }
+    let staende;
+    try {
+      staende = await speicher.staende(todo);
+    } catch (e) {
+      await ereignis("dispatch", "fehler", { projekt, grund: fehlergrund(`reservierung_unlesbar: ${(e as Error).message}`) });
+      return;
+    }
+    const gesperrt = new Set(staende.filter((r) => blockiert(r, MAX_REPARATUR)).map((r) => r.issue));
+    for (const r of staende.filter((x) => !x.claim && x.reparaturen >= MAX_REPARATUR)) {
+      const i = issues.find((x) => x.identifier === r.issue);
+      if (!i || i.labels.some((l) => l.toLowerCase() === "needs-human")) continue;
+      const team = nodes.find((n) => n.id === i.id)!.team.id;
+      // Nur mit gesetztem Label kommentieren, sonst kommt derselbe Kommentar bei jedem Dispatch.
+      const gesetzt = await labelSetzen(i.id, team, "needs-human").then(() => true, (e: Error) => (console.log(`::warning::${r.issue}: needs-human nicht gesetzt: ${e.message}`), false));
+      if (gesetzt) await kommentar(i.id, `Loop: ${r.reparaturen} erfolglose Reparaturrunden (issueweit, SIN-832). Kein weiterer Start, Sinan entscheidet. Danach \`reparaturen\` in \`leitstand_aufgaben\` zurücksetzen und \`needs-human\` entfernen.`);
+    }
+    if (gesperrt.size) console.log(`Ohne Startplatz (Claim oder Reparaturgrenze): ${[...gesperrt].join(", ")}`);
+    issues = issues.filter((i) => !gesperrt.has(i.identifier));
+  }
   for (const h of freigegebene(issues, belegung)) {
     console.log(`Platz von ${h.identifier} freigegeben: kein offener PR, seit ${h.startedAt ?? "?"} In Progress.`);
     await ereignis("platz", "ok", { projekt, issue: h.identifier, grund: `haenger: ohne PR länger als ${PLATZ_MINUTEN} Min` });
@@ -291,6 +379,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     await ereignis("dispatch", "uebersprungen", { projekt, grund });
     return;
   }
+  const speicher = DRY ? null : reservierungen(new Map(wahl.map((i) => [i.identifier, i.title])));
   for (const i of wahl) {
     const { title, body } = issueText(i, [eigenes ? lehrenHinweise(i) : "", wiederaufnahme(i.description)].filter(Boolean).join("\n\n"));
     const team = nodes.find((n) => n.id === i.id)!.team.id;
@@ -298,6 +387,8 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
       console.log(`[trocken] würde starten: ${title}`);
       continue;
     }
+    // SIN-832: erst die dauerhafte Reservierung, dann der Start. Scheitert der Start danach, bleibt der Claim (Ausgang unklar).
+    if (!(await reserviereStart(speicher, i, projekt))) continue;
     const neu = await gh<{ number: number; html_url: string }>(`/repos/${repo}/issues`, { method: "POST", body: { title, body } });
     // Label getrennt setzen: das löst `issues: labeled` aus und startet claude.yml.
     await gh(`/repos/${repo}/issues/${neu.number}/labels`, { method: "POST", body: { labels: ["claude"] } });
@@ -346,6 +437,8 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
   // SIN-760: Spiegel schließen (falls `Closes #N` es nicht schon tat), sonst startet das Issue nie wieder.
   const offene = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   for (const n of offeneSpiegel(offene, id)) await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
+  // SIN-832: Der Worker ist mit dem Merge belegt fertig; Claim und Reparaturzähler gehen (Runden davor waren nicht erfolglos).
+  await gibFrei(id, p.html_url, projekt, true);
   if (e.status === "done") await ereignis("merge", "ok", { projekt, issue: id, pr });
   else await ereignis("merge", "uebersprungen", { projekt, issue: id, pr, grund: `haken_offen: ${e.grund}` });
 }
@@ -355,26 +448,42 @@ async function reparaturLauf() {
   const lauf = arg("lauf") ?? "";
   const p = await gh<{ title: string; head: { ref: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
   if (p.state !== "open" || !p.head.ref.startsWith("claude/")) return console.log(`PR #${pr}: nicht offen oder kein Claude-Branch.`);
-  const schritt = reparatur(p.labels.map((l) => l.name));
   const id = linearId(p.title);
+  // SIN-832: issueweiter, dauerhafter Zähler; ohne lesbaren Stand keine weitere Runde (Stopp statt Raten).
+  const speicher = id ? reservierungen() : null;
+  let stand = null;
+  try {
+    stand = id && speicher ? await speicher.laden(id) : null;
+  } catch (e) {
+    await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`reservierung_unlesbar: ${(e as Error).message}`) });
+    return;
+  }
+  const schritt = reparatur(p.labels.map((l) => l.name), stand?.reparaturen ?? 0);
   if ("stopp" in schritt) {
     if (p.labels.some((l) => l.name === "needs-human")) return console.log(`PR #${pr}: wartet schon auf Sinan.`);
     if (DRY) return console.log(`[trocken] Stopp für #${pr}`);
     await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
-    await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `build ist nach 3 Reparaturrunden noch rot (${lauf}). Stopp, Sinan entscheidet.` } });
+    await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `build ist nach ${MAX_REPARATUR} Reparaturrunden (issueweit gezählt) noch rot (${lauf}). Stopp, Sinan entscheidet.` } });
     if (id) {
       const issue = await issueNachKennung(id);
-      if (issue) await kommentar(issue.id, `Blocker: PR #${pr} nach 3 Reparaturrunden rot. ${lauf}`);
+      if (issue) await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) rot. ${lauf}`);
     }
-    await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: build nach 3 Reparaturrunden noch rot (${lauf})`) });
+    await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: build nach ${MAX_REPARATUR} Reparaturrunden noch rot (${lauf})`) });
+    // SIN-832: Stopp ist ein belegtes Ende des Workers; Claim lösen, Zähler bleibt, needs-human hält das Issue an.
+    if (id) await gibFrei(id, `https://github.com/${repo}/pull/${pr}`);
     return;
   }
   if (DRY) return console.log(`[trocken] Runde ${schritt.runde} für #${pr}`);
+  // Erst zählen, dann bitten: verliert der Zähler das Compare-and-swap, startet keine Runde (sonst unbegrenzt).
+  if (stand && speicher && !(await speicher.zaehleReparatur(stand, p.title))) {
+    await ereignis("repair", "uebersprungen", { issue: id ?? undefined, pr, grund: "reservierung_verloren: Reparaturzähler hat sich parallel geändert, keine Runde" });
+    return;
+  }
   await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: [`repair:${schritt.runde}`] } });
   await gh(`/repos/${repo}/issues/${pr}/comments`, {
     method: "POST",
     body: {
-      body: `@claude Der Check build ist rot (${lauf}). Ursache im Log suchen, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von 3.`,
+      body: `@claude Der Check build ist rot (${lauf}). Ursache im Log suchen, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von ${MAX_REPARATUR}.`,
     },
   });
   await ereignis("repair", "start", { issue: id ?? undefined, pr });

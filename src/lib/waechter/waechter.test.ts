@@ -254,3 +254,8 @@ test("Entscheidung: im Linear-Kommentar führt zu Label und PR-Kommentar (SIN-65
 test("Ohne passenden Kommentar bleibt die Frage offen (SIN-651)", () => {
   assert.deepEqual(entscheidungenAusKommentaren(["siinanXD/Content-Agent-Lernapp#350 ja", "Hinweis: siinanXD/Content-Agent-Lernapp#350", "Entscheidung: ja, ohne PR"]), []);
 });
+
+test("SIN-832: issueweiter Reparaturzähler stoppt auch einen neuen PR ohne repair-Labels", () => {
+  assert.equal(erkennePrHaenger([pr()], jetzt, new Map([["SIN-1", 3]]))[0]?.art, "stopp");
+  assert.equal(erkennePrHaenger([pr()], jetzt, new Map([["SIN-2", 3]]))[0]?.art, "reparatur");
+});

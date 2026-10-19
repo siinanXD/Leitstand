@@ -46,3 +46,14 @@ test("Protokoll: nur anhängen, gleiche Zeile nicht doppelt", () => {
   assert.equal(logAnhaengen(a, jetzt, "3 Notizen"), a);
   assert.equal(logAnhaengen(a, jetzt, "4 Notizen").split("\n").filter((z) => z.startsWith("- ")).length, 2);
 });
+
+test("Synchronisierung erhält Entscheidungsdatum, ersetzten Status und historische Ergänzungen", () => {
+  const pfad = "Entscheidungen/SIN-1.md";
+  const alt = `${kopf("entscheidung", "ersetzt")}# Damalige Entscheidung\nQuelle: https://example.invalid/alt\n[[Produkte/leitstand]]\nErsetzt durch: [[Entscheidungen/SIN-2]]\n`;
+  const neu = `${kopf("entscheidung", "gilt", "2026-10-18")}# Automatisch gelesen\n[[Produkte/Leitstand]]\n`;
+  const d = abschliessen({ [pfad]: alt }, { [pfad]: neu }, jetzt).dateien;
+  assert.equal(d[pfad], alt.replace("[[Produkte/leitstand]]", "[[Produkte/Leitstand]]"));
+  assert.equal(eigenschaften(d[pfad]).datum, "2026-10-01");
+  assert.equal(eigenschaften(d[pfad]).status, "ersetzt");
+  assert.equal(abschliessen({}, { [pfad]: neu }, jetzt).dateien[pfad], neu);
+});

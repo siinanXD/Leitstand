@@ -1,0 +1,40 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-832",
+  "zeitpunkt": "2026-10-19T18:40:00Z",
+  "status": "blockiert",
+  "zusammenfassung": "Dauerhafte issueweite Reservierung (Compare-and-swap auf leitstand_aufgaben) an Dispatcher, Merge, Reparatur und Wächter angebunden; Reparaturzähler issueweit und providerübergreifend. Simulationstests grün, kein Live-Nachweis. Codex-Startweg weiter blockiert (Zuordnungsfehler).",
+  "naechster_schritt": "Lern-App #433 mergen und Migration anwenden, dann CI/Review dieses PRs, Prüfer-Variablen setzen, Live-Probe leitstand-reservierung-live nach erstem Dispatch prüfen. Codex-Zuordnung reparieren.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://linear.app/sinan-kahraman/issue/SIN-832",
+    "https://github.com/siinanXD/Leitstand/pull/294#issuecomment-6272812637",
+    "https://github.com/siinanXD/Leitstand/actions/runs/39252951628/job/118061027159",
+    "https://github.com/siinanXD/Leitstand/pull/294#pullrequestreview-5575299063",
+    "docs/decisions/SIN-832-fallback.md",
+    "https://github.com/siinanXD/Leitstand/pull/294#issuecomment-6273897553",
+    "https://github.com/siinanXD/Content-Agent-Lernapp/pull/433",
+    "https://developers.openai.com/api/docs/models/gpt-5.4-mini"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/294",
+  "geaendert": [
+    "README.md",
+    "docs/CODEX-WORKER.md",
+    "docs/abnahme.yml",
+    "docs/autonomy/laeufe/SIN-832.json",
+    "docs/autonomy/rollen.json",
+    "docs/decisions/SIN-832-fallback.md",
+    "scripts/loop/loop.ts",
+    "scripts/waechter/waechter.ts",
+    "src/lib/loop/auswahl.test.ts",
+    "src/lib/loop/auswahl.ts",
+    "src/lib/loop/fallback.test.ts",
+    "src/lib/loop/fallback.ts",
+    "src/lib/loop/reservierung.test.ts",
+    "src/lib/loop/reservierung.ts",
+    "src/lib/waechter/waechter.test.ts",
+    "src/lib/waechter/waechter.ts",
+    "supabase/migrations/leitstand/20261019200000_aufgaben_reservierung.sql"
+  ]
+}

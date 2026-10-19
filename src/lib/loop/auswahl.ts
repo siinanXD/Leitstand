@@ -8,7 +8,8 @@ import { istTeil } from "./haken";
 
 export const PROJEKT ="Leitstand";
 export const LABEL = "claude";
-export const MAX_REPARATUR = 3;
+/** Höchstens zwei erfolglose Reparaturrunden je Issue (SIN-840), für Dispatcher, repair.yml und Wächter gleich (SIN-832). */
+export const MAX_REPARATUR = 2;
 /** Ab hier gilt ein Issue „In Progress“ ohne offenen PR als Hänger (gleiche Grenze wie der Wächter, SIN-419). */
 export const HAENGER_STUNDEN = 6;
 /** Ohne offenen PR belegt ein laufendes Issue den Platz höchstens so lange (SIN-759). */
@@ -105,8 +106,9 @@ export function freigegebene(issues: LinearIssue[], belegung: Belegung): LinearI
   return issues.filter((i) => i.stateType === "started" && hatLabel(i) && !belegt.has(i.identifier));
 }
 
+// SIN-832: `needs-human` belegt nie einen Platz, sonst steht bei einem Platz die ganze Schlange.
 const startbar = (i: LinearIssue, gespiegelt: Set<string>) =>
-  i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier);
+  i.stateType === "unstarted" && hatLabel(i) && !offenBlockiert(i) && !gespiegelt.has(i.identifier) && !i.labels.includes("needs-human");
 
 /** Startbare Todo-Issues, genau wie `waehle` sie sieht (SIN-736): Dispatcher und `loop_snapshot.queue.startable` zählen damit dasselbe. */
 export const startbare = (issues: LinearIssue[], gespiegelt: Set<string>): LinearIssue[] => issues.filter((i) => startbar(i, gespiegelt));
@@ -190,10 +192,13 @@ export function teilGemergte(prs: { titel: string; body?: string | null; gemergt
   return teil;
 }
 
-/** Nächster Schritt der Reparatur nach rotem `build`: nächste Runde oder Stopp. */
-export function reparatur(labels: string[]): { runde: number } | { stopp: true } {
+/**
+ * Nächster Schritt der Reparatur nach rotem `build`: nächste Runde oder Stopp.
+ * `issueweit`: dauerhaft gezählte Runden des Issues (SIN-832, `leitstand_aufgaben.reparaturen`), gilt über PRs und Provider hinweg.
+ */
+export function reparatur(labels: string[], issueweit = 0): { runde: number } | { stopp: true } {
   const runden = labels.map((l) => /^repair:(\d+)$/.exec(l)).filter(Boolean).map((m) => Number(m![1]));
-  const bisher = runden.length ? Math.max(...runden) : 0;
+  const bisher = Math.max(0, ...runden, Number.isSafeInteger(issueweit) ? issueweit : 0);
   if (labels.includes("needs-human") || bisher >= MAX_REPARATUR) return { stopp: true };
   return { runde: bisher + 1 };
 }
