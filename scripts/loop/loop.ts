@@ -26,6 +26,8 @@ import { ausLinear, freigegebene, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegel
 import { entscheide, istTeil, kommentarText, leseBelege, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { auftragsHaken, auftragStand, auftragText, ladeAuftrag } from "../../src/lib/loop/auftrag";
+import { parseProben } from "../../src/lib/abnahme/abnahme";
+import { pruefeLive } from "../../src/lib/loop/live";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -45,6 +47,7 @@ async function linear<T>(query: string, variables: Record<string, unknown> = {})
   });
   const json = (await res.json()) as { data?: T; errors?: unknown };
   if (!res.ok || json.errors) throw new Error(`Linear: ${res.status} ${JSON.stringify(json.errors ?? "")}`);
+  if (query.trimStart().startsWith("mutation") && Object.values(json.data ?? {}).some((v) => v === null || (typeof v === "object" && v && "success" in v && v.success !== true))) throw new Error("Linear: Mutation nicht bestätigt");
   return json.data as T;
 }
 
@@ -320,27 +323,34 @@ async function labelSetzen(issueId: string, teamId: string, name: string) {
 }
 
 async function gemergt(repo: string, pr: number, projekt?: string) {
-  const p = await gh<{ title: string; body: string | null; html_url: string; merged: boolean; head: { sha: string } }>(`/repos/${repo}/pulls/${pr}`);
+  const p = await gh<{ title: string; body: string | null; html_url: string; merged: boolean; merge_commit_sha: string; head: { sha: string }; base: { ref: string; repo: { full_name: string } } }>(`/repos/${repo}/pulls/${pr}`);
   if (!p.merged) return console.log(`PR #${pr} ist nicht gemergt.`);
+  if (p.base.ref !== "main" || p.base.repo.full_name.toLowerCase() !== repo.toLowerCase()) throw new Error("Abschluss nur nach Merge ins eigene main");
   const id = linearId(p.title);
   if (!id) return console.log(`PR #${pr}: keine Linear-Kennung im Titel.`);
   const issue = await ladeAuftrag(linear, id);
   const stand = { head: p.head.sha, auftrag: auftragStand(issue) };
   // SIN-754: Done nur, wenn alle Fertig-Kriterien belegt sind und der PR kein „Part of“ ist.
   const kommentare = await gh<{ body: string; user: { login: string } }[]>(`/repos/${repo}/issues/${pr}/comments?per_page=100`);
-  const belege = leseBelege(kommentare.filter((c) => c.user.login === "github-actions[bot]").map((c) => c.body), stand);
+  let belege = leseBelege(kommentare.filter((c) => c.user.login === "github-actions[bot]").map((c) => c.body), stand);
   if (belege === null) {
     const marker = `<!-- abnahme-wartet:${stand.head}:${stand.auftrag} -->`;
     if (!issue.kommentare.some((c) => c.body.includes(marker))) await kommentar(issue.id, `${marker}\n${p.html_url}: aktuelle Prüfung des Auftrags/Heads fehlt. In Review; kein blinder Neubau. Nächster Nachweis: unabhängiger Prüfer-Abgleich mit aktuellen Linear-Kommentaren und issuebezogenen Live-Belegen.`);
     await setzeStatus(issue.id, issue.team.id, "In Review");
     return;
   }
-  const ergebnisMarker = `<!-- haken-stand:${stand.head}:${stand.auftrag}:${createHash("sha256").update(JSON.stringify(belege)).digest("hex")} -->`;
+  if (belege.some((b) => b.art === "live")) {
+    if (!p.merge_commit_sha) throw new Error("Merge-Commit für Live-Proben fehlt");
+    const datei = await gh<{ content: string; encoding: string }>(`/repos/${repo}/contents/docs/abnahme.yml?ref=${p.merge_commit_sha}`);
+    if (datei.encoding !== "base64") throw new Error("Live-Proben nicht lesbar");
+    const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null;
+    belege = await pruefeLive({ belege, proben: parseProben(Buffer.from(datei.content, "base64").toString("utf8")), issue: id, runUrl });
+  }
+  const ergebnisMarker = `<!-- haken-stand:${stand.head}:${stand.auftrag}:${createHash("sha256").update(JSON.stringify(belege.map((b) => b.art === "live" ? { ...b, beleg: b.beleg.replace(/^https:\/\/\S+ — /, "") } : b))).digest("hex")} -->`;
   if (issue.kommentare.some((c) => c.body.includes(ergebnisMarker))) return console.log(`${id}: dieser Prüfstand ist bereits verarbeitet.`);
   const runde = issue.kommentare.filter((c) => c.body.includes(RUNDE_MARKER)).length + 1;
-  const e = entscheide({ haken: auftragsHaken(issue), belege, teil: istTeil(p.title, p.body), runde });
+  const e = entscheide({ haken: auftragsHaken(issue), belege, teil: istTeil(p.title, p.body), runde, liveGeprueft: true });
   if (e.belegt.length && issue.description && !DRY) await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: setzeHaken(issue.description, e.belegt) });
-  await kommentar(issue.id, `${kommentarText(e, belege ?? [], runde, p.html_url)}\n${ergebnisMarker}`);
   if (e.status === "done") await setzeStatus(issue.id, issue.team.id, "Done");
   else if (e.status === "wartet") await setzeStatus(issue.id, issue.team.id, "In Review");
   else if (e.status === "needs-human") {
@@ -352,6 +362,8 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
   // SIN-760: Spiegel schließen (falls `Closes #N` es nicht schon tat), sonst startet das Issue nie wieder.
   const offene = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   for (const n of offeneSpiegel(offene, id)) await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
+  // Erst abgeschlossene Status-/Label-/Spiegeländerungen dürfen den Prüfstand als verarbeitet markieren.
+  await kommentar(issue.id, `${kommentarText(e, belege ?? [], runde, p.html_url)}\n${ergebnisMarker}`);
   if (e.status === "done") await ereignis("merge", "ok", { projekt, issue: id, pr });
   else await ereignis("merge", "uebersprungen", { projekt, issue: id, pr, grund: `haken_offen: ${e.grund}` });
 }

@@ -41,8 +41,8 @@ export type Entscheidung = { status: "done" | "offen" | "wartet" | "needs-human"
  * Fehlende Kriterien bleiben offen. Ab MAX_RUNDEN Wiederaufnahmen: needs-human.
  * `belege` fehlt (Prüfer nicht gelaufen) = nichts belegt.
  */
-export function entscheide(a: { haken: Haken[]; belege: Beleg[] | null; teil: boolean; runde: number }): Entscheidung {
-  const belegtSet = new Set((a.belege ?? []).filter((b) => b.belegt && b.beleg.trim() && (b.art !== "live" || /https:\/\/\S+/.test(b.beleg))).map((b) => norm(b.text)));
+export function entscheide(a: { haken: Haken[]; belege: Beleg[] | null; teil: boolean; runde: number; liveGeprueft?: boolean }): Entscheidung {
+  const belegtSet = new Set((a.belege ?? []).filter((b) => b.belegt && b.beleg.trim() && (b.art !== "live" || a.liveGeprueft === true)).map((b) => norm(b.text)));
   const offeneHaken = a.haken;
   const belegt = offeneHaken.filter((h) => belegtSet.has(norm(h.text))).map((h) => h.text);
   const offen = offeneHaken.filter((h) => !belegtSet.has(norm(h.text))).map((h) => h.text);

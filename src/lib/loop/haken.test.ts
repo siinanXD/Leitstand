@@ -58,7 +58,8 @@ test("fehlende Live-Probe wartet ohne neue Baurunde; URL allein ersetzt keine un
   const e = entscheide({ haken, belege: [{ text: "Live", belegt: true, beleg: "Probe angelegt", art: "live" }], teil: false, runde: 9 });
   assert.equal(e.status, "wartet");
   assert.doesNotMatch(kommentarText(e, [], 9, "#5"), /<!-- haken-runde -->/);
-  assert.equal(entscheide({ haken, belege: [{ text: "Live", belegt: true, beleg: "https://example.test/run/1", art: "live" }], teil: false, runde: 1 }).status, "done");
+  assert.equal(entscheide({ haken, belege: [{ text: "Live", belegt: true, beleg: "https://example.test/run/1", art: "live" }], teil: false, runde: 1 }).status, "wartet");
+  assert.equal(entscheide({ haken, belege: [{ text: "Live", belegt: true, beleg: "https://example.test/run/1", art: "live" }], teil: false, runde: 1, liveGeprueft: true }).status, "done");
 });
 
 test("ohne Kriterien gibt es keinen automatischen Abschluss", () => {

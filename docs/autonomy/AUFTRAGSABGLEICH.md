@@ -10,8 +10,14 @@ Ein freigegebener Auftrag umfasst Diagnose, Umsetzung, Prüfungen und notwendige
 6. Abschluss an PR-Head und Auftragsinhalt binden. Nachträge entwerten die alte Prüfung. Nur der Actions-Prüfer veröffentlicht verwendbare Marker; beliebige Worker-Kommentare zählen nicht. Ohne aktuellen Prüfstand oder nur mit ausstehender Live-Probe/Entscheidung bleibt das Issue In Review, ohne Neubau. Konkrete Code-Lücken gehen mit nächstem Nachweis an den bestehenden Auftrag zurück; nach zwei Nacharbeitsrunden stoppen. Ein Issue ohne Kriterien wird nie automatisch Done.
 7. Ergebnis in bestehendem Issue/PR festhalten: erledigt mit Beleg, noch offen mit nächstem Nachweis, oder Blocker mit genau benötigter Entscheidung. Keine neue Dublette für denselben Fehler.
 
+## Live-Abnahme nach dem Merge
+
+Für jedes Live-Kriterium eine HTTP-/DB-Probe in `docs/abnahme.yml` mit `issue: SIN-<nummer>` und `kriterium: <exakter Checkboxtext>` hinterlegen. Nur passende Proben des ins eigene main gemergten Commits werden beim Abschluss ausgeführt. Modell-URLs, Dateiexistenz oder HTTP 200 ohne passende Inhalts-/Zeilenprüfung reichen nicht. Alle zugeordneten Proben müssen bestehen; ein Fehler bleibt offen. Der konkrete Lauf und die Messergebnisse stehen im GitHub-Log.
+
+Der bestehende Dispatcher führt diese lesende Abnahme erneut aus, solange Live-Nachweise fehlen: spätere grüne Messung kann ohne neuen Build oder Modellaufruf abschließen. Fehlende Probenzuordnung ist eine Code-Lücke und geht begrenzt zurück. Änderungen an Anforderungen entwerten dagegen weiterhin den unabhängigen Code-Prüfstand. Ergebnis-Marker erst nach bestätigten Status-/Label-/Spiegeländerungen schreiben; API-Fehler bleiben wiederholbar.
+
 ## Aktivierung und Grenzen
 
-Dieses Paket ersetzt keine Security-Abnahme. Vor Aktivierung die vertrauenswürdige Ausführung des Prüfers aus SIN-827/PR269 integrieren und unabhängig prüfen: Ein Botname allein schützt nicht vor manipulierter Workflowdefinition. Bestehende Marker ohne Head-/Auftragsbindung werden absichtlich nicht als Abschlussbeleg akzeptiert. Live-Nachweise müssen vom unabhängigen Prüfer tatsächlich gelesen werden; eine URL allein beweist ihren Inhalt nicht.
+Dieses Paket ersetzt keine Security-Abnahme. Vor Aktivierung die vertrauenswürdige Ausführung des Prüfers aus SIN-827/PR269 integrieren und unabhängig prüfen: Ein Botname allein schützt nicht vor manipulierter Workflowdefinition. Bestehende Marker ohne Head-/Auftragsbindung werden absichtlich nicht als Abschlussbeleg akzeptiert. Der unabhängige Code-Prüfer muss die fachliche Aussage der Probe prüfen; der geschützte Abschlusslauf misst deren tatsächliches Ergebnis. Eine URL allein beweist ihren Inhalt nicht.
 
 SIN-830 ist der konkrete Kontrollfall: Lauf 39219058277 führte alle damaligen 72 Proben aus (55 grün, 17 rot) und scheiterte erst beim Speichern nach loop_events mit HTTP 400. Die zwei später ergänzten Proben ergeben aktuell 74; kein erfolgreicher Speicher- oder vollständiger Produktablauf ist durch diese Codeänderung nachgewiesen.

@@ -12,44 +12,22 @@
  *      LEITSTAND_URL und weitere Adressen, die in docs/abnahme.yml als ${NAME} stehen.
  * DRY_RUN=1: nur Ausgabe im Log, nichts in loop_events. ABNAHME_DATEI: andere Proben-Datei.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { bewerteText, bewerteZeilen, einsetzen, ereignisZeile, parseProben, type Ergebnis, type Probe } from "../../src/lib/abnahme/abnahme";
+import { readFileSync } from "node:fs";
+import { ereignisZeile, parseProben, type Ergebnis } from "../../src/lib/abnahme/abnahme";
+
+import { fuehreAus } from "../../src/lib/abnahme/ausfuehren";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
 const zeitlimit = () => AbortSignal.timeout(20_000);
 const supabaseKopf = () => ({ apikey: env.SUPABASE_SERVICE_ROLE_KEY ?? "", Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY ?? ""}` });
 
-async function fuehreAus(p: Probe): Promise<Ergebnis> {
-  const feld = (n: string) => einsetzen(p[n] ?? "", env);
-  if (p.art === "http") {
-    const res = await fetch(feld("url"), { signal: zeitlimit() });
-    const erwartet = Number(p.status ?? 200);
-    return res.status === erwartet ? bewerteText(p, await res.text()) : { ok: false, grund: `HTTP ${res.status}, erwartet ${erwartet}` };
-  }
-  if (p.art === "db") {
-    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt");
-    // Nur GET auf die REST-Schnittstelle: eine Probe kann nichts ändern.
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${feld("rest")}`, { headers: supabaseKopf(), signal: zeitlimit() });
-    return res.ok ? bewerteZeilen(p, await res.json(), Date.now()) : { ok: false, grund: `Abfrage: HTTP ${res.status}` };
-  }
-  if (p.art === "datei") {
-    return existsSync(p.pfad) ? bewerteText(p, readFileSync(p.pfad, "utf8")) : { ok: false, grund: `${p.pfad} fehlt` };
-  }
-  if (!env.GH_TOKEN) throw new Error("GH_TOKEN fehlt");
-  const res = await fetch(`https://api.github.com/repos/${p.repo}/contents/${p.pfad.split("/").map(encodeURIComponent).join("/")}`, {
-    headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github.raw+json" },
-    signal: zeitlimit(),
-  });
-  return res.ok ? bewerteText(p, await res.text()) : { ok: false, grund: `${p.repo}/${p.pfad}: HTTP ${res.status}` };
-}
-
 async function main() {
   const proben = parseProben(readFileSync(env.ABNAHME_DATEI ?? "docs/abnahme.yml", "utf8"));
   const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null;
   const zeilen = [];
   for (const p of proben) {
-    const e = await fuehreAus(p).catch((f): Ergebnis => ({ ok: false, grund: `Nicht geprüft: ${f instanceof Error ? f.message : f}` }));
+    const e = await fuehreAus(p, env).catch((f): Ergebnis => ({ ok: false, grund: `Nicht geprüft: ${f instanceof Error ? f.message : f}` }));
     console.log(`${e.ok ? "grün" : "ROT "} ${p.produkt}/${p.id}: ${e.grund}`);
     zeilen.push(ereignisZeile(p, e, env.GITHUB_RUN_ID ?? null, runUrl));
   }
