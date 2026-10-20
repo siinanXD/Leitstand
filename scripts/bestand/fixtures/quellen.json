@@ -1,0 +1,5 @@
+{
+  "gedaechtnis": { "ref": "fixture-vault", "sha": "fixture-vault-sha", "eintraege": [{ "titel": "Bestandsabgleich Entscheidung", "url": "https://example.invalid/notiz", "inhalt": "Private fixture details" }] },
+  "linear": { "ref": "fixture-linear", "sha": null, "eintraege": [{ "titel": "Bestandsabgleich offen", "url": "https://example.invalid/issue", "zustand": "started" }] },
+  "prs": { "ref": "fixture-repo", "sha": null, "eintraege": [{ "titel": "Bestandsabgleich PR", "url": "https://example.invalid/pr", "zustand": "merged", "sha": "fixture-pr-head" }] }
+}

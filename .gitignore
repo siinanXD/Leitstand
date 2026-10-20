@@ -10,3 +10,6 @@ test-results
 .vercel
 stand-bericht.json
 gedaechtnis-ausgabe
+
+# Bestandsberichte sind nur nach expliziter Sichtung versioniert.
+docs/bestand/*.json

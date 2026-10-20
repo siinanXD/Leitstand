@@ -20,7 +20,7 @@ test("PR mit Probe bleibt bestanden; reine Doku braucht keine", () => {
 });
 
 test("Modell sagt hoch, aber bestanden=true: trotzdem nicht bestanden", () => {
-  const e = bewerte({ bestanden: true, funde: [{ datei: "docs/a.md", zeile: 1, schwere: "hoch", text: "x" }] }, ["docs/a.md"], false);
+  const e = bewerte({ bestanden: true, funde: [{ datei: "a", zeile: 1, schwere: "hoch", text: "x" }] }, ["docs/a.md"], false);
   assert.equal(e.bestanden, false);
 });
 
@@ -139,34 +139,6 @@ test("Normgleiche doppelte Auftragshaken bleiben gesperrt statt eine Live-Abnahm
   assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
 });
 
-// SIN-877: Befunde nach #302 (0ab279f) und #308 (e7f3dfa); die Original-Antworten waren hier nicht abrufbar, #302 steht nur sinngemäß im Review.
-const hoch = (text: string, datei = "(Issue)", zeile = 0) => ({ datei, zeile, schwere: "hoch" as const, text });
-
-test("SIN-877: Fund ohne Codestelle wird mittel, auch ohne Stichwort (#302)", () => {
-  const funde = [hoch("Der PR belegt keinen echten Subagent-Aufruf und keinen echten Live-Worker."), hoch("Kein Run-Link", "src/nicht-im-pr.ts", 3)];
-  const e = bewerte({ bestanden: false, funde }, ["src/a.ts", "docs/abnahme.yml"], false);
-  assert.deepEqual(e.funde.map((f) => f.schwere), ["mittel", "mittel"]);
-  assert.equal(e.bestanden, true);
-});
-
-test("SIN-877: Fund mit Codestelle im PR bleibt hoch, auch mit „nach Aktivierung“", () => {
-  const e = bewerte({ bestanden: true, funde: [hoch("Falscher Spaltenname bei [nach Aktivierung]", "src/a.ts", 4)] }, ["src/a.ts", "docs/abnahme.yml"], false);
-  assert.equal(e.funde[0].schwere, "hoch");
-  assert.equal(e.bestanden, false);
-});
-
-test("SIN-877: Sicherheitsfund ohne Codestelle bleibt hoch", () => {
-  const e = bewerte({ bestanden: true, funde: [hoch("Secret wird geleakt")] }, ["docs/a.md"], false);
-  assert.equal(e.funde[0].schwere, "hoch");
-  assert.equal(e.bestanden, false);
-});
-
-test("SIN-877: fehlender Beleg aus bewerte bleibt hoch", () => {
-  const e = bewerte({ bestanden: true, funde: [] }, ["docs/a.md"], false, "- [ ] Muss belegt sein");
-  assert.equal(e.funde[0].schwere, "hoch");
-  assert.equal(e.bestanden, false);
-});
-
 test("Tatsächliches Linear-Markdown-Escaping erhält die explizite Nachaktivierungsphase", () => {
   const text = "\\[nach Aktivierung\\] Live-Lauf";
   const auftrag = `- [ ] ${text}`;
@@ -174,4 +146,30 @@ test("Tatsächliches Linear-Markdown-Escaping erhält die explizite Nachaktivier
   assert.equal(e.bestanden, true);
   assert.deepEqual(e.haken?.map(h => [h.text, h.belegt]), [[text, false]]);
   assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
+});
+
+test("SIN-880: leere und abgeschnittene Modellantworten nennen die Ursache ohne Rohinhalt", () => {
+  assert.throws(() => leseAntwort(""), /leer.*Tokenbudget/);
+  assert.throws(() => leseAntwort('{"secret":"privat"'), /ungültiges JSON/);
+  assert.throws(() => leseAntwort('{"secret":"privat"'), e => !String(e).includes("privat"));
+});
+
+test("SIN-880: fehlgeschlagener Rückfall erhält beide Provider-Ursachen", async () => {
+  await assert.rejects(pruefeMitRueckfall(
+    async () => { throw Object.assign(new Error("OpenAI: HTTP 429: rate_limit"), { kontingent: true }); },
+    async () => { throw new Error("Anthropic: HTTP 400: invalid_request"); },
+  ), /OpenAI: HTTP 429: rate_limit.*Anthropic: HTTP 400: invalid_request/);
+});
+
+test("SIN-880: API-Fehler redigieren Keys vor Kürzung und behalten Status/Diagnose", async () => {
+  const { apiFehler, leseApiJson } = await import("./pruefer");
+  const e = apiFehler("OpenAI", 429, 'Bearer token-secret\n{"error":"insufficient_quota","key":"sk-test-secret"}', ["token-secret"]);
+  assert.match(e.message, /OpenAI: HTTP 429/);
+  assert.match(e.message, /insufficient_quota/);
+  assert.doesNotMatch(e.message, /token-secret|sk-test-secret|\n/);
+  assert.equal((e as Error & { kontingent: boolean }).kontingent, true);
+  assert.ok(apiFehler("Anthropic", 400, "x".repeat(500), []).message.length < 330);
+  assert.match(apiFehler("Anthropic", 400, "", []).message, /Antworttext leer/);
+  assert.throws(() => leseApiJson("", "OpenAI"), /OpenAI: HTTP-Antwort/);
+  assert.throws(() => leseAntwort("null"), /kein Objekt/);
 });

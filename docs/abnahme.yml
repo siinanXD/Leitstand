@@ -593,6 +593,13 @@
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/belege.yml/runs?status=success&per_page=1
   enthaelt: '"success"'
 
+- id: leitstand-bestand-ci
+  produkt: leitstand
+  titel: Bestandsabgleich CLI-Fixture durch CI geprüft - kein Live-Inventar (SIN-858)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?branch=main&event=push&head_sha=${GITHUB_SHA}&status=success&per_page=1
+  enthaelt: '"success"'
+
 - id: leitstand-merge-aktuelle-belege
   produkt: leitstand
   titel: Statisch - Das Merge-Gate auf main prüft den Beleg gegen Head-SHA und Kriterien-Hash (SIN-854)
@@ -608,9 +615,44 @@
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?status=success&event=push&branch=main&head_sha=${GITHUB_SHA}&per_page=1
   enthaelt: '"conclusion": "success"'
 
-- id: leitstand-pruefer-markierte-haken
+- id: leitstand-bestand-pagination
   produkt: leitstand
-  titel: Der Prüfer stuft Modell-Funde ohne Codestelle nie als hoch ein (SIN-877)
+  titel: Bestandsabgleich Transport-Regression ist installiert (SIN-858, keine Live-Abnahme)
+  art: datei
+  pfad: src/lib/bestand/cli.test.ts
+  enthaelt: cursor-repeat
+
+- id: leitstand-pruefer-api-diagnose
+  produkt: leitstand
+  titel: Prüfer-Diagnose ist installiert (SIN-880, Live-Nachweis separat)
   art: datei
   pfad: src/lib/pruefer/pruefer.ts
-  enthaelt: ohneCodestelle
+  enthaelt: export function apiFehler
+
+- id: leitstand-pruefer-basisbindung
+  produkt: leitstand
+  titel: Prüfer trennt geschütztes main vom PR-Snapshot (SIN-880, Installation)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: PR_BASE_SHA
+
+- id: leitstand-pruefer-claude-json
+  produkt: leitstand
+  titel: Claude-Rückfall nutzt native JSON-Ausgabe (SIN-880, Installation)
+  art: datei
+  pfad: scripts/pruefer/pruefer.ts
+  enthaelt: output_config
+
+- id: leitstand-pruefer-markierte-haken
+  produkt: leitstand
+  titel: Prüfer bindet spätere Nachweise an explizite Auftragshaken (SIN-877, Installation)
+  art: datei
+  pfad: src/lib/pruefer/pruefer.ts
+  enthaelt: nurSpaetererNachweis
+
+- id: leitstand-pruefer-phasen-ci
+  produkt: leitstand
+  titel: Phasen-Regression mit Originalreviews in CI geprüft (SIN-877, kein Live-Review)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?status=success&event=push&branch=main&head_sha=${GITHUB_SHA}&per_page=1
+  enthaelt: '"conclusion": "success"'

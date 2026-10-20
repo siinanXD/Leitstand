@@ -12,7 +12,7 @@ import { lesePrDiff } from "../../src/lib/pruefer/git";
 import { ladeAuftrag, standMarker } from "../loop/beleg-stand.mjs";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, begrenze, bewerte, eingabe, hatHoch, istKontingentFehler, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
+import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, hatHoch, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
 
 const env = process.env;
 const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
@@ -31,20 +31,21 @@ async function modell(text: string, name: string): Promise<{ ergebnis: Ergebnis;
     body: JSON.stringify({
       model: name,
       max_completion_tokens: MAX_AUSGABE_TOKENS,
+      reasoning_effort: "low",
       messages: [{ role: "system", content: ANWEISUNG }, { role: "user", content: text }],
       response_format: { type: "json_schema", json_schema: { name: "pruefung", strict: true, schema: SCHEMA } },
     }),
     signal: AbortSignal.timeout(120_000),
   });
-  if (!res.ok) {
-    const kontingent = istKontingentFehler(res.status, await res.text().catch(() => ""));
-    throw Object.assign(new Error(`OpenAI: HTTP ${res.status}`), { kontingent });
-  }
-  const j = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+  const body = await res.text();
+  if (!res.ok) throw apiFehler("OpenAI", res.status, body, [env.OPENAI_API_KEY ?? "", env.ANTHROPIC_API_KEY ?? ""]);
+  const j = leseApiJson(body, "OpenAI") as { choices?: { finish_reason?: string; message?: { content?: string; refusal?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+  if (j?.choices?.[0]?.finish_reason === "length") throw new Error(`OpenAI: Tokenbudget (${MAX_AUSGABE_TOKENS}) für Reasoning und Antwort ausgeschöpft; kein vollständiger Review`);
+  if (j?.choices?.[0]?.message?.refusal) throw new Error("OpenAI: Review abgelehnt (refusal)");
   return { ergebnis: leseAntwort(j.choices?.[0]?.message?.content ?? ""), ein: j.usage?.prompt_tokens ?? 0, aus: j.usage?.completion_tokens ?? 0 };
 }
 
-/** Rückfall (SIN-696): derselbe Prompt an Claude, Antwort über erzwungenes Tool im selben Schema. Kosten bleiben offen (kein Preis hinterlegt). */
+/** Rückfall (SIN-696): derselbe Prompt und dasselbe Schema als native JSON-Ausgabe. */
 async function claude(text: string): Promise<{ ergebnis: Ergebnis; ein: number; aus: number }> {
   if (!env.ANTHROPIC_API_KEY) throw new Error("OpenAI-API-Kontingent erschöpft und ANTHROPIC_API_KEY fehlt");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -55,15 +56,17 @@ async function claude(text: string): Promise<{ ergebnis: Ergebnis; ein: number; 
       max_tokens: MAX_AUSGABE_TOKENS,
       system: ANWEISUNG,
       messages: [{ role: "user", content: text }],
-      tools: [{ name: "pruefung", description: "Ergebnis der Prüfung", input_schema: SCHEMA }],
-      tool_choice: { type: "tool", name: "pruefung" },
+      output_config: { format: { type: "json_schema", schema: SCHEMA } },
     }),
     signal: AbortSignal.timeout(120_000),
   });
-  if (!res.ok) throw new Error(`Anthropic: HTTP ${res.status}`);
-  const j = (await res.json()) as { content?: { type: string; input?: unknown }[]; usage?: { input_tokens?: number; output_tokens?: number } };
-  const tool = j.content?.find((c) => c.type === "tool_use");
-  return { ergebnis: leseAntwort(JSON.stringify(tool?.input ?? {})), ein: j.usage?.input_tokens ?? 0, aus: j.usage?.output_tokens ?? 0 };
+  const body = await res.text();
+  if (!res.ok) throw apiFehler("Anthropic", res.status, body, [env.OPENAI_API_KEY ?? "", env.ANTHROPIC_API_KEY ?? ""]);
+  const j = leseApiJson(body, "Anthropic") as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
+  if (j?.stop_reason === "max_tokens") throw new Error(`Anthropic: Tokenbudget (${MAX_AUSGABE_TOKENS}) ausgeschöpft; kein vollständiger Review`);
+  if (j?.stop_reason === "refusal") throw new Error("Anthropic: Review abgelehnt (refusal)");
+  const textAntwort = j?.content?.filter((c) => c.type === "text").map((c) => c.text ?? "").join("") ?? "";
+  return { ergebnis: leseAntwort(textAntwort), ein: j.usage?.input_tokens ?? 0, aus: j.usage?.output_tokens ?? 0 };
 }
 
 async function ledger(ok: boolean, payload: unknown) {
