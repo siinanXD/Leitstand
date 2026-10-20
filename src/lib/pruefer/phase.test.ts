@@ -36,6 +36,14 @@ test("SIN-877: Code-, Sicherheits- und alte unklassifizierte Funde bleiben hoch,
   }
 });
 
+test("SIN-877: Sicherheitsbezug sperrt auch fälschlich als Nachweis klassifizierte Funde", () => {
+  for (const text of ["Secret wird öffentlich ausgegeben", "Token wird an fremden Host übertragen", "Passwort im Log", "Credentials im Client", "Berechtigungen werden erweitert", "Rechte eskalieren", "Datenverlust nach Migration", "DROP TABLE löscht Produktion", "Service-Role im Browser", "SQL injection möglich", "Zugang wird offengelegt"]) {
+    const e = bewerte(antwort([fund({ text })]), dateien, false, auftrag);
+    assert.equal(e.funde[0].schwere, "hoch", text);
+    assert.equal(e.bestanden, false, text);
+  }
+});
+
 test("SIN-877: keine pauschale Umkehr von bestanden=false; Pflichtbelege und Probe bleiben zwingend", () => {
   assert.equal(bewerte(antwort([]), dateien, false, auftrag).bestanden, false);
   assert.equal(bewerte(antwort([fund(), fund({ art: "codefehler", schwere: "mittel" })]), dateien, false, auftrag).bestanden, false);

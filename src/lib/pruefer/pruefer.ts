@@ -16,6 +16,8 @@ export const PROBEN_DATEI = "docs/abnahme.yml";
 const nachAktivierung = (text: string) => text.startsWith("[nach Aktivierung] ") || text.startsWith("\\[nach Aktivierung\\] ");
 const SCHWEREN: Schwere[] = ["hoch", "mittel", "niedrig"];
 const ARTEN = ["codefehler", "sicherheit", "nachweis"] as const;
+// Zusätzliche konservative Sperre: Sicherheitsbezug darf auch bei falscher Modellklassifikation nicht verschwinden.
+const SICHERHEITSBEZUG = /secret|token|passwor[dt]|credential|berechtigung|rechte|permission|datenverlust|daten.{0,30}(lösch|loesch)|\b(drop|delete|truncate)\b|service[-_ ]?role|sicherheits|security|injection|leak|zugang|offengelegt|auth/iu;
 
 /** Antwortform für Structured Outputs (strict). */
 export const SCHEMA = {
@@ -111,11 +113,11 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, 
   const vorgaben = leseHaken(auftrag);
   const zuordnung = (text: string) => normalisiereHaken(text.replace(/\\([\[\]])/g, "$1"));
   const nurSpaetererNachweis = (f: Fund) => {
-    if (f.art !== "nachweis" || !f.haken) return false;
+    if (f.art !== "nachweis" || !f.haken || SICHERHEITSBEZUG.test(`${f.datei}\n${f.text}\n${f.haken}`)) return false;
     const passend = vorgaben.filter(h => zuordnung(h.text) === zuordnung(f.haken!));
     return passend.length > 0 && passend.every(h => nachAktivierung(h.text));
   };
-  // Keine Heuristik über Dateipfad, Zeilennummer oder Wörter im Befundtext.
+  // Eine fehlende Codestelle oder ein Stichwort allein begründet niemals eine Herabstufung.
   const funde = modell.funde.map(f => f.schwere === "hoch" && nurSpaetererNachweis(f) ? { ...f, schwere: "mittel" as const } : { ...f });
   // Ein unbegründetes false bleibt gesperrt; nur ausschließlich zurückgestellte Nachweise erklären die Ablehnung.
   const nurZurueckgestellt = modell.funde.some(f => f.schwere === "hoch") && modell.funde.every(nurSpaetererNachweis);

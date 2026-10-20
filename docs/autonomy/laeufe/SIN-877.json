@@ -1,9 +1,9 @@
 {
   "rolle": "bauen",
   "issue": "SIN-877",
-  "zeitpunkt": "2026-10-20T09:35:47.839199Z",
+  "zeitpunkt": "2026-10-20T09:42:38.679711Z",
   "status": "braucht_sinan",
-  "zusammenfassung": "Zu breite Herabstufung durch explizite Fundart und Zuordnung zum aktuellen Nachaktivierungs-Haken ersetzt; Originalreviews als Regression gesichert.",
+  "zusammenfassung": "Zu breite Herabstufung durch explizite Fundart und Zuordnung zum aktuellen Nachaktivierungs-Haken ersetzt; Originalreviews als Regression gesichert. Zusätzlicher Sicherheitsfilter verhindert Herabstufung bei falsch klassifizierten Sicherheitsindikatoren; elf Negativfälle.",
   "naechster_schritt": "CI und unabhängigen Prüfer prüfen; Sinan aktiviert den Gate-Fix per Merge, danach frischer Review auf #302 und Live-Abnahme.",
   "kosten_eur": 0,
   "quellen": [
