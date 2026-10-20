@@ -8,7 +8,7 @@
  * Nie Issues löschen, nie Projekte abbrechen. Pausierte Projekte bleiben unberührt.
  *
  * Env: LINEAR_API_KEY, GH_TOKEN (AGENT_WORKFLOW_TOKEN mit Lese- und Kommentarrechten auf alle aktiven Repos).
- * Optional: DRY_RUN=1 (nur planen und anzeigen), LOOP_MAX_PARALLEL (Standard 1), WAECHTER_LEAD_NAME (Standard „Sinan“).
+ * Optional: DRY_RUN=1 (nur planen und anzeigen), LOOP_MAX_PARALLEL (Produkte: Standard 1), LEITSTAND_MAX_PARALLEL (Standard/Maximum 2), WAECHTER_LEAD_NAME (Standard „Sinan“).
  */
 import { readFile } from "node:fs/promises";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
@@ -43,10 +43,12 @@ import {
   type WaechterIssue,
 } from "../../src/lib/waechter/waechter";
 
+import { maxParallel } from "../../src/lib/loop/parallel";
+
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
 const jetzt = new Date();
-const max = Number(env.LOOP_MAX_PARALLEL ?? 1);
+
 
 const log = (projekt: string, text: string) => console.log(`${DRY ? "[trocken] " : ""}${projekt}: ${text}`);
 
@@ -416,7 +418,7 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
   const aktion = planeSchlange(
     issues.map((i) => (zurueckgesetzt.has(i.identifier) ? { ...i, stateType: "unstarted" } : i)),
     gespiegelt,
-    max,
+    maxParallel(repo, env.LOOP_MAX_PARALLEL, env.LEITSTAND_MAX_PARALLEL),
   );
   if (aktion?.art === "nachruecken") {
     log(projekt.name, `rückt nach: ${aktion.issue.identifier} ${aktion.issue.title}`);

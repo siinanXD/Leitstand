@@ -593,6 +593,12 @@
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/belege.yml/runs?status=success&per_page=1
   enthaelt: '"success"'
 
+- id: leitstand-parallel-konfiguration
+  produkt: leitstand
+  titel: Dispatch-CLI prüft Claims und PR-Dateien (SIN-856, Fixture ohne Live-Start)
+  art: datei
+  pfad: /tmp/leitstand-parallel-probe.json
+  enthaelt: '"ok": true'
 - id: leitstand-bestand-ci
   produkt: leitstand
   titel: Bestandsabgleich CLI-Fixture durch CI geprüft - kein Live-Inventar (SIN-858)
