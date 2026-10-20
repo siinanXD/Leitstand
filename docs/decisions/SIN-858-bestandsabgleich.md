@@ -33,3 +33,9 @@ Die HTTP-Transportwege, Index-Linkauflösung und echte mehrseitige API-Antworten
 ## Schreibscope / Grenzen
 
 Geändert: Sammler/CLI, CLI-Probe und Fixture, Unit-Tests, build-Trockenlauf, bestehende Abnahme-Liste und Dokumentation/Ausgabe-Ignorierung. Keine Rechte/Secrets/Migrationen; die geteilte Abnahme-Engine bleibt unverändert. Wortvergleich statt semantischer Suche; Testfunde bedeuten vorhandenen Testcode, nicht bestandene Laufzeit-Abnahme.
+
+## Review-Nacharbeit 20.10.2026
+
+Der unabhängige Review https://github.com/siinanXD/Leitstand/pull/308#issuecomment-6277554382 benennt fehlende direkte Transport-Nachweise und zu breite Einzeldatei-Lektüre. Code-Lader nutzt jetzt eine wortbezogene Git-Inhaltssuche im gepinnten Commit plus passende Dateinamen. Nur passende Dateien werden mit git show geladen und gehasht; der Git-Index wird weiter für Pfade verwendet. Es entsteht keine Volltextkopie aller Quelldateien im Collector.
+
+`src/lib/bestand/cli.test.ts` startet den echten Collector mit lokalen API-Fixtures und echtem Git: Linear after=null,c1,c2; GitHub-Seiten 1/2 mit 101 PRs; wiederholter und fehlender Cursor; incomplete_results und Suchlimit über 1000. Jeder unvollständige Transport wird als Quellfehler ohne erfolgreiche Teilmenge berichtet. Ein Spy verbietet das Einzellesen einer unpassenden Datei und prüft Treffer allein über Inhalt sowie allein über Dateiname. Die Fixture ersetzt keine echte externe Live-Abnahme.

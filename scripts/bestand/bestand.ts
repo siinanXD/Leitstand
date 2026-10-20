@@ -1,5 +1,5 @@
 /** Lesender Feature-Bestand (SIN-858). DRY_RUN=1 blockiert Netz; BESTAND_FIXTURE liefert nur Testdaten. */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -46,7 +46,13 @@ const lader: Lader = {
   },
   async code() {
     const sha = git("rev-parse", "HEAD");
-    const dateien = git("ls-tree", "-r", "--name-only", sha, "src", "scripts", "tests", "e2e", "docs/decisions", ".github/workflows").split("\n").filter(Boolean);
+    const pfade = ["src", "scripts", "tests", "e2e", "docs/decisions", ".github/workflows"];
+    // Git sucht im gepinnten Baum; nur Treffer werden einzeln geladen und gehasht.
+    const suche = spawnSync("git", ["grep", "-I", "-i", "-l", "-z", "-F", ...wörter.flatMap((w) => ["-e", w]), sha, "--", ...pfade], { encoding: "utf8", maxBuffer: 10_000_000 });
+    if (suche.error || (suche.status !== 0 && suche.status !== 1)) throw new Error("Code-Suche fehlgeschlagen");
+    const inhaltTreffer = new Set(suche.stdout.split("\0").filter(Boolean).map((p) => p.slice(sha.length + 1)));
+    const dateien = git("ls-tree", "-r", "--name-only", "-z", sha, ...pfade).split("\0").filter(Boolean)
+      .filter((p) => inhaltTreffer.has(p) || passt({ titel: p, url: "" }, wörter));
     const eintraege = dateien.flatMap((titel): Fund[] => {
       if (!/\.(tsx?|jsx?|mjs|cjs|mts|cts|sh|py|md|json|ya?ml)$/.test(titel)) return [];
       const inhalt = git("show", `${sha}:${titel}`);

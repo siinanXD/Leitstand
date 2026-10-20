@@ -1,0 +1,23 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-858",
+  "zeitpunkt": "2026-10-20T08:50:06.905342Z",
+  "status": "blockiert",
+  "zusammenfassung": "Nach unabhängigem Review: Cursor- und Unvollständigkeits-Nachweise über echte CLI ergänzt; Code-Inhalt vor Einzeldatei-Lektüre gezielt in Git gesucht. 569 Tests, Lint, Typecheck und CLI-Trockenprobe grün.",
+  "naechster_schritt": "Neue CI und unabhängigen Review auf aktualisiertem PR #308 prüfen; echtes Vierquellen-Inventar nach Aktivierung bleibt offen.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://github.com/siinanXD/Leitstand/pull/308#issuecomment-6277554382",
+    "https://github.com/siinanXD/Leitstand/actions/runs/39395620771"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/308",
+  "geaendert": [
+    "README.md",
+    "docs/abnahme.yml",
+    "docs/autonomy/LEHREN.md",
+    "docs/decisions/SIN-858-bestandsabgleich.md",
+    "scripts/bestand/bestand.ts",
+    "src/lib/bestand/cli.test.ts"
+  ]
+}
