@@ -14,8 +14,8 @@ export const MAX_AUSGABE_TOKENS = 1500;
 export const PROBEN_DATEI = "docs/abnahme.yml";
 const nachAktivierung = (text: string) => text.startsWith("[nach Aktivierung] ") || text.startsWith("\\[nach Aktivierung\\] ");
 const SICHERHEIT = /secret|token|passwort|credential|berechtigung|rechte|permission|datenverlust|\b(drop|delete|truncate)\b|service[- ]?role|sicherheit|injection|leak/i;
-/** SIN-877: Ein Fund, der nur einen markierten Haken oder dessen Live-Nachweis bemängelt, ist nie „hoch“; Sicherheitsfunde bleiben unberührt. */
-const nurMarkierterHaken = (f: Fund) => /nach Aktivierung/i.test(f.text) && !SICHERHEIT.test(f.text);
+/** SIN-877: Ein Modell-Fund ohne konkrete Codestelle (Datei nicht im PR oder Zeile 0), der keine Sicherheitsfrage betrifft, zielt nur auf Nachweise und sperrt nie. */
+const ohneCodestelle = (f: Fund, dateien: string[]) => (f.zeile < 1 || !dateien.includes(f.datei)) && !SICHERHEIT.test(f.text);
 const SCHWEREN: Schwere[] = ["hoch", "mittel", "niedrig"];
 
 /** Antwortform für Structured Outputs (strict). */
@@ -99,7 +99,7 @@ export function leseAntwort(text: string): Ergebnis {
 
 /** Eigene Regeln über dem Modell: fehlende Probe ist hoch, ein hoher Fund heißt nicht bestanden. */
 export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, auftrag?: string): Ergebnis {
-  const funde = modell.funde.map((f): Fund => (f.schwere === "hoch" && nurMarkierterHaken(f) ? { ...f, schwere: "mittel" } : f));
+  const funde = modell.funde.map((f): Fund => (f.schwere === "hoch" && ohneCodestelle(f, dateien) ? { ...f, schwere: "mittel" } : f));
   // Nur kanonische Issue-Haken ausgeben: der spätere Done-Abgleich normalisiert Schreibweisen.
   const vorgaben = leseHaken(auftrag);
   const nachgelagert = new Set(vorgaben.filter(h => nachAktivierung(h.text)).map(h => normalisiereHaken(h.text)));

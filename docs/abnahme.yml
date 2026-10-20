@@ -610,7 +610,7 @@
 
 - id: leitstand-pruefer-markierte-haken
   produkt: leitstand
-  titel: Der Prüfer stuft Funde zu [nach Aktivierung]-Haken im Code nie als hoch ein (SIN-877)
+  titel: Der Prüfer stuft Modell-Funde ohne Codestelle nie als hoch ein (SIN-877)
   art: datei
   pfad: src/lib/pruefer/pruefer.ts
-  enthaelt: nurMarkierterHaken
+  enthaelt: ohneCodestelle

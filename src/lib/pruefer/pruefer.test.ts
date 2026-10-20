@@ -20,7 +20,7 @@ test("PR mit Probe bleibt bestanden; reine Doku braucht keine", () => {
 });
 
 test("Modell sagt hoch, aber bestanden=true: trotzdem nicht bestanden", () => {
-  const e = bewerte({ bestanden: true, funde: [{ datei: "a", zeile: 1, schwere: "hoch", text: "x" }] }, ["docs/a.md"], false);
+  const e = bewerte({ bestanden: true, funde: [{ datei: "docs/a.md", zeile: 1, schwere: "hoch", text: "x" }] }, ["docs/a.md"], false);
   assert.equal(e.bestanden, false);
 });
 
@@ -139,25 +139,30 @@ test("Normgleiche doppelte Auftragshaken bleiben gesperrt statt eine Live-Abnahm
   assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
 });
 
-// SIN-877: Fixtures nach den Befunden von #302 (0ab279f) und #308 (e7f3dfa); der Wortlaut der Original-Antworten war offline nicht abrufbar.
-const markiert = "- [ ] \\[nach Aktivierung\\] Neuer Lauf ohne hoch-Befund";
-const hoch = (text: string) => ({ datei: "x", zeile: 1, schwere: "hoch" as const, text });
+// SIN-877: Befunde nach #302 (0ab279f) und #308 (e7f3dfa); die Original-Antworten waren hier nicht abrufbar, #302 steht nur sinngemäß im Review.
+const hoch = (text: string, datei = "(Issue)", zeile = 0) => ({ datei, zeile, schwere: "hoch" as const, text });
 
-test("SIN-877: Fund nur zu markiertem Haken ist nie hoch (#308)", () => {
-  const e = bewerte({ bestanden: false, funde: [hoch("Der Haken [nach Aktivierung] ist offen; das ist kein Merge-Fehler.")] }, ["docs/a.md"], false, markiert);
-  assert.equal(e.funde[0].schwere, "mittel");
+test("SIN-877: Fund ohne Codestelle wird mittel, auch ohne Stichwort (#302)", () => {
+  const funde = [hoch("Der PR belegt keinen echten Subagent-Aufruf und keinen echten Live-Worker."), hoch("Kein Run-Link", "src/nicht-im-pr.ts", 3)];
+  const e = bewerte({ bestanden: false, funde }, ["src/a.ts", "docs/abnahme.yml"], false);
+  assert.deepEqual(e.funde.map((f) => f.schwere), ["mittel", "mittel"]);
   assert.equal(e.bestanden, true);
 });
 
-test("SIN-877: Live-Nachweis-Befunde aus #302 sperren nicht", () => {
-  const funde = ["Live-Nachweis fehlt für [nach Aktivierung] Lauf", "[nach Aktivierung]: kein Run-Link im PR", "Design-Entscheidung zu [nach Aktivierung] nicht belegt"].map(hoch);
-  const e = bewerte({ bestanden: false, funde }, ["docs/a.md"], false);
-  assert.equal(e.funde.some((f) => f.schwere === "hoch"), false);
-  assert.equal(e.bestanden, true);
+test("SIN-877: Fund mit Codestelle im PR bleibt hoch, auch mit „nach Aktivierung“", () => {
+  const e = bewerte({ bestanden: true, funde: [hoch("Falscher Spaltenname bei [nach Aktivierung]", "src/a.ts", 4)] }, ["src/a.ts", "docs/abnahme.yml"], false);
+  assert.equal(e.funde[0].schwere, "hoch");
+  assert.equal(e.bestanden, false);
 });
 
-test("SIN-877: Sicherheitsfund bleibt hoch (Negativtest)", () => {
-  const e = bewerte({ bestanden: true, funde: [hoch("Secret wird bei [nach Aktivierung] geleakt")] }, ["docs/a.md"], false);
+test("SIN-877: Sicherheitsfund ohne Codestelle bleibt hoch", () => {
+  const e = bewerte({ bestanden: true, funde: [hoch("Secret wird geleakt")] }, ["docs/a.md"], false);
+  assert.equal(e.funde[0].schwere, "hoch");
+  assert.equal(e.bestanden, false);
+});
+
+test("SIN-877: fehlender Beleg aus bewerte bleibt hoch", () => {
+  const e = bewerte({ bestanden: true, funde: [] }, ["docs/a.md"], false, "- [ ] Muss belegt sein");
   assert.equal(e.funde[0].schwere, "hoch");
   assert.equal(e.bestanden, false);
 });
