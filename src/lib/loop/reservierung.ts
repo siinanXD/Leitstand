@@ -75,6 +75,15 @@ export function verwaist(r: Reservierung, lage: { offenerPr: boolean; gespiegelt
   return lage.jetzt.getTime() - Date.parse(r.seit) >= VERWAIST_STUNDEN * 3_600_000;
 }
 
+/** SIN-896: Ohne Worker-Lauf und ohne offenen PR belegt ein Claim nach so vielen Minuten keinen Startplatz mehr. */
+export const CLAIM_ABLAUF_MIN = 90;
+
+/** Zombie-Claim: Beleg ist der Dispatch-Lauf. Unbekannter Worker-Zustand (null) lässt den Claim stehen. */
+export function claimAbgelaufen(r: Reservierung, lage: { offenerPr: boolean; workerLaeuft: boolean | null; jetzt: Date }): boolean {
+  if (!r.claim || !r.seit || lage.offenerPr || lage.workerLaeuft !== false) return false;
+  return lage.jetzt.getTime() - Date.parse(r.seit) >= CLAIM_ABLAUF_MIN * 60_000;
+}
+
 /** Belegt das Issue keinen Startplatz? Aktiver Claim oder ausgeschöpfte Reparaturen (SIN-832, Befund: sonst steht die Schlange). */
 export const blockiert = (r: Reservierung, max: number) => !!r.claim || r.reparaturen >= max;
 

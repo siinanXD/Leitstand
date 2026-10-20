@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { planeFallback, reserviere, type ProviderStand } from "./fallback";
-import { auftragAus, blockiert, supabaseReservierung, verwaist, type Reservierung } from "./reservierung";
+import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, verwaist, type Reservierung } from "./reservierung";
+
+test("SIN-896: Claim ohne Worker und PR verfällt nach 90 Min, sonst bleibt er", () => {
+  const r: Reservierung = { issue: "SIN-855", revision: 1, provider: "claude", claim: "gh-1", seit: "2026-10-20T08:00:00Z", reparaturen: 0, nachweis: null };
+  const lage = { offenerPr: false, workerLaeuft: false as boolean | null, jetzt: new Date("2026-10-20T09:31:00Z") };
+  assert.equal(claimAbgelaufen(r, lage), true);
+  assert.equal(claimAbgelaufen(r, { ...lage, jetzt: new Date("2026-10-20T09:29:00Z") }), false);
+  assert.equal(claimAbgelaufen(r, { ...lage, offenerPr: true }), false);
+  assert.equal(claimAbgelaufen(r, { ...lage, workerLaeuft: true }), false);
+  assert.equal(claimAbgelaufen(r, { ...lage, workerLaeuft: null }), false);
+});
 
 /**
  * Simulation von PostgREST mit echter CAS-Semantik (UPDATE … WHERE claim_revision = alt, INSERT ignore-duplicates).

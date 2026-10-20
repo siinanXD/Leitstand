@@ -1,0 +1,7 @@
+# Abnahme-Proben je Issue (SIN-896): eigene Datei statt gemeinsamer docs/abnahme.yml, damit Bereiche parallel bauen.
+- id: leitstand-bereichs-spuren
+  produkt: leitstand
+  titel: Der Planer ordnet Vorhaben Bereichen mit Schreibpfaden zu, Zombie-Claims verfallen nach 90 Min (SIN-896)
+  art: datei
+  pfad: src/lib/loop/bereich.ts
+  enthaelt: planeVorhaben
