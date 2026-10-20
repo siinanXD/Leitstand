@@ -45,7 +45,7 @@ async function modell(text: string, name: string): Promise<{ ergebnis: Ergebnis;
   return { ergebnis: leseAntwort(j.choices?.[0]?.message?.content ?? ""), ein: j.usage?.prompt_tokens ?? 0, aus: j.usage?.completion_tokens ?? 0 };
 }
 
-/** Rückfall (SIN-696): derselbe Prompt an Claude, Antwort über erzwungenes Tool im selben Schema. Kosten bleiben offen (kein Preis hinterlegt). */
+/** Rückfall (SIN-696): derselbe Prompt und dasselbe Schema als native JSON-Ausgabe. */
 async function claude(text: string): Promise<{ ergebnis: Ergebnis; ein: number; aus: number }> {
   if (!env.ANTHROPIC_API_KEY) throw new Error("OpenAI-API-Kontingent erschöpft und ANTHROPIC_API_KEY fehlt");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -56,18 +56,17 @@ async function claude(text: string): Promise<{ ergebnis: Ergebnis; ein: number; 
       max_tokens: MAX_AUSGABE_TOKENS,
       system: ANWEISUNG,
       messages: [{ role: "user", content: text }],
-      tools: [{ name: "pruefung", description: "Ergebnis der Prüfung", input_schema: SCHEMA }],
-      tool_choice: { type: "tool", name: "pruefung" },
+      output_config: { format: { type: "json_schema", schema: SCHEMA } },
     }),
     signal: AbortSignal.timeout(120_000),
   });
   const body = await res.text();
   if (!res.ok) throw apiFehler("Anthropic", res.status, body, [env.OPENAI_API_KEY ?? "", env.ANTHROPIC_API_KEY ?? ""]);
-  const j = leseApiJson(body, "Anthropic") as { stop_reason?: string; content?: { type: string; input?: unknown }[]; usage?: { input_tokens?: number; output_tokens?: number } };
+  const j = leseApiJson(body, "Anthropic") as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
   if (j?.stop_reason === "max_tokens") throw new Error(`Anthropic: Tokenbudget (${MAX_AUSGABE_TOKENS}) ausgeschöpft; kein vollständiger Review`);
-  const tool = j?.content?.find((c) => c.type === "tool_use");
-  if (!tool) throw new Error("Anthropic: Antwort ohne Review-Tool-Aufruf");
-  return { ergebnis: leseAntwort(JSON.stringify(tool?.input ?? {})), ein: j.usage?.input_tokens ?? 0, aus: j.usage?.output_tokens ?? 0 };
+  if (j?.stop_reason === "refusal") throw new Error("Anthropic: Review abgelehnt (refusal)");
+  const textAntwort = j?.content?.filter((c) => c.type === "text").map((c) => c.text ?? "").join("") ?? "";
+  return { ergebnis: leseAntwort(textAntwort), ein: j.usage?.input_tokens ?? 0, aus: j.usage?.output_tokens ?? 0 };
 }
 
 async function ledger(ok: boolean, payload: unknown) {

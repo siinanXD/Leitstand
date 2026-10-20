@@ -58,8 +58,12 @@ global.fetch = async (url, init) => {
     return Response.json({choices:[{finish_reason:mode==='length'?'length':'stop',message:{content:mode==='empty'?'':mode==='bad-json'?'{':JSON.stringify(review)}}]});
   }
   if (url.includes('anthropic.com')) {
+    assert.equal(body.tools, undefined);
+    assert.equal(body.tool_choice, undefined);
+    assert.equal(body.output_config.format.type, 'json_schema');
+    assert.deepEqual(body.output_config.format.schema.required, ['bestanden', 'funde', 'haken']);
     if (mode === 'fallback-error') return new Response('invalid_request sk-fixture-anthropic', {status:400});
-    return Response.json({stop_reason:mode==='fallback-length'?'max_tokens':'tool_use',content:[{type:'tool_use',input:review}]});
+    return Response.json({stop_reason:mode==='fallback-length'?'max_tokens':mode==='fallback-refusal'?'refusal':'end_turn',content:mode==='fallback-empty'?[]:[{type:'text',text:mode==='fallback-bad-json'?'{':JSON.stringify(review)}]});
   }
   throw new Error('Unerwartete URL');
 };
@@ -73,6 +77,9 @@ global.fetch = async (url, init) => {
       ["fallback-error", 2, /OpenAI: HTTP 429.*Rückfall: Anthropic: HTTP 400/],
       ["fallback-length", 2, /Anthropic: Tokenbudget/],
       ["fallback-ok", 0, /Prüfer: bestanden/],
+      ["fallback-empty", 2, /Modellantwort leer/],
+      ["fallback-bad-json", 2, /ungültiges JSON/],
+      ["fallback-refusal", 2, /Anthropic: Review abgelehnt/],
     ] as const;
     for (const [mode, status, meldung] of cases) {
       rmSync(join(cwd, "pruefer-kommentar.md"), { force: true });

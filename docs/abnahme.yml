@@ -621,3 +621,10 @@
   art: datei
   pfad: .github/workflows/pruefer.yml
   enthaelt: PR_BASE_SHA
+
+- id: leitstand-pruefer-claude-json
+  produkt: leitstand
+  titel: Claude-Rückfall nutzt native JSON-Ausgabe (SIN-880, Installation)
+  art: datei
+  pfad: scripts/pruefer/pruefer.ts
+  enthaelt: output_config
