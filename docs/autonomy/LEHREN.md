@@ -33,7 +33,10 @@ GitHub-Spiegel und reine Checkbox-Hashes übersehen geänderte nummerierte Krite
 `UNSTABLE` ist kein grüner Check → Direkt-Merge nur bei CLEAN; das echte Gate gegen Altfristen und Schutzgrenzen ausführen statt Regex-Vorkommen zu prüfen (SIN-855).
 
 - SIN-854: Ein Code-Review kann keinen erst nach Aktivierung möglichen Folge-Merge belegen. Solche Kriterien ausdrücklich markieren, als unbelegt erhalten und Done weiter sperren; sonst bleibt ein korrekt geschützter Workflow in einer zirkulären Freigabe hängen.
+Tests eines Seitenzählers belegen keine Cursor-API → echten Collector-CLI mit isolierten Linear-/GitHub-Antworten prüfen (Cursorfortschritt, Wiederholung, fehlender Cursor, incomplete_results/1000er-Limit); Quellfehler dürfen keine Teilmenge als vollständig ausgeben. Code-Dateien erst gezielt über gepinntes Git suchen, dann nur Treffer einzeln laden (SIN-858).
+
 
 HTTP-Status ohne Antworttext und JSON.parse auf leerer Modellantwort verbergen den Prüfer-Abbruch → redigierte Provider-Diagnose vor Kürzung, beide Rückfallursachen erhalten, Tokenlimit/Reasoning explizit setzen und echte CLI mit API-Fixtures prüfen; Preisvariablen sind USD/Million Tokens, keine Denkeinstellung (SIN-880).
 Ein älterer PR kann noch eine frühere base.sha nennen → Prüfer-Runtime an aktuellen geschützten main-SHA binden, PR-Snapshot separat erfassen und vor Veröffentlichung beide Bindungen samt Zielrepo/Zielbranch/Schutz erneut prüfen (SIN-880).
 Claude lehnt erzwungenes tool_choice tool/any ab → für reine Review-JSONs native output_config.format=json_schema senden und text-Blöcke validieren; OpenAI credit_balance_exhausted ist ein API-Guthabenfehler, keine Preisvariablen- oder Denkzeitfrage (SIN-880).
+Nur Quellmetadaten auf Secrets prüfen reicht nicht → auch die frei eingegebene Anfrage vor Quellenzugriff und Berichtserzeugung mit dem vorhandenen Detektor abweisen; CLI-Probe darf bei einem erkannten Secret keine JSON-Datei anlegen (SIN-858).

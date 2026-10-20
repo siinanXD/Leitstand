@@ -1,0 +1,23 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-858",
+  "zeitpunkt": "2026-10-20T08:54:10.579201Z",
+  "status": "blockiert",
+  "zusammenfassung": "Pagination-/Quellfehler-Nachweise, gezielte Dateiauswahl und Secret-Prüfung der Anfrage ergänzt. Aktuelles main integriert. 576 Tests, Lint und Typecheck grün.",
+  "naechster_schritt": "CI und unabhängigen Review dieser zweiten gezielten Nacharbeit prüfen. Bei erneuter Ablehnung keine weitere automatische Runde; Live-Inventar nach Aktivierung bleibt offen.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://github.com/siinanXD/Leitstand/pull/308#issuecomment-6277554382",
+    "https://github.com/siinanXD/Leitstand/actions/runs/39395620771"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/308",
+  "geaendert": [
+    "README.md",
+    "docs/abnahme.yml",
+    "docs/autonomy/LEHREN.md",
+    "docs/decisions/SIN-858-bestandsabgleich.md",
+    "scripts/bestand/bestand.ts",
+    "src/lib/bestand/cli.test.ts"
+  ]
+}

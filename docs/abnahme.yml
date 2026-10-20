@@ -593,6 +593,13 @@
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/belege.yml/runs?status=success&per_page=1
   enthaelt: '"success"'
 
+- id: leitstand-bestand-ci
+  produkt: leitstand
+  titel: Bestandsabgleich CLI-Fixture durch CI geprüft - kein Live-Inventar (SIN-858)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?branch=main&event=push&head_sha=${GITHUB_SHA}&status=success&per_page=1
+  enthaelt: '"success"'
+
 - id: leitstand-merge-aktuelle-belege
   produkt: leitstand
   titel: Statisch - Das Merge-Gate auf main prüft den Beleg gegen Head-SHA und Kriterien-Hash (SIN-854)
@@ -607,6 +614,13 @@
   art: http
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?status=success&event=push&branch=main&head_sha=${GITHUB_SHA}&per_page=1
   enthaelt: '"conclusion": "success"'
+
+- id: leitstand-bestand-pagination
+  produkt: leitstand
+  titel: Bestandsabgleich Transport-Regression ist installiert (SIN-858, keine Live-Abnahme)
+  art: datei
+  pfad: src/lib/bestand/cli.test.ts
+  enthaelt: cursor-repeat
 
 - id: leitstand-pruefer-api-diagnose
   produkt: leitstand
