@@ -147,3 +147,29 @@ test("Tatsächliches Linear-Markdown-Escaping erhält die explizite Nachaktivier
   assert.deepEqual(e.haken?.map(h => [h.text, h.belegt]), [[text, false]]);
   assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
 });
+
+test("SIN-880: leere und abgeschnittene Modellantworten nennen die Ursache ohne Rohinhalt", () => {
+  assert.throws(() => leseAntwort(""), /leer.*Tokenbudget/);
+  assert.throws(() => leseAntwort('{"secret":"privat"'), /ungültiges JSON/);
+  assert.throws(() => leseAntwort('{"secret":"privat"'), e => !String(e).includes("privat"));
+});
+
+test("SIN-880: fehlgeschlagener Rückfall erhält beide Provider-Ursachen", async () => {
+  await assert.rejects(pruefeMitRueckfall(
+    async () => { throw Object.assign(new Error("OpenAI: HTTP 429: rate_limit"), { kontingent: true }); },
+    async () => { throw new Error("Anthropic: HTTP 400: invalid_request"); },
+  ), /OpenAI: HTTP 429: rate_limit.*Anthropic: HTTP 400: invalid_request/);
+});
+
+test("SIN-880: API-Fehler redigieren Keys vor Kürzung und behalten Status/Diagnose", async () => {
+  const { apiFehler, leseApiJson } = await import("./pruefer");
+  const e = apiFehler("OpenAI", 429, 'Bearer token-secret\n{"error":"insufficient_quota","key":"sk-test-secret"}', ["token-secret"]);
+  assert.match(e.message, /OpenAI: HTTP 429/);
+  assert.match(e.message, /insufficient_quota/);
+  assert.doesNotMatch(e.message, /token-secret|sk-test-secret|\n/);
+  assert.equal((e as Error & { kontingent: boolean }).kontingent, true);
+  assert.ok(apiFehler("Anthropic", 400, "x".repeat(500), []).message.length < 330);
+  assert.match(apiFehler("Anthropic", 400, "", []).message, /Antworttext leer/);
+  assert.throws(() => leseApiJson("", "OpenAI"), /OpenAI: HTTP-Antwort/);
+  assert.throws(() => leseAntwort("null"), /kein Objekt/);
+});

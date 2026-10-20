@@ -607,3 +607,10 @@
   art: http
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?status=success&event=push&branch=main&head_sha=${GITHUB_SHA}&per_page=1
   enthaelt: '"conclusion": "success"'
+
+- id: leitstand-pruefer-api-diagnose
+  produkt: leitstand
+  titel: Prüfer-Diagnose ist installiert (SIN-880, Live-Nachweis separat)
+  art: datei
+  pfad: src/lib/pruefer/pruefer.ts
+  enthaelt: export function apiFehler

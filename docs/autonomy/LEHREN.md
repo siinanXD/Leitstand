@@ -33,3 +33,5 @@ GitHub-Spiegel und reine Checkbox-Hashes übersehen geänderte nummerierte Krite
 `UNSTABLE` ist kein grüner Check → Direkt-Merge nur bei CLEAN; das echte Gate gegen Altfristen und Schutzgrenzen ausführen statt Regex-Vorkommen zu prüfen (SIN-855).
 
 - SIN-854: Ein Code-Review kann keinen erst nach Aktivierung möglichen Folge-Merge belegen. Solche Kriterien ausdrücklich markieren, als unbelegt erhalten und Done weiter sperren; sonst bleibt ein korrekt geschützter Workflow in einer zirkulären Freigabe hängen.
+
+HTTP-Status ohne Antworttext und JSON.parse auf leerer Modellantwort verbergen den Prüfer-Abbruch → redigierte Provider-Diagnose vor Kürzung, beide Rückfallursachen erhalten, Tokenlimit/Reasoning explizit setzen und echte CLI mit API-Fixtures prüfen; Preisvariablen sind USD/Million Tokens, keine Denkeinstellung (SIN-880).
