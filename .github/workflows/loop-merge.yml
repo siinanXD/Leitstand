@@ -23,6 +23,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       LOOP_MAX_PARALLEL: ${{ vars.LOOP_MAX_PARALLEL || '1' }}
+      LEITSTAND_MAX_PARALLEL: ${{ vars.LEITSTAND_MAX_PARALLEL || '2' }}
     steps:
       - uses: actions/checkout@v4
         with:

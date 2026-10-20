@@ -65,6 +65,15 @@ Die vorbereitete [Fallback-Policy](src/lib/loop/fallback.ts) unterscheidet Konti
 
 **Noch kein autonomer Produktionsfallback:** Ein Codex-Startweg fehlt (Kommentar-Eingang meldet Zuordnungsfehler); der Dispatcher startet nur Claude. Linear hält die bisherigen Aufträge. Datei-Proben und simulierte Reservierungen ersetzen keine Live-Abnahme. Belege und Wiederaufnahmebedingungen: [SIN-832-fallback.md](docs/decisions/SIN-832-fallback.md).
 
+## Zwei Bau-Worker und lesende Subagents (SIN-856)
+
+Der Leitstand-Dispatcher hat maximal zwei Plätze (`LEITSTAND_MAX_PARALLEL`, Standard 2, Deckel 2); mit 1 lässt sich serialisieren. Die vorhandene Variable `LOOP_MAX_PARALLEL` bleibt für andere Produkt-Repos wirksam. Dispatcher, Merge-Nachlauf und Wächter lesen dieselbe Grenze.
+
+Parallel werden nur Issues mit explizit getrennten Schreibpfaden ausgewählt: `<!-- worker-pfade: ["src/app/ablauf", "src/lib/ablauf"] -->` in Linear. Gemeinsame Dateien, offene PRs und Steuerungsänderungen werden berücksichtigt; fehlt die Angabe, läuft die Aufgabe allein. Der Marker muss alle geplanten Änderungen umfassen und wird vom Worker eingehalten; er ist keine Sandbox.
+
+Claude bekommt einen `lese-assistent` für abgegrenzte Recherche und Testanalyse (Read/Grep/Glob, gleiches Modell, 12 Turns). Ein Subagent gleichzeitig, keine Rekursion; Implementierung bleibt beim Hauptworker, Abschlussreview unabhängig. Subagents verbrauchen dasselbe Kontingent. Die konfigurierten CLI-Grenzen benötigen eine passende Claude-Code-Version; erst ein echter Worker-Lauf belegt ihre Wirkung.
+
+Abnahme: Der echte Dispatch-CLI läuft in CI mit isolierten Netz-Fixtures (Claims, zwei Plätze, Konflikte, unabhängig paginierte PR-Dateien und Lesefehler). Zwei echte parallele Issues und ein protokollierter Subagent-Lauf sind für den Live-Nachweis von SIN-856 noch erforderlich.
 **Aktuelle Belege (SIN-854):** Prüfer und Merge-Gate benötigen `LINEAR_API_KEY`, lesen den aktuellen Linear-Auftrag und binden bestandene Review-Belege an Head-SHA und vollständigen Auftragstext. Ein veralteter GitHub-Spiegel ist keine Merge-Grundlage. Worker-PRs mergen nur synchron mit geprüfter Head-SHA und unmittelbar erneut gelesenen Kriterien; es bleibt keine ausstehende Auto-Merge-Freigabe aktiv. Eine echte erneute Review kann mit `pruefer.yml` auf `main`, Eingaben `pr` und `pruefen=true`, angefordert werden; ohne diesen Schalter bleibt der manuelle Lauf trocken. Kontrollierte Gate-/Reparatur-Abnahme ohne externe Modellaufrufe: `node --import tsx --test src/lib/loop/beleg-stand.test.ts src/lib/loop/merge-gate.test.ts src/lib/loop/repair-cli.test.ts`. Aktivierungsgrenzen stehen in [SIN-854](docs/decisions/SIN-854-aktuelle-belege.md).
 
 **Bestandsabgleich (SIN-858):** Der Code-Lader sucht im gepinnten Git-Commit nach passenden Inhalten und Dateinamen und liest nur Treffer einzeln. Transport-Regression: `node --import tsx --test src/lib/bestand/cli.test.ts`; echte CLI gegen isolierte API-Fixtures für Linear-Cursor, vollständige GitHub-Seiten und Quellfehler bei unvollständigen Ergebnissen. Kein Live-Inventarnachweis.

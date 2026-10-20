@@ -28,6 +28,9 @@ Ein pull_request-Workflow nutzt die YAML-Definition aus dem PR-Merge-Commit. Vor
 
 Ein always-Schritt läuft nicht, wenn die Job-Bedingung den Draft vorher ausschließt: Basiswechsel zur Entwertung zulassen, Modellschritt weiter durch Zielvalidierung sperren; echte Job-Bedingung mit Draft-/Titel-/Fork-Gegenproben testen (SIN-827).
 
+- Die globale Worker-Grenze erhöhen → verändert auch Produkt-Repos und verhindert keine Dateikonflikte. Richtig: Leitstand separat auf zwei begrenzen, explizite Schreibpfade prüfen, unklare Aufgaben allein starten; lesende Subagents ersetzen keinen unabhängigen Prüfer. (SIN-856)
+
+- SIN-856: Geplante Schreibpfade allein erkennen keine unabhängigen PRs. Tatsächliche GitHub-Dateilisten vollständig laden und den echten Dispatcher mit Claims testen; Fixture-Erfolg bleibt vom Live-Nachweis getrennt.
 GitHub-Spiegel und reine Checkbox-Hashes übersehen geänderte nummerierte Kriterien → Prüfer und Gate lesen denselben aktuellen Linear-Auftrag; Hash über vollständigen Text, nur Häkchen-Stand ausnehmen. Zwei Reparaturrunden mit tatsächlichem CLI/API-Fixture bis needs-human in GitHub und Linear prüfen (SIN-854).
 
 `UNSTABLE` ist kein grüner Check → Direkt-Merge nur bei CLEAN; das echte Gate gegen Altfristen und Schutzgrenzen ausführen statt Regex-Vorkommen zu prüfen (SIN-855).
@@ -40,3 +43,5 @@ HTTP-Status ohne Antworttext und JSON.parse auf leerer Modellantwort verbergen d
 Ein älterer PR kann noch eine frühere base.sha nennen → Prüfer-Runtime an aktuellen geschützten main-SHA binden, PR-Snapshot separat erfassen und vor Veröffentlichung beide Bindungen samt Zielrepo/Zielbranch/Schutz erneut prüfen (SIN-880).
 Claude lehnt erzwungenes tool_choice tool/any ab → für reine Review-JSONs native output_config.format=json_schema senden und text-Blöcke validieren; OpenAI credit_balance_exhausted ist ein API-Guthabenfehler, keine Preisvariablen- oder Denkzeitfrage (SIN-880).
 Nur Quellmetadaten auf Secrets prüfen reicht nicht → auch die frei eingegebene Anfrage vor Quellenzugriff und Berichtserzeugung mit dem vorhandenen Detektor abweisen; CLI-Probe darf bei einem erkannten Secret keine JSON-Datei anlegen (SIN-858).
+
+- SIN-856: Wiederaufnahme nach Owner-Auftrag aktualisiert main und Belege, setzt aber weder Reparaturzähler noch needs-human zurück; echte Parallel-/Subagent-Proben folgen erst nach Aktivierung.
