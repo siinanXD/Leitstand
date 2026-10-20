@@ -1,0 +1,22 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-856",
+  "zeitpunkt": "2026-10-20T09:37:09.790319Z",
+  "status": "braucht_sinan",
+  "zusammenfassung": "Aktuelles main integriert und Abnahme-Konflikt mit Erhalt beider Proben gelöst. Vorhandene Parallelitätslogik und acht Dispatch-CLI-Fixtures erneut geprüft.",
+  "naechster_schritt": "Unabhängigen Reviewer prüfen; Sinan aktiviert zuerst #316 und gibt #302 frei. Danach echte Parallel-/Subagent-Proben liefern; kein Done ohne Live-Beleg.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://linear.app/sinan-kahraman/issue/SIN-856",
+    "docs/decisions/SIN-856-parallele-worker.md",
+    "src/lib/loop/parallel-cli.test.ts"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/302",
+  "geaendert": [
+    "docs/abnahme.yml",
+    "docs/autonomy/LEHREN.md",
+    "docs/decisions/SIN-856-parallele-worker.md",
+    "docs/autonomy/laeufe/SIN-856.json"
+  ]
+}
