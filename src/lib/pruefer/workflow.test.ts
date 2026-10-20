@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/pruefer.yml", "utf8");
@@ -109,15 +109,27 @@ test("Erstinstallation stoppt vor dem Secret-Schritt, wenn die Basis noch den al
 
 test("Veröffentlichung wählt über alle Seiten den neuesten eigenen offiziellen Prüfer-Kommentar", () => {
   const line = workflow.split("\n").find(line => line.includes("ALT=$(gh api"))!;
-  const query = line.match(/-q '([^']+)'/)![1].replaceAll("${{ github.repository_owner }}", "siinanXD");
+  const query = line.match(/--jq '([^']+)'/)![1].replaceAll("${{ github.repository_owner }}", "siinanXD");
   const prefix = "<!-- pruefer-zweites-modell -->\n";
   const pages = [
     [{ id: 1, user: { login: "siinanXD" }, body: prefix + "früher bestanden" }, { id: 3, user: { login: "github-actions[bot]" }, body: prefix + "später nicht bestanden" }],
     [{ id: 7, user: { login: "siinanXD" }, body: prefix + "neuester offizieller Review" }, { id: 9, user: { login: "fremd" }, body: prefix + "fremder Marker" }, { id: 10, user: { login: "github-actions[bot]" }, body: "anderer Kommentar" }],
   ];
-  const jq = (input: unknown) => execFileSync("jq", ["-r", query], { input: JSON.stringify(input), encoding: "utf8" }).trim();
+  // gh --paginate --jq wendet den Filter je Seite an; `tail -n 1` nimmt die letzte Treffer-ID.
+  const jq = (seiten: unknown[][]) => seiten.map((s) => execFileSync("jq", ["-r", query], { input: JSON.stringify(s), encoding: "utf8" })).join("").trim().split("\n").filter(Boolean).at(-1) ?? "";
   assert.equal(jq(pages), "7");
   assert.equal(jq([[pages[1][1]]]), "", "Fremde Marker werden niemals überschrieben");
-  assert.match(line, /--paginate --slurp/);
+  assert.match(line, /--paginate --jq/);
+  assert.match(line, /\| tail -n 1\)$/);
+  assert.doesNotMatch(line, /--slurp/, "gh lehnt --slurp mit --jq ab (SIN-872)");
   assert.doesNotMatch(line, /head -1/);
+});
+
+test("SIN-872: kein gh --slurp zusammen mit -q/--jq in Workflows", () => {
+  const dir = new URL("../../../.github/workflows/", import.meta.url);
+  for (const f of readdirSync(dir)) {
+    for (const zeile of readFileSync(new URL(f, dir), "utf8").split("\n")) {
+      assert.ok(!(/--slurp/.test(zeile) && /(\s-q\s|--jq)/.test(zeile)), `${f}: ${zeile.trim()}`);
+    }
+  }
 });
