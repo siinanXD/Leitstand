@@ -139,6 +139,29 @@ test("Normgleiche doppelte Auftragshaken bleiben gesperrt statt eine Live-Abnahm
   assert.equal(entscheide({ haken: leseHaken(auftrag), belege: e.haken ?? [], teil: false, runde: 0 }).status, "offen");
 });
 
+// SIN-877: Fixtures nach den Befunden von #302 (0ab279f) und #308 (e7f3dfa); der Wortlaut der Original-Antworten war offline nicht abrufbar.
+const markiert = "- [ ] \\[nach Aktivierung\\] Neuer Lauf ohne hoch-Befund";
+const hoch = (text: string) => ({ datei: "x", zeile: 1, schwere: "hoch" as const, text });
+
+test("SIN-877: Fund nur zu markiertem Haken ist nie hoch (#308)", () => {
+  const e = bewerte({ bestanden: false, funde: [hoch("Der Haken [nach Aktivierung] ist offen; das ist kein Merge-Fehler.")] }, ["docs/a.md"], false, markiert);
+  assert.equal(e.funde[0].schwere, "mittel");
+  assert.equal(e.bestanden, true);
+});
+
+test("SIN-877: Live-Nachweis-Befunde aus #302 sperren nicht", () => {
+  const funde = ["Live-Nachweis fehlt für [nach Aktivierung] Lauf", "[nach Aktivierung]: kein Run-Link im PR", "Design-Entscheidung zu [nach Aktivierung] nicht belegt"].map(hoch);
+  const e = bewerte({ bestanden: false, funde }, ["docs/a.md"], false);
+  assert.equal(e.funde.some((f) => f.schwere === "hoch"), false);
+  assert.equal(e.bestanden, true);
+});
+
+test("SIN-877: Sicherheitsfund bleibt hoch (Negativtest)", () => {
+  const e = bewerte({ bestanden: true, funde: [hoch("Secret wird bei [nach Aktivierung] geleakt")] }, ["docs/a.md"], false);
+  assert.equal(e.funde[0].schwere, "hoch");
+  assert.equal(e.bestanden, false);
+});
+
 test("Tatsächliches Linear-Markdown-Escaping erhält die explizite Nachaktivierungsphase", () => {
   const text = "\\[nach Aktivierung\\] Live-Lauf";
   const auftrag = `- [ ] ${text}`;
