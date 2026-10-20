@@ -11,3 +11,11 @@ Quellen, geprüft am 20.10.2026:
 - https://developers.openai.com/api/docs/guides/reasoning : Reasoning braucht Ausgabetokens; niedriger Aufwand reduziert normalerweise Tokenbedarf und Latenz.
 
 Validierung: echte CLI gegen isolierte API-Fixtures für Erfolg, leere Antwort, ungültiges HTTP-/Review-JSON, Tokenlimit und beide Rückfallpfade. Fehler müssen im Ledger ankommen, dürfen keinen Erfolgs-Kommentar erzeugen und keine Fixture-Keys ausgeben. Datei-Abnahme zeigt nur Installation; echter API-Lauf auf #308 bleibt nach Aktivierung erforderlich. Keine behauptete Live-Reparatur aus Fixtures.
+
+## Nacharbeit: alter PR-Snapshot nach main-Fortschritt
+
+Der erste Live-Lauf auf dem Fix, https://github.com/siinanXD/Leitstand/actions/runs/39393800161, scheitert vor der API an der Zielvalidierung. Nachgewiesen: Workflow und geschütztes main stehen auf 51f9144, die PR-API nennt für #308 noch f8291dc als base.sha.
+
+Runtime und Triple-Dot-Diff werden deshalb an den aktuellen geschützten main-SHA gebunden; der PR-Basis-Snapshot wird separat als pr_basis erfasst. Vor Veröffentlichung werden offener Zustand, beide Zielrepos, Zielbranch main, Head und PR-Basis-Snapshot sowie aktueller main-SHA und Schutzstatus erneut gelesen. Ein während des Laufs fortgeschrittenes main oder geänderter Head/Snapshot/Ziel bleiben gesperrt. Keine PR-Datei wird ausgeführt. Neuer Live-Lauf bleibt nach Owner-Aktivierung erforderlich; die API-Ursache ist weiter offen.
+
+Regression: ausgeführter Zielvalidierungs-Code mit altem PR-Snapshot; ausgeführter Shell-Guard mit positivem Fall und Gegenproben für Head, Snapshot, beide Repos, Zielbranch, geschlossenen PR, main-Fortschritt und entfallenen Schutz.

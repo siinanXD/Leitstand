@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/pruefer.yml", "utf8");
 const script = workflow.match(/          script: \|\n((?:            .*\n)+)/)![1].split("\n").map((s) => s.slice(12)).join("\n");
@@ -16,7 +18,7 @@ async function ziel(data: ReturnType<typeof pr>, eventName = "pull_request_targe
 
 test("Workflow-Zielprüfung akzeptiert Claude und Codex und liefert nur Commit-SHAs", async () => {
   for (const ref of ["claude/sin-827", "codex/sin-827"]) {
-    assert.deepEqual(await ziel(pr(ref)), { basis: "b".repeat(40), head: "a".repeat(40) });
+    assert.deepEqual(await ziel(pr(ref)), { basis: "b".repeat(40), head: "a".repeat(40), pr_basis: "b".repeat(40) });
     assert.ok(workflow.includes(`startsWith(github.head_ref, '${ref.split("/")[0]}/')`));
   }
 });
@@ -25,7 +27,7 @@ test("Veraltetes PR-Ereignis darf keinen inzwischen anderen Head oder Basisstand
   const event = pr();
   await assert.rejects(ziel({ ...pr(), head: { ...pr().head, sha: "c".repeat(40) } }, "pull_request_target", "827", event), /veraltet/);
   await assert.rejects(ziel({ ...pr(), base: { ...pr().base, sha: "c".repeat(40) } }, "pull_request_target", "827", event), /veraltet/);
-  assert.deepEqual(await ziel(pr(), "pull_request_target", "827", event), { basis: "b".repeat(40), head: "a".repeat(40) });
+  assert.deepEqual(await ziel(pr(), "pull_request_target", "827", event), { basis: "b".repeat(40), head: "a".repeat(40), pr_basis: "b".repeat(40) });
 });
 
 test("Fork, Draft, geschlossener PR und ungültige Ziele werden abgewiesen", async () => {
@@ -37,7 +39,7 @@ test("Fork, Draft, geschlossener PR und ungültige Ziele werden abgewiesen", asy
     { ...pr(), head: { ...pr().head, sha: "--output=datei" } },
   ]) await assert.rejects(ziel(data));
   await assert.rejects(ziel(pr(), "pull_request_target", "1; echo falsch"));
-  assert.deepEqual(await ziel({ ...pr(), draft: true }, "workflow_dispatch"), { basis: "b".repeat(40), head: "a".repeat(40) });
+  assert.deepEqual(await ziel({ ...pr(), draft: true }, "workflow_dispatch"), { basis: "b".repeat(40), head: "a".repeat(40), pr_basis: "b".repeat(40) });
 });
 
 test("Prüfer installiert und läuft nur aus Basis, keine persistierten Git-Credentials", () => {
@@ -132,4 +134,41 @@ test("SIN-872: kein gh --slurp zusammen mit -q/--jq in Workflows", () => {
       assert.ok(!(/--slurp/.test(zeile) && /(\s-q\s|--jq)/.test(zeile)), `${f}: ${zeile.trim()}`);
     }
   }
+});
+
+test("SIN-880: alter PR-Basis-Snapshot nutzt weiterhin den aktuellen geschützten Prüfer", async () => {
+  const alt = { ...pr(), base: { ...pr().base, sha: "c".repeat(40) } };
+  for (const event of ["workflow_dispatch", "pull_request_target"]) {
+    assert.deepEqual(await ziel(alt, event, "308", event === "pull_request_target" ? alt : undefined), {
+      basis: "b".repeat(40), head: "a".repeat(40), pr_basis: "c".repeat(40),
+    });
+  }
+});
+
+test("SIN-880: echter Veröffentlichungs-Guard sperrt geänderten Head, Ziel, Snapshot und main", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "pruefer-publish-"));
+  const block = workflow.split('          AKTUELL=$(gh api')[1].split('          ALT=')[0];
+  const guard = ('AKTUELL=$(gh api' + block).replaceAll('${{ github.repository }}', repo.full_name);
+  try {
+    writeFileSync(join(cwd, "gh"), '#!/bin/sh\ncase "$*" in *branches/main*) printf "%s" "$FIXTURE_MAIN";; *) printf "%s" "$FIXTURE_PR";; esac\n', { mode: 0o755 });
+    const head = "a".repeat(40), base = "b".repeat(40), snapshot = "c".repeat(40);
+    const current = `${head} ${snapshot} main ${repo.full_name} ${repo.full_name} open`;
+    for (const [pr, main, ok] of [
+      [current, `${base} true`, true],
+      [current.replace(head, "d".repeat(40)), `${base} true`, false],
+      [current.replace(snapshot, base), `${base} true`, false],
+      [current.replace(" main ", " unsafe "), `${base} true`, false],
+      [current.replace(repo.full_name, "fork/Leitstand"), `${base} true`, false],
+      [current, `${snapshot} true`, false],
+      [current.replace(" open", " closed"), `${base} true`, false],
+      [current.replace(`${repo.full_name} open`, "fork/Leitstand open"), `${base} true`, false],
+      [current, `${base} false`, false],
+    ] as const) {
+      const r = spawnSync("bash", ["-e", "-c", guard], { cwd, encoding: "utf8", env: {
+        ...process.env, PATH: `${cwd}:${process.env.PATH}`, PR: "308", BASE_SHA: base, HEAD_SHA: head,
+        PR_BASE_SHA: snapshot, FIXTURE_PR: pr, FIXTURE_MAIN: main,
+      } });
+      assert.equal(r.status, ok ? 0 : 1, `${pr} / ${main}: ${r.stderr}`);
+    }
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

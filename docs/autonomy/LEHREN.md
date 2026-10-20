@@ -35,3 +35,4 @@ GitHub-Spiegel und reine Checkbox-Hashes übersehen geänderte nummerierte Krite
 - SIN-854: Ein Code-Review kann keinen erst nach Aktivierung möglichen Folge-Merge belegen. Solche Kriterien ausdrücklich markieren, als unbelegt erhalten und Done weiter sperren; sonst bleibt ein korrekt geschützter Workflow in einer zirkulären Freigabe hängen.
 
 HTTP-Status ohne Antworttext und JSON.parse auf leerer Modellantwort verbergen den Prüfer-Abbruch → redigierte Provider-Diagnose vor Kürzung, beide Rückfallursachen erhalten, Tokenlimit/Reasoning explizit setzen und echte CLI mit API-Fixtures prüfen; Preisvariablen sind USD/Million Tokens, keine Denkeinstellung (SIN-880).
+Ein älterer PR kann noch eine frühere base.sha nennen → Prüfer-Runtime an aktuellen geschützten main-SHA binden, PR-Snapshot separat erfassen und vor Veröffentlichung beide Bindungen samt Zielrepo/Zielbranch/Schutz erneut prüfen (SIN-880).

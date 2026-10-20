@@ -614,3 +614,10 @@
   art: datei
   pfad: src/lib/pruefer/pruefer.ts
   enthaelt: export function apiFehler
+
+- id: leitstand-pruefer-basisbindung
+  produkt: leitstand
+  titel: Prüfer trennt geschütztes main vom PR-Snapshot (SIN-880, Installation)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: PR_BASE_SHA
