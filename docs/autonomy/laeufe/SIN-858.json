@@ -1,10 +1,10 @@
 {
   "rolle": "bauen",
   "issue": "SIN-858",
-  "zeitpunkt": "2026-10-20T08:50:06.905342Z",
+  "zeitpunkt": "2026-10-20T08:54:10.579201Z",
   "status": "blockiert",
-  "zusammenfassung": "Nach unabhängigem Review: Cursor- und Unvollständigkeits-Nachweise über echte CLI ergänzt; Code-Inhalt vor Einzeldatei-Lektüre gezielt in Git gesucht. 569 Tests, Lint, Typecheck und CLI-Trockenprobe grün.",
-  "naechster_schritt": "Neue CI und unabhängigen Review auf aktualisiertem PR #308 prüfen; echtes Vierquellen-Inventar nach Aktivierung bleibt offen.",
+  "zusammenfassung": "Pagination-/Quellfehler-Nachweise, gezielte Dateiauswahl und Secret-Prüfung der Anfrage ergänzt. Aktuelles main integriert. 576 Tests, Lint und Typecheck grün.",
+  "naechster_schritt": "CI und unabhängigen Review dieser zweiten gezielten Nacharbeit prüfen. Bei erneuter Ablehnung keine weitere automatische Runde; Live-Inventar nach Aktivierung bleibt offen.",
   "kosten_eur": 0,
   "quellen": [
     "https://github.com/siinanXD/Leitstand/pull/308#issuecomment-6277554382",

@@ -44,6 +44,7 @@ type Ergebnis = { art: QuellArt; g: Gelesen } | { art: QuellArt; fehler: string 
 
 /** Eine Anfrage: jede Quelle einzeln, ein Fehler dort lässt die anderen stehen. */
 export async function sammle(anfrage: Anfrage, lader: Lader): Promise<Bestand> {
+  if (mitGeheimnis({ anfrage: JSON.stringify(anfrage) }).length) throw new Error("Geheimnis in Anfrage, verworfen");
   const wörter = (anfrage.begriffe ?? stichwoerter(anfrage.feature)).map((w) => w.toLowerCase());
   if (!wörter.length || wörter.some((w) => !/^[a-zäöüß0-9_-]{4,60}$/i.test(w))) throw new Error("Gezielte Suchbegriffe ab 4 Zeichen erforderlich");
   const b: Bestand = { produkt: anfrage.produkt, bereich: anfrage.bereich, feature: anfrage.feature, quellen: [], vorhandene_bausteine: [], offene_arbeit: [], fehlende_nachweise: [], quellfehler: [] };

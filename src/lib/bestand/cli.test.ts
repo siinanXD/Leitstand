@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
@@ -53,6 +53,15 @@ global.fetch = async (url, init) => {
   throw new Error('Unerwartete URL');
 };
 `);
+    const secret = `ghp_${"a".repeat(36)}`;
+    const secretOut = join(cwd, "secret-out");
+    const secretRun = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), "--require", preload, resolve("scripts/bestand/bestand.ts"), "leitstand", "infra", secret, "bestand"], {
+      cwd, encoding: "utf8", timeout: 20000,
+      env: { ...process.env, DRY_RUN: "1", BESTAND_FIXTURE: "", BESTAND_CONNECTOR_INPUT: "", BESTAND_AUSGABE: secretOut },
+    });
+    assert.equal(secretRun.status, 1);
+    assert.ok(!existsSync(join(secretOut, "leitstand-infra.json")));
+    assert.ok(!(secretRun.stdout + secretRun.stderr).includes(secret));
     for (const mode of ["ok", "incomplete", "search-limit", "cursor-repeat", "cursor-missing"]) {
       const out = join(cwd, "out");
       const r = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), "--require", preload, resolve("scripts/bestand/bestand.ts"), "leitstand", "infra", "Bestand", "bestand"], {

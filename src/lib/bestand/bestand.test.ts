@@ -72,3 +72,14 @@ test("Inhalt trifft auch bei anderem Dateinamen; Rohtext und Fehlergeheimnisse b
   assert.ok(!JSON.stringify(b).includes("private details"));
   await assert.rejects(sammle({ ...anfrage, begriffe: [] }, voll), /Suchbegriffe/);
 });
+
+test("Anfrage mit Geheimnis wird vor jedem Quellenzugriff abgewiesen", async () => {
+  const token = `ghp_${"a".repeat(36)}`;
+  for (const feld of ["produkt", "bereich", "feature", "begriffe"] as const) {
+    let gelesen = false;
+    const a = { ...anfrage, [feld]: feld === "begriffe" ? [token] : token };
+    const lader = { ...voll, code: async () => { gelesen = true; return voll.code(); } };
+    await assert.rejects(sammle(a, lader), (e: unknown) => /Geheimnis/.test(String(e)) && !String(e).includes(token));
+    assert.equal(gelesen, false);
+  }
+});
