@@ -45,3 +45,4 @@ Claude lehnt erzwungenes tool_choice tool/any ab → für reine Review-JSONs nat
 Nur Quellmetadaten auf Secrets prüfen reicht nicht → auch die frei eingegebene Anfrage vor Quellenzugriff und Berichtserzeugung mit dem vorhandenen Detektor abweisen; CLI-Probe darf bei einem erkannten Secret keine JSON-Datei anlegen (SIN-858).
 
 - SIN-856: Wiederaufnahme nach Owner-Auftrag aktualisiert main und Belege, setzt aber weder Reparaturzähler noch needs-human zurück; echte Parallel-/Subagent-Proben folgen erst nach Aktivierung.
+- SIN-877: Fehlende Codestelle ist kein Phasennachweis; nur explizit klassifizierte Nachweise an aktuellen Nachaktivierungs-Haken zurückstellen, alte Funde konservativ lassen.

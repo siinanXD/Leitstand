@@ -1,0 +1,25 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-877",
+  "zeitpunkt": "2026-10-20T09:42:38.679711Z",
+  "status": "braucht_sinan",
+  "zusammenfassung": "Zu breite Herabstufung durch explizite Fundart und Zuordnung zum aktuellen Nachaktivierungs-Haken ersetzt; Originalreviews als Regression gesichert. Zusätzlicher Sicherheitsfilter verhindert Herabstufung bei falsch klassifizierten Sicherheitsindikatoren; elf Negativfälle.",
+  "naechster_schritt": "CI und unabhängigen Prüfer prüfen; Sinan aktiviert den Gate-Fix per Merge, danach frischer Review auf #302 und Live-Abnahme.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://linear.app/sinan-kahraman/issue/SIN-877",
+    "src/lib/pruefer/phase.test.ts",
+    "docs/decisions/SIN-877-pruefer-phasen.md"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/316",
+  "geaendert": [
+    "src/lib/pruefer/pruefer.ts",
+    "src/lib/pruefer/phase.test.ts",
+    "src/lib/pruefer/fixtures/review-302.json",
+    "src/lib/pruefer/fixtures/review-308.json",
+    "docs/abnahme.yml",
+    "docs/autonomy/LEHREN.md",
+    "docs/decisions/SIN-877-pruefer-phasen.md"
+  ]
+}
