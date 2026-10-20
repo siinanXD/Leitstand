@@ -110,7 +110,7 @@ Risikoarme Aufgaben können bestehende Agenten über einen Draft-PR gemäß [doc
 
 - Ein PR pro Linear-Issue. Titel als Conventional Commit mit Linear-ID, z. B. `feat(uebersicht): Projekt-Karten (SIN-304)`.
 - Commit-Nachrichten enthalten `Part of SIN-xxx`.
-- Vor dem Push: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`.
+- Vor dem Push: `npm ci`, dann `npm run check:fast` (Lint und Typecheck parallel, dann Unit-Tests, ohne Keys, ca. 1 Min., SIN-875). Erst bei grün pushen; rot → reparieren (höchstens zwei Runden, SIN-840). Dieselbe Prüfung läuft in `build`; sie ersetzt nicht Build, Playwright und axe in CI.
 - Höchstens 3 Reparaturrunden pro PR, dann stoppen und Blocker melden.
 - Nie selbst mergen.
 

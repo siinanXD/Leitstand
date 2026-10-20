@@ -20,9 +20,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
+      - name: Lint, Typecheck, Unit-Tests ohne Keys (check:fast, SIN-875)
+        run: npm run check:fast
       - name: SIN-854 - Gate und Reparatur-CLI gegen isolierte API-Fixtures abnehmen
         run: node --import tsx --test src/lib/loop/beleg-stand.test.ts src/lib/loop/merge-gate.test.ts src/lib/loop/repair-cli.test.ts
       - name: Aufbauphase-Gate mit Altfristen und Schutzgrenzen simulieren (SIN-855)

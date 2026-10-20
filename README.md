@@ -32,7 +32,7 @@ cp .env.example .env.local   # fill in the Supabase values, names only in the re
 npm run dev                  # http://localhost:43124
 ```
 
-Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:a11y` (Playwright with axe-core, after `npm run build`).
+Checks: `npm run check:fast` (Lint, Typecheck, Unit-Tests ohne Keys), `npm run test:a11y` (Playwright with axe-core, after `npm run build`).
 
 ## What I learned
 
