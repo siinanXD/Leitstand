@@ -51,7 +51,7 @@ global.fetch = async (url, init) => {
   }
   const review = {bestanden:true,funde:[],haken:[]};
   if (url.includes('openai.com')) {
-    assert.equal(body.reasoning_effort, 'low');
+    assert.equal(body.reasoning_effort, process.env.ERWARTET_AUFWAND || undefined);
     assert.equal(body.max_completion_tokens, 6000);
     if (mode.startsWith('fallback')) return new Response('insufficient_quota sk-fixture-openai', {status:429});
     if (mode === 'http-json') return new Response('');
@@ -85,7 +85,7 @@ global.fetch = async (url, init) => {
       rmSync(join(cwd, "pruefer-kommentar.md"), { force: true });
       const r = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), "--require", preload, resolve("scripts/pruefer/pruefer.ts"), "880", basis, head], {
         cwd, encoding: "utf8", timeout: 15000,
-        env: { ...process.env, PATH: `${cwd}:${process.env.PATH}`, FIXTURE_MODE: mode, DRY_RUN: "0", PRUEFER_MODELL: "fixture", PRUEFER_PREIS_EIN: "0.10", PRUEFER_PREIS_AUS: "0.5", OPENAI_API_KEY: "sk-fixture-openai", ANTHROPIC_API_KEY: "sk-fixture-anthropic", LINEAR_API_KEY: "fixture", GH_TOKEN: "", SUPABASE_URL: "https://fixture.invalid", SUPABASE_SERVICE_ROLE_KEY: "fixture" },
+        env: { ...process.env, PATH: `${cwd}:${process.env.PATH}`, FIXTURE_MODE: mode, DRY_RUN: "0", PRUEFER_MODELL: "fixture", ERWARTET_AUFWAND: "low", PRUEFER_PREIS_EIN: "0.10", PRUEFER_PREIS_AUS: "0.5", OPENAI_API_KEY: "sk-fixture-openai", ANTHROPIC_API_KEY: "sk-fixture-anthropic", LINEAR_API_KEY: "fixture", GH_TOKEN: "", SUPABASE_URL: "https://fixture.invalid", SUPABASE_SERVICE_ROLE_KEY: "fixture" },
       });
       assert.equal(r.status, status, `${mode}: ${r.stdout} ${r.stderr}`);
       assert.match(r.stdout, meldung);

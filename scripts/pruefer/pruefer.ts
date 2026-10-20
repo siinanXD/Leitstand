@@ -5,14 +5,14 @@
  *
  * Liest PR und Issue (gh), schickt Diff und Issue an OpenAI (Chat Completions, Structured Outputs), schreibt pruefer-kommentar.md
  * und Kosten als loop_events (Schritt pruefer, payload.kosten_eur_usd). Exit 1 bei „nicht bestanden“, Datei pruefer-hoch.txt bei Schwere hoch.
- * Env: OPENAI_API_KEY, PRUEFER_MODELL, PRUEFER_PREIS_EIN, PRUEFER_PREIS_AUS (USD je 1 Mio. Tokens, aus der OpenAI-Doku), GH_TOKEN,
+ * Env: OPENAI_API_KEY, PRUEFER_MODELL, PRUEFER_AUFWAND (reasoning_effort, Standard low),PRUEFER_PREIS_EIN, PRUEFER_PREIS_AUS (USD je 1 Mio. Tokens, aus der OpenAI-Doku), GH_TOKEN,
  * SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (optional). DRY_RUN=1: kein Netz zu OpenAI und Supabase, Diff und Regeln laufen.
  */
 import { lesePrDiff } from "../../src/lib/pruefer/git";
 import { ladeAuftrag, standMarker } from "../loop/beleg-stand.mjs";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, hatHoch, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
+import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, hatHoch, kommentar, kostenUsd, leseAntwort, leseAufwand, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
 
 const env = process.env;
 const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
@@ -25,13 +25,14 @@ if (!nummer || !/^\d+$/.test(nummer) || !basis || !head) {
 const sh = (cmd: string, ...a: string[]) => execFileSync(cmd, a, { encoding: "utf8", maxBuffer: 50_000_000 });
 
 async function modell(text: string, name: string): Promise<{ ergebnis: Ergebnis; ein: number; aus: number }> {
+  const aufwand = leseAufwand(name, env.PRUEFER_AUFWAND);
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: name,
       max_completion_tokens: MAX_AUSGABE_TOKENS,
-      reasoning_effort: "low",
+      ...(aufwand ? { reasoning_effort: aufwand } : {}),
       messages: [{ role: "system", content: ANWEISUNG }, { role: "user", content: text }],
       response_format: { type: "json_schema", json_schema: { name: "pruefung", strict: true, schema: SCHEMA } },
     }),

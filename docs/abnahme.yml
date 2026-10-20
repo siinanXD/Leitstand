@@ -642,3 +642,10 @@
   art: datei
   pfad: scripts/pruefer/pruefer.ts
   enthaelt: output_config
+
+- id: leitstand-pruefer-aufwand
+  produkt: leitstand
+  titel: Prüfer liest reasoning_effort aus PRUEFER_AUFWAND (SIN-878, Installation)
+  art: datei
+  pfad: scripts/pruefer/pruefer.ts
+  enthaelt: PRUEFER_AUFWAND

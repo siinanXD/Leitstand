@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
+import { leseAufwand, istKontingentFehler,pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
 
 import { entscheide, leseHaken } from "../loop/haken";
 
 const gut = { bestanden: true, funde: [] };
+
+test("SIN-878: Aufwand: Standard low, Wert aus PRUEFER_AUFWAND, GPT-4 ohne Parameter, Unsinn wirft", () => {
+  assert.equal(leseAufwand("gpt-6-luna", undefined), "low");
+  assert.equal(leseAufwand("gpt-6-luna", " Medium "), "medium");
+  assert.equal(leseAufwand("gpt-4o", "low"), null);
+  assert.throws(() => leseAufwand("gpt-6-luna", "extrem"), /PRUEFER_AUFWAND/);
+});
 
 test("PR mit Code, aber ohne Abnahme-Probe: nicht bestanden, Fund hoch", () => {
   const e = bewerte(gut, ["src/lib/x.ts", "src/lib/x.test.ts"], false);

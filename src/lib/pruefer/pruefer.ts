@@ -57,6 +57,15 @@ export const ANWEISUNG = [
 export const brauchtProbe = (dateien: string[]) => dateien.some((d) => /^(src|scripts|supabase|\.github)\//.test(d));
 export const hatProbe = (dateien: string[]) => dateien.includes(PROBEN_DATEI);
 
+const AUFWAND = ["minimal", "low", "medium", "high"];
+
+/** `reasoning_effort` für das Modell (SIN-878): Standard `low`; GPT-4-Modelle kennen den Parameter nicht (null = weglassen). Ein ungültiger Wert wirft, statt still zu raten. */
+export function leseAufwand(modell: string, wert: string | undefined): string | null {
+  const w = (wert ?? "").trim().toLowerCase() || "low";
+  if (!AUFWAND.includes(w)) throw new Error(`PRUEFER_AUFWAND „${wert}“ ungültig (erlaubt: ${AUFWAND.join(", ")})`);
+  return /^(gpt-4|chatgpt-4)/i.test(modell) ? null : w;
+}
+
 /** USD für einen Aufruf. */
 export const kostenUsd = (nutzung: { eingabe: number; ausgabe: number }, p: Preise) => (nutzung.eingabe * p.ein + nutzung.ausgabe * p.aus) / 1_000_000;
 
