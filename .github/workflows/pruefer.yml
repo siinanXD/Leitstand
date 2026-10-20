@@ -46,8 +46,9 @@ jobs:
             if (pr.base.ref !== 'main') throw new Error('Nur main als PR-Basis zulässig');
             const {data: branch} = await github.rest.repos.getBranch({...context.repo, branch: 'main'});
             if (!branch.protected) throw new Error('main ist nicht geschützt');
-            if (branch.commit.sha !== context.sha || pr.base.sha !== context.sha) throw new Error('Workflow und PR-Basis müssen denselben geschützten Commit verwenden');
-            for (const [name, sha] of [['basis', pr.base.sha], ['head', pr.head.sha]]) {
+            if (branch.commit.sha !== context.sha) throw new Error('Workflow muss den aktuellen geschützten main-Commit verwenden');
+            // PR-Metadaten können noch den früheren main-Stand nennen; sie bestimmen nie den ausführbaren Prüfer.
+            for (const [name, sha] of [['basis', branch.commit.sha], ['head', pr.head.sha], ['pr_basis', pr.base.sha]]) {
               if (!/^[a-f0-9]{40}$/i.test(sha)) throw new Error('Ungültige Commit-SHA');
               core.setOutput(name, sha);
             }
@@ -104,9 +105,11 @@ jobs:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           BASE_SHA: ${{ steps.ziel.outputs.basis }}
           HEAD_SHA: ${{ steps.ziel.outputs.head }}
+          PR_BASE_SHA: ${{ steps.ziel.outputs.pr_basis }}
         run: |
-          AKTUELL=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq '[.head.sha, .base.sha] | join(" ")')
-          if [ "$AKTUELL" != "$HEAD_SHA $BASE_SHA" ]; then
+          AKTUELL=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq '[.head.sha, .base.sha, .base.ref, .head.repo.full_name, .base.repo.full_name, .state] | join(" ")')
+          MAIN=$(gh api "repos/${{ github.repository }}/branches/main" --jq '[.commit.sha, .protected] | join(" ")')
+          if [ "$AKTUELL" != "$HEAD_SHA $PR_BASE_SHA main ${{ github.repository }} ${{ github.repository }} open" ] || [ "$MAIN" != "$BASE_SHA true" ]; then
             echo 'Prüfergebnis veraltet: Head oder Basis geändert'
             exit 1
           fi

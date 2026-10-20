@@ -1,26 +1,30 @@
 {
   "rolle": "bauen",
   "issue": "SIN-880",
-  "zeitpunkt": "2026-10-20T08:20:11.048Z",
+  "zeitpunkt": "2026-10-20T08:36:49.935749Z",
   "status": "blockiert",
-  "zusammenfassung": "API-Diagnose und explizites Reasoning low implementiert. 564 Tests, Lint und Typecheck lokal grün; acht CLI-API-Fixtures. Aktivierung und echter API-Nachweis fehlen.",
-  "naechster_schritt": "CI von PR #318 prüfen; Owner aktiviert gemäß SIN-880 den main-basierten Prüfer-Fix. Danach echter Lauf auf #308 und API-Ursache anhand redigierter Diagnose beheben.",
+  "zusammenfassung": "Basisbindung repariert; API-Ursachen belegt: OpenAI credit_balance_exhausted, Claude lehnt erzwungenes tool_choice ab. Rückfall auf native schema-gebundene JSON-Ausgabe umgestellt.",
+  "naechster_schritt": "CI und Owner-Aktivierung von #319, danach neuer Live-Lauf auf #308. Kein Guthaben aufgeladen, keine Keys gewechselt.",
   "kosten_eur": 0,
   "quellen": [
     "https://github.com/siinanXD/Leitstand/actions/runs/39389773514",
     "https://developers.openai.com/api/docs/models/gpt-6-luna",
-    "https://developers.openai.com/api/docs/guides/reasoning"
+    "https://developers.openai.com/api/docs/guides/reasoning",
+    "https://github.com/siinanXD/Leitstand/actions/runs/39393800161",
+    "https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+    "https://github.com/siinanXD/Leitstand/actions/runs/39394344355/job/118533232301"
   ],
   "art": "code",
-  "pr": "https://github.com/siinanXD/Leitstand/pull/318",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/319",
   "geaendert": [
+    ".github/workflows/pruefer.yml",
     "README.md",
     "docs/abnahme.yml",
     "docs/autonomy/LEHREN.md",
+    "docs/autonomy/laeufe/SIN-880.json",
+    "docs/decisions/SIN-880-pruefer-diagnose.md",
     "scripts/pruefer/pruefer.ts",
     "src/lib/pruefer/cli.test.ts",
-    "src/lib/pruefer/pruefer.test.ts",
-    "src/lib/pruefer/pruefer.ts",
-    "docs/decisions/SIN-880-pruefer-diagnose.md"
+    "src/lib/pruefer/workflow.test.ts"
   ]
 }
