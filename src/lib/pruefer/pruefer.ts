@@ -10,7 +10,8 @@ export type Preise = { ein: number; aus: number };
 
 export const MARKER = "<!-- pruefer-zweites-modell -->";
 export const KOSTENDECKEL_USD = 0.1;
-export const MAX_AUSGABE_TOKENS = 1500;
+// Gemeinsames Budget für Reasoning und fertiges Review; im Kostendeckel mitgerechnet.
+export const MAX_AUSGABE_TOKENS = 6000;
 export const PROBEN_DATEI = "docs/abnahme.yml";
 const nachAktivierung = (text: string) => text.startsWith("[nach Aktivierung] ") || text.startsWith("\\[nach Aktivierung\\] ");
 const SCHWEREN: Schwere[] = ["hoch", "mittel", "niedrig"];
@@ -80,7 +81,11 @@ export const eingabe = (a: { issue: string; titel: string; dateien: string[]; di
 
 /** Antwort des Modells prüfen; Unbrauchbares ist ein Fehler, nie ein stilles „bestanden“. */
 export function leseAntwort(text: string): Ergebnis {
-  const j = JSON.parse(text) as { bestanden?: unknown; funde?: unknown };
+  if (!text.trim()) throw new Error("Modellantwort leer: Tokenbudget/Abbruchgrund prüfen");
+  let j: { bestanden?: unknown; funde?: unknown };
+  try { j = JSON.parse(text); }
+  catch { throw new Error("Modellantwort enthält ungültiges JSON (möglicherweise abgeschnitten)"); }
+  if (!j || typeof j !== "object") throw new Error("Modellantwort ist kein Objekt");
   if (typeof j.bestanden !== "boolean" || !Array.isArray(j.funde)) throw new Error("Antwort ohne bestanden/funde");
   const funde = j.funde.map((f: Record<string, unknown>): Fund => {
     if (typeof f?.datei !== "string" || !Number.isInteger(f.zeile) || !SCHWEREN.includes(f.schwere as Schwere) || typeof f.text !== "string") throw new Error("Fund unvollständig");
@@ -122,13 +127,30 @@ export const reviewerZeile = (r: Reviewer) => (r === "codex" ? "Reviewer: OpenAI
 /** Ist die Antwort des Dienstes „Kontingent leer“ (und kein Fehler im Code)? */
 export const istKontingentFehler = (status: number, body: string) => status === 429 || /insufficient_quota|usage limit/i.test(body);
 
+/** Vor Kürzung redigieren, damit auch ein abgeschnittener Schlüssel nicht ins Log kommt. */
+export function apiFehler(dienst: string, status: number, body: string, secrets: readonly string[]): Error {
+  let text = body;
+  for (const key of secrets.filter(Boolean).sort((a, b) => b.length - a.length)) text = text.split(key).join("[redigiert]");
+  text = text.replace(/\bsk-[\w-]+/g, "[redigiert]").replace(/Bearer\s+[^\s"<>]+/gi, "Bearer [redigiert]").replace(/[\r\n\x00-\x1f\x7f]+/g, " ");
+  return Object.assign(new Error(`${dienst}: HTTP ${status}: ${text.slice(0, 300) || "Antworttext leer"}`), {
+    kontingent: dienst === "OpenAI" && istKontingentFehler(status, body),
+  });
+}
+
+/** HTTP-JSON und Review-JSON bekommen getrennte Fehlerorte; keine Antwortinhalte im Fehler. */
+export function leseApiJson(text: string, dienst: string): unknown {
+  try { return JSON.parse(text); }
+  catch { throw new Error(`${dienst}: HTTP-Antwort enthält leeres oder ungültiges JSON`); }
+}
+
 /** Erst der Hauptprüfer; nur bei leerem Kontingent (Fehler mit `kontingent`) der Rückfall. Alles andere bleibt Fehler. */
 export async function pruefeMitRueckfall<T>(haupt: () => Promise<T>, rueckfall: () => Promise<T>): Promise<{ r: T; reviewer: Reviewer }> {
   try {
     return { r: await haupt(), reviewer: "codex" };
   } catch (e) {
     if (!(e as { kontingent?: boolean }).kontingent) throw e;
-    return { r: await rueckfall(), reviewer: "claude" };
+    try { return { r: await rueckfall(), reviewer: "claude" }; }
+    catch (fehler) { throw new Error(`${(e as Error).message}; Rückfall: ${(fehler as Error).message}`); }
   }
 }
 
