@@ -1,0 +1,26 @@
+{
+  "rolle": "bauen",
+  "issue": "SIN-880",
+  "zeitpunkt": "2026-10-20T08:20:11.048Z",
+  "status": "blockiert",
+  "zusammenfassung": "API-Diagnose und explizites Reasoning low implementiert. 564 Tests, Lint und Typecheck lokal grün; acht CLI-API-Fixtures. Aktivierung und echter API-Nachweis fehlen.",
+  "naechster_schritt": "CI von PR #318 prüfen; Owner aktiviert gemäß SIN-880 den main-basierten Prüfer-Fix. Danach echter Lauf auf #308 und API-Ursache anhand redigierter Diagnose beheben.",
+  "kosten_eur": 0,
+  "quellen": [
+    "https://github.com/siinanXD/Leitstand/actions/runs/39389773514",
+    "https://developers.openai.com/api/docs/models/gpt-6-luna",
+    "https://developers.openai.com/api/docs/guides/reasoning"
+  ],
+  "art": "code",
+  "pr": "https://github.com/siinanXD/Leitstand/pull/318",
+  "geaendert": [
+    "README.md",
+    "docs/abnahme.yml",
+    "docs/autonomy/LEHREN.md",
+    "scripts/pruefer/pruefer.ts",
+    "src/lib/pruefer/cli.test.ts",
+    "src/lib/pruefer/pruefer.test.ts",
+    "src/lib/pruefer/pruefer.ts",
+    "docs/decisions/SIN-880-pruefer-diagnose.md"
+  ]
+}
