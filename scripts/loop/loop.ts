@@ -21,13 +21,13 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { ausLinear, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
 import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, workerJeClaim, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
-import { ladePrSchutz, maxParallel, parallelAuswahl, schuetztNoch } from "../../src/lib/loop/parallel";
+import { konfliktGrund, ladePrSchutz, maxParallel, parallelAuswahl, schuetztNoch } from "../../src/lib/loop/parallel";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -399,8 +399,13 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   const auswahl = (liste: LinearIssue[]) => {
     if (repo.toLowerCase() !== "siinanxd/leitstand") return waehle(liste, gespiegelt, max, belegung, rest);
     const kandidaten = waehle(liste, gespiegelt, liste.length, belegung, rest);
-    const aktiv = [...new Map([...laufende(liste, belegung), ...claims].map(i => [i.identifier, i])).values()];
+    const aktiv = [...new Map([...laufende(liste, belegung), ...claimsMitPlatz(claims, belegung)].map(i => [i.identifier, i])).values()];
     return parallelAuswahl(kandidaten, aktiv, max, schutz);
+  };
+  // SIN-923: konkreter Grund statt Pauschaltext (welches Issue, gegen wen, an welchem Pfad).
+  const grundLeitstand = (liste: LinearIssue[]) => {
+    const aktiv = [...new Map([...laufende(liste, belegung), ...claimsMitPlatz(claims, belegung)].map(i => [i.identifier, i])).values()];
+    return konfliktGrund(waehle(liste, gespiegelt, liste.length, belegung, rest), aktiv, max, schutz);
   };
   let wahl = auswahl(issues);
   if (!wahl.length) {
@@ -414,7 +419,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   }
   if (!wahl.length) {
     const grund = repo.toLowerCase() === "siinanxd/leitstand" && waehle(issues, gespiegelt, max, belegung, rest).length
-      ? "scope_konflikt: Schreibpfade überschneiden sich oder sind nicht angegeben; Aufgaben laufen nacheinander"
+      ? grundLeitstand(issues)
       : grundNichtsStartbar(issues, gespiegelt, max, belegung);
     console.log(`Nichts zu starten. ${grund}`);
     await ereignis("dispatch", "uebersprungen", { projekt, grund });
