@@ -49,7 +49,7 @@ export const SCHEMA = {
 
 export const ANWEISUNG = [
   "Du prüfst einen Pull Request, den ein anderes KI-Modell geschrieben hat, gegen sein Issue. Antworte nur im vorgegebenen JSON.",
-  "Prüfe: 1) Ist jeder Punkt unter „Fertig, wenn“ durch den Diff belegt? 2) Gibt es eine Abnahme-Probe in docs/abnahme.yml, die den Punkt unabhängig prüft? 3) Hält der Code die Ponytail-Regeln (nichts Unbestelltes, Vorhandenes nutzen, kleinster Diff) und das Schema (Spaltennamen, Typen, Migrationen)? 4) Prüfe sicherheitsrelevante Änderungen auf konkrete Fehler oder Risiken. Benenne Datenfluss, betroffene Grenze und mögliche Auswirkung; allein die Änderung an Workflow, Gate oder einem vorhandenen Secret ist kein Fehler. Die separate Risikoklassifizierung und Owner-Freigabe bleiben bestehen.",
+  "Prüfe: 1) Ist jeder Punkt unter „Fertig, wenn“ durch den Diff belegt? 2) Gibt es eine Abnahme-Probe in docs/abnahme.yml oder docs/abnahme/<name>.yml, die den Punkt unabhängig prüft? 3) Hält der Code die Ponytail-Regeln (nichts Unbestelltes, Vorhandenes nutzen, kleinster Diff) und das Schema (Spaltennamen, Typen, Migrationen)? 4) Prüfe sicherheitsrelevante Änderungen auf konkrete Fehler oder Risiken. Benenne Datenfluss, betroffene Grenze und mögliche Auswirkung; allein die Änderung an Workflow, Gate oder einem vorhandenen Secret ist kein Fehler. Die separate Risikoklassifizierung und Owner-Freigabe bleiben bestehen.",
   "Schwere „hoch“: vor dem Merge erforderlicher Fertig-Punkt unbelegt, Done ohne Wirkung, falsche Spalten- oder Feldnamen, Sicherheitsrisiko. „mittel“: Regelverstoß ohne Schaden. „niedrig“: Stil. `bestanden` ist false, sobald ein Fund „hoch“ ist.",
   "Diese Prüfung entscheidet über den Code-Merge, nicht über Done. Nur Haken mit dem exakten Präfix [nach Aktivierung] sind ausdrücklich nachgelagerte Live-Abnahmen: weiterhin belegt=false, aber ihr bloßes Ausstehen ist kein Codefehler. Alle unmarkierten Haken bleiben vor dem Merge verpflichtend. Ein konkreter Sicherheitsfehler bleibt immer hoch, auch wenn er eine spätere Live-Abnahme betrifft. Linear kann die eckigen Klammern als Markdown escapen; dies ist dieselbe explizite Markierung. Erfinde keine weitere Phasenzuordnung.",
   "Ein fehlender Live-Nachweis für markierte Haken ist kein Befund. Ein Befund braucht eine konkrete fehlerhafte Codestelle oder ein unbelegtes unmarkiertes Kriterium. Bewusste Design-Entscheidungen innerhalb des Auftrags sind kein Fehler. Klassifiziere jeden Fund: art=sicherheit für Sicherheitsrisiken, art=codefehler für Implementierungsfehler, art=nachweis ausschließlich für einen fehlenden Beleg ohne Code- oder Sicherheitsfehler. haken ist der exakte betroffene Auftragshaken, sonst null. Ein Code- oder Sicherheitsfehler wird niemals als bloßer Nachweis klassifiziert.",
@@ -59,7 +59,8 @@ export const ANWEISUNG = [
 
 /** Braucht der PR eine Abnahme-Probe? Reine Doku-PRs nicht. */
 export const brauchtProbe = (dateien: string[]) => dateien.some((d) => /^(src|scripts|supabase|\.github)\//.test(d));
-export const hatProbe = (dateien: string[]) => dateien.includes(PROBEN_DATEI);
+// SIN-921: Proben je Issue in docs/abnahme/<name>.yml (SIN-896) zählen wie docs/abnahme.yml.
+export const hatProbe = (dateien: string[]) => dateien.some((d) => d === PROBEN_DATEI || /^docs\/abnahme\/[^/]+\.ya?ml$/.test(d));
 
 /** USD für einen Aufruf. */
 export const kostenUsd = (nutzung: { eingabe: number; ausgabe: number }, p: Preise) => (nutzung.eingabe * p.ein + nutzung.ausgabe * p.aus) / 1_000_000;
@@ -140,7 +141,8 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, 
 export const hatHoch = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch");
 
 /** SIN-909: nur echte Risiken (Sicherheit, Datenverlust, Rechte) setzen risk:high; „Beleg fehlt“ und Co. setzen `pruefer:offen`. */
-export const hatRisiko = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch" && (f.art === "sicherheit" || SICHERHEITSBEZUG.test(`${f.datei}\n${f.text}`)));
+// SIN-921: Das Modell klassifiziert selbst (`art`). Nur Funde ohne `art` (Rückfall-Modell, alte Antworten) prüft die Wortliste.
+export const hatRisiko = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch" && (f.art ? f.art === "sicherheit" : SICHERHEITSBEZUG.test(`${f.datei}\n${f.text}`)));
 
 /**
  * SIN-909: Labels nach einem Prüfer-Lauf. Echtes Risiko → `risk:high` (+ Marker `pruefer:hoch`, außer ein von Hand gesetztes
