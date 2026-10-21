@@ -25,7 +25,7 @@ import { ausLinear, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, geme
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
-import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
+import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, workerJeClaim, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
 import { ladePrSchutz, maxParallel, parallelAuswahl, schuetztNoch } from "../../src/lib/loop/parallel";
 
@@ -302,14 +302,11 @@ async function sinanIssue(teamId: string, title: string, description: string) {
   });
 }
 
-/** Läuft oder wartet ein Worker-Lauf (claude.yml)? `null`, wenn das nicht lesbar ist: dann bleibt jeder Claim. */
-async function workerLaeuft(repo: string): Promise<boolean | null> {
+/** Läuft oder wartet genau dieser Lauf (Run-ID aus dem Claim)? `null`, wenn das nicht lesbar ist: dann bleibt der Claim. */
+async function laufAktiv(repo: string, runId: string): Promise<boolean | null> {
   try {
-    for (const status of ["in_progress", "queued"]) {
-      const d = await gh<{ total_count: number }>(`/repos/${repo}/actions/workflows/claude.yml/runs?status=${status}&per_page=1`);
-      if (d.total_count > 0) return true;
-    }
-    return false;
+    const d = await gh<{ status: string }>(`/repos/${repo}/actions/runs/${runId}`);
+    return d.status !== "completed";
   } catch {
     return null;
   }
@@ -374,8 +371,8 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     // SIN-896: Zombie-Claims (kein Worker-Lauf, kein offener PR, älter als 90 Min) belegen keinen Platz.
     const beleg = laufUrl();
     const mitPr = new Set(prs.map(p => p.title.match(/SIN-\d+/)?.[0]).filter((x): x is string => !!x));
-    const worker = staende.some(r => r.claim) ? await workerLaeuft(repo) : null;
-    for (const r of staende.filter(x => claimAbgelaufen(x, { offenerPr: mitPr.has(x.issue), workerLaeuft: worker, jetzt: new Date() }))) {
+    const worker = await workerJeClaim(staende, id => laufAktiv(repo, id));
+    for (const r of staende.filter(x => claimAbgelaufen(x, { offenerPr: mitPr.has(x.issue), workerLaeuft: worker.get(x.issue) ?? null, jetzt: new Date() }))) {
       console.log(`Claim von ${r.issue} abgelaufen (seit ${r.seit}, kein Worker, kein PR) → freigeben`);
       if (beleg && await speicher.freigeben(r, beleg).catch(() => false)) r.claim = null;
     }

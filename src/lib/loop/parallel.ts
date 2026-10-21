@@ -42,7 +42,7 @@ export function schreibPfade(i: Pick<LinearIssue, "description">): string[] {
   const m = i.description?.replace(/\\([[\]_])/g, "$1").match(/<!-- worker-pfade: (\[[^\n]*\]) -->/);
   try {
     const p: unknown = m ? JSON.parse(m[1]) : null;
-    if (!Array.isArray(p) || !p.length || !p.every(x => typeof x === "string" && /^[\w.\-/[\]]+$/.test(x) && !x.startsWith("/") && !x.split("/").some(s => s === "." || s === ".." || !s))) return [];
+    if (!Array.isArray(p) || !p.length || !p.every(x => typeof x === "string" && /^[\w.\-/[\]()]+$/.test(x) && !x.startsWith("/") && !x.split("/").some(s => s === "." || s === ".." || !s))) return [];
     const pfade = p as string[];
     // Steuerung wird auch bei verschiedenen Dateien nacheinander geändert.
     return pfade.some(x => /^(\.github|scripts\/(loop|waechter|vorarbeiter)|src\/lib\/(loop|waechter))(\/|$)/.test(x)) ? [...pfade, "@steuerung"] : pfade;

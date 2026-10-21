@@ -98,6 +98,11 @@ test("SIN-896: schreibPfade liest Linear-escapte Blöcke", () => {
   assert.deepEqual(schreibPfade({ description: roh }), ["src/lib/kennzahl_durchstich", "docs/abnahme/SIN-897.yml"]);
 });
 
+test("SIN-896: echter Linear-API-Text von SIN-897 ergibt 4 Pfade", () => {
+  const roh = '<!-- worker-pfade: \\["src/lib/kennzahlen", "scripts/kennzahlen", "src/app/(uebersicht)", "docs/decisions"\\] -->';
+  assert.deepEqual(schreibPfade({ description: roh }), ["src/lib/kennzahlen", "scripts/kennzahlen", "src/app/(uebersicht)", "docs/decisions"]);
+});
+
 test("SIN-896: wartender risk:high-PR schützt seine Dateien höchstens 24 h", () => {
   const jetzt = new Date("2026-10-21T12:00:00Z");
   const hoch = { labels: ["risk:high"], createdAt: "2026-10-20T11:00:00Z" };

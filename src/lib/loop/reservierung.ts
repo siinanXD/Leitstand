@@ -78,6 +78,23 @@ export function verwaist(r: Reservierung, lage: { offenerPr: boolean; gespiegelt
 /** SIN-896: Ohne Worker-Lauf und ohne offenen PR belegt ein Claim nach so vielen Minuten keinen Startplatz mehr. */
 export const CLAIM_ABLAUF_MIN = 90;
 
+/** Run-ID aus `gh-<RUN_ID>-<ISSUE>`; `null` bei anderer Form (z. B. lokaler Lauf). */
+export const laufIdAusClaim = (claim: string): string | null => claim.match(/^gh-(\d+)-SIN-\d+$/)?.[1] ?? null;
+
+/**
+ * Worker-Zustand je Claim, nie global: nur der Lauf, der zu genau diesem Claim gehört, hält ihn.
+ * `laeuft(runId)` liefert `null`, wenn der Lauf nicht lesbar ist; ohne lesbare Run-ID ebenfalls `null` (Claim bleibt).
+ */
+export async function workerJeClaim(staende: Reservierung[], laeuft: (runId: string) => Promise<boolean | null>): Promise<Map<string, boolean | null>> {
+  const aus = new Map<string, boolean | null>();
+  for (const r of staende) {
+    if (!r.claim) continue;
+    const id = laufIdAusClaim(r.claim);
+    aus.set(r.issue, id ? await laeuft(id) : null);
+  }
+  return aus;
+}
+
 /** Zombie-Claim: Beleg ist der Dispatch-Lauf. Unbekannter Worker-Zustand (null) lässt den Claim stehen. */
 export function claimAbgelaufen(r: Reservierung, lage: { offenerPr: boolean; workerLaeuft: boolean | null; jetzt: Date }): boolean {
   if (!r.claim || !r.seit || lage.offenerPr || lage.workerLaeuft !== false) return false;
