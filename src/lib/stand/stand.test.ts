@@ -110,7 +110,8 @@ test("Bericht, Umgang und Ereignis", () => {
   assert.equal(ereignisZeile(r, "7", "u").status, "needs_human");
   // Erlaubte Werte laut loop_events_status_check (Migration 20261021100000)
   const erlaubt = ["start", "ok", "fehler", "uebersprungen", "needs_human"];
-  assert.ok(erlaubt.includes(ereignisZeile(r, null, null).status));
   const sauber = bericht("leitstand", [befunde[2]], new Date());
+  // SIN-904: Abweichung (r) und sauberer Bericht liefern beide nur erlaubte Werte.
+  for (const b of [r, sauber]) assert.ok(erlaubt.includes(ereignisZeile(b, null, null).status), `${b.abweichung}: ${ereignisZeile(b, null, null).status}`);
   assert.deepEqual(ereignisZeile(sauber, null, null), { project: "leitstand", agent: "betrieb", step: "stand", status: "ok", issue: null, pr: null, run_id: null, run_url: null });
 });
