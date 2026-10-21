@@ -11,6 +11,11 @@ const STANDARD_FALLBACK_STUNDEN = 1;
 export type Pause = { id?: number; dienst: Dienst; bis: string; grund: string; repo: string | null; erstellt_at: string; geweckt_at: string | null };
 
 const STUNDE = 3_600_000;
+/** Status und Grund für `loop_events` (Schritt `kontingent`). Der Check erlaubt nur start/ok/fehler/uebersprungen/needs_human (SIN-903): `pause` und `wieder-da` stehen deshalb im `grund`, Status `ok`. */
+export function kontingentEreignis(art: "pause" | "wieder-da" | "uebersprungen", grund?: string): { status: "ok" | "uebersprungen"; grund: string | null } {
+  return art === "uebersprungen" ? { status: art, grund: grund ?? null } : { status: "ok", grund: grund ?? art };
+}
+
 export const istDienst = (s: unknown): s is Dienst => typeof s === "string" && (DIENSTE as readonly string[]).includes(s);
 
 /** Trifft der Text eine Limit-Meldung? (Claude: „usage limit reached“, „5-hour limit reached ∙ resets 7pm“, API: rate limit) */

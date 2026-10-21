@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abgelaufen, aktivePause, istLimitMeldung, pauseSatz, resetAusHeadern, resetAusLog, resetZeit, type Pause } from "./kontingent";
+import { abgelaufen, kontingentEreignis, aktivePause, istLimitMeldung, pauseSatz, resetAusHeadern, resetAusLog, resetZeit, type Pause } from "./kontingent";
 
 const jetzt = new Date("2026-10-13T12:00:00Z");
 const header = (o: Record<string, string>) => ({ get: (n: string) => o[n] ?? null });
@@ -63,4 +63,14 @@ test("aktive Pause und Wecker-Auswahl", () => {
 test("Satz in Worten, Berliner Zeit", () => {
   assert.equal(pauseSatz({ dienst: "claude", bis: "2026-10-13T17:00:00Z" }, jetzt), "Pause: Claude-Kontingent leer, geht heute um 19 Uhr weiter.");
   assert.equal(pauseSatz({ dienst: "vercel_deploys", bis: "2026-10-14T07:30:00Z" }, jetzt), "Pause: Deploy-Kontingent bei Vercel leer, geht morgen um 9:30 Uhr weiter.");
+});
+
+// Abschrift von loop_events_status_check (Supabase, inkl. needs_human aus Migration 20261021100000), bewusst unabhängig vom Code.
+const ERLAUBT_IN_DB = ["start", "ok", "fehler", "uebersprungen", "needs_human"];
+
+test("SIN-903: Kontingent-Ereignisse schreiben nur erlaubte Status, pause/wieder-da stehen im Grund", () => {
+  for (const art of ["pause", "wieder-da", "uebersprungen"] as const) assert.ok(ERLAUBT_IN_DB.includes(kontingentEreignis(art, art === "uebersprungen" ? "g" : undefined).status));
+  assert.deepEqual(kontingentEreignis("pause"), { status: "ok", grund: "pause" });
+  assert.deepEqual(kontingentEreignis("wieder-da"), { status: "ok", grund: "wieder-da" });
+  assert.deepEqual(kontingentEreignis("uebersprungen", "Rest knapp"), { status: "uebersprungen", grund: "Rest knapp" });
 });
