@@ -70,10 +70,10 @@ export function bewerteText(probe: Probe, text: string): Ergebnis {
   return !probe.enthaelt || text.includes(probe.enthaelt) ? { ok: true, grund: "ok" } : { ok: false, grund: `„${probe.enthaelt}“ fehlt` };
 }
 
-/** Zeile für `loop_events`: Schritt abnahme, `issue` trägt den Titel der Probe (so liest ihn die Seite ohne weitere Abfrage). */
-/** Erlaubte Werte laut Check `loop_events_status_check` (SIN-903: "failed" ließ jeden Insert scheitern). */
+/** Erlaubte Werte laut Check `loop_events_status_check` (SIN-903: "failed" ließ jeden Insert scheitern; `needs_human` seit Migration 20261021100000). */
 export const LOOP_STATUS = ["start", "ok", "fehler", "uebersprungen", "needs_human"] as const;
 
+/** Zeile für `loop_events`: Schritt abnahme, Status `ok` oder `fehler`, Grund bei Rot; `issue` trägt den Titel der Probe (so liest ihn die Seite ohne weitere Abfrage). */
 export function ereignisZeile(p: Probe, e: Ergebnis, runId: string | null, runUrl: string | null) {
   return {
     project: p.produkt,
