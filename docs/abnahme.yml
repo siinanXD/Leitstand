@@ -670,3 +670,10 @@
   art: datei
   pfad: src/lib/loop/bereich.ts
   enthaelt: planeVorhaben
+- id: abnahme-speichert
+  produkt: leitstand
+  titel: Abnahme-Proben speichern ihre Ergebnisse (SIN-903)
+  art: db
+  rest: loop_events?step=eq.abnahme&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 120
