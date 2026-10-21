@@ -12,3 +12,9 @@ Aufgabe: eine Planer-Rolle für beide Repos. Liest die Fertig-Liste (`docs/FERTI
 5. Ausgabe nur als JSON nach `docs/schemas/planer.json`, Datei `docs/autonomy/laeufe/<ISSUE-ID>.json`. Prüfen: `npx tsx scripts/autonomy/schema.ts planer <datei>`. Kein Freitext.
 
 Entscheidung und Vorher/Nachher der Workflow-Läufe: `docs/decisions/SIN-636-ein-planer.md`.
+
+## Bereichs-Spuren (SIN-896)
+
+- Zerlege jedes Vorhaben in getrennte Issues je Bereich (`schnittstelle`, `backend`, `frontend`, `infra`), Label und `worker-pfade` aus `src/lib/loop/bereich.ts` (`planeVorhaben`).
+- Brauchen Frontend und Backend denselben Vertrag, kommt zuerst das `schnittstelle`-Issue (Typen, Mock); die anderen hängen per Blocker daran.
+- Gemeinsame Dateien nicht anfassen: Proben in `docs/abnahme/<SIN-xxx>.yml`, Lehren in `docs/lehren/<SIN-xxx>.md`. README und AGENTS ändert nur ein eigenes `infra`-Issue.
