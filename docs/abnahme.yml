@@ -805,3 +805,11 @@
   art: datei
   pfad: .github/workflows/repair.yml
   enthaelt: pruefer PR ([1-9][0-9]*)
+
+# SIN-945: Worker liest den Auftrag per Skript
+- id: auftrag-lesen
+  produkt: leitstand
+  titel: Worker-Workflow erlaubt scripts/loop/auftrag.ts und das Spiegel-Issue nennt den Aufruf
+  art: datei
+  pfad: .github/workflows/claude.yml
+  enthaelt: Bash(npx tsx scripts/loop/auftrag.ts:*)
