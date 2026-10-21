@@ -12,7 +12,7 @@ import { lesePrDiff } from "../../src/lib/pruefer/git";
 import { ladeAuftrag, standMarker } from "../loop/beleg-stand.mjs";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, hatHoch, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
+import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, hatHoch, hatRisiko, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
 
 const env = process.env;
 const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
@@ -118,7 +118,8 @@ async function main() {
   ergebnis = bewerte(ergebnis, dateien, gekuerzt, DRY ? undefined : issue.body);
   const hinweis = DRY ? "**Trockenlauf: keine unabhängige Prüfung oder Live-Abnahme.**\n\n" : "";
   writeFileSync(DRY ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md", hinweis + kommentar(ergebnis, genutzt, usd, reviewer) + `\n\n${!DRY && ergebnis.bestanden ? standMarker(head, issue.hash) : ""}\nGeprüfter Commit: \`${head}\`\nGeprüfte Basis: \`${basis}\``);
-  if (hatHoch(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");
+  if (hatRisiko(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");
+  writeFileSync("pruefer-status.txt", ergebnis.bestanden ? "bestanden\n" : "offen\n");
   await ledger(true, { modell: genutzt, reviewer, bestanden: ergebnis.bestanden, funde: ergebnis.funde.length, hoch: hatHoch(ergebnis), kosten_eur_usd: usd, issue: issueNr ?? null });
   console.log(`Prüfer: ${ergebnis.bestanden ? "bestanden" : "nicht bestanden"}, ${ergebnis.funde.length} Funde${usd === null ? "" : `, ${usd.toFixed(4)} $`}`);
   process.exit(ergebnis.bestanden ? 0 : 1);

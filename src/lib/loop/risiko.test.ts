@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as risiko from "../../../scripts/loop/risiko.mjs";
-import { brauchtInhalt, klassifiziere, stufe } from "../../../scripts/loop/risiko.mjs";
+import { brauchtInhalt, klassifiziere, labelWechsel, stufe } from "../../../scripts/loop/risiko.mjs";
 
 const bekannt = new Set<string>();
 const WRITE = "name: x\npermissions:\n  contents: write\njobs: {}\n";
@@ -80,6 +80,50 @@ test("Doku mit permissions oder Secret ist nicht low", () => {
 
 test("nur docs/ ist low", () => {
   assert.equal(stufe({ files: [{ filename: "docs/x.md", status: "modified", patch: "+text" }], bekannt }).stufe, "low");
+});
+
+test("SIN-909: drop constraint + add constraint ist kein Datenverlust, drop column schon", () => {
+  const mig = (patch: string) => ({ filename: "supabase/migrations/20261021_x.sql", status: "added", patch });
+  const ok = "+alter table loop_events drop constraint if exists loop_events_status_check;\n+alter table loop_events add constraint loop_events_status_check check (status in ('a'));\n+drop index if exists x_idx;";
+  assert.equal(klassifiziere({ files: [mig(ok)], bekannt }).high, false);
+  assert.equal(klassifiziere({ files: [mig("+alter table t drop column c;")], bekannt }).high, true);
+  assert.equal(klassifiziere({ files: [mig("+alter table t rename to u;")], bekannt }).high, true);
+  assert.equal(klassifiziere({ files: [mig("+drop table t;")], bekannt }).high, true);
+});
+
+test("SIN-909: bestandener Prüfer senkt nur ein vom Prüfer gesetztes risk:high", () => {
+  const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
+  const vomPruefer = ["risk:high", "pruefer:hoch"];
+  assert.equal(klassifiziere({ files, bekannt, labels: vomPruefer }).high, true);
+  assert.equal(klassifiziere({ files, bekannt, labels: vomPruefer, pruefBestanden: true }).high, false);
+  // Ein echter Dateigrund bleibt, auch wenn der Prüfer besteht.
+  const gate = [{ filename: ".github/workflows/automerge.yml", status: "modified", patch: "+x" }];
+  assert.equal(klassifiziere({ files: gate, bekannt, labels: vomPruefer, pruefBestanden: true }).high, true);
+});
+
+test("SIN-909: von Hand gesetztes risk:high (ohne Marker) senkt weder Prüfer noch Gate", () => {
+  const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
+  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"], pruefBestanden: true }).high, true);
+  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"] }).high, true);
+});
+
+test("SIN-909: Gate-Labelwechsel setzt gate:hoch und räumt Marker beim Senken weg", () => {
+  assert.deepEqual(labelWechsel({ labels: ["risk:medium"], stufe: "high" }), { weg: ["risk:medium"], neu: ["risk:high", "gate:hoch"] });
+  assert.deepEqual(labelWechsel({ labels: ["risk:high", "pruefer:hoch", "pruefer:offen"], stufe: "medium" }), { weg: ["risk:high", "pruefer:hoch"], neu: ["risk:medium"] });
+  assert.deepEqual(labelWechsel({ labels: ["risk:high"], stufe: "high" }), { weg: [], neu: [] });
+});
+
+test("SIN-909: vom Gate gesetztes risk:high fällt mit dem Dateigrund", () => {
+  const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
+  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high", "gate:hoch"] }).high, false);
+});
+
+test("SIN-909: pruefer.yml entfernt risk:high nie selbst, nur das Gate senkt", () => {
+  const y = readFileSync(new URL("../../../.github/workflows/pruefer.yml", import.meta.url), "utf8");
+  assert.doesNotMatch(y, /--remove-label[^\n]*risk:high/);
+  assert.match(y, /scripts\/pruefer\/labels\.ts/);
+  const a = readFileSync(new URL("../../../.github/workflows/automerge.yml", import.meta.url), "utf8");
+  assert.match(a, /labelWechsel\(/);
 });
 
 test("dispatch.yml startet nach jedem Push auf main, auch bei Merge durch den Agent-Token", () => {

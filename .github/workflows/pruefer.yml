@@ -1,5 +1,6 @@
 # Prüfer mit zweitem Modell (SIN-639, SIN-827): OpenAI API prüft Claude- und Codex-PRs.
-# Ergebnis als PR-Kommentar. Schwere „hoch“ setzt risk:high (das Gate in automerge.yml senkt es nie). Kosten landen in loop_events.
+# Ergebnis als PR-Kommentar. Echte Risiken setzen risk:high + Marker pruefer:hoch, andere Funde pruefer:offen (SIN-909).
+# „Bestanden“ entfernt nur pruefer:offen; risk:high senkt allein das Gate (automerge.yml), und nur mit Marker. Kosten landen in loop_events.
 # Prüfer/Abhängigkeiten vom Basis-Commit; PR-Commits werden nur als Diff gelesen, nie ausgecheckt.
 name: pruefer
 on:
@@ -119,8 +120,18 @@ jobs:
           else
             gh pr comment "$PR" --body-file pruefer-kommentar.md
           fi
-          if [ -f pruefer-hoch.txt ] && [ "${{ github.event_name }}" = "pull_request_target" -o "${{ inputs.pruefen }}" = "true" ]; then
-            gh pr edit "$PR" --add-label risk:high
+          # SIN-909: risk:high nur bei echtem Risiko, mit Marker pruefer:hoch (nur wenn kein von Hand gesetztes risk:high da ist);
+          # sonst pruefer:offen. Bestanden entfernt nur pruefer:offen, nie risk:high (das senkt allein das Gate).
+          if [ "${{ github.event_name }}" = "pull_request_target" -o "${{ inputs.pruefen }}" = "true" ]; then
+            LABELS=$(gh api "repos/${{ github.repository }}/issues/$PR/labels" --jq '.[].name') \
+              node --import tsx scripts/pruefer/labels.ts | while read -r AKTION LABEL; do
+                if [ "$AKTION" = add ]; then
+                  gh label create "$LABEL" --color 6e7681 --description "Prüfer (SIN-909)" 2>/dev/null || true
+                  gh pr edit "$PR" --add-label "$LABEL"
+                else
+                  gh pr edit "$PR" --remove-label "$LABEL" || true
+                fi
+              done
           fi
       - name: Rot, wenn nicht bestanden oder Lauf gescheitert
         if: steps.lauf.outcome == 'failure'

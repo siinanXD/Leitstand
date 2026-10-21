@@ -12,8 +12,8 @@ function hinzugefuegt(f) {
   return (f.patch || "").split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++")).map((l) => l.slice(1));
 }
 
-/** @param {{ files: any[], bekannt: Set<string>, labels?: string[] }} a */
-export function klassifiziere({ files, bekannt, labels = [] }) {
+/** @param {{ files: any[], bekannt: Set<string>, labels?: string[], pruefBestanden?: boolean }} a */
+export function klassifiziere({ files, bekannt, labels = [], pruefBestanden = false }) {
   const gruende = [];
   for (const f of files) {
     const p = f.filename;
@@ -31,14 +31,19 @@ export function klassifiziere({ files, bekannt, labels = [] }) {
     if (/^supabase\/migrations\//.test(p)) {
       for (const l of neu) {
         const s = l.replace(/--.*$/, "");
-        if (/\b(drop\s+(table|column|schema|policy)|truncate|delete\s+from|alter\s+table\s+\S+\s+(drop|rename))\b/i.test(s)) gruende.push(`Datenverlust in ${p}: ${s.trim().slice(0, 80)}`);
+        if (/\b(drop\s+(table|column|schema|policy)|truncate|delete\s+from|alter\s+table\s+(if\s+exists\s+)?(only\s+)?\S+\s+(drop(?!\s+(constraint|index)\b)|rename))\b/i.test(s)) gruende.push(`Datenverlust in ${p}: ${s.trim().slice(0, 80)}`);
       }
     }
     if (/^src\/(middleware|lib\/auth|lib\/kopplung)\b|^middleware\.ts$/.test(p)) gruende.push(`Auth/Middleware: ${p}`);
     if (/^src\/(app|components)\//.test(p) && neu.some((l) => /SUPABASE_SERVICE_ROLE_KEY/.test(l))) gruende.push(`Service-Role-Key im Client: ${p}`);
   }
-  // Ein vorhandenes risk:high (Mensch, Claude oder früherer Lauf) senkt das Gate nie, es hebt höchstens an.
-  if (labels.includes("risk:high") && gruende.length === 0) gruende.push("risk:high bereits gesetzt, das Gate senkt es nicht");
+  // SIN-909: Neubewertung je Head, aber nur für maschinell gesetztes risk:high. Marker `gate:hoch` (Gate) fällt mit dem Dateigrund,
+  // `pruefer:hoch` (Prüfer) erst nach „bestanden“ auf dem aktuellen Head. risk:high ohne Marker (von Hand) senkt niemand.
+  if (labels.includes("risk:high") && gruende.length === 0) {
+    const vomPruefer = labels.includes("pruefer:hoch");
+    if (!vomPruefer && !labels.includes("gate:hoch")) gruende.push("risk:high von Hand gesetzt, das Gate senkt es nicht");
+    else if (vomPruefer && !pruefBestanden) gruende.push("risk:high vom Prüfer, bis ein Prüfer-Lauf auf dem aktuellen Head besteht");
+  }
   return { gruende, high: gruende.length > 0 };
 }
 
@@ -50,9 +55,28 @@ const NUR_DOKU = /^(docs\/|[^/]+\.md$)|\.test\.(ts|tsx|mjs)$|^tests\//;
 const NIE_LOW = /^\.github\/|^scripts\/(autonomy\/risk|loop\/risiko)\.mjs$/;
 const RECHTE_ODER_SECRET = /^\s*permissions\s*:|secrets\./;
 
-/** low: nur Doku und Tests; high: siehe klassifiziere; sonst medium. */
-export function stufe({ files, bekannt, labels = [] }) {
-  const { gruende, high } = klassifiziere({ files, bekannt, labels });
+/**
+ * SIN-909: Label-Wechsel des Gates. Steigt es auf high, markiert es sich mit `gate:hoch`. Sinkt es, fallen die Marker
+ * `gate:hoch`/`pruefer:hoch` mit dem alten risk-Label. Bleibt die Stufe gleich: nichts.
+ * @param {{ labels: string[], stufe: string }} a
+ */
+export function labelWechsel({ labels, stufe }) {
+  const risk = `risk:${stufe}`;
+  const vorhandene = labels.filter((l) => l.startsWith("risk:"));
+  if (vorhandene.includes(risk)) return { weg: [], neu: [] };
+  const high = stufe === "high";
+  return {
+    weg: high ? vorhandene : [...vorhandene, ...["gate:hoch", "pruefer:hoch"].filter((m) => labels.includes(m))],
+    neu: high ? [risk, "gate:hoch"] : [risk],
+  };
+}
+
+/**
+ * low: nur Doku und Tests; high: siehe klassifiziere; sonst medium.
+ * @param {{ files: any[], bekannt: Set<string>, labels?: string[], pruefBestanden?: boolean }} a
+ */
+export function stufe({ files, bekannt, labels = [], pruefBestanden = false }) {
+  const { gruende, high } = klassifiziere({ files, bekannt, labels, pruefBestanden });
   if (high) return { stufe: "high", gruende };
   const low = files.length > 0 && files.every((f) =>
     [f.filename, f.previous_filename].filter(Boolean).every((p) => NUR_DOKU.test(p) && !NIE_LOW.test(p)) &&
