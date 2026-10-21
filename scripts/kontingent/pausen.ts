@@ -50,7 +50,7 @@ export async function markiereGeweckt(id: number): Promise<void> {
   if (!res.ok) console.log(`::warning::Pause ${id} nicht als geweckt markiert: ${res.status}`);
 }
 
-/** Ereignis in loop_events (Projekt `leitstand`). Das Wort steht im Schritt: `kontingent` mit Status `pause`, `wieder-da` oder `uebersprungen`. */
+/** Ereignis in loop_events (Projekt `leitstand`). Das Wort steht im Schritt: `kontingent`; `pause` und `wieder-da` stehen im `grund` (Status `ok`), weil `loop_events_status_check` nur start/ok/fehler/uebersprungen/needs_human erlaubt (SIN-903). */
 export async function ereignis(status: "uebersprungen", grund: string): Promise<void>;
 export async function ereignis(status: "pause" | "wieder-da"): Promise<void>;
 export async function ereignis(status: "pause" | "wieder-da" | "uebersprungen", grund?: string): Promise<void> {
@@ -60,7 +60,7 @@ export async function ereignis(status: "pause" | "wieder-da" | "uebersprungen", 
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
     method: "POST",
     headers: kopf(),
-    body: JSON.stringify({ project: "leitstand", step: "kontingent", status, grund: grund ?? null, issue: null, pr: null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
+    body: JSON.stringify({ project: "leitstand", step: "kontingent", status: status === "uebersprungen" ? status : "ok", grund: grund ?? (status === "uebersprungen" ? null : status), issue: null, pr: null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
   }).catch((e: Error) => ({ ok: false, status: 0, text: async () => e.message }));
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
 }

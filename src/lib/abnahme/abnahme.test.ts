@@ -72,7 +72,7 @@ test("Alarm: absichtlich rote Probe löst nach mehr als 2 Stunden Alarm aus, vor
 });
 
 // Abschrift von loop_events_status_check (Supabase), bewusst unabhängig vom Code: ändert sich der Check, hier nachziehen.
-const ERLAUBT_IN_DB = ["start", "ok", "fehler", "uebersprungen"];
+const ERLAUBT_IN_DB = ["start", "ok", "fehler", "uebersprungen", "needs_human"];
 
 test("SIN-903: ereignisZeile schreibt nur Status, die loop_events_status_check erlaubt", () => {
   for (const ok of [true, false]) {

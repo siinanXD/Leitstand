@@ -72,7 +72,7 @@ export function bewerteText(probe: Probe, text: string): Ergebnis {
 
 /** Zeile für `loop_events`: Schritt abnahme, `issue` trägt den Titel der Probe (so liest ihn die Seite ohne weitere Abfrage). */
 /** Erlaubte Werte laut Check `loop_events_status_check` (SIN-903: "failed" ließ jeden Insert scheitern). */
-export const LOOP_STATUS = ["start", "ok", "fehler", "uebersprungen"] as const;
+export const LOOP_STATUS = ["start", "ok", "fehler", "uebersprungen", "needs_human"] as const;
 
 export function ereignisZeile(p: Probe, e: Ergebnis, runId: string | null, runUrl: string | null) {
   return {

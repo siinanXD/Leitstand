@@ -4,7 +4,7 @@
  *   npx tsx scripts/abnahme/abnahme.ts
  *
  * Liest docs/abnahme.yml, führt jede Probe aus (HTTP, lesende Datenbankabfrage, Datei im Checkout, Datei in einem GitHub-Repo)
- * und schreibt je Probe eine Zeile in loop_events (Schritt abnahme, status ok oder failed). Der Push-Auslöser meldet Proben,
+ * und schreibt je Probe eine Zeile in loop_events (Schritt abnahme, status ok oder fehler, Grund in `grund`). Der Push-Auslöser meldet Proben,
  * die länger als 2 Stunden rot sind (Alarm); die Seite „Läuft es wirklich?“ zeigt sie. Keine KI.
  * Eine Probe, die sich nicht ausführen lässt (Secret fehlt, Netz weg), ist rot, nie grün.
  *
