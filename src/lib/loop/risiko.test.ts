@@ -91,13 +91,33 @@ test("SIN-909: drop constraint + add constraint ist kein Datenverlust, drop colu
   assert.equal(klassifiziere({ files: [mig("+drop table t;")], bekannt }).high, true);
 });
 
-test("SIN-909: bestandener Prüfer auf dem Head senkt ein gesetztes risk:high", () => {
+test("SIN-909: bestandener Prüfer senkt nur ein vom Prüfer gesetztes risk:high", () => {
   const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
-  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"] }).high, true);
-  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"], pruefBestanden: true }).high, false);
+  const vomPruefer = ["risk:high", "pruefer:hoch"];
+  assert.equal(klassifiziere({ files, bekannt, labels: vomPruefer }).high, true);
+  assert.equal(klassifiziere({ files, bekannt, labels: vomPruefer, pruefBestanden: true }).high, false);
   // Ein echter Dateigrund bleibt, auch wenn der Prüfer besteht.
   const gate = [{ filename: ".github/workflows/automerge.yml", status: "modified", patch: "+x" }];
-  assert.equal(klassifiziere({ files: gate, bekannt, labels: ["risk:high"], pruefBestanden: true }).high, true);
+  assert.equal(klassifiziere({ files: gate, bekannt, labels: vomPruefer, pruefBestanden: true }).high, true);
+});
+
+test("SIN-909: von Hand gesetztes risk:high (ohne Marker) senkt weder Prüfer noch Gate", () => {
+  const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
+  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"], pruefBestanden: true }).high, true);
+  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"] }).high, true);
+});
+
+test("SIN-909: vom Gate gesetztes risk:high fällt mit dem Dateigrund", () => {
+  const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
+  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high", "gate:hoch"] }).high, false);
+});
+
+test("SIN-909: pruefer.yml entfernt risk:high nie selbst, nur das Gate senkt", () => {
+  const y = readFileSync(new URL("../../../.github/workflows/pruefer.yml", import.meta.url), "utf8");
+  assert.doesNotMatch(y, /--remove-label[^\n]*risk:high/);
+  assert.match(y, /--add-label pruefer:hoch/);
+  const a = readFileSync(new URL("../../../.github/workflows/automerge.yml", import.meta.url), "utf8");
+  assert.match(a, /"gate:hoch"/);
 });
 
 test("dispatch.yml startet nach jedem Push auf main, auch bei Merge durch den Agent-Token", () => {

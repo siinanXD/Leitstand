@@ -37,8 +37,13 @@ export function klassifiziere({ files, bekannt, labels = [], pruefBestanden = fa
     if (/^src\/(middleware|lib\/auth|lib\/kopplung)\b|^middleware\.ts$/.test(p)) gruende.push(`Auth/Middleware: ${p}`);
     if (/^src\/(app|components)\//.test(p) && neu.some((l) => /SUPABASE_SERVICE_ROLE_KEY/.test(l))) gruende.push(`Service-Role-Key im Client: ${p}`);
   }
-  // SIN-909: Neubewertung je Head. Ein gesetztes risk:high (Prüfer-Sicherheitsfund, Mensch) bleibt nur, bis der Prüfer auf dem aktuellen Head „bestanden“ meldet.
-  if (labels.includes("risk:high") && gruende.length === 0 && !pruefBestanden) gruende.push("risk:high bereits gesetzt, bis ein Prüfer-Lauf auf dem aktuellen Head besteht");
+  // SIN-909: Neubewertung je Head, aber nur für maschinell gesetztes risk:high. Marker `gate:hoch` (Gate) fällt mit dem Dateigrund,
+  // `pruefer:hoch` (Prüfer) erst nach „bestanden“ auf dem aktuellen Head. risk:high ohne Marker (von Hand) senkt niemand.
+  if (labels.includes("risk:high") && gruende.length === 0) {
+    const vomPruefer = labels.includes("pruefer:hoch");
+    if (!vomPruefer && !labels.includes("gate:hoch")) gruende.push("risk:high von Hand gesetzt, das Gate senkt es nicht");
+    else if (vomPruefer && !pruefBestanden) gruende.push("risk:high vom Prüfer, bis ein Prüfer-Lauf auf dem aktuellen Head besteht");
+  }
   return { gruende, high: gruende.length > 0 };
 }
 

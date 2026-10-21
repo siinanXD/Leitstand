@@ -4,8 +4,8 @@
 #   - `risk:high` (wartet auf Label `freigegeben`): Workflow-Rechte erweitert (`permissions` mit write), neues Secret, das kein
 #     Workflow auf main nutzt, `pull_request_target` neu, Drittanbieter-Action außerhalb von actions/* und anthropics/*,
 #     Änderung am Gate selbst (automerge.yml), Datenverlust in Migrationen (drop/delete/truncate/alter … drop|rename), Auth/Middleware, Service-Role-Key im Client.
-#   - Neubewertung je Head (SIN-909): Ein gesetztes `risk:high` fällt weg, sobald der Prüfer auf dem aktuellen Head „bestanden“ meldet
-#     und kein Dateigrund mehr besteht. `drop constraint`/`drop index` gelten nicht als Datenverlust. Prüfer-Funde ohne Sicherheitsbezug
+#   - Neubewertung je Head (SIN-909), nur für maschinell gesetztes `risk:high`: Marker `gate:hoch` fällt mit dem Dateigrund,
+#     `pruefer:hoch` erst nach „bestanden“ auf dem aktuellen Head. `risk:high` ohne Marker (von Hand) senkt niemand. `drop constraint`/`drop index` gelten nicht als Datenverlust. Prüfer-Funde ohne Sicherheitsbezug
 #     setzen `pruefer:offen` (sperrt über den Beleg-Check, kein Sinan nötig). Neue/umbenannte/kopierte Workflows werden komplett geprüft (SIN-623).
 #   - Aufbauphase (SIN-855): keine feste Einspruchsfrist; risk:high bleibt freigabepflichtig.
 #   - Belege (SIN-854): Bei claude/- und codex/-PRs zählt nur ein Prüfer-Beleg für den aktuellen Head und den heutigen Kriterien-Text
@@ -87,8 +87,10 @@ jobs:
             const risk = `risk:${st}`;
             const vorhandene = labels.filter((l) => l.startsWith("risk:"));
             if (!vorhandene.includes(risk)) {
-              for (const alt of vorhandene) await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name: alt }).catch(() => {});
-              await github.rest.issues.addLabels({ ...context.repo, issue_number: pr.number, labels: [risk] }).catch((e) => core.warning(`Label: ${e.message}`));
+              // SIN-909: Marker gehören zum maschinellen risk:high; sinkt die Stufe, fallen sie mit. Setzt das Gate high, markiert es sich als Quelle.
+              const weg = high ? vorhandene : [...vorhandene, ...["gate:hoch", "pruefer:hoch"].filter((m) => labels.includes(m))];
+              for (const alt of weg) await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name: alt }).catch(() => {});
+              await github.rest.issues.addLabels({ ...context.repo, issue_number: pr.number, labels: high ? [risk, "gate:hoch"] : [risk] }).catch((e) => core.warning(`Label: ${e.message}`));
             }
             if (high && !labels.includes("freigegeben")) {
               const kopf = "<!-- automerge-risiko -->";

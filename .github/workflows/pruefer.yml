@@ -1,5 +1,6 @@
 # Prüfer mit zweitem Modell (SIN-639, SIN-827): OpenAI API prüft Claude- und Codex-PRs.
-# Ergebnis als PR-Kommentar. Echte Risiken setzen risk:high, andere Funde das Label pruefer:offen (SIN-909); „bestanden“ entfernt beide. Kosten landen in loop_events.
+# Ergebnis als PR-Kommentar. Echte Risiken setzen risk:high + Marker pruefer:hoch, andere Funde pruefer:offen (SIN-909).
+# „Bestanden“ entfernt nur pruefer:offen; risk:high senkt allein das Gate (automerge.yml), und nur mit Marker. Kosten landen in loop_events.
 # Prüfer/Abhängigkeiten vom Basis-Commit; PR-Commits werden nur als Diff gelesen, nie ausgecheckt.
 name: pruefer
 on:
@@ -119,12 +120,18 @@ jobs:
           else
             gh pr comment "$PR" --body-file pruefer-kommentar.md
           fi
-          # SIN-909: risk:high nur bei echtem Risiko; sonst pruefer:offen. Bestanden räumt beides auf (das Gate bewertet danach neu).
+          # SIN-909: risk:high nur bei echtem Risiko, mit Marker pruefer:hoch (nur wenn kein von Hand gesetztes risk:high da ist);
+          # sonst pruefer:offen. Bestanden entfernt nur pruefer:offen, nie risk:high (das senkt allein das Gate).
           if [ "${{ github.event_name }}" = "pull_request_target" -o "${{ inputs.pruefen }}" = "true" ]; then
             if [ -f pruefer-hoch.txt ]; then
+              LABELS=$(gh api "repos/${{ github.repository }}/issues/$PR/labels" --jq '.[].name')
+              if ! printf '%s\n' "$LABELS" | grep -qx 'risk:high' || printf '%s\n' "$LABELS" | grep -qx 'gate:hoch'; then
+                gh label create pruefer:hoch --color b60205 --description "risk:high vom Prüfer gesetzt" 2>/dev/null || true
+                gh pr edit "$PR" --add-label pruefer:hoch
+              fi
               gh pr edit "$PR" --add-label risk:high
             elif [ -f pruefer-status.txt ] && grep -q '^bestanden' pruefer-status.txt; then
-              gh pr edit "$PR" --remove-label pruefer:offen --remove-label risk:high || true
+              gh pr edit "$PR" --remove-label pruefer:offen || true
             elif [ -f pruefer-status.txt ]; then
               gh label create pruefer:offen --color 6e7681 --description "Prüfer-Funde offen, Worker bessert nach" 2>/dev/null || true
               gh pr edit "$PR" --add-label pruefer:offen
