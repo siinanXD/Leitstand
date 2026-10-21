@@ -169,16 +169,23 @@ export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max:
   return kandidaten[0] ?? null;
 }
 
-/** Text des GitHub-Issues, das den Worker (claude.yml) startet. */
+/**
+ * Text des GitHub-Issues, das den Worker (claude.yml) startet (SIN-911): GitHub ist öffentlich, deshalb nur Titel,
+ * Linear-Link und Fertig-Haken. Den vollen Auftrag holt der Worker über die Linear-API.
+ */
 export function issueText(i: LinearIssue, hinweise = ""): { title: string; body: string } {
   const kurz = i.identifier.toLowerCase();
+  const haken = leseHaken(i.description);
   return {
     title: `${i.identifier}: ${i.title}`,
     body: [
       marker(i.identifier),
       `Linear: ${i.url}`,
       "",
-      (i.description ?? "").trim() || "(keine Beschreibung)",
+      "Der volle Auftrag steht nur in Linear: per Linear-GraphQL mit `LINEAR_API_KEY` lesen.",
+      "",
+      "## Fertig, wenn",
+      ...(haken.length ? haken.map((h) => `- [${h.erledigt ? "x" : " "}] ${h.text}`) : ["(keine Haken)"]),
       "",
       "---",
       `Arbeite auf dem Branch \`claude/${kurz}\`. PR-Titel als Conventional Commit mit \`${i.identifier}\`, Commits mit \`Part of ${i.identifier}\`.`,
