@@ -22,8 +22,16 @@ async function linear<T>(query: string, variables: Record<string, unknown> = {})
 async function lade(): Promise<Eintrag[]> {
   if (env.PFADE_JSON) return JSON.parse(readFileSync(env.PFADE_JSON, "utf8")) as Eintrag[];
   if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY oder PFADE_JSON fehlt");
-  const d = await linear<{ issues: { nodes: Eintrag[] } }>(`{ issues(first: 100, filter: { project: { name: { eq: "Leitstand" } }, state: { type: { eq: "unstarted" } }, labels: { name: { eq: "claude" } } }) { nodes { id identifier description } } }`);
-  return d.issues.nodes;
+  const alle: Eintrag[] = [];
+  for (let nach: string | null = null; ; ) {
+    const d: { issues: { nodes: Eintrag[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } } = await linear(
+      `query($nach: String) { issues(first: 100, after: $nach, filter: { project: { name: { eq: "Leitstand" } }, state: { type: { eq: "unstarted" } }, labels: { name: { eq: "claude" } } }) { nodes { id identifier description } pageInfo { hasNextPage endCursor } } }`,
+      { nach },
+    );
+    alle.push(...d.issues.nodes);
+    if (!d.issues.pageInfo.hasNextPage) return alle;
+    nach = d.issues.pageInfo.endCursor;
+  }
 }
 
 async function main() {
