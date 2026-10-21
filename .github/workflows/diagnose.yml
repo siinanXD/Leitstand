@@ -1,0 +1,69 @@
+# Diagnose-Agent (SIN-907): untersucht rote Workflows und Issues mit 2 Worker-Läufen ohne PR, nur lesend.
+# Der Agent läuft mit Claude-Abo (CLAUDE_CODE_OAUTH_TOKEN), keine API-Kosten. Schreiben tut nur das Skript (Linear-Kommentar, loop_event).
+# Höchstens 1 Diagnose je Issue/Workflow in 6 h (src/lib/diagnose). Der Agent ändert nie einen Status; das tut der Dispatcher anhand von `art`.
+name: diagnose
+on:
+  workflow_run:
+    workflows: [abnahme, build, dispatch, loop-merge, repair, belege, migrationen]
+    types: [completed]
+  schedule:
+    - cron: "17 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur ins Log schreiben (kein Linear-Kommentar, kein Ereignis)"
+        type: boolean
+        default: true
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: diagnose
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - id: ziel
+        name: Ziel wählen
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DIAGNOSE_WORKFLOW: ${{ github.event.workflow_run.name }}
+          DIAGNOSE_RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: npx tsx scripts/diagnose/diagnose.ts ziel
+      - name: Diagnose
+        if: steps.ziel.outputs.ziel == 'ja'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Lies docs/skills/diagnose/SKILL.md und führe sie für das Ziel in diagnose-ziel.json aus.
+            Schreibe diagnose-ergebnis.json im Repo-Wurzelverzeichnis. Sonst nichts ändern.
+            Die Tabellen loop_events, loop_snapshot und leitstand_aufgaben liegen lesbar in diagnose-daten.json.
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 30
+            --allowedTools "Read,Grep,Glob,Write(diagnose-ergebnis.json),Bash(gh run view:*),Bash(gh run list:*),Bash(gh issue view:*),Bash(gh pr view:*)"
+      - name: Ergebnis prüfen und melden
+        if: steps.ziel.outputs.ziel == 'ja'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: npx tsx scripts/diagnose/diagnose.ts auswerten

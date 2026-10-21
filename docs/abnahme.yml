@@ -736,3 +736,11 @@
   art: datei
   pfad: src/lib/loop/parallel.ts
   enthaelt: konfliktGrund
+
+# SIN-907: Diagnose-Agent
+- id: leitstand-diagnose-agent
+  produkt: leitstand
+  titel: Die Rolle Diagnose ist nur lesend beschrieben und der Workflow ist installiert (SIN-907, erster echter Lauf offen)
+  art: datei
+  pfad: .github/workflows/diagnose.yml
+  enthaelt: scripts/diagnose/diagnose.ts
