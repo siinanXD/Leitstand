@@ -12,7 +12,7 @@ import { lesePrDiff } from "../../src/lib/pruefer/git";
 import { ladeAuftrag, standMarker } from "../loop/beleg-stand.mjs";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, hatHoch, hatRisiko, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Reviewer } from "../../src/lib/pruefer/pruefer";
+import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, geaenderteZeilen, hatHoch, hatRisiko, kommentar, kostenUsd, leseAntwort, leseVorfunde, lesePreise, MARKER, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Folgerunde, type Reviewer } from "../../src/lib/pruefer/pruefer";
 
 const env = process.env;
 const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
@@ -82,6 +82,18 @@ async function ledger(ok: boolean, payload: unknown) {
   if (!res.ok) console.log(`::warning::loop_events: HTTP ${res.status}`);
 }
 
+/** SIN-926: Stand der Vorrunde aus dem letzten Prüfer-Kommentar; ohne Kommentar oder lesbaren Commit gilt Runde 1. */
+function folgerunde(): Folgerunde | undefined {
+  try {
+    const kommentare = (JSON.parse(sh("gh", "pr", "view", nummer, "--json", "comments")) as { comments: { body: string }[] }).comments;
+    const letzter = kommentare.filter(c => c.body.includes(MARKER)).pop()?.body;
+    const vorher = /Geprüfter Commit: `([a-f0-9]{40})`/i.exec(letzter ?? "")?.[1];
+    if (!letzter || !vorher) return undefined;
+    const diff = sh("git", "diff", "--no-ext-diff", "--no-textconv", "--unified=0", `${vorher}..${head}`);
+    return { funde: leseVorfunde(letzter), geaendert: geaenderteZeilen(diff) };
+  } catch { return undefined; }
+}
+
 async function main() {
   const name = env.PRUEFER_MODELL;
   const preise = lesePreise(env.PRUEFER_PREIS_EIN, env.PRUEFER_PREIS_AUS);
@@ -115,7 +127,7 @@ async function main() {
       console.log("::warning::OpenAI-API-Kontingent erschöpft, Rückfall auf Claude");
     } else usd = kostenUsd({ eingabe: r.ein, ausgabe: r.aus }, preise);
   }
-  ergebnis = bewerte(ergebnis, dateien, gekuerzt, DRY ? undefined : issue.body);
+  ergebnis = bewerte(ergebnis, dateien, gekuerzt, DRY ? undefined : issue.body, folgerunde());
   const hinweis = DRY ? "**Trockenlauf: keine unabhängige Prüfung oder Live-Abnahme.**\n\n" : "";
   writeFileSync(DRY ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md", hinweis + kommentar(ergebnis, genutzt, usd, reviewer) + `\n\n${!DRY && ergebnis.bestanden ? standMarker(head, issue.hash) : ""}\nGeprüfter Commit: \`${head}\`\nGeprüfte Basis: \`${basis}\``);
   if (hatRisiko(ergebnis)) writeFileSync("pruefer-hoch.txt", "hoch\n");

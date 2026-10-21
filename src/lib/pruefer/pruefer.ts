@@ -108,8 +108,47 @@ export function leseAntwort(text: string): Ergebnis {
   return { bestanden: j.bestanden, funde, haken };
 }
 
+/** SIN-926: Stand der Vorrunde. `funde` aus dem letzten Prüfer-Kommentar, `geaendert` = seither geänderte Zeilen je Datei. */
+export type Folgerunde = { funde: Fund[]; geaendert: Map<string, [number, number][]> };
+
+/** Funde der Vorrunde aus dem Kommentartext (Format von `kommentar`). */
+export function leseVorfunde(kommentarText: string): Fund[] {
+  return [...kommentarText.matchAll(/^- \*\*(hoch|mittel|niedrig)\*\* `([^`:]+)(?::(\d+))?`: (.*)$/gm)]
+    .map((m): Fund => ({ schwere: m[1] as Schwere, datei: m[2], zeile: Number(m[3] ?? 0), text: m[4] }));
+}
+
+/** Neue Zeilenbereiche je Datei aus einem `--unified=0`-Diff. */
+export function geaenderteZeilen(diff: string): Map<string, [number, number][]> {
+  const m = new Map<string, [number, number][]>();
+  let datei = "";
+  for (const z of diff.split("\n")) {
+    if (z.startsWith("+++ ")) datei = z.startsWith("+++ b/") ? z.slice(6) : "";
+    const h = /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/.exec(z);
+    if (h && datei) m.set(datei, [...(m.get(datei) ?? []), [Number(h[1]), Number(h[1]) + Math.max(Number(h[2] ?? 1), 1) - 1]]);
+  }
+  return m;
+}
+
+/**
+ * SIN-926: Kein wanderndes Ziel. In einer Folgerunde bleibt ein „hoch“-Fund nur, wenn er Sicherheit betrifft, eine seit der Vorrunde
+ * geänderte Zeile trifft oder einen ungelösten Fund der Vorrunde wiederholt (gleiche Datei und gleicher Text: meldet das Modell ihn auf
+ * dem neuen Stand erneut, ist er nicht behoben). Eine andere Aussage an derselben Zeile ist ein neuer Fund. Sonst „mittel“.
+ */
+export function stabilisiere(funde: Fund[], folge?: Folgerunde): Fund[] {
+  if (!folge) return funde;
+  const alt = (f: Fund) => folge.funde.some(v => v.datei === f.datei && v.text === f.text);
+  const neu = (f: Fund) => (folge.geaendert.get(f.datei) ?? []).some(([von, bis]) => f.zeile >= von && f.zeile <= bis);
+  return funde.map(f => f.schwere !== "hoch" || f.zeile <= 0 || f.art === "sicherheit" || SICHERHEITSBEZUG.test(`${f.datei}\n${f.text}`) || neu(f) || alt(f)
+    ? f : { ...f, schwere: "mittel" as const });
+}
+
 /** Eigene Regeln über dem Modell: fehlende Probe ist hoch, ein hoher Fund heißt nicht bestanden. */
-export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, auftrag?: string): Ergebnis {
+export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, auftrag?: string, folge?: Folgerunde): Ergebnis {
+  // Das Modell lehnt bei „hoch“ ab; fällt jedes „hoch“ durch die Stabilisierung weg, entfällt diese Ablehnung nur,
+  // wenn kein anderer Grund bleibt (unbelegter Haken des Modells).
+  const stabil = stabilisiere(modell.funde, folge);
+  const nurWegenHoch = modell.funde.some(f => f.schwere === "hoch") && !stabil.some(f => f.schwere === "hoch") && (modell.haken ?? []).every(h => h.belegt);
+  modell = { ...modell, funde: stabil, bestanden: modell.bestanden || nurWegenHoch };
   // Nur kanonische Issue-Haken ausgeben: der spätere Done-Abgleich normalisiert Schreibweisen.
   const vorgaben = leseHaken(auftrag);
   const zuordnung = (text: string) => normalisiereHaken(text.replace(/\\([\[\]])/g, "$1"));
