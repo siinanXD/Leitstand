@@ -736,3 +736,27 @@
   art: datei
   pfad: src/lib/ci/betroffene-tests.ts
   enthaelt: export function
+
+# SIN-923: scope_konflikt nennt Paare, wartender Claim belegt keinen Platz
+- id: scope-konflikt-grund
+  produkt: leitstand
+  titel: Dispatcher nennt Konfliktpaare und gibt Plätze wartender PRs frei
+  art: datei
+  pfad: src/lib/loop/parallel.ts
+  enthaelt: konfliktGrund
+
+# SIN-911: öffentliche Texte schlank
+- id: oeffentliche-texte
+  produkt: leitstand
+  titel: PR-Text-Check warnt bei Beträgen, Zitaten und Projekt-IDs
+  art: datei
+  pfad: src/lib/pr-text/pr-text.ts
+  enthaelt: pruefePrText
+
+# SIN-925: Reparatur auch bei Prüfer-Funden
+- id: reparatur-pruefer
+  produkt: leitstand
+  titel: Prüfer-Funde (pruefer:offen) starten die Reparatur, pruefer:hoch nicht
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: prueferReparatur

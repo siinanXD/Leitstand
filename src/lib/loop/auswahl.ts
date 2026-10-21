@@ -121,6 +121,14 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
   });
 }
 
+/** SIN-923: Claims, deren offener PR nur noch auf Sinan wartet, belegen keinen Startplatz (die Dateien schützt der PR-Schutz weiter). */
+export function claimsMitPlatz(claims: LinearIssue[], belegung: Belegung): LinearIssue[] {
+  return claims.filter((i) => {
+    const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
+    return !(eigene.length && eigene.every(wartetAufSinan));
+  });
+}
+
 /** Issues „In Progress“ mit Label `claude`, deren Platz `laufende` freigegeben hat (für den Eintrag in loop_events). */
 export function freigegebene(issues: LinearIssue[], belegung: Belegung): LinearIssue[] {
   const belegt = new Set(laufende(issues, belegung).map((i) => i.identifier));
@@ -161,16 +169,23 @@ export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max:
   return kandidaten[0] ?? null;
 }
 
-/** Text des GitHub-Issues, das den Worker (claude.yml) startet. */
+/**
+ * Text des GitHub-Issues, das den Worker (claude.yml) startet (SIN-911): GitHub ist öffentlich, deshalb nur Titel,
+ * Linear-Link und Fertig-Haken. Den vollen Auftrag holt der Worker über die Linear-API.
+ */
 export function issueText(i: LinearIssue, hinweise = ""): { title: string; body: string } {
   const kurz = i.identifier.toLowerCase();
+  const haken = leseHaken(i.description);
   return {
     title: `${i.identifier}: ${i.title}`,
     body: [
       marker(i.identifier),
       `Linear: ${i.url}`,
       "",
-      (i.description ?? "").trim() || "(keine Beschreibung)",
+      "Der volle Auftrag steht nur in Linear: per Linear-GraphQL mit `LINEAR_API_KEY` lesen.",
+      "",
+      "## Fertig, wenn",
+      ...(haken.length ? haken.map((h) => `- [${h.erledigt ? "x" : " "}] ${h.text}`) : ["(keine Haken)"]),
       "",
       "---",
       `Arbeite auf dem Branch \`claude/${kurz}\`. PR-Titel als Conventional Commit mit \`${i.identifier}\`, Commits mit \`Part of ${i.identifier}\`.`,
@@ -224,6 +239,16 @@ export function reparatur(labels: string[], issueweit = 0): { runde: number } | 
   const bisher = Math.max(0, ...runden, Number.isSafeInteger(issueweit) ? issueweit : 0);
   if (labels.includes("needs-human") || bisher >= MAX_REPARATUR) return { stopp: true };
   return { runde: bisher + 1 };
+}
+
+/**
+ * SIN-925: Reparatur nach einem Prüfer-Fund. Nur bei `pruefer:offen` und ohne echtes Risiko (`pruefer:hoch`, `risk:high`):
+ * Risiken entscheidet Sinan. Gleicher Zähler und gleiche Obergrenze wie bei rotem `build`.
+ */
+export function prueferReparatur(labels: string[], issueweit = 0): { runde: number } | { stopp: true } | { keine: string } {
+  if (!labels.includes("pruefer:offen")) return { keine: "kein offener Prüfer-Fund" };
+  if (labels.includes("pruefer:hoch") || labels.includes("risk:high")) return { keine: "echtes Risiko, keine automatische Reparatur" };
+  return reparatur(labels, issueweit);
 }
 
 /** Linear-Rohdaten (GraphQL) in das schlanke Format. */
