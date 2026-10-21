@@ -677,3 +677,9 @@
   rest: loop_events?step=eq.abnahme&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 120
+- id: stand-needs-human
+  produkt: leitstand
+  titel: loop_events erlaubt den Status needs_human der Stand-Prüfung (SIN-904)
+  art: datei
+  pfad: supabase/migrations/leitstand/20261021100000_loop_events_needs_human.sql
+  enthaelt: needs_human
