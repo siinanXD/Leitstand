@@ -1,7 +1,0 @@
-# SIN-918: Warten auf Live-Beleg belegt keinen Platz, kein Neustart
-- id: platz-live-beleg
-  produkt: leitstand
-  titel: Issues, die nur auf den Live-Beleg warten, belegen keinen Platz
-  art: datei
-  pfad: src/lib/loop/auswahl.ts
-  enthaelt: wartetAufLiveBeleg

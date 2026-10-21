@@ -228,7 +228,7 @@ const NORMAL = "## Fertig, wenn\n\n- [x] Test grün\n- [ ] Probe in docs/abnahme
 const jetzt = new Date("2026-10-21T18:00:00Z");
 const belegung = (gemergt: string[]) => ({ jetzt, offenePrs: [], gemergt });
 
-test("SIN-918: gemergter PR + nur [nach Aktivierung] offen → nicht in laufende(), nicht in waehle()", () => {
+test("Test: gemergter PR + nur `[nach Aktivierung]` offen → nicht in `laufende()`, nicht in `waehle()`", () => {
   const lauf = issue({ identifier: "SIN-904", description: LIVE, stateType: "started", startedAt: "2026-10-21T17:30:00Z" });
   const todo = issue({ identifier: "SIN-917", description: LIVE });
   assert.equal(wartetAufLiveBeleg(lauf, ["SIN-904"]), true);
@@ -237,7 +237,7 @@ test("SIN-918: gemergter PR + nur [nach Aktivierung] offen → nicht in laufende
   assert.equal(statusNachMerge({ status: "offen", offen: ["\\[nach Aktivierung\\] Zeile in loop_events"] }), "In Review");
 });
 
-test("SIN-918: gemergter PR + ein normaler Haken offen → bleibt wie bisher (Folge-Worker möglich)", () => {
+test("Test: gemergter PR + ein normaler Haken offen → bleibt wie bisher (Folge-Worker möglich)", () => {
   const lauf = issue({ identifier: "SIN-904", description: NORMAL, stateType: "started", startedAt: "2026-10-21T17:30:00Z" });
   const todo = issue({ identifier: "SIN-917", description: NORMAL });
   assert.equal(wartetAufLiveBeleg(lauf, ["SIN-904"]), false);
@@ -247,7 +247,7 @@ test("SIN-918: gemergter PR + ein normaler Haken offen → bleibt wie bisher (Fo
   assert.equal(statusNachMerge({ status: "done", offen: [] }), "Done");
 });
 
-test("SIN-918: Issue ohne gemergten PR → unverändert", () => {
+test("Test: Issue ohne gemergten PR → unverändert", () => {
   const lauf = issue({ identifier: "SIN-913", description: LIVE, stateType: "started", startedAt: "2026-10-21T17:30:00Z" });
   const todo = issue({ identifier: "SIN-913", description: LIVE });
   assert.equal(wartetAufLiveBeleg(lauf, ["SIN-904"]), false);
