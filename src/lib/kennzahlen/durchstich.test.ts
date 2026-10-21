@@ -74,7 +74,7 @@ test("Hängt: In Progress länger als 2 h, mit letztem Grund", () => {
   assert.deepEqual(r.haengt, [{ kennung: "SIN-8", seitMin: 210, grund: "build rot" }]);
 });
 
-test("Unbekannter Merge-Autor (kein PR-Anhang, kein Token, GitHub-Fehler) zählt nie als Durchstich", () => {
+test("Test: unbekannter Merge-Autor zählt nie als Durchstich; Issue ohne aktuelles Label `claude` wird trotzdem bewertet", () => {
   const r = durchstich([issue("SIN-5", { mergeVon: null })], kette("SIN-5", 15), ["sinan"], JETZT);
   assert.deepEqual(r.durchstich, []);
   assert.deepEqual(r.ohne_beleg, [{ kennung: "SIN-5", fehlt: ["merge-autor"] }]);
