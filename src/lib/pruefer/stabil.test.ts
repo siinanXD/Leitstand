@@ -16,6 +16,13 @@ test("Folgerunde: neuer hoch-Fund an unveränderter Zeile wird mittel", () => {
   assert.equal(e.bestanden, true);
 });
 
+test("Folgerunde: Herabstufung verdeckt keine andere Ablehnung des Modells", () => {
+  const haken = [{ text: "Pflicht-Haken", belegt: false, beleg: "" }];
+  const e = bewerte({ bestanden: false, funde: [hoch()], haken }, dateien, false, undefined, folge);
+  assert.equal(e.funde[0].schwere, "mittel");
+  assert.equal(e.bestanden, false);
+});
+
 test("Erste Runde: hoch bleibt hoch", () => {
   assert.equal(lauf(hoch()).funde[0].schwere, "hoch");
 });

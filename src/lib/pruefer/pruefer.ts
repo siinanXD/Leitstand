@@ -143,9 +143,11 @@ export function stabilisiere(funde: Fund[], folge?: Folgerunde): Fund[] {
 
 /** Eigene Regeln über dem Modell: fehlende Probe ist hoch, ein hoher Fund heißt nicht bestanden. */
 export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, auftrag?: string, folge?: Folgerunde): Ergebnis {
-  // Das Modell lehnt bei „hoch“ ab; fällt jedes „hoch“ durch die Stabilisierung weg, entfällt auch diese Ablehnung.
+  // Das Modell lehnt bei „hoch“ ab; fällt jedes „hoch“ durch die Stabilisierung weg, entfällt diese Ablehnung nur,
+  // wenn kein anderer Grund bleibt (unbelegter Haken des Modells).
   const stabil = stabilisiere(modell.funde, folge);
-  modell = { ...modell, funde: stabil, bestanden: modell.bestanden || (modell.funde.some(f => f.schwere === "hoch") && !stabil.some(f => f.schwere === "hoch")) };
+  const nurWegenHoch = modell.funde.some(f => f.schwere === "hoch") && !stabil.some(f => f.schwere === "hoch") && (modell.haken ?? []).every(h => h.belegt);
+  modell = { ...modell, funde: stabil, bestanden: modell.bestanden || nurWegenHoch };
   // Nur kanonische Issue-Haken ausgeben: der spätere Done-Abgleich normalisiert Schreibweisen.
   const vorgaben = leseHaken(auftrag);
   const zuordnung = (text: string) => normalisiereHaken(text.replace(/\\([\[\]])/g, "$1"));
