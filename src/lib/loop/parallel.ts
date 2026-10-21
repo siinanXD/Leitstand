@@ -83,6 +83,29 @@ export function schreibPfade(i: Pick<LinearIssue, "description">): string[] {
   }
 }
 
+/** SIN-923: Warum `parallelAuswahl` nichts startet – kein Platz oder je Kandidat (max. 5) der erste Gegenpart. Für `loop_events.grund`. */
+export function konfliktGrund(kandidaten: LinearIssue[], laufend: LinearIssue[], max: number, offenePrs: Pick<LinearIssue, "description">[] = []): string {
+  if (max - laufend.length <= 0) return `kein_platz: ${laufend.map((l) => l.identifier).join(", ")} belegen alle ${max} Plätze`;
+  const teile = kandidaten.slice(0, 5).map((i) => {
+    const b = bereichVon(i.labels);
+    const bereich = b ? laufend.find((a) => bereichVon(a.labels) === b) : undefined;
+    if (bereich) return `${i.identifier}↔${bereich.identifier} (Bereich ${b})`;
+    const meine = schreibPfade(i);
+    if (!meine.length) return `${i.identifier}: ohne Pfade`;
+    const gegen = [...laufend.map((a) => ({ name: a.identifier, d: a })), ...offenePrs.map((p, n) => ({ name: `PR-Schutz ${n + 1}`, d: p }))];
+    for (const g of gegen) {
+      const andere = schreibPfade(g.d);
+      if (!konflikt(meine, andere)) continue;
+      if (!andere.length) return `${i.identifier}↔${g.name}: ohne Pfade`;
+      if (meine.includes("@steuerung") && andere.includes("@steuerung")) return `${i.identifier}↔${g.name}: @steuerung`;
+      const paar = meine.flatMap((x) => andere.filter((y) => gemeinsam([x], [y])).map((y) => `${x} ↔ ${y}`))[0];
+      return `${i.identifier}↔${g.name}: ${paar ?? "Überschneidung"}`;
+    }
+    return `${i.identifier}: frei`;
+  });
+  return `scope_konflikt: ${teile.join("; ")}`.slice(0, 300);
+}
+
 /** Kandidaten sind bereits nach Priorität/Kontingent sortiert. Auch wartende offene PRs schützen ihre Dateien. */
 export function parallelAuswahl(kandidaten: LinearIssue[], laufend: LinearIssue[], max: number, offenePrs: Pick<LinearIssue, "description">[] = []): LinearIssue[] {
   const wahl: LinearIssue[] = [];

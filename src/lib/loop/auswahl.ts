@@ -121,6 +121,14 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
   });
 }
 
+/** SIN-923: Claims, deren offener PR nur noch auf Sinan wartet, belegen keinen Startplatz (die Dateien schützt der PR-Schutz weiter). */
+export function claimsMitPlatz(claims: LinearIssue[], belegung: Belegung): LinearIssue[] {
+  return claims.filter((i) => {
+    const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
+    return !(eigene.length && eigene.every(wartetAufSinan));
+  });
+}
+
 /** Issues „In Progress“ mit Label `claude`, deren Platz `laufende` freigegeben hat (für den Eintrag in loop_events). */
 export function freigegebene(issues: LinearIssue[], belegung: Belegung): LinearIssue[] {
   const belegt = new Set(laufende(issues, belegung).map((i) => i.identifier));

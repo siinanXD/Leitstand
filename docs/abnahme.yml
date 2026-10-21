@@ -728,3 +728,11 @@
   art: datei
   pfad: src/lib/pause.ts
   enthaelt: pausiert ? PAUSIERT
+
+# SIN-923: scope_konflikt nennt Paare, wartender Claim belegt keinen Platz
+- id: scope-konflikt-grund
+  produkt: leitstand
+  titel: Dispatcher nennt Konfliktpaare und gibt Plätze wartender PRs frei
+  art: datei
+  pfad: src/lib/loop/parallel.ts
+  enthaelt: konfliktGrund
