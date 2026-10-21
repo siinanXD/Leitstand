@@ -736,3 +736,11 @@
   art: datei
   pfad: src/lib/loop/parallel.ts
   enthaelt: konfliktGrund
+
+# SIN-911: öffentliche Texte schlank
+- id: oeffentliche-texte
+  produkt: leitstand
+  titel: PR-Text-Check warnt bei Beträgen, Zitaten und Projekt-IDs
+  art: datei
+  pfad: src/lib/pr-text/pr-text.ts
+  enthaelt: pruefePrText

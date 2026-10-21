@@ -123,7 +123,18 @@ test("issueText enthält Markierung, Link und Branch-Regel", () => {
   assert.equal(t.title, "SIN-410: Spalten");
   assert.ok(t.body.startsWith(marker("SIN-410")));
   assert.match(t.body, /claude\/sin-410/);
-  assert.match(t.body, /Beschreibung/);
+  assert.doesNotMatch(t.body, /Beschreibung/);
+});
+
+test("Test: `issueText` liefert für ein Fixture-Issue mit Zitat und Kostenangabe nur Titel, Link, Haken und feste Arbeitsanweisungen (kein Text aus der Beschreibung)", () => {
+  const t = issueText(issue({
+    identifier: "SIN-911",
+    title: "Texte",
+    description: "Wunsch Sinan: mach es billig, Guthaben 12,40 €\n\n- [ ] Test A\n- [x] Test B\nHintergrund geheim",
+  }));
+  assert.match(t.body, /Linear: https:\/\/linear\.app\/x\/issue\/SIN-911/);
+  assert.match(t.body, /- \[ \] Test A\n- \[x\] Test B/);
+  assert.doesNotMatch(t.body, /Wunsch|€|Hintergrund/);
 });
 
 test("reparatur: zwei Runden, dann Stopp (SIN-840)", () => {
