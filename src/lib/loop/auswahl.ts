@@ -5,7 +5,7 @@
 
 import { passend, stufe } from "../kontingent/prioritaet";
 import { nurBelege } from "../belege/belege";
-import { istTeil } from "./haken";
+import { istTeil, leseHaken, type Entscheidung } from "./haken";
 
 export const PROJEKT ="Leitstand";
 export const LABEL = "claude";
@@ -41,8 +41,24 @@ export type OffenerPr = { titel: string; branch: string; labels?: string[] };
 
 /** PR wartet nur noch auf Sinan (`risk:high` ohne `freigegeben`, SIN-678): der Worker ist fertig, der Platz wird frei. */
 export const wartetAufSinan = (pr: OffenerPr) => !!pr.labels?.includes("risk:high") && !pr.labels.includes("freigegeben");
-/** Ohne Angabe zählt jedes laufende Issue (altes Verhalten). */
-export type Belegung = { jetzt: Date; offenePrs: OffenerPr[]; teilGemergt?: string[] };
+/** Ohne Angabe zählt jedes laufende Issue (altes Verhalten). `gemergt`: Kennungen mit gemergtem (vollem) PR (SIN-918). */
+export type Belegung = { jetzt: Date; offenePrs: OffenerPr[]; teilGemergt?: string[]; gemergt?: string[] };
+
+/** SIN-918: Haken, der erst nach dem Merge belegbar ist. Linear maskiert die Klammern als `\[`. */
+export const nachAktivierung = (text: string) => /^\\?\[nach Aktivierung\\?\]/i.test(text.trim());
+
+/** SIN-918: PR gemergt, offen sind nur noch `[nach Aktivierung]`-Haken. Das Issue wartet auf den Live-Beleg, nicht auf einen Worker. */
+export function wartetAufLiveBeleg(i: Pick<LinearIssue, "identifier" | "description">, gemergt: readonly string[]): boolean {
+  if (!gemergt.includes(i.identifier)) return false;
+  return leseHaken(i.description).filter((h) => !h.erledigt).every((h) => nachAktivierung(h.text));
+}
+
+/** SIN-918: Status nach dem Merge. Nur noch Live-Haken offen → „In Review“ (kein Neustart); andere offene Haken → „Todo“ für den Folge-Worker. */
+export function statusNachMerge(e: Pick<Entscheidung, "status" | "offen">): "Done" | "needs-human" | "In Review" | "Todo" {
+  if (e.status === "done") return "Done";
+  if (e.status === "needs-human") return "needs-human";
+  return e.offen.length && e.offen.every(nachAktivierung) ? "In Review" : "Todo";
+}
 
 const ERLEDIGT = new Set(["completed", "canceled"]);
 
@@ -95,6 +111,7 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
     if (!belegung) return true;
     const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
     if (eigene.length) return !eigene.every(wartetAufSinan);
+    if (belegung.gemergt && wartetAufLiveBeleg(i, belegung.gemergt)) return false;
     // SIN-781: „Part of“-PR gemergt, Haken offen: das Issue wartet auf den Folge-Worker und belegt keinen Platz.
     // shortcut: gilt auch, wenn der Folge-Worker schon läuft, aber noch keinen PR hat; ausbauen, wenn das zu Doppelläufen führt.
     if (belegung.teilGemergt?.includes(i.identifier)) return false;
@@ -122,6 +139,7 @@ export const startbare = (issues: LinearIssue[], gespiegelt: Set<string>): Linea
 export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung, rest: number | null = null): LinearIssue[] {
   const frei = Math.max(0, max - laufende(issues, belegung).length);
   const geordnet = startbare(issues, gespiegelt)
+    .filter((i) => !(belegung?.gemergt && wartetAufLiveBeleg(i, belegung.gemergt)))
     .sort((a, b) => stufe(a.labels) - stufe(b.labels) || rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt));
   return passend(geordnet, rest).slice(0, frei);
 }

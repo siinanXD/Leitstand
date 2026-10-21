@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, istWorkerBranch, teilGemergte, waehle, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -221,4 +221,36 @@ test("codex/-Branch mit Linear-Kennung zählt im Reparaturzähler, nach 2 Runden
 
 test("loopZiele enthält Stromlauf AI (SIN-798)", () => {
   assert.deepEqual(loopZiele().find((z) => z.id === "stromlauf-ai"), { id: "stromlauf-ai", repo: "siinanXD/stromlauf-ai", linearProjekt: "Stromlauf AI" });
+});
+
+const LIVE = "## Fertig, wenn\n\n- [x] Test grün\n- [ ] \\[nach Aktivierung\\] Zeile in loop_events\n";
+const NORMAL = "## Fertig, wenn\n\n- [x] Test grün\n- [ ] Probe in docs/abnahme\n- [ ] \\[nach Aktivierung\\] Zeile in loop_events\n";
+const jetzt = new Date("2026-10-21T18:00:00Z");
+const belegung = (gemergt: string[]) => ({ jetzt, offenePrs: [], gemergt });
+
+test("SIN-918: gemergter PR + nur [nach Aktivierung] offen → nicht in laufende(), nicht in waehle()", () => {
+  const lauf = issue({ identifier: "SIN-904", description: LIVE, stateType: "started", startedAt: "2026-10-21T17:30:00Z" });
+  const todo = issue({ identifier: "SIN-917", description: LIVE });
+  assert.equal(wartetAufLiveBeleg(lauf, ["SIN-904"]), true);
+  assert.deepEqual(laufende([lauf], belegung(["SIN-904"])), []);
+  assert.deepEqual(waehle([todo], new Set(), 2, belegung(["SIN-917"])), []);
+  assert.equal(statusNachMerge({ status: "offen", offen: ["\\[nach Aktivierung\\] Zeile in loop_events"] }), "In Review");
+});
+
+test("SIN-918: gemergter PR + ein normaler Haken offen → bleibt wie bisher (Folge-Worker möglich)", () => {
+  const lauf = issue({ identifier: "SIN-904", description: NORMAL, stateType: "started", startedAt: "2026-10-21T17:30:00Z" });
+  const todo = issue({ identifier: "SIN-917", description: NORMAL });
+  assert.equal(wartetAufLiveBeleg(lauf, ["SIN-904"]), false);
+  assert.deepEqual(laufende([lauf], belegung(["SIN-904"])).map((i) => i.identifier), ["SIN-904"]);
+  assert.deepEqual(waehle([todo], new Set(), 2, belegung(["SIN-917"])).map((i) => i.identifier), ["SIN-917"]);
+  assert.equal(statusNachMerge({ status: "offen", offen: ["Probe in docs/abnahme", "[nach Aktivierung] Zeile"] }), "Todo");
+  assert.equal(statusNachMerge({ status: "done", offen: [] }), "Done");
+});
+
+test("SIN-918: Issue ohne gemergten PR → unverändert", () => {
+  const lauf = issue({ identifier: "SIN-913", description: LIVE, stateType: "started", startedAt: "2026-10-21T17:30:00Z" });
+  const todo = issue({ identifier: "SIN-913", description: LIVE });
+  assert.equal(wartetAufLiveBeleg(lauf, ["SIN-904"]), false);
+  assert.deepEqual(laufende([lauf], belegung(["SIN-904"])).map((i) => i.identifier), ["SIN-913"]);
+  assert.deepEqual(waehle([todo], new Set(), 2, belegung([])).map((i) => i.identifier), ["SIN-913"]);
 });
