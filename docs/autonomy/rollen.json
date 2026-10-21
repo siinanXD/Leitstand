@@ -28,6 +28,7 @@
     { "schritt": "pruefer", "takt": "ereignis", "grenze_h": 24, "alias": ["pr-gate"] },
     { "schritt": "push-ausloeser", "takt": "15min", "grenze_h": 1, "alias": [] },
     { "schritt": "repair", "takt": "ereignis", "grenze_h": 24, "alias": [] },
+    { "schritt": "revert-guard", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "stand", "takt": "taeglich", "grenze_h": 26, "alias": [] },
     { "schritt": "trend", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "visionaer", "takt": "ereignis", "grenze_h": 24, "alias": [] },

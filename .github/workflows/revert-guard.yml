@@ -1,0 +1,39 @@
+# SIN-905: Ist die volle Testreihe auf main rot, wird der auslösende Commit rückgängig gemacht.
+name: revert-guard
+
+on:
+  workflow_run:
+    workflows: [build]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: revert-guard
+  cancel-in-progress: false
+
+jobs:
+  revert:
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+      - name: Auslösenden Commit rückgängig machen
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          git config user.name "revert-guard"
+          git config user.email "revert-guard@users.noreply.github.com"
+          if [ "$(git rev-parse HEAD)" != "$SHA" ]; then echo "main ist weitergelaufen, kein Revert."; exit 0; fi
+          if git log -1 --format=%s "$SHA" | grep -q '^Revert '; then echo "Revert selbst rot: Mensch prüfen."; exit 0; fi
+          git revert --no-edit "$SHA"
+          git commit --amend -m "Revert: main rot nach $SHA (SIN-905)" -m "Lauf: $RUN_URL"
+          git push origin main
