@@ -97,3 +97,11 @@ test("Unvollständig gelesener Verlauf (mehr als 250 Einträge) zählt konservat
   assert.deepEqual(r.durchstich, []);
   assert.deepEqual(r.mit_eingriff, [{ kennung: "SIN-7", eingriffe: ["Verlauf unvollständig gelesen"] }]);
 });
+
+test("Abnahme-Probe gilt nur für die ganze Kennung (SIN-1 ≠ SIN-10)", () => {
+  const ohne = kette("SIN-1", 21, true);
+  const r = durchstich([issue("SIN-1")], [...ohne, ev("abnahme", "ok", "Probe (SIN-10)")], ["sinan"], JETZT);
+  assert.deepEqual(r.durchstich, []);
+  assert.deepEqual(r.ohne_beleg, [{ kennung: "SIN-1", fehlt: ["abnahme ok"] }]);
+  assert.deepEqual(durchstich([issue("SIN-1")], [...ohne, ev("abnahme", "ok", "Probe (SIN-1)")], ["sinan"], JETZT).durchstich, ["SIN-1"]);
+});

@@ -54,7 +54,9 @@ export function fehlendeBelege(kennung: string, ereignisse: readonly Ereignis[])
   if (!hat("merge")) fehlt.push("merge");
   if (!hat("deploy")) fehlt.push("deploy");
   // Die Probe nennt die Kennung im Titel (Feld issue der Abnahme-Zeile).
-  if (!ereignisse.some((e) => e.step === "abnahme" && ok(e) && !!e.issue?.includes(kennung))) fehlt.push("abnahme ok");
+  // Ganze Kennung, keine Teilzeichenkette: „SIN-1“ darf nicht in „SIN-10“ treffen.
+  const genau = new RegExp(`(^|[^\\w-])${kennung}(?![\\w])`);
+  if (!ereignisse.some((e) => e.step === "abnahme" && ok(e) && !!e.issue && genau.test(e.issue))) fehlt.push("abnahme ok");
   return fehlt;
 }
 
