@@ -71,8 +71,21 @@ export function bewerteText(probe: Probe, text: string): Ergebnis {
 }
 
 /** Zeile für `loop_events`: Schritt abnahme, `issue` trägt den Titel der Probe (so liest ihn die Seite ohne weitere Abfrage). */
+/** Erlaubte Werte laut Check `loop_events_status_check` (SIN-903: "failed" ließ jeden Insert scheitern). */
+export const LOOP_STATUS = ["start", "ok", "fehler", "uebersprungen"] as const;
+
 export function ereignisZeile(p: Probe, e: Ergebnis, runId: string | null, runUrl: string | null) {
-  return { project: p.produkt, agent: "betrieb", step: SCHRITT, status: e.ok ? "ok" : "failed", issue: p.titel, pr: null, run_id: runId, run_url: runUrl };
+  return {
+    project: p.produkt,
+    agent: "betrieb",
+    step: SCHRITT,
+    status: e.ok ? "ok" : "fehler",
+    grund: e.ok ? null : e.grund.slice(0, 300),
+    issue: p.titel,
+    pr: null,
+    run_id: runId,
+    run_url: runUrl,
+  };
 }
 
 type Zeile = { project: string | null; step: string | null; status: string | null; issue: string | null; created_at: string };

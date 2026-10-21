@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { alarmeAus, bewerteText, bewerteZeilen, einsetzen, ereignisZeile, parseProben, staende, type Probe } from "./abnahme";
+import { alarmeAus, bewerteText, bewerteZeilen, einsetzen, ereignisZeile, LOOP_STATUS, parseProben, staende, type Probe } from "./abnahme";
 
 const H = 3_600_000;
 const jetzt = Date.parse("2026-10-14T12:00:00Z");
@@ -47,24 +47,36 @@ test("bewerteZeilen: Alter, Anzahl und leeres Feld", () => {
 test("bewerteText und ereignisZeile", () => {
   assert.equal(bewerteText(probe({ enthaelt: "# Offen" }), "# Offen\n").ok, true);
   assert.equal(bewerteText(probe({ enthaelt: "# Offen" }), "leer").ok, false);
-  assert.equal(ereignisZeile(probe(), { ok: false, grund: "x" }, null, null).status, "failed");
+  assert.equal(ereignisZeile(probe(), { ok: false, grund: "x" }, null, null).status, "fehler");
+  assert.equal(ereignisZeile(probe(), { ok: false, grund: "x".repeat(400) }, null, null).grund?.length, 300);
+  assert.equal(ereignisZeile(probe(), { ok: true, grund: "ok" }, null, null).grund, null);
   assert.deepEqual([ereignisZeile(probe(), { ok: true, grund: "ok" }, null, null).step, ereignisZeile(probe(), { ok: true, grund: "ok" }, null, null).issue], ["abnahme", "Test"]);
 });
 
 test("staende: rot seit dem ersten roten Lauf nach dem letzten grünen", () => {
-  const [s] = staende([lauf("failed", 0), lauf("failed", H), lauf("failed", 2 * H), lauf("ok", 3 * H), lauf("failed", 4 * H)]);
+  const [s] = staende([lauf("fehler", 0), lauf("fehler", H), lauf("fehler", 2 * H), lauf("ok", 3 * H), lauf("fehler", 4 * H)]);
   assert.equal(s.ok, false);
   assert.equal(s.rotSeit, jetzt - 2 * H);
-  assert.equal(staende([lauf("ok", 0), lauf("failed", H)])[0].rotSeit, null);
+  assert.equal(staende([lauf("ok", 0), lauf("fehler", H)])[0].rotSeit, null);
 });
 
 test("Alarm: absichtlich rote Probe löst nach mehr als 2 Stunden Alarm aus, vorher und bei grün nicht", () => {
-  const rot = [lauf("failed", 0), lauf("failed", H), lauf("failed", 2.5 * H)];
+  const rot = [lauf("fehler", 0), lauf("fehler", H), lauf("fehler", 2.5 * H)];
   const alarme = alarmeAus(rot, jetzt);
   assert.equal(alarme.length, 1);
   assert.deepEqual([alarme[0].art, alarme[0].projekt, alarme[0].titel], ["alarm", "leitstand", "Probe rot: Test"]);
   assert.equal(alarmeAus(rot, jetzt)[0].id, alarme[0].id, "dieselbe Kennung, damit nicht doppelt gesendet wird");
-  assert.equal(alarmeAus([lauf("failed", 0), lauf("failed", H)], jetzt).length, 0);
+  assert.equal(alarmeAus([lauf("fehler", 0), lauf("fehler", H)], jetzt).length, 0);
   assert.equal(alarmeAus([lauf("ok", 0), ...rot.slice(1)], jetzt).length, 0);
-  assert.equal(alarmeAus([{ ...lauf("failed", 3 * H), step: "worker" }], jetzt).length, 0);
+  assert.equal(alarmeAus([{ ...lauf("fehler", 3 * H), step: "worker" }], jetzt).length, 0);
+});
+
+// Abschrift von loop_events_status_check (Supabase), bewusst unabhängig vom Code: ändert sich der Check, hier nachziehen.
+const ERLAUBT_IN_DB = ["start", "ok", "fehler", "uebersprungen"];
+
+test("SIN-903: ereignisZeile schreibt nur Status, die loop_events_status_check erlaubt", () => {
+  for (const ok of [true, false]) {
+    assert.ok(ERLAUBT_IN_DB.includes(ereignisZeile(probe(), { ok, grund: "g" }, null, null).status));
+  }
+  assert.deepEqual([...LOOP_STATUS], ERLAUBT_IN_DB);
 });
