@@ -47,3 +47,4 @@ Nur Quellmetadaten auf Secrets prüfen reicht nicht → auch die frei eingegeben
 - SIN-856: Wiederaufnahme nach Owner-Auftrag aktualisiert main und Belege, setzt aber weder Reparaturzähler noch needs-human zurück; echte Parallel-/Subagent-Proben folgen erst nach Aktivierung.
 - SIN-877: Fehlende Codestelle ist kein Phasennachweis; nur explizit klassifizierte Nachweise an aktuellen Nachaktivierungs-Haken zurückstellen, alte Funde konservativ lassen.
 - SIN-903: `loop_events.status` hat einen Check (start/ok/fehler/uebersprungen); ein anderer Wert ("failed") lässt den ganzen Sammel-Insert scheitern → nur erlaubte Werte schreiben, Test gegen die Liste.
+- Worker soll Linear per `curl … $LINEAR_API_KEY` lesen → claude-code-action lehnt Befehle mit Umgebungsvariablen ab; Key gehört in ein Skript (`scripts/loop/auftrag.ts`), das in allowedTools steht (SIN-945).

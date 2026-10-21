@@ -182,7 +182,7 @@ export function issueText(i: LinearIssue, hinweise = ""): { title: string; body:
       marker(i.identifier),
       `Linear: ${i.url}`,
       "",
-      "Der volle Auftrag steht nur in Linear: per Linear-GraphQL mit `LINEAR_API_KEY` lesen.",
+      `Der volle Auftrag steht nur in Linear. Lies ihn zuerst mit: npx tsx scripts/loop/auftrag.ts ${i.identifier}`,
       "",
       "## Fertig, wenn",
       ...(haken.length ? haken.map((h) => `- [${h.erledigt ? "x" : " "}] ${h.text}`) : ["(keine Haken)"]),
