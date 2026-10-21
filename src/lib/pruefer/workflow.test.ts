@@ -173,7 +173,7 @@ test("SIN-880: echter Veröffentlichungs-Guard sperrt geänderten Head, Ziel, Sn
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
-test("SIN-932: Auto-Merge bricht den PR-Prüfer nicht ab, repair kennt dispatchte Prüfer-Läufe", () => {
+test("Auto-Merge bricht den PR-Prüfer nicht ab, repair kennt dispatchte Prüfer-Läufe", () => {
   const automerge = readFileSync(".github/workflows/automerge.yml", "utf8");
   const repair = readFileSync(".github/workflows/repair.yml", "utf8");
   assert.match(workflow, /\nrun-name: pruefer PR \$\{\{ github\.event\.pull_request\.number \|\| inputs\.pr \}\}\n/);
