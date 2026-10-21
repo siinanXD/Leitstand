@@ -1,7 +1,32 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { planeFallback, reserviere, type ProviderStand } from "./fallback";
-import { auftragAus, blockiert, supabaseReservierung, verwaist, type Reservierung } from "./reservierung";
+import { auftragAus, blockiert, claimAbgelaufen, laufIdAusClaim, supabaseReservierung, verwaist, workerJeClaim, type Reservierung } from "./reservierung";
+
+test("SIN-896: Worker-Zustand gilt je Claim, nur der Lauf des eigenen Claims hält ihn", async () => {
+  const mk = (issue: string, claim: string | null): Reservierung => ({ issue, revision: 1, provider: claim ? "claude" : null, claim, seit: "2026-10-20T08:00:00Z", reparaturen: 0, nachweis: null });
+  const a = mk("SIN-1", "gh-111-SIN-1"), b = mk("SIN-2", "gh-222-SIN-2"), c = mk("SIN-3", "lokal-SIN-3"), leer = mk("SIN-4", null);
+  assert.equal(laufIdAusClaim("gh-111-SIN-1"), "111");
+  assert.equal(laufIdAusClaim("gh-lokal-SIN-1"), null);
+  const abgefragt: string[] = [];
+  const w = await workerJeClaim([a, b, c, leer], async (id) => (abgefragt.push(id), id === "222"));
+  assert.deepEqual(abgefragt, ["111", "222"]);
+  assert.deepEqual([...w], [["SIN-1", false], ["SIN-2", true], ["SIN-3", null]]);
+  const lage = (r: Reservierung) => ({ offenerPr: false, workerLaeuft: w.get(r.issue) ?? null, jetzt: new Date("2026-10-20T10:00:00Z") });
+  assert.equal(claimAbgelaufen(a, lage(a)), true, "Lauf des Claims beendet");
+  assert.equal(claimAbgelaufen(b, lage(b)), false, "Lauf des Claims läuft noch");
+  assert.equal(claimAbgelaufen(c, lage(c)), false, "unbekannt bleibt");
+});
+
+test("SIN-896: Claim ohne Worker und PR verfällt nach 90 Min, sonst bleibt er", () => {
+  const r: Reservierung = { issue: "SIN-855", revision: 1, provider: "claude", claim: "gh-1", seit: "2026-10-20T08:00:00Z", reparaturen: 0, nachweis: null };
+  const lage = { offenerPr: false, workerLaeuft: false as boolean | null, jetzt: new Date("2026-10-20T09:31:00Z") };
+  assert.equal(claimAbgelaufen(r, lage), true);
+  assert.equal(claimAbgelaufen(r, { ...lage, jetzt: new Date("2026-10-20T09:29:00Z") }), false);
+  assert.equal(claimAbgelaufen(r, { ...lage, offenerPr: true }), false);
+  assert.equal(claimAbgelaufen(r, { ...lage, workerLaeuft: true }), false);
+  assert.equal(claimAbgelaufen(r, { ...lage, workerLaeuft: null }), false);
+});
 
 /**
  * Simulation von PostgREST mit echter CAS-Semantik (UPDATE … WHERE claim_revision = alt, INSERT ignore-duplicates).

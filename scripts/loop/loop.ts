@@ -25,9 +25,9 @@ import { ausLinear, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, geme
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
-import { auftragAus, blockiert, supabaseReservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
+import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, workerJeClaim, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
-import { ladePrSchutz, maxParallel, parallelAuswahl } from "../../src/lib/loop/parallel";
+import { ladePrSchutz, maxParallel, parallelAuswahl, schuetztNoch } from "../../src/lib/loop/parallel";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -302,6 +302,16 @@ async function sinanIssue(teamId: string, title: string, description: string) {
   });
 }
 
+/** Läuft oder wartet genau dieser Lauf (Run-ID aus dem Claim)? `null`, wenn das nicht lesbar ist: dann bleibt der Claim. */
+async function laufAktiv(repo: string, runId: string): Promise<boolean | null> {
+  try {
+    const d = await gh<{ status: string }>(`/repos/${repo}/actions/runs/${runId}`);
+    return d.status !== "completed";
+  } catch {
+    return null;
+  }
+}
+
 async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   const repo = ziel.repo;
   const projekt = ziel.id;
@@ -324,7 +334,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     issues = issues.filter((i) => !fertig.some((f) => f.identifier === i.identifier));
   }
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
-  let prs = await gh<{ number: number; title: string; head: { ref: string }; labels: { name: string }[] }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
+  let prs = await gh<{ number: number; title: string; head: { ref: string }; labels: { name: string }[]; created_at: string }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
   if (repo.toLowerCase() === "siinanxd/leitstand") {
     for (let page = 2; prs.length === (page - 1) * 100; page++) {
       const weitere = await gh<typeof prs>(`/repos/${repo}/pulls?state=open&per_page=100&page=${page}`);
@@ -340,7 +350,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   };
   const max = maxParallel(repo, env.LOOP_MAX_PARALLEL, env.LEITSTAND_MAX_PARALLEL);
   const schutz = repo.toLowerCase() === "siinanxd/leitstand"
-    ? await ladePrSchutz(prs, (pr, page) => gh(`/repos/${repo}/pulls/${pr}/files?per_page=100&page=${page}`)) : [];
+    ? await ladePrSchutz(prs.filter(p => schuetztNoch({ labels: p.labels.map(l => l.name), createdAt: p.created_at }, new Date())), (pr, page) => gh(`/repos/${repo}/pulls/${pr}/files?per_page=100&page=${page}`)) : [];
   let claims: LinearIssue[] = [];
   const gespiegelt = gespiegelteIds(ghIssues);
   // SIN-832: Issues mit aktivem Claim oder ausgeschöpften Reparaturen belegen keinen Startplatz (sonst steht die Schlange).
@@ -357,6 +367,14 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     } catch (e) {
       await ereignis("dispatch", "fehler", { projekt, grund: fehlergrund(`reservierung_unlesbar: ${(e as Error).message}`) });
       return;
+    }
+    // SIN-896: Zombie-Claims (kein Worker-Lauf, kein offener PR, älter als 90 Min) belegen keinen Platz.
+    const beleg = laufUrl();
+    const mitPr = new Set(prs.map(p => p.title.match(/SIN-\d+/)?.[0]).filter((x): x is string => !!x));
+    const worker = await workerJeClaim(staende, id => laufAktiv(repo, id));
+    for (const r of staende.filter(x => claimAbgelaufen(x, { offenerPr: mitPr.has(x.issue), workerLaeuft: worker.get(x.issue) ?? null, jetzt: new Date() }))) {
+      console.log(`Claim von ${r.issue} abgelaufen (seit ${r.seit}, kein Worker, kein PR) → freigeben`);
+      if (beleg && await speicher.freigeben(r, beleg).catch(() => false)) r.claim = null;
     }
     const beansprucht = new Set(staende.filter(r => r.claim).map(r => r.issue));
     claims = issues.filter(i => beansprucht.has(i.identifier));

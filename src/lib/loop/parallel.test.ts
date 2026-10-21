@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { ladePrSchutz, maxParallel, parallelAuswahl } from "./parallel";
+import { ladePrSchutz, maxParallel, parallelAuswahl, schreibPfade, schuetztNoch } from "./parallel";
+import { pfadeFuer, planeVorhaben } from "./bereich";
 import type { LinearIssue } from "./auswahl";
 
 const issue = (id: string, paths?: string[]): LinearIssue => ({
@@ -73,4 +74,40 @@ test("SIN-856: PR-Schutz liest alle Seiten, alte Namen umbenannter Dateien und s
 test("SIN-856: gekürzte Dateiliste (30 volle Seiten) bleibt exklusiv", async () => {
   const [p] = await ladePrSchutz([{ number: 9 }], async () => Array.from({ length: 100 }, (_, n) => ({ filename: `docs/y${n}.md` })));
   assert.equal(p.description, null);
+});
+
+test("SIN-896: Planer zerlegt „Seite mit neuer API“ in schnittstelle → (frontend ∥ backend)", () => {
+  const plan = planeVorhaben({ id: "SIN-900", titel: "Seite mit neuer API", modul: "kennzahl", frontend: true, backend: true });
+  assert.deepEqual(plan.map(p => p.bereich), ["schnittstelle", "backend", "frontend"]);
+  assert.deepEqual(plan.map(p => p.labels), [["claude", "schnittstelle"], ["claude", "backend"], ["claude", "frontend"]]);
+  assert.deepEqual(plan.map(p => p.blockiertVon), [[], ["SIN-900-schnittstelle"], ["SIN-900-schnittstelle"]]);
+  assert.ok(plan.every(p => p.pfade.length >= 3 && p.pfade.includes(`docs/abnahme/${p.schluessel}.yml`)));
+  assert.deepEqual(plan[2].pfade.slice(0, 2), ["src/app/kennzahl", "src/components/kennzahl"]);
+  assert.throws(() => pfadeFuer("backend", "../x", "SIN-1"));
+});
+
+test("SIN-896: frontend und backend mit eigenen Abnahme-Dateien starten im selben Dispatch", () => {
+  const [, be, fe] = planeVorhaben({ id: "SIN-900", titel: "Seite", modul: "kennzahl", frontend: true, backend: true });
+  const alsIssue = (p: typeof be): LinearIssue => ({ ...issue(p.schluessel, p.pfade), labels: p.labels });
+  assert.deepEqual(parallelAuswahl([alsIssue(fe), alsIssue(be)], [], 2).map(i => i.id), ["SIN-900-frontend", "SIN-900-backend"]);
+  assert.deepEqual(parallelAuswahl([alsIssue(fe), alsIssue({ ...be, labels: ["claude", "frontend"] })], [], 2).map(i => i.id), ["SIN-900-frontend"], "je Bereich ein Worker");
+});
+
+test("SIN-896: schreibPfade liest Linear-escapte Blöcke", () => {
+  const roh = '<!-- worker-pfade: \\["src/lib/kennzahl\\_durchstich", "docs/abnahme/SIN-897.yml"\\] -->';
+  assert.deepEqual(schreibPfade({ description: roh }), ["src/lib/kennzahl_durchstich", "docs/abnahme/SIN-897.yml"]);
+});
+
+test("SIN-896: echter Linear-API-Text von SIN-897 ergibt 4 Pfade", () => {
+  const roh = '<!-- worker-pfade: \\["src/lib/kennzahlen", "scripts/kennzahlen", "src/app/(uebersicht)", "docs/decisions"\\] -->';
+  assert.deepEqual(schreibPfade({ description: roh }), ["src/lib/kennzahlen", "scripts/kennzahlen", "src/app/(uebersicht)", "docs/decisions"]);
+});
+
+test("SIN-896: wartender risk:high-PR schützt seine Dateien höchstens 24 h", () => {
+  const jetzt = new Date("2026-10-21T12:00:00Z");
+  const hoch = { labels: ["risk:high"], createdAt: "2026-10-20T11:00:00Z" };
+  assert.equal(schuetztNoch(hoch, jetzt), false);
+  assert.equal(schuetztNoch({ ...hoch, createdAt: "2026-10-21T00:00:00Z" }, jetzt), true);
+  assert.equal(schuetztNoch({ ...hoch, labels: ["risk:high", "freigegeben"] }, jetzt), true);
+  assert.equal(schuetztNoch({ labels: ["risk:medium"], createdAt: "2026-10-01T00:00:00Z" }, jetzt), true);
 });

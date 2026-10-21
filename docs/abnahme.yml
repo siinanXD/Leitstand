@@ -662,6 +662,14 @@
   art: http
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?status=success&event=push&branch=main&head_sha=${GITHUB_SHA}&per_page=1
   enthaelt: '"conclusion": "success"'
+
+# SIN-896
+- id: leitstand-bereichs-spuren
+  produkt: leitstand
+  titel: Der Planer ordnet Vorhaben Bereichen mit Schreibpfaden zu, Claims verfallen je Lauf nach 90 Min (SIN-896)
+  art: datei
+  pfad: src/lib/loop/bereich.ts
+  enthaelt: planeVorhaben
 - id: abnahme-speichert
   produkt: leitstand
   titel: Abnahme-Proben speichern ihre Ergebnisse (SIN-903)
