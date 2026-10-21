@@ -1,5 +1,5 @@
 import { pauseEingabe, pauseStand, pauseZeile, PAUSE_SCHRITT } from "@/lib/pause";
-import { leitstandNutzer, protokolliere } from "@/lib/server-nutzer";
+import { protokolliere, verweigert } from "@/lib/server-nutzer";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +20,16 @@ async function ladeStand() {
 
 /** Lesen: ist der Loop pausiert, und seit wann. */
 export async function GET(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const stand = await ladeStand();
   return stand ? antwort(200, stand) : antwort(503, { fehler: "Pausenstand nicht lesbar" });
 }
 
 /** Pause setzen oder aufheben: schreibt das PAUSE-Ereignis, das `dispatch` liest. Ohne Protokoll gilt die Aktion als fehlgeschlagen. */
 export async function POST(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const pausiert = pauseEingabe(await anfrage.json().catch(() => null));
   if (pausiert === null) return antwort(400, { fehler: "pausiert muss true oder false sein" });
   if (!(await protokolliere(pauseZeile(pausiert)))) return antwort(502, { fehler: "loop_events nicht beschreibbar" });

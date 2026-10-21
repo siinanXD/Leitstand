@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { aktionsStatus } from "./agent-testnutzer/aktion";
 
 /** Nur Sinan: gültige Sitzung und eine Zeile in `leitstand_nutzer`, die RLS dem Nutzer zeigt. Gibt dessen E-Mail-Adresse zurück, sonst null. */
 export async function leitstandNutzer(anfrage: Request): Promise<{ email: string } | null> {
@@ -32,4 +33,14 @@ export async function protokolliere(zeile: object): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Zugang für API-Routen: null = erlaubt, sonst die fertige Antwort (401 ohne Nutzer; 403 samt Protokoll, wenn das Agent-Testkonto (SIN-913) eine Aktion auslösen will). */
+export async function verweigert(anfrage: Request): Promise<Response | null> {
+  const nutzer = await leitstandNutzer(anfrage);
+  const kopf = { "Cache-Control": "no-store" };
+  if (!nutzer) return Response.json({ fehler: "nicht angemeldet" }, { status: 401, headers: kopf });
+  if (aktionsStatus(nutzer.email, anfrage.method, process.env.AGENT_TESTNUTZER_EMAIL) === 200) return null;
+  await protokolliere({ project: "leitstand", step: "agent-testnutzer", status: "fehler", grund: `Aktion abgelehnt: ${anfrage.method} ${new URL(anfrage.url).pathname}` });
+  return Response.json({ fehler: "Das Testkonto darf nur lesen" }, { status: 403, headers: kopf });
 }

@@ -1,6 +1,6 @@
 import { TESTNACHRICHT, sendeAnAlle } from "@/lib/push/push";
 import { supabaseSpeicher, vapidSender } from "@/lib/push/server";
-import { leitstandNutzer } from "@/lib/server-nutzer";
+import { verweigert } from "@/lib/server-nutzer";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,8 @@ const antwort = (status: number, body: unknown) => Response.json(body, { status,
 
 /** Testmitteilung an alle gespeicherten Abos; abgelaufene werden dabei gelöscht. */
 export async function POST(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const sender = vapidSender();

@@ -1,5 +1,5 @@
 import registerJson from "../../../../docs/autonomy/agents.json";
-import { leitstandNutzer, protokolliere } from "@/lib/server-nutzer";
+import { protokolliere, verweigert } from "@/lib/server-nutzer";
 import { rolleEingabe, rollenStand, weiterZeile, WOCHE_MS, type RollenEreignis } from "@/lib/wirkung/wirkung";
 
 export const dynamic = "force-dynamic";
@@ -24,14 +24,16 @@ async function lade(): Promise<RollenEreignis[] | null> {
 
 /** Lesen: Note, Kosten der Woche, letzter Lauf und Pause je Rolle. Fehlt die Spalte `wirkung` (Migration offen), ist die Antwort 503. */
 export async function GET(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const events = await lade();
   return events ? antwort(200, rollenStand(ROLLEN, events, Date.now()).map((s) => ({ ...s, ...registerJson.rollen.find((r) => r.id === s.id)?.wirkung }))) : antwort(503, { fehler: "Rollen nicht lesbar" });
 }
 
 /** Wieder anschalten: schreibt das Ereignis, das die Pause aufhebt. Ohne Protokoll gilt die Aktion als fehlgeschlagen. */
 export async function POST(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const agent = rolleEingabe(await anfrage.json().catch(() => null), ROLLEN.map((r) => r.id));
   if (!agent) return antwort(400, { fehler: "agent ist keine bekannte Rolle" });
   return (await protokolliere(weiterZeile(agent))) ? antwort(200, { agent, pausiert: false }) : antwort(502, { fehler: "loop_events nicht beschreibbar" });

@@ -1,6 +1,6 @@
 import { bereicheAusDateien } from "@/lib/bereiche";
 import { freigeben, githubNetz, grundFuerFreigabe, istPrNummer, istRepo, protokollZeile, type Netz } from "@/lib/freigabe";
-import { leitstandNutzer, protokolliere } from "@/lib/server-nutzer";
+import { protokolliere, verweigert } from "@/lib/server-nutzer";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,8 @@ function netz(): Netz | null {
 
 /** Lesen: PR-Kopf, Bereiche und Grund. Dateien kommen serverseitig von GitHub. */
 export async function GET(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const query = new URL(anfrage.url).searchParams;
   const repo = query.get("repo");
   const nr = Number(query.get("pr"));
@@ -35,7 +36,8 @@ export async function GET(anfrage: Request) {
 
 /** Freigeben: Label oder Squash-Merge mit eigenem Token, danach Eintrag in loop_events. */
 export async function POST(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const body: unknown = await anfrage.json().catch(() => null);
   const eingabe = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   if (!istRepo(eingabe.repo) || !istPrNummer(eingabe.pr)) return antwort(400, { fehler: "repo oder pr ungültig" });
