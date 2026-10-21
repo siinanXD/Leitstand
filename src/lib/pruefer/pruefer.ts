@@ -139,6 +139,9 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, 
 
 export const hatHoch = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch");
 
+/** SIN-909: nur echte Risiken (Sicherheit, Datenverlust, Rechte) setzen risk:high; „Beleg fehlt“ und Co. setzen `pruefer:offen`. */
+export const hatRisiko = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch" && (f.art === "sicherheit" || SICHERHEITSBEZUG.test(`${f.datei}\n${f.text}`)));
+
 export type Reviewer = "codex" | "claude";
 export const reviewerZeile = (r: Reviewer) => (r === "codex" ? "Reviewer: OpenAI API" : "Reviewer: Anthropic API (Rückfall, OpenAI-API-Kontingent erschöpft)");
 
@@ -178,7 +181,8 @@ export function kommentar(e: Ergebnis, modell: string, usd: number | null, revie
     MARKER,
     `### Prüfer (zweites Modell): ${e.bestanden ? "bestanden" : "nicht bestanden"}`,
     zeilen.length ? zeilen.join("\n") : "Keine Funde.",
-    hatHoch(e) ? "\nSchwere „hoch“: Das Gate setzt `risk:high`, Auto-Merge wartet auf `freigegeben`." : "",
+    hatRisiko(e) ? "\nSicherheitsfund „hoch“: Das Gate setzt `risk:high`, Auto-Merge wartet auf `freigegeben`." : "",
+    !e.bestanden && !hatRisiko(e) ? "\nLabel `pruefer:offen`: Merge gesperrt, bis ein neuer Prüfer-Lauf auf dem aktuellen Head besteht. Sinan wird nicht gebraucht." : "",
     `\n${reviewerZeile(reviewer)}`,
     `<sub>Modell ${modell}${usd === null ? "" : `, Kosten ${usd.toFixed(4)} $`}</sub>`,
     ...(e.haken?.length ? [hakenMarker(e.haken)] : []),

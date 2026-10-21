@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
+import { hatHoch, hatRisiko, istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
 
 import { entscheide, leseHaken } from "../loop/haken";
 
@@ -59,7 +59,7 @@ test("kommentar nennt Ergebnis, Fund und Kosten", () => {
   const t = kommentar({ bestanden: false, funde: [{ datei: "a.ts", zeile: 4, schwere: "hoch", text: "Spalte falsch" }] }, "m", 0.0123);
   assert.match(t, /nicht bestanden/);
   assert.match(t, /a\.ts:4/);
-  assert.match(t, /risk:high/);
+  assert.match(t, /pruefer:offen/);
   assert.match(t, /0\.0123/);
 });
 
@@ -172,4 +172,16 @@ test("SIN-880: API-Fehler redigieren Keys vor Kürzung und behalten Status/Diagn
   assert.match(apiFehler("Anthropic", 400, "", []).message, /Antworttext leer/);
   assert.throws(() => leseApiJson("", "OpenAI"), /OpenAI: HTTP-Antwort/);
   assert.throws(() => leseAntwort("null"), /kein Objekt/);
+});
+
+test("SIN-909: Beleg fehlt setzt pruefer:offen, nicht risk:high; Sicherheitsfund schon", () => {
+  const beleg = bewerte({ bestanden: false, funde: [], haken: [] }, ["docs/a.md"], false, "- [ ] Test belegt Haken");
+  assert.equal(beleg.bestanden, false);
+  assert.equal(hatHoch(beleg), true);
+  assert.equal(hatRisiko(beleg), false);
+  assert.match(kommentar(beleg, "m", null), /pruefer:offen/);
+  assert.doesNotMatch(kommentar(beleg, "m", null), /setzt `risk:high`/);
+  const leak = { bestanden: false, funde: [{ datei: "a.ts", zeile: 1, schwere: "hoch" as const, text: "Secret wird ausgegeben", art: "sicherheit" as const }] };
+  assert.equal(hatRisiko(leak), true);
+  assert.match(kommentar(leak, "m", null), /setzt `risk:high`/);
 });

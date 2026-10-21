@@ -82,6 +82,24 @@ test("nur docs/ ist low", () => {
   assert.equal(stufe({ files: [{ filename: "docs/x.md", status: "modified", patch: "+text" }], bekannt }).stufe, "low");
 });
 
+test("SIN-909: drop constraint + add constraint ist kein Datenverlust, drop column schon", () => {
+  const mig = (patch: string) => ({ filename: "supabase/migrations/20261021_x.sql", status: "added", patch });
+  const ok = "+alter table loop_events drop constraint if exists loop_events_status_check;\n+alter table loop_events add constraint loop_events_status_check check (status in ('a'));\n+drop index if exists x_idx;";
+  assert.equal(klassifiziere({ files: [mig(ok)], bekannt }).high, false);
+  assert.equal(klassifiziere({ files: [mig("+alter table t drop column c;")], bekannt }).high, true);
+  assert.equal(klassifiziere({ files: [mig("+alter table t rename to u;")], bekannt }).high, true);
+  assert.equal(klassifiziere({ files: [mig("+drop table t;")], bekannt }).high, true);
+});
+
+test("SIN-909: bestandener Prüfer auf dem Head senkt ein gesetztes risk:high", () => {
+  const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
+  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"] }).high, true);
+  assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"], pruefBestanden: true }).high, false);
+  // Ein echter Dateigrund bleibt, auch wenn der Prüfer besteht.
+  const gate = [{ filename: ".github/workflows/automerge.yml", status: "modified", patch: "+x" }];
+  assert.equal(klassifiziere({ files: gate, bekannt, labels: ["risk:high"], pruefBestanden: true }).high, true);
+});
+
 test("dispatch.yml startet nach jedem Push auf main, auch bei Merge durch den Agent-Token", () => {
   const y = readFileSync(new URL("../../../.github/workflows/dispatch.yml", import.meta.url), "utf8");
   assert.match(y, /push:\s*\n\s*branches:\s*\[main\]/);

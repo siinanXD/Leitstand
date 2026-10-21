@@ -690,3 +690,11 @@
   art: datei
   pfad: supabase/migrations/leitstand/20261021100000_loop_events_needs_human.sql
   enthaelt: needs_human
+
+# SIN-909
+- id: gate-pruefer-offen
+  produkt: leitstand
+  titel: Prüfer-Funde ohne Sicherheitsbezug setzen pruefer:offen statt risk:high (SIN-909)
+  art: datei
+  pfad: src/lib/pruefer/pruefer.ts
+  enthaelt: hatRisiko

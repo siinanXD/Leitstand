@@ -1,5 +1,5 @@
 # Prüfer mit zweitem Modell (SIN-639, SIN-827): OpenAI API prüft Claude- und Codex-PRs.
-# Ergebnis als PR-Kommentar. Schwere „hoch“ setzt risk:high (das Gate in automerge.yml senkt es nie). Kosten landen in loop_events.
+# Ergebnis als PR-Kommentar. Echte Risiken setzen risk:high, andere Funde das Label pruefer:offen (SIN-909); „bestanden“ entfernt beide. Kosten landen in loop_events.
 # Prüfer/Abhängigkeiten vom Basis-Commit; PR-Commits werden nur als Diff gelesen, nie ausgecheckt.
 name: pruefer
 on:
@@ -119,8 +119,16 @@ jobs:
           else
             gh pr comment "$PR" --body-file pruefer-kommentar.md
           fi
-          if [ -f pruefer-hoch.txt ] && [ "${{ github.event_name }}" = "pull_request_target" -o "${{ inputs.pruefen }}" = "true" ]; then
-            gh pr edit "$PR" --add-label risk:high
+          # SIN-909: risk:high nur bei echtem Risiko; sonst pruefer:offen. Bestanden räumt beides auf (das Gate bewertet danach neu).
+          if [ "${{ github.event_name }}" = "pull_request_target" -o "${{ inputs.pruefen }}" = "true" ]; then
+            if [ -f pruefer-hoch.txt ]; then
+              gh pr edit "$PR" --add-label risk:high
+            elif [ -f pruefer-status.txt ] && grep -q '^bestanden' pruefer-status.txt; then
+              gh pr edit "$PR" --remove-label pruefer:offen --remove-label risk:high || true
+            elif [ -f pruefer-status.txt ]; then
+              gh label create pruefer:offen --color 6e7681 --description "Prüfer-Funde offen, Worker bessert nach" 2>/dev/null || true
+              gh pr edit "$PR" --add-label pruefer:offen
+            fi
           fi
       - name: Rot, wenn nicht bestanden oder Lauf gescheitert
         if: steps.lauf.outcome == 'failure'

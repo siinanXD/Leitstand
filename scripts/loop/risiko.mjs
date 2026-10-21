@@ -12,8 +12,8 @@ function hinzugefuegt(f) {
   return (f.patch || "").split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++")).map((l) => l.slice(1));
 }
 
-/** @param {{ files: any[], bekannt: Set<string>, labels?: string[] }} a */
-export function klassifiziere({ files, bekannt, labels = [] }) {
+/** @param {{ files: any[], bekannt: Set<string>, labels?: string[], pruefBestanden?: boolean }} a */
+export function klassifiziere({ files, bekannt, labels = [], pruefBestanden = false }) {
   const gruende = [];
   for (const f of files) {
     const p = f.filename;
@@ -31,14 +31,14 @@ export function klassifiziere({ files, bekannt, labels = [] }) {
     if (/^supabase\/migrations\//.test(p)) {
       for (const l of neu) {
         const s = l.replace(/--.*$/, "");
-        if (/\b(drop\s+(table|column|schema|policy)|truncate|delete\s+from|alter\s+table\s+\S+\s+(drop|rename))\b/i.test(s)) gruende.push(`Datenverlust in ${p}: ${s.trim().slice(0, 80)}`);
+        if (/\b(drop\s+(table|column|schema|policy)|truncate|delete\s+from|alter\s+table\s+(if\s+exists\s+)?(only\s+)?\S+\s+(drop(?!\s+(constraint|index)\b)|rename))\b/i.test(s)) gruende.push(`Datenverlust in ${p}: ${s.trim().slice(0, 80)}`);
       }
     }
     if (/^src\/(middleware|lib\/auth|lib\/kopplung)\b|^middleware\.ts$/.test(p)) gruende.push(`Auth/Middleware: ${p}`);
     if (/^src\/(app|components)\//.test(p) && neu.some((l) => /SUPABASE_SERVICE_ROLE_KEY/.test(l))) gruende.push(`Service-Role-Key im Client: ${p}`);
   }
-  // Ein vorhandenes risk:high (Mensch, Claude oder früherer Lauf) senkt das Gate nie, es hebt höchstens an.
-  if (labels.includes("risk:high") && gruende.length === 0) gruende.push("risk:high bereits gesetzt, das Gate senkt es nicht");
+  // SIN-909: Neubewertung je Head. Ein gesetztes risk:high (Prüfer-Sicherheitsfund, Mensch) bleibt nur, bis der Prüfer auf dem aktuellen Head „bestanden“ meldet.
+  if (labels.includes("risk:high") && gruende.length === 0 && !pruefBestanden) gruende.push("risk:high bereits gesetzt, bis ein Prüfer-Lauf auf dem aktuellen Head besteht");
   return { gruende, high: gruende.length > 0 };
 }
 
@@ -51,8 +51,8 @@ const NIE_LOW = /^\.github\/|^scripts\/(autonomy\/risk|loop\/risiko)\.mjs$/;
 const RECHTE_ODER_SECRET = /^\s*permissions\s*:|secrets\./;
 
 /** low: nur Doku und Tests; high: siehe klassifiziere; sonst medium. */
-export function stufe({ files, bekannt, labels = [] }) {
-  const { gruende, high } = klassifiziere({ files, bekannt, labels });
+export function stufe({ files, bekannt, labels = [], pruefBestanden = false }) {
+  const { gruende, high } = klassifiziere({ files, bekannt, labels, pruefBestanden });
   if (high) return { stufe: "high", gruende };
   const low = files.length > 0 && files.every((f) =>
     [f.filename, f.previous_filename].filter(Boolean).every((p) => NUR_DOKU.test(p) && !NIE_LOW.test(p)) &&
