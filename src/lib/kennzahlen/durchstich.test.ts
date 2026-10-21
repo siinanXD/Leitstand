@@ -12,7 +12,7 @@ const kette = (k: string, pr: number, ohneAbnahme = false): Ereignis[] => [
   ev("merge", "ok", null, pr),
   ev("deploy", "ok", null, pr),
   ...(ohneAbnahme ? [] : [ev("abnahme", "ok", `Probe (${k})`)]),
-];
+].map((e, index) => ({ ...e, created_at: new Date(Date.parse("2026-10-20T10:00:00Z") + index * 60_000).toISOString() }));
 const issue = (kennung: string, extra: Partial<VerlaufIssue> = {}): VerlaufIssue => ({
   kennung,
   status: "done",
@@ -103,5 +103,5 @@ test("Abnahme-Probe gilt nur für die ganze Kennung (SIN-1 ≠ SIN-10)", () => {
   const r = durchstich([issue("SIN-1")], [...ohne, ev("abnahme", "ok", "Probe (SIN-10)")], ["sinan"], JETZT);
   assert.deepEqual(r.durchstich, []);
   assert.deepEqual(r.ohne_beleg, [{ kennung: "SIN-1", fehlt: ["abnahme ok"] }]);
-  assert.deepEqual(durchstich([issue("SIN-1")], [...ohne, ev("abnahme", "ok", "Probe (SIN-1)")], ["sinan"], JETZT).durchstich, ["SIN-1"]);
+  assert.deepEqual(durchstich([issue("SIN-1")], [...ohne, { ...ev("abnahme", "ok", "Probe (SIN-1)"), created_at: "2026-10-20T10:06:00Z" }], ["sinan"], JETZT).durchstich, ["SIN-1"]);
 });
