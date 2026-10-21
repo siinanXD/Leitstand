@@ -24,6 +24,7 @@
     { "schritt": "markt", "takt": "monatlich", "grenze_h": 792, "alias": [] },
     { "schritt": "migrationen", "takt": "taeglich", "grenze_h": 26, "alias": ["migration"] },
     { "schritt": "planer", "takt": "ereignis", "grenze_h": 6, "alias": ["vorarbeiter", "plan"] },
+    { "schritt": "pr-text", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "pruefer", "takt": "ereignis", "grenze_h": 24, "alias": ["pr-gate"] },
     { "schritt": "push-ausloeser", "takt": "15min", "grenze_h": 1, "alias": [] },
     { "schritt": "repair", "takt": "ereignis", "grenze_h": 24, "alias": [] },

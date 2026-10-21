@@ -35,3 +35,19 @@ for (const provider of ["codex", "claude"]) test(`echter Reparatur-CLI: ${provid
     assert.equal(danach.comments.filter((c: string) => c.startsWith("@")).length, 2);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+for (const [name, labels, runden] of [["pruefer:offen", ["pruefer:offen"], 2], ["pruefer:hoch", ["pruefer:offen", "pruefer:hoch", "risk:high"], 0]] as const) test(`Reparatur nach Prüfer-Fund (SIN-925): ${name} startet ${runden} Runden`, () => {
+  const dir = mkdtempSync(`${tmpdir()}/repair-pruefer-`);
+  const file = resolve(dir, "state.json");
+  writeFileSync(file, JSON.stringify({ title: "fix(loop): Probe (SIN-925)", branch: "claude/sin-925", labels: [...labels], comments: [], linearLabels: [], linearComments: [], calls: [], events: [], row: { issue: "SIN-925", claim_revision: 0, reparaturen: 0, claim_provider: "claude", claim_id: "worker", claim_at: "2026-10-19T20:00:00Z" } }));
+  const run = () => execFileSync(process.execPath, ["--import", "tsx", "--import", resolve("src/lib/loop/fixtures/repair-fetch.mjs"), "scripts/loop/loop.ts", "reparatur", "--pr", "310", "--lauf", "https://github.com/siinanXD/Leitstand/actions/runs/124", "--quelle", "pruefer"], {
+    encoding: "utf8", env: { ...process.env, DRY_RUN: "", REPAIR_FIXTURE: file, GH_TOKEN: "fixture", LINEAR_API_KEY: "fixture", GITHUB_REPOSITORY: "siinanXD/Leitstand", SUPABASE_URL: "https://fixture.invalid", SUPABASE_SERVICE_ROLE_KEY: "fixture" },
+  });
+  try {
+    run(); run(); run();
+    const s = JSON.parse(readFileSync(file, "utf8"));
+    assert.equal(s.row.reparaturen, runden);
+    assert.equal(s.comments.filter((c: string) => c.startsWith("@claude ") && c.includes("Prüfer")).length, runden);
+    assert.equal(s.labels.includes("needs-human"), runden > 0);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

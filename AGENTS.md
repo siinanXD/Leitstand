@@ -75,6 +75,10 @@ Regeln:
 - Der Hauptworker schreibt allein, führt Tests aus und verantwortet den PR. Eine Analyse im Subagent ersetzt weder das unabhängige Abschlussreview noch den Live-Nachweis. Im Laufprotokoll Teilfrage, benutzte Dateien und Ergebnis kurz benennen.
 - Die Angaben zu Schreibpfaden sind eine Planungsgrenze, keine Dateisystem-Sandbox. Ändert sich der Scope, vor weiteren Edits neu auf Überschneidung prüfen.
 
+## Öffentliche Texte (SIN-911)
+
+Das Repo ist öffentlich. Auf GitHub (Issues, PRs, Prüfer-Kommentare) stehen nur Linear-Kennung und -Link, Titel, technische Zusammenfassung (Dateien, Änderung, Grund in einem Satz ohne Personen) und Belege (Tests, Run-Links, Zählungen ohne Geldbeträge). Nicht: Zitate oder Wünsche von Personen, Namen außer dem Repo-Owner, Kosten, Guthaben, Abo-Details, Supabase-Projekt-IDs, Tabelleninhalte, Kursinhalte im Rohtext, Schwachstellen vor dem Fix (nur „Sicherheitsfix, siehe Linear“). Der Dispatcher spiegelt nur Titel, Link und Fertig-Haken (`issueText`); den vollen Auftrag holt der Worker über die Linear-API. Prüfer-Kommentare nennen Funde mit Datei und Zeile und verweisen auf die Haken-Nummer, ohne Issue-Text. Der Check `pr-text` (`src/lib/pr-text/`) warnt bei Treffern. Alte PRs und Issues bleiben unverändert.
+
 ## Qualitätsstandard (SIN-641)
 
 `docs/STANDARD.md` ist Pflicht für Worker, Prüfer und Testnutzer: Note 1, kein Agent-Slop. Verbotene Muster stehen in `src/lib/standard/muster.ts`.

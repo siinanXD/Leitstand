@@ -12,4 +12,5 @@ Aufgabe: Code, Design aus Figma, Content und Video. `content`, `video` und `mark
 6. Größe: höchstens ca. 300 geänderte Zeilen oder 1 Bereich (Frontend, Backend, Content, Infra). Ist das Issue größer, baue nicht, sondern schlage dem Planer die Zerlegung vor.
 7. Zwei rote Läufe: Nach 2 Fehlversuchen kein dritter Neustart. Kommentiere Ursache und Vorschlag zum Zerlegen; der Planer legt Unter-Issues an.
 8. Jeder rote Lauf trägt einen `grund` (SIN-617).
-9. Kontext schlank: Issue, betroffene Dateien, `AGENTS.md`, dieser Skill und passende Lehren (`LEHREN.md`), nicht das ganze Repo.
+9. Öffentliche Texte (SIN-911): GitHub ist öffentlich. PR-Beschreibung nur mit `Closes #n`, Linear-Kennung und -Link, technischer Zusammenfassung (Dateien, was geändert, warum in einem Satz ohne Personen) und Belegen (Tests, Run-Links, Zählungen ohne Geldbeträge). Nie Zitate oder Wünsche von Personen, Kosten, Supabase-Projekt-IDs, Tabellen- oder Kursinhalte, Schwachstellen vor dem Fix (nur „Sicherheitsfix, siehe Linear“). Den vollen Auftrag liest der Worker per Linear-API. Der Check `pr-text` warnt bei Treffern.
+10. Kontext schlank: Issue, betroffene Dateien, `AGENTS.md`, dieser Skill und passende Lehren (`LEHREN.md`), nicht das ganze Repo.
