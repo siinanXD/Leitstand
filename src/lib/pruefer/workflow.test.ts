@@ -172,3 +172,17 @@ test("SIN-880: echter Veröffentlichungs-Guard sperrt geänderten Head, Ziel, Sn
     }
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
+
+test("Auto-Merge bricht den PR-Prüfer nicht ab, repair kennt dispatchte Prüfer-Läufe", () => {
+  const automerge = readFileSync(".github/workflows/automerge.yml", "utf8");
+  const repair = readFileSync(".github/workflows/repair.yml", "utf8");
+  assert.match(workflow, /\nrun-name: pruefer PR \$\{\{ github\.event\.pull_request\.number \|\| inputs\.pr \}\}\n/);
+  assert.match(automerge, /prueferLaeuftSchon = context\.eventName === "pull_request_target" && \["opened", "reopened", "synchronize", "ready_for_review"\]/);
+  assert.match(automerge, /!angefordert && context\.eventName !== "issue_comment" && !prueferLaeuftSchon/);
+  assert.match(repair, /\["pull_request_target","workflow_dispatch"\]/);
+  const sed = repair.match(/sed -nE '([^']+)'/)![1];
+  const nummer = (titel: string) => execFileSync("sed", ["-nE", sed], { input: titel, encoding: "utf8" }).trim();
+  assert.equal(nummer("pruefer PR 356"), "356");
+  assert.equal(nummer("pruefer PR 356; rm -rf /"), "");
+  assert.equal(nummer("build"), "");
+});

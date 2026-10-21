@@ -121,7 +121,9 @@ jobs:
                   const auftrag = await ladeAuftrag(aktuell.title, process.env.LINEAR_API_KEY);
                   const kommentare = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: pr.number, per_page: 100 });
                   pruef = belegAktuell({ stand: leseStand(kommentare.filter((k) => ["github-actions[bot]", context.repo.owner].includes(k.user?.login)).map((k) => k.body || "")), headSha: aktuell.head.sha, hash: auftrag.hash });
-                  if (!pruef.ok && !angefordert && context.eventName !== "issue_comment") {
+                  // SIN-932: Dieses PR-Ereignis startet den Prüfer schon selbst; ein Dispatch würde ihn über die Concurrency-Gruppe abbrechen.
+                  const prueferLaeuftSchon = context.eventName === "pull_request_target" && ["opened", "reopened", "synchronize", "ready_for_review"].includes(context.payload.action);
+                  if (!pruef.ok && !angefordert && context.eventName !== "issue_comment" && !prueferLaeuftSchon) {
                     await github.rest.actions.createWorkflowDispatch({ ...context.repo, workflow_id: "pruefer.yml", ref: "main", inputs: { pr: String(pr.number), pruefen: "true" } });
                     angefordert = true;
                   }

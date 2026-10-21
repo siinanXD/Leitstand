@@ -790,3 +790,18 @@
   art: datei
   pfad: src/lib/pruefer/pruefer.ts
   enthaelt: export function stabilisiere
+
+# SIN-932: kein Prüfer-Wettlauf, Reparatur auch nach dispatchtem Prüfer
+- id: pruefer-wettlauf
+  produkt: leitstand
+  titel: Auto-Merge bricht den PR-Prüfer nicht ab, repair kennt dispatchte Läufe
+  art: datei
+  pfad: .github/workflows/automerge.yml
+  enthaelt: prueferLaeuftSchon
+
+- id: pruefer-wettlauf-reparatur
+  produkt: leitstand
+  titel: repair.yml startet nach gescheitertem dispatchtem Prüfer-Lauf und liest die PR-Nummer aus dem Laufnamen
+  art: datei
+  pfad: .github/workflows/repair.yml
+  enthaelt: pruefer PR ([1-9][0-9]*)
