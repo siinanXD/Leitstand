@@ -3,6 +3,8 @@
 # „Bestanden“ entfernt nur pruefer:offen; risk:high senkt allein das Gate (automerge.yml), und nur mit Marker. Kosten landen in loop_events.
 # Prüfer/Abhängigkeiten vom Basis-Commit; PR-Commits werden nur als Diff gelesen, nie ausgecheckt.
 name: pruefer
+# SIN-932: PR-Nummer im Laufnamen, damit repair.yml auch dispatchte Läufe zuordnen kann.
+run-name: pruefer PR ${{ github.event.pull_request.number || inputs.pr }}
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review, edited]

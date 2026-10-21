@@ -782,3 +782,11 @@
   art: datei
   pfad: src/lib/loop/auswahl.ts
   enthaelt: prueferReparatur
+
+# SIN-932: kein Prüfer-Wettlauf, Reparatur auch nach dispatchtem Prüfer
+- id: pruefer-wettlauf
+  produkt: leitstand
+  titel: Auto-Merge bricht den PR-Prüfer nicht ab, repair kennt dispatchte Läufe
+  art: datei
+  pfad: .github/workflows/automerge.yml
+  enthaelt: prueferLaeuftSchon
