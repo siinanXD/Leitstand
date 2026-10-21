@@ -210,3 +210,10 @@ test("SIN-909: von Hand gesetztes risk:high bleibt, auch nach bestandenem Prüfe
   const { stufe: st } = stufe({ files: [{ filename: "README.md", status: "modified", patch: "+x" }], bekannt: new Set<string>(), labels: ["risk:high"], pruefBestanden: true });
   assert.equal(st, "high");
 });
+
+test("SIN-921: Codefehler mit dem Wort Token ist kein Sicherheitsrisiko, art=sicherheit schon", () => {
+  const fund = (art: "codefehler" | "sicherheit") => ({ bestanden: false, funde: [{ datei: "scripts/x.ts", zeile: 47, schwere: "hoch" as const, text: "Fehlt GH_TOKEN, liefert mergeVon null", art }] });
+  assert.equal(hatRisiko(fund("codefehler")), false);
+  assert.equal(hatRisiko(fund("sicherheit")), true);
+  assert.equal(hatRisiko({ bestanden: false, funde: [{ datei: "a.ts", zeile: 1, schwere: "hoch" as const, text: "Secret im Log" }] }), true);
+});

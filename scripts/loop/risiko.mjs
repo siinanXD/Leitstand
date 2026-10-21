@@ -62,13 +62,12 @@ const RECHTE_ODER_SECRET = /^\s*permissions\s*:|secrets\./;
  */
 export function labelWechsel({ labels, stufe }) {
   const risk = `risk:${stufe}`;
-  const vorhandene = labels.filter((l) => l.startsWith("risk:"));
-  if (vorhandene.includes(risk)) return { weg: [], neu: [] };
   const high = stufe === "high";
-  return {
-    weg: high ? vorhandene : [...vorhandene, ...["gate:hoch", "pruefer:hoch"].filter((m) => labels.includes(m))],
-    neu: high ? [risk, "gate:hoch"] : [risk],
-  };
+  // SIN-921: alle anderen risk-Labels weg, auch wenn das Ziel schon dasteht (sonst bleibt ein Prüfer-risk:high neben risk:medium hängen).
+  const andere = labels.filter((l) => l.startsWith("risk:") && l !== risk);
+  const marker = high ? [] : ["gate:hoch", "pruefer:hoch"].filter((m) => labels.includes(m));
+  const neu = labels.includes(risk) ? [] : high ? [risk, "gate:hoch"] : [risk];
+  return { weg: [...andere, ...marker], neu };
 }
 
 /**

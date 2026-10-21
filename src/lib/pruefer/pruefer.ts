@@ -140,7 +140,8 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, 
 export const hatHoch = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch");
 
 /** SIN-909: nur echte Risiken (Sicherheit, Datenverlust, Rechte) setzen risk:high; „Beleg fehlt“ und Co. setzen `pruefer:offen`. */
-export const hatRisiko = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch" && (f.art === "sicherheit" || SICHERHEITSBEZUG.test(`${f.datei}\n${f.text}`)));
+// SIN-921: Das Modell klassifiziert selbst (`art`). Nur Funde ohne `art` (Rückfall-Modell, alte Antworten) prüft die Wortliste.
+export const hatRisiko = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch" && (f.art ? f.art === "sicherheit" : SICHERHEITSBEZUG.test(`${f.datei}\n${f.text}`)));
 
 /**
  * SIN-909: Labels nach einem Prüfer-Lauf. Echtes Risiko → `risk:high` (+ Marker `pruefer:hoch`, außer ein von Hand gesetztes

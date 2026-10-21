@@ -131,3 +131,8 @@ test("dispatch.yml startet nach jedem Push auf main, auch bei Merge durch den Ag
   assert.match(y, /push:\s*\n\s*branches:\s*\[main\]/);
   assert.match(y, /repository_dispatch:/);
 });
+
+test("SIN-921: labelWechsel räumt ein hängendes risk:high neben dem Ziel-Label weg", () => {
+  assert.deepEqual(labelWechsel({ labels: ["risk:high", "risk:medium", "pruefer:hoch"], stufe: "medium" }), { weg: ["risk:high", "pruefer:hoch"], neu: [] });
+  assert.deepEqual(labelWechsel({ labels: ["risk:high", "risk:medium", "pruefer:hoch"], stufe: "high" }), { weg: ["risk:medium"], neu: [] });
+});

@@ -214,7 +214,7 @@ function lehrenHinweise(i: LinearIssue): string {
 async function pausiert(): Promise<PauseStand> {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { pausiert: false };
   try {
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?select=step,status,created_at&step=ilike.${PAUSE_SCHRITT}&order=created_at.desc&limit=20`, {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?select=step,status,grund,created_at&step=ilike.${PAUSE_SCHRITT}&order=created_at.desc&limit=20`, {
       headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
     });
     if (!res.ok) throw new Error(String(res.status));
