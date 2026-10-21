@@ -92,6 +92,11 @@ test("Zeitumstellung: Umstellungstage 29. März und 25. Oktober 2026", () => {
   assert.equal(inRuhe(utc("2026-03-28T06:00:00Z")), false); // 07:00 MEZ
 });
 
+test("SIN-897: Die Auswertung nennt, wie viele Issues ohne Sinan fertig wurden", () => {
+  const p = plane([], new Set(), utc("2026-07-10T18:00:00Z"), [], 2);
+  assert.equal(p.nachrichten[0].text.split("\n")[0], "0 selbst behoben, 0 warten auf dich, 2 ohne dich fertig");
+});
+
 test("Regel 4: Selbst behoben nie einzeln, nur in der Auswertung", () => {
   const behoben = e("sb1", "selbst-behoben", utc("2026-07-10T08:00:00Z"), { bereiche: ["Backend"] });
   assert.equal(plane([behoben], new Set(), utc("2026-07-10T10:00:00Z")).nachrichten.length, 0);

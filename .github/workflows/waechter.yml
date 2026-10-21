@@ -42,3 +42,13 @@ jobs:
           LEITSTAND_MAX_PARALLEL: ${{ vars.LEITSTAND_MAX_PARALLEL || '2' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: npx tsx scripts/waechter/waechter.ts
+      # SIN-897: Kennzahl Durchstich als Tageswert in loop_snapshot. Ein Fehler hier stoppt den Wächter nicht.
+      - name: Durchstich berechnen
+        continue-on-error: true
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/kennzahlen/durchstich.ts
