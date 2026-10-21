@@ -1,0 +1,54 @@
+name: gitleaks-pr
+
+# Trusted scanner: workflow comes from the base branch and never checks out or executes PR code.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: gitleaks-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    if: github.event.pull_request != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Added diff lines only
+        id: diff
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number: pr.number, per_page: 100,
+            });
+            const dir = path.join(process.env.RUNNER_TEMP, "gitleaks-diff");
+            fs.mkdirSync(dir, { recursive: true });
+            files.forEach((file, i) => {
+              const added = (file.patch ?? "").split("\n")
+                .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+                .map((line) => line.slice(1)).join("\n");
+              fs.writeFileSync(path.join(dir, `${i}__${path.basename(file.filename)}`), added);
+            });
+            core.setOutput("dir", dir);
+            core.info(`Prepared added lines from ${files.length} changed files; PR code was not checked out.`);
+
+      - name: Install pinned gitleaks
+        env:
+          GITLEAKS_VERSION: "8.28.0"
+          DIFF_DIR: ${{ steps.diff.outputs.dir }}
+        run: |
+          set -euo pipefail
+          curl -sSfL --retry 5 --retry-delay 3 --retry-all-errors \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" detect --no-git --source "$DIFF_DIR" --redact --no-banner --exit-code 1
