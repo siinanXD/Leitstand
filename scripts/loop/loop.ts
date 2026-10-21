@@ -21,7 +21,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { ausLinear, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
@@ -347,6 +347,8 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     jetzt: new Date(),
     offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref, labels: p.labels.map((l) => l.name) })),
     teilGemergt: teilGemergte(zuletzt.map((p) => ({ titel: p.title, body: p.body, gemergt: !!p.merged_at }))),
+    // SIN-918: voll gemergte PRs; wartet das Issue nur noch auf den Live-Beleg, belegt es keinen Platz und startet nicht neu.
+    gemergt: zuletzt.filter((p) => p.merged_at && !istTeil(p.title, p.body)).map((p) => linearId(p.title)).filter((x): x is string => !!x),
   };
   const max = maxParallel(repo, env.LOOP_MAX_PARALLEL, env.LEITSTAND_MAX_PARALLEL);
   const schutz = repo.toLowerCase() === "siinanxd/leitstand"
@@ -469,10 +471,11 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
   const e = entscheide({ haken: leseHaken(issue.description), belege, teil: istTeil(p.title, p.body), runde });
   if (e.belegt.length && issue.description && !DRY) await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: setzeHaken(issue.description, e.belegt) });
   await kommentar(issue.id, kommentarText(e, belege ?? [], runde, p.html_url));
-  if (e.status === "done") await setzeStatus(issue.id, issue.team.id, "Done");
-  else if (e.status === "needs-human") await labelSetzen(issue.id, issue.team.id, "needs-human");
   // Offen: zurück auf Todo, der nächste Dispatch gibt dem Worker die offenen Haken mit.
-  else await setzeStatus(issue.id, issue.team.id, "Todo");
+  // SIN-918: Sind nur noch [nach Aktivierung]-Haken offen, „In Review“ statt Todo (sonst startet ein Worker, der nichts zu bauen hat).
+  const naechster = statusNachMerge(e);
+  if (naechster === "needs-human") await labelSetzen(issue.id, issue.team.id, "needs-human");
+  else await setzeStatus(issue.id, issue.team.id, naechster);
   // SIN-760: Spiegel schließen (falls `Closes #N` es nicht schon tat), sonst startet das Issue nie wieder.
   const offene = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   for (const n of offeneSpiegel(offene, id)) await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
