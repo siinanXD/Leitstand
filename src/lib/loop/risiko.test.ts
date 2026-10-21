@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as risiko from "../../../scripts/loop/risiko.mjs";
-import { brauchtInhalt, klassifiziere, stufe } from "../../../scripts/loop/risiko.mjs";
+import { brauchtInhalt, klassifiziere, labelWechsel, stufe } from "../../../scripts/loop/risiko.mjs";
 
 const bekannt = new Set<string>();
 const WRITE = "name: x\npermissions:\n  contents: write\njobs: {}\n";
@@ -107,6 +107,12 @@ test("SIN-909: von Hand gesetztes risk:high (ohne Marker) senkt weder Prüfer no
   assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high"] }).high, true);
 });
 
+test("SIN-909: Gate-Labelwechsel setzt gate:hoch und räumt Marker beim Senken weg", () => {
+  assert.deepEqual(labelWechsel({ labels: ["risk:medium"], stufe: "high" }), { weg: ["risk:medium"], neu: ["risk:high", "gate:hoch"] });
+  assert.deepEqual(labelWechsel({ labels: ["risk:high", "pruefer:hoch", "pruefer:offen"], stufe: "medium" }), { weg: ["risk:high", "pruefer:hoch"], neu: ["risk:medium"] });
+  assert.deepEqual(labelWechsel({ labels: ["risk:high"], stufe: "high" }), { weg: [], neu: [] });
+});
+
 test("SIN-909: vom Gate gesetztes risk:high fällt mit dem Dateigrund", () => {
   const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
   assert.equal(klassifiziere({ files, bekannt, labels: ["risk:high", "gate:hoch"] }).high, false);
@@ -115,9 +121,9 @@ test("SIN-909: vom Gate gesetztes risk:high fällt mit dem Dateigrund", () => {
 test("SIN-909: pruefer.yml entfernt risk:high nie selbst, nur das Gate senkt", () => {
   const y = readFileSync(new URL("../../../.github/workflows/pruefer.yml", import.meta.url), "utf8");
   assert.doesNotMatch(y, /--remove-label[^\n]*risk:high/);
-  assert.match(y, /--add-label pruefer:hoch/);
+  assert.match(y, /scripts\/pruefer\/labels\.ts/);
   const a = readFileSync(new URL("../../../.github/workflows/automerge.yml", import.meta.url), "utf8");
-  assert.match(a, /"gate:hoch"/);
+  assert.match(a, /labelWechsel\(/);
 });
 
 test("dispatch.yml startet nach jedem Push auf main, auch bei Merge durch den Agent-Token", () => {

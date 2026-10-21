@@ -64,13 +64,13 @@ jobs:
             } catch (e) { core.warning(`Secrets auf main nicht lesbar: ${e.message}`); }
 
             // Neue/umbenannte/kopierte Workflows haben ggf. keine "+"-Zeilen: voller Inhalt vom PR-Head (SIN-623).
-            const { brauchtInhalt, stufe } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/loop/risiko.mjs`);
+            const { brauchtInhalt, labelWechsel, stufe } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/loop/risiko.mjs`);
             for (const f of files) {
               if (!brauchtInhalt(f)) continue;
               const { data } = await github.rest.repos.getContent({ owner: pr.head.repo.owner.login, repo: pr.head.repo.name, path: f.filename, ref: pr.head.sha });
               f.inhalt = Buffer.from(data.content, "base64").toString("utf8");
             }
-            // SIN-909: Neubewertung je Head. Meldet der Prüfer auf dem aktuellen Head „bestanden“, fällt ein gesetztes risk:high und pruefer:offen weg.
+            // SIN-909: Neubewertung je Head. Meldet der Prüfer auf dem aktuellen Head „bestanden“, fällt pruefer:offen weg (risk:high nur mit Marker, siehe risiko.mjs).
             let pruefBestanden = false;
             if (/^(claude|codex)\//.test(pr.head.ref)) {
               const { leseStand } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/loop/beleg-stand.mjs`);
@@ -84,14 +84,12 @@ jobs:
             const { gruende, stufe: st } = stufe({ files, bekannt, labels, pruefBestanden });
             const high = st === "high";
 
-            const risk = `risk:${st}`;
-            const vorhandene = labels.filter((l) => l.startsWith("risk:"));
-            if (!vorhandene.includes(risk)) {
-              // SIN-909: Marker gehören zum maschinellen risk:high; sinkt die Stufe, fallen sie mit. Setzt das Gate high, markiert es sich als Quelle.
-              const weg = high ? vorhandene : [...vorhandene, ...["gate:hoch", "pruefer:hoch"].filter((m) => labels.includes(m))];
-              for (const alt of weg) await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name: alt }).catch(() => {});
-              await github.rest.issues.addLabels({ ...context.repo, issue_number: pr.number, labels: high ? [risk, "gate:hoch"] : [risk] }).catch((e) => core.warning(`Label: ${e.message}`));
-            }
+            // SIN-909: Marker gehören zum maschinellen risk:high (labelWechsel in risiko.mjs, mit Tests).
+            const { weg, neu } = labelWechsel({ labels, stufe: st });
+            for (const alt of weg) await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name: alt }).catch(() => {});
+            if (neu.length) await github.rest.issues.addLabels({ ...context.repo, issue_number: pr.number, labels: neu }).catch((e) => core.warning(`Label: ${e.message}`));
+            for (const l of weg) labels.splice(labels.indexOf(l), 1);
+            labels.push(...neu.filter((l) => !labels.includes(l)));
             if (high && !labels.includes("freigegeben")) {
               const kopf = "<!-- automerge-risiko -->";
               const body = `${kopf}\n**Wartet auf Sinan (risk:high).** Auto-Merge erst mit Label \`freigegeben\`.\n\n${gruende.map((g) => `- ${g}`).join("\n")}`;

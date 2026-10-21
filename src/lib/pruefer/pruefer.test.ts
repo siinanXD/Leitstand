@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { hatHoch, hatRisiko, istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
+import { hatHoch, hatRisiko, prueferLabels, istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
 
 import { entscheide, leseHaken } from "../loop/haken";
+import { labelWechsel, stufe } from "../../../scripts/loop/risiko.mjs";
 
 const gut = { bestanden: true, funde: [] };
 
@@ -184,4 +185,28 @@ test("SIN-909: Beleg fehlt setzt pruefer:offen, nicht risk:high; Sicherheitsfund
   const leak = { bestanden: false, funde: [{ datei: "a.ts", zeile: 1, schwere: "hoch" as const, text: "Secret wird ausgegeben", art: "sicherheit" as const }] };
   assert.equal(hatRisiko(leak), true);
   assert.match(kommentar(leak, "m", null), /setzt `risk:high`/);
+});
+
+test("Test: Prüfer „nicht bestanden“ mit nur „Beleg fehlt“-Funden → pruefer:offen, nicht risk:high", () => {
+  const beleg = bewerte({ bestanden: false, funde: [], haken: [] }, ["docs/a.md"], false, "- [ ] Test belegt Haken");
+  const l = prueferLabels({ risiko: hatRisiko(beleg), bestanden: beleg.bestanden, labels: [] });
+  assert.deepEqual(l, { add: ["pruefer:offen"], remove: [] });
+});
+
+test("Test: Neuer Head, Prüfer bestanden → pruefer:offen und ein durch Prüfer gesetztes risk:high werden entfernt", () => {
+  // Prüfer entfernt pruefer:offen; das vom Prüfer gesetzte risk:high (Marker pruefer:hoch) senkt das Gate.
+  const nachLauf = ["risk:high", "pruefer:hoch", "pruefer:offen"];
+  assert.deepEqual(prueferLabels({ risiko: false, bestanden: true, labels: nachLauf }), { add: [], remove: ["pruefer:offen"] });
+  const ohneOffen = nachLauf.filter((x) => x !== "pruefer:offen");
+  const files = [{ filename: "README.md", status: "modified", patch: "+x" }];
+  const { stufe: st } = stufe({ files, bekannt: new Set<string>(), labels: ohneOffen, pruefBestanden: true });
+  assert.notEqual(st, "high");
+  assert.deepEqual(labelWechsel({ labels: ohneOffen, stufe: st }).weg, ["risk:high", "pruefer:hoch"]);
+});
+
+test("SIN-909: von Hand gesetztes risk:high bleibt, auch nach bestandenem Prüfer", () => {
+  assert.deepEqual(prueferLabels({ risiko: false, bestanden: true, labels: ["risk:high"] }).remove, []);
+  assert.deepEqual(prueferLabels({ risiko: true, bestanden: false, labels: ["risk:high"] }).add, ["risk:high"]);
+  const { stufe: st } = stufe({ files: [{ filename: "README.md", status: "modified", patch: "+x" }], bekannt: new Set<string>(), labels: ["risk:high"], pruefBestanden: true });
+  assert.equal(st, "high");
 });

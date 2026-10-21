@@ -55,7 +55,26 @@ const NUR_DOKU = /^(docs\/|[^/]+\.md$)|\.test\.(ts|tsx|mjs)$|^tests\//;
 const NIE_LOW = /^\.github\/|^scripts\/(autonomy\/risk|loop\/risiko)\.mjs$/;
 const RECHTE_ODER_SECRET = /^\s*permissions\s*:|secrets\./;
 
-/** low: nur Doku und Tests; high: siehe klassifiziere; sonst medium. */
+/**
+ * SIN-909: Label-Wechsel des Gates. Steigt es auf high, markiert es sich mit `gate:hoch`. Sinkt es, fallen die Marker
+ * `gate:hoch`/`pruefer:hoch` mit dem alten risk-Label. Bleibt die Stufe gleich: nichts.
+ * @param {{ labels: string[], stufe: string }} a
+ */
+export function labelWechsel({ labels, stufe }) {
+  const risk = `risk:${stufe}`;
+  const vorhandene = labels.filter((l) => l.startsWith("risk:"));
+  if (vorhandene.includes(risk)) return { weg: [], neu: [] };
+  const high = stufe === "high";
+  return {
+    weg: high ? vorhandene : [...vorhandene, ...["gate:hoch", "pruefer:hoch"].filter((m) => labels.includes(m))],
+    neu: high ? [risk, "gate:hoch"] : [risk],
+  };
+}
+
+/**
+ * low: nur Doku und Tests; high: siehe klassifiziere; sonst medium.
+ * @param {{ files: any[], bekannt: Set<string>, labels?: string[], pruefBestanden?: boolean }} a
+ */
 export function stufe({ files, bekannt, labels = [], pruefBestanden = false }) {
   const { gruende, high } = klassifiziere({ files, bekannt, labels, pruefBestanden });
   if (high) return { stufe: "high", gruende };
