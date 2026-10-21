@@ -381,6 +381,13 @@
   art: datei
   pfad: src/lib/kontingent/prioritaet.ts
   enthaelt: hoechsteStufe
+# Kontingent-Ereignisse nur mit erlaubtem Status (SIN-917)
+- id: leitstand-kontingent-status
+  produkt: leitstand
+  titel: Kontingent-Ereignisse schreiben nur erlaubte loop_events-Status
+  art: datei
+  pfad: src/lib/kontingent/kontingent.ts
+  enthaelt: kontingentEreignis
 # Dispatcher: wartender risk:high-PR gibt Platz frei (SIN-678)
 - id: leitstand-dispatch-wartender-pr
   produkt: leitstand
