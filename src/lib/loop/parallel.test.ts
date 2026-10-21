@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { konflikt, ladePrSchutz, maxParallel, parallelAuswahl, schreibPfade, schuetztNoch, vorschlagPfade } from "./parallel";
+import { abgleichZeilen, konflikt, ladePrSchutz, maxParallel, parallelAuswahl, schreibPfade, schuetztNoch, vorschlagPfade } from "./parallel";
 import { pfadeFuer, planeVorhaben } from "./bereich";
 import type { LinearIssue } from "./auswahl";
 
@@ -139,4 +139,14 @@ test("SIN-919: Pfad-Vorschlag aus Backticks, Unklares leer", () => {
   assert.deepEqual(vorschlagPfade("Fix in `scripts/loop/loop.ts` und `src/lib/pause.ts`, siehe `npm test`."), ["scripts/loop/loop.ts", "src/lib/pause.ts"]);
   assert.deepEqual(vorschlagPfade("Nur Text ohne Pfade"), []);
   assert.deepEqual(vorschlagPfade("`../geheim` und `/etc/passwd`"), []);
+});
+
+test("Test: Trockenlauf des Abgleichs listet die Todo-Issues ohne Pfade mit Vorschlag", () => {
+  // Auszug echter Linear-Beschreibungen vom 21.10. (gekürzt) plus ein Issue mit Pfaden, das nicht erscheinen darf.
+  const zeilen = abgleichZeilen([
+    { identifier: "SIN-892", description: "Vor dem Schreiben prüfen … `needs-human` nur, wenn das Label gesetzt wurde." },
+    { identifier: "SIN-814", description: "API-Endpunkt (`/api/fliessband`) … `src/lib/fliessband/fliessband.ts` und `src/app/api/fliessband/route.ts`." },
+    { identifier: "SIN-913", description: '<!-- worker-pfade: ["src/lib/agent-testnutzer"] -->' },
+  ]).map((z) => z.zeile);
+  assert.deepEqual(zeilen, ["SIN-892: unklar, bleibt allein", 'SIN-814: ["src/app/api/fliessband/route.ts","src/lib/fliessband/fliessband.ts"]']);
 });

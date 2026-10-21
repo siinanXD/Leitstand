@@ -699,6 +699,7 @@
   pfad: src/lib/pruefer/pruefer.ts
   enthaelt: hatRisiko
 
+<<<<<<< HEAD
 # SIN-919: Sammelpfade und normale Workflows sind kein Schreibkonflikt
 - id: parallel-sammelpfade
   produkt: leitstand
@@ -706,3 +707,18 @@
   art: datei
   pfad: src/lib/loop/parallel.ts
   enthaelt: SAMMELPFADE
+=======
+# SIN-921: Gate-Restfehler (Labels, Prüfer-Risiko, Pause)
+- id: gate-labelwechsel-raeumt
+  produkt: leitstand
+  titel: Gate räumt hängende risk-Labels weg
+  art: datei
+  pfad: scripts/loop/risiko.mjs
+  enthaelt: l !== risk
+- id: pause-speicherbar
+  produkt: leitstand
+  titel: Pause schreibt nur erlaubte loop_events-Status
+  art: datei
+  pfad: src/lib/pause.ts
+  enthaelt: pausiert ? PAUSIERT
+>>>>>>> origin/main

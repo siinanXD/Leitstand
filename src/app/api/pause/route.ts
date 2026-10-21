@@ -11,7 +11,7 @@ async function ladeStand() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
   try {
-    const res = await fetch(`${url}/rest/v1/loop_events?select=step,status,created_at&step=ilike.${PAUSE_SCHRITT}&order=created_at.desc&limit=20`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" });
+    const res = await fetch(`${url}/rest/v1/loop_events?select=step,status,grund,created_at&step=ilike.${PAUSE_SCHRITT}&order=created_at.desc&limit=20`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" });
     return res.ok ? pauseStand((await res.json()) as Parameters<typeof pauseStand>[0]) : null;
   } catch {
     return null;

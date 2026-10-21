@@ -6,7 +6,7 @@
  * Unklare Issues (kein Pfad gefunden) bleiben ohne Block und laufen weiter allein.
  */
 import { readFileSync } from "node:fs";
-import { schreibPfade, vorschlagPfade } from "../../src/lib/loop/parallel";
+import { abgleichZeilen } from "../../src/lib/loop/parallel";
 
 type Eintrag = { id?: string; identifier: string; description: string | null };
 const env = process.env;
@@ -27,13 +27,14 @@ async function lade(): Promise<Eintrag[]> {
 }
 
 async function main() {
-  const ohne = (await lade()).filter((i) => !schreibPfade(i).length);
-  console.log(`${ohne.length} Todo-Issues ohne worker-pfade`);
-  for (const i of ohne) {
-    const p = vorschlagPfade(i.description);
-    console.log(`${i.identifier}: ${p.length ? JSON.stringify(p) : "unklar, bleibt allein"}`);
-    if (!APPLY || !p.length || !i.id) continue;
-    await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: i.id, d: `${i.description ?? ""}\n\n<!-- worker-pfade: ${JSON.stringify(p)} -->` });
+  const alle = await lade();
+  const zeilen = abgleichZeilen(alle);
+  console.log(`${zeilen.length} Todo-Issues ohne worker-pfade`);
+  for (const z of zeilen) {
+    console.log(z.zeile);
+    const i = alle.find((x) => x.identifier === z.identifier)!;
+    if (!APPLY || !z.vorschlag.length || !i.id) continue;
+    await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: i.id, d: `${i.description ?? ""}\n\n<!-- worker-pfade: ${JSON.stringify(z.vorschlag)} -->` });
   }
 }
 

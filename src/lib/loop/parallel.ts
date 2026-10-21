@@ -60,6 +60,14 @@ export function vorschlagPfade(text: string | null | undefined): string[] {
   return [...new Set(pfade)].sort();
 }
 
+/** SIN-919: Trockenlauf des Abgleichs – je Issue ohne `worker-pfade` eine Zeile mit Vorschlag oder „unklar“. */
+export function abgleichZeilen(issues: { identifier: string; description: string | null }[]): { identifier: string; vorschlag: string[]; zeile: string }[] {
+  return issues.filter((i) => !schreibPfade(i).length).map((i) => {
+    const vorschlag = vorschlagPfade(i.description);
+    return { identifier: i.identifier, vorschlag, zeile: `${i.identifier}: ${vorschlag.length ? JSON.stringify(vorschlag) : "unklar, bleibt allein"}` };
+  });
+}
+
 /** Expliziter Schreib-Scope statt aus beiläufigen Links vermuteter Dateien; unbekannt bleibt exklusiv. */
 export function schreibPfade(i: Pick<LinearIssue, "description">): string[] {
   // Linear maskiert Markdown in der API-Antwort (\[, \], \_); der Block muss trotzdem lesbar bleiben (SIN-896).
