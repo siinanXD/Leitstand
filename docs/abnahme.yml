@@ -744,3 +744,11 @@
   art: datei
   pfad: src/lib/pr-text/pr-text.ts
   enthaelt: pruefePrText
+
+# SIN-925: Reparatur auch bei Prüfer-Funden
+- id: reparatur-pruefer
+  produkt: leitstand
+  titel: Prüfer-Funde (pruefer:offen) starten die Reparatur, pruefer:hoch nicht
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: prueferReparatur
