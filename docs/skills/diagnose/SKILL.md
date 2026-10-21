@@ -32,3 +32,7 @@ Keine Schreibrechte außer `diagnose-ergebnis.json`, kein Push. Den Linear-Komme
 Schreibe `diagnose-ergebnis.json` nach `docs/diagnose/schema.json`: `rolle` = `diagnose`, `ziel` = `schluessel`, `zeitpunkt` (UTC, ISO), `ursache`, `beleg[]` (Links, Zeilen, Abfragen mit Ergebnis), `art`, `vorschlag`. Sonst keine Datei ändern.
 
 Grenzen: höchstens 1 Diagnose je Issue/Workflow in 6 h (setzt das Skript durch). Du setzt nie einen Linear-Status; der Dispatcher entscheidet anhand von `art`.
+
+## Vorbefund
+
+`diagnose-ziel.json` kann `vorbefund` enthalten (feste Regeln, ohne Modell). Prüfe ihn gegen die Daten. Stimmt er, übernimm `art`, `ursache` und `beleg` und ergänze Belege. Widerlegt ihn ein Beleg, nenne den Beleg in `ursache`.

@@ -744,3 +744,11 @@
   art: datei
   pfad: .github/workflows/diagnose.yml
   enthaelt: scripts/diagnose/diagnose.ts
+
+# SIN-907: Diagnose mit Regel-Vorbefund
+- id: diagnose-vorbefund
+  produkt: leitstand
+  titel: Diagnose-Agent hat Regel-Vorbefund für erledigte Issues und leere Abnahme
+  art: datei
+  pfad: src/lib/diagnose/diagnose.ts
+  enthaelt: export function vorbefund

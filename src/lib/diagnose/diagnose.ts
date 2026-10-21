@@ -6,13 +6,16 @@
 // shortcut: Schema liegt in docs/diagnose, nicht in docs/schemas, weil die Rollen-Schemas dort den Kopf der registrierten Rollen (agents.json) tragen müssen; bei Aufnahme ins Register umziehen.
 import schema from "../../../docs/diagnose/schema.json";
 import { pruefeSchema, type Schema } from "../autonomy/schema";
+import { leseHaken } from "../loop/haken";
 
 export const SPERRE_STUNDEN = 6;
 export const MIN_LAEUFE_OHNE_PR = 2;
 export const SCHRITT = "diagnose";
 
 export type Ereignis = { created_at: string; step: string; status: string; issue: string | null; pr: number | null; grund?: string | null; run_url?: string | null };
-export type Ziel = { schluessel: string; art: "issue" | "workflow"; issue?: string; beleg: string[] };
+export type Ziel = { schluessel: string; art: "issue" | "workflow"; issue?: string; beleg: string[]; vorbefund?: Vorbefund | null };
+/** Fester Vorbefund aus Regeln (ohne Modell); der Agent prüft ihn und übernimmt oder widerlegt ihn mit Belegen. */
+export type Vorbefund = { art: "code" | "lauf" | "sinan" | "erledigt"; ursache: string; beleg: string[] };
 
 export type Art = "code" | "lauf" | "sinan" | "erledigt";
 export type Diagnose = { rolle: "diagnose"; ziel: string; zeitpunkt: string; ursache: string; beleg: string[]; art: Art; vorschlag: string };
@@ -78,4 +81,21 @@ export function kommentar(d: Diagnose): string {
     `**Vorschlag:** ${d.vorschlag}`,
     `**Weiter:** ${folge[d.art]}`,
   ].join("\n");
+}
+
+/**
+ * Regel-Vorbefund für die zwei häufigsten Fälle (SIN-907):
+ * - Issue mit ≥2 Läufen ohne PR und allen Fertig-Haken erledigt → `erledigt` (nichts mehr zu bauen).
+ * - Roter Abnahme-Workflow ohne eine einzige `abnahme`-Zeile in 24 h → Insert in loop_events scheitert.
+ */
+export function vorbefund(z: Ziel, ereignisse: Ereignis[], beschreibung: string | null, jetzt: Date): Vorbefund | null {
+  if (z.art === "issue") {
+    const h = leseHaken(beschreibung);
+    if (!h.length || !h.every((x) => x.erledigt)) return null;
+    return { art: "erledigt", ursache: `${z.issue}: alle ${h.length} Fertig-Haken sind belegt; die Läufe endeten ohne Diff, weil nichts mehr zu bauen ist.`, beleg: [`${h.length} von ${h.length} Haken erledigt`, ...z.beleg] };
+  }
+  if (z.schluessel === "workflow:abnahme" && !ereignisse.some((e) => e.step === "abnahme" && stunden(e.created_at, jetzt) < 24)) {
+    return { art: "code", ursache: "Der Insert in loop_events scheitert: der Abnahme-Lauf ist rot und hat in 24 h keine Zeile mit step=abnahme geschrieben.", beleg: [...z.beleg, "loop_events step=abnahme in 24 h: 0 Zeilen"] };
+  }
+  return null;
 }

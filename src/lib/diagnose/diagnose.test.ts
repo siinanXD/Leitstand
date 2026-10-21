@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { issueAusloeser, kommentar, pruefeDiagnose, workflowAusloeser, type Diagnose, type Ereignis } from "./diagnose";
+import { issueAusloeser, kommentar, pruefeDiagnose, vorbefund, workflowAusloeser, type Diagnose, type Ereignis } from "./diagnose";
 
 const jetzt = new Date("2026-10-21T12:00:00Z");
 const w = (issue: string, h: number, status: string, pr: number | null = null, url?: string): Ereignis => ({
@@ -32,14 +32,25 @@ const abnahmeRot: Diagnose = {
   vorschlag: "Sinan erneuert das Secret SUPABASE_SERVICE_ROLE_KEY.",
 };
 
-test("Fixture 2× kein Diff, alle Haken belegt: Auslöser findet das Issue, art erledigt mit Belegen ist gültig", () => {
+test("Test: Fixture „2× kein Diff, alle Haken belegt“ → `art: erledigt` mit Belegen", () => {
   const ziele = issueAusloeser([w("SIN-900", 5, "start"), w("SIN-900", 4.9, "ok", null, "u1"), w("SIN-900", 3, "start"), w("SIN-900", 2.9, "ok", null, "u2")], jetzt);
   assert.deepEqual(ziele, [{ schluessel: "SIN-900", art: "issue", issue: "SIN-900", beleg: ["u1", "u2"] }]);
+  const v = vorbefund(ziele[0], [], "## Fertig, wenn\n\n- [x] Test A\n- [x] Probe B\n", jetzt);
+  assert.equal(v?.art, "erledigt");
+  assert.deepEqual(v?.beleg, ["2 von 2 Haken erledigt", "u1", "u2"]);
+  assert.equal(vorbefund(ziele[0], [], "- [x] Test A\n- [ ] Probe B", jetzt), null, "offener Haken: kein erledigt");
+  assert.deepEqual(pruefeDiagnose({ ...erledigt, art: v!.art, beleg: v!.beleg, ursache: v!.ursache }), []);
   assert.deepEqual(pruefeDiagnose(erledigt), []);
   assert.match(kommentar(erledigt), /Diagnose \(erledigt\).*SIN-900[\s\S]*PR #321[\s\S]*Done vorschlagen/);
 });
 
-test("Fixture Abnahme rot, loop_events leer: Ursache nennt den Insert-Fehler", () => {
+test("Test: Fixture „Abnahme rot, loop_events leer“ → Ursache nennt den Insert-Fehler", () => {
+  const z = workflowAusloeser("abnahme", "https://github.com/x/actions/runs/1", [], jetzt)!;
+  const v = vorbefund(z, [w("SIN-1", 1, "ok")], null, jetzt);
+  assert.match(v?.ursache ?? "", /Insert in loop_events scheitert/);
+  assert.ok(v?.beleg.includes("loop_events step=abnahme in 24 h: 0 Zeilen"));
+  const mitZeile = vorbefund(z, [{ ...w("SIN-1", 1, "ok"), step: "abnahme" }], null, jetzt);
+  assert.equal(mitZeile, null, "gespeicherte Zeile: kein Insert-Fehler");
   assert.deepEqual(pruefeDiagnose(abnahmeRot), []);
   assert.match(abnahmeRot.ursache, /Insert in loop_events.*401/);
   assert.match(kommentar(abnahmeRot), /\*\*Ursache:\*\* Der Insert in loop_events/);

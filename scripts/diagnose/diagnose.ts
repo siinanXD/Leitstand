@@ -13,7 +13,7 @@
  * aus `workflow_run`), DRY_RUN=1 (nichts schreiben).
  */
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-import { issueAusloeser, kommentar, pruefeDiagnose, SCHRITT, workflowAusloeser, type Diagnose, type Ereignis, type Ziel } from "../../src/lib/diagnose/diagnose";
+import { issueAusloeser, kommentar, pruefeDiagnose, SCHRITT, vorbefund, workflowAusloeser, type Diagnose, type Ereignis, type Ziel } from "../../src/lib/diagnose/diagnose";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -69,6 +69,11 @@ async function ziel(): Promise<void> {
   // Ein Ziel je Lauf hält das Kontingent klein; die übrigen folgen im nächsten Lauf.
   const z = kandidaten[0];
   if (z) {
+    // Regel-Vorbefund (SIN-907): Beschreibung nur lesen, um die Fertig-Haken zu zählen; ohne LINEAR_API_KEY kein Vorbefund für Issues.
+    const beschreibung = z.issue && env.LINEAR_API_KEY
+      ? (await linear<{ issue: { description: string | null } }>("query($id: String!) { issue(id: $id) { description } }", { id: z.issue })).issue.description
+      : null;
+    z.vorbefund = vorbefund(z, events, beschreibung, jetzt);
     writeFileSync(ZIEL, JSON.stringify(z, null, 2));
     writeFileSync(DATEN, JSON.stringify(Object.fromEntries(await Promise.all(TABELLEN.map(async (t) => [t.split("?")[0], await lesen<unknown>(t)]))), null, 2));
   }
