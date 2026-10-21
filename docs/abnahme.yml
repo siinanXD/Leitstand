@@ -670,3 +670,9 @@
   art: datei
   pfad: src/lib/loop/bereich.ts
   enthaelt: planeVorhaben
+- id: stand-needs-human
+  produkt: leitstand
+  titel: loop_events erlaubt den Status needs_human der Stand-Prüfung (SIN-904)
+  art: datei
+  pfad: supabase/migrations/leitstand/20261021100000_loop_events_needs_human.sql
+  enthaelt: needs_human
