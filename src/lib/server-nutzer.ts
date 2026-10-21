@@ -37,7 +37,11 @@ export async function protokolliere(zeile: object): Promise<boolean> {
 
 /** Zugang für API-Routen: null = erlaubt, sonst die fertige Antwort (401 ohne Nutzer; 403 samt Protokoll, wenn das Agent-Testkonto (SIN-913) eine Aktion auslösen will). */
 export async function verweigert(anfrage: Request): Promise<Response | null> {
-  const nutzer = await leitstandNutzer(anfrage);
+  return pruefeNutzer(anfrage, await leitstandNutzer(anfrage));
+}
+
+/** Wie `verweigert`, für Routen, die den Nutzer schon geladen haben. */
+export async function pruefeNutzer(anfrage: Request, nutzer: { email: string } | null): Promise<Response | null> {
   const kopf = { "Cache-Control": "no-store" };
   if (!nutzer) return Response.json({ fehler: "nicht angemeldet" }, { status: 401, headers: kopf });
   if (aktionsStatus(nutzer.email, anfrage.method, process.env.AGENT_TESTNUTZER_EMAIL) === 200) return null;

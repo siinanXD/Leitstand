@@ -1,6 +1,6 @@
 import { erzeugeKopplung, kopplungsZeile } from "@/lib/kopplung/kopplung";
 import { hashedToken, supabaseSpeicher } from "@/lib/kopplung/server";
-import { leitstandNutzer, protokolliere } from "@/lib/server-nutzer";
+import { leitstandNutzer, protokolliere, pruefeNutzer } from "@/lib/server-nutzer";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,8 @@ const antwort = (status: number, body: unknown) => Response.json(body, { status,
 /** Kopplungscode erzeugen: nur mit gültiger Sitzung und Eintrag in `leitstand_nutzer`. */
 export async function POST(anfrage: Request) {
   const nutzer = await leitstandNutzer(anfrage);
-  if (!nutzer) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await pruefeNutzer(anfrage, nutzer);
+  if (nein || !nutzer) return nein ?? antwort(401, { fehler: "nicht angemeldet" });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return antwort(503, { fehler: "Kopplung nicht konfiguriert" });
