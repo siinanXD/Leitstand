@@ -782,3 +782,11 @@
   art: datei
   pfad: src/lib/loop/auswahl.ts
   enthaelt: prueferReparatur
+
+# SIN-926: Prüfer stabil in Folgerunden
+- id: pruefer-stabil
+  produkt: leitstand
+  titel: Prüfer stuft neue hoch-Funde an unveränderten Zeilen in Folgerunden auf mittel (SIN-926, Live-Nachweis separat)
+  art: datei
+  pfad: src/lib/pruefer/pruefer.ts
+  enthaelt: export function stabilisiere
