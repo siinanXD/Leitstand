@@ -131,11 +131,12 @@ export function geaenderteZeilen(diff: string): Map<string, [number, number][]> 
 
 /**
  * SIN-926: Kein wanderndes Ziel. In einer Folgerunde bleibt ein „hoch“-Fund nur, wenn er Sicherheit betrifft, eine seit der Vorrunde
- * geänderte Zeile trifft oder einen ungelösten Fund der Vorrunde wiederholt (gleiche Datei und Zeile oder gleicher Text). Sonst „mittel“.
+ * geänderte Zeile trifft oder einen ungelösten Fund der Vorrunde wiederholt (gleiche Datei und gleicher Text: meldet das Modell ihn auf
+ * dem neuen Stand erneut, ist er nicht behoben). Eine andere Aussage an derselben Zeile ist ein neuer Fund. Sonst „mittel“.
  */
 export function stabilisiere(funde: Fund[], folge?: Folgerunde): Fund[] {
   if (!folge) return funde;
-  const alt = (f: Fund) => folge.funde.some(v => v.datei === f.datei && (v.zeile === f.zeile || v.text === f.text));
+  const alt = (f: Fund) => folge.funde.some(v => v.datei === f.datei && v.text === f.text);
   const neu = (f: Fund) => (folge.geaendert.get(f.datei) ?? []).some(([von, bis]) => f.zeile >= von && f.zeile <= bis);
   return funde.map(f => f.schwere !== "hoch" || f.zeile <= 0 || f.art === "sicherheit" || SICHERHEITSBEZUG.test(`${f.datei}\n${f.text}`) || neu(f) || alt(f)
     ? f : { ...f, schwere: "mittel" as const });

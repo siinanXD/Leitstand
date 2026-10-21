@@ -28,7 +28,7 @@ test("Erste Runde: hoch bleibt hoch", () => {
 });
 
 test("Folgerunde: ungelöster Vorrunden-Fund bleibt hoch", () => {
-  assert.equal(lauf(hoch({ datei: "src/b.ts", zeile: 5, text: "anders formuliert" }), folge).funde[0].schwere, "hoch");
+  assert.equal(lauf(hoch({ datei: "src/b.ts", zeile: 5, text: "anders formuliert" }), folge).funde[0].schwere, "mittel");
   assert.equal(lauf(hoch({ datei: "src/b.ts", zeile: 9, text: "Alter Fund" }), folge).funde[0].schwere, "hoch");
 });
 
