@@ -1,6 +1,6 @@
 // Netz für Kontingent-Pausen (SIN-581): Tabelle `kontingent_pausen` lesen und schreiben, Ereignis in `loop_events`.
 // Ohne SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY: nur Warnung, nie Abbruch (wie scripts/loop/loop.ts).
-import type { Dienst, Pause } from "../../src/lib/kontingent/kontingent";
+import { kontingentEreignis, type Dienst, type Pause } from "../../src/lib/kontingent/kontingent";
 import { restProzent } from "../../src/lib/kontingent/prioritaet";
 import { kontingente, parseSnapshot } from "../../src/lib/uebersicht";
 
@@ -50,7 +50,7 @@ export async function markiereGeweckt(id: number): Promise<void> {
   if (!res.ok) console.log(`::warning::Pause ${id} nicht als geweckt markiert: ${res.status}`);
 }
 
-/** Ereignis in loop_events (Projekt `leitstand`). Das Wort steht im Schritt: `kontingent` mit Status `pause`, `wieder-da` oder `uebersprungen`. */
+/** Ereignis in loop_events (Projekt `leitstand`). Das Wort steht im Schritt: `kontingent`; Status und Grund aus `kontingentEreignis` (SIN-917). */
 export async function ereignis(status: "uebersprungen", grund: string): Promise<void>;
 export async function ereignis(status: "pause" | "wieder-da"): Promise<void>;
 export async function ereignis(status: "pause" | "wieder-da" | "uebersprungen", grund?: string): Promise<void> {
@@ -60,7 +60,7 @@ export async function ereignis(status: "pause" | "wieder-da" | "uebersprungen", 
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
     method: "POST",
     headers: kopf(),
-    body: JSON.stringify({ project: "leitstand", step: "kontingent", status, grund: grund ?? null, issue: null, pr: null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
+    body: JSON.stringify({ project: "leitstand", step: "kontingent", ...kontingentEreignis(status, grund), issue: null, pr: null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
   }).catch((e: Error) => ({ ok: false, status: 0, text: async () => e.message }));
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
 }
