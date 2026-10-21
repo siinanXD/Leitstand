@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -22,7 +24,17 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      # SIN-905: im PR nur die Tests der geänderten Dateien (und ihrer Importeure), auf main die volle Reihe.
+      - name: Tests (PR betroffene, main alle)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASIS: origin/${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then npm test; exit $?; fi
+          auswahl=$(npx tsx scripts/ci/betroffene-tests.ts "$BASIS")
+          if [ "$auswahl" = "ALLE" ]; then npm test
+          elif [ -z "$auswahl" ]; then echo "Keine betroffenen Tests."
+          else echo "$auswahl" | xargs node --import tsx --test; fi
       - name: SIN-854 - Gate und Reparatur-CLI gegen isolierte API-Fixtures abnehmen
         run: node --import tsx --test src/lib/loop/beleg-stand.test.ts src/lib/loop/merge-gate.test.ts src/lib/loop/repair-cli.test.ts
       - name: Aufbauphase-Gate mit Altfristen und Schutzgrenzen simulieren (SIN-855)
