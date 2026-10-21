@@ -5,6 +5,9 @@ import { berlinerTag } from "../berlin";
 export const HAENGT_NACH_MS = 2 * 3_600_000;
 /** Labels im Verlauf, die einen Eingriff bedeuten. */
 export const EINGRIFF_LABELS = ["freigegeben", "sinan", "needs-human"] as const;
+/** Merge durch `automerge.yml`: erkannt am Vermerk im Squash-Commit (Bot und Sinan teilen sich das GitHub-Konto). */
+export const AUTO_MERGE = "automerge";
+export const AUTO_MERGE_VERMERK = "Auto-Merge: automerge.yml";
 
 export type Ereignis = { created_at: string; step: string | null; status: string | null; issue: string | null; pr: number | null; grund?: string | null };
 /** Ein Linear-Issue mit Verlauf: alle Labels, die es je trug, und die Kommentare (Autor, Zeit). */
@@ -32,7 +35,8 @@ export function eingriffe(i: VerlaufIssue, sinan: readonly string[]): string[] {
   const namen = sinan.map((s) => s.toLowerCase());
   const r = EINGRIFF_LABELS.filter((l) => i.labelsImVerlauf.includes(l)).map((l) => `Label ${l}`);
   if (i.verlaufVollstaendig === false) r.push("Verlauf unvollständig gelesen");
-  if (i.mergeVon && namen.includes(i.mergeVon.toLowerCase())) r.push("Merge durch Sinan");
+  // Nur der Auto-Merge ist kein Eingriff; jeder andere bekannte Merge-Autor ist einer (Sinan oder fremd).
+  if (i.mergeVon && i.mergeVon !== AUTO_MERGE) r.push(namen.includes(i.mergeVon.toLowerCase()) ? "Merge durch Sinan" : `Merge durch ${i.mergeVon}`);
   const start = i.gestartetAm ? ms(i.gestartetAm) : -Infinity;
   if (i.kommentare.some((k) => namen.includes(k.autor.toLowerCase()) && ms(k.am) > start)) r.push("Kommentar von Sinan");
   return r;

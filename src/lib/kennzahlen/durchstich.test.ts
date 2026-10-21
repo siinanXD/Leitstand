@@ -20,7 +20,7 @@ const issue = (kennung: string, extra: Partial<VerlaufIssue> = {}): VerlaufIssue
   doneAm: "2026-10-20T12:00:00Z",
   labelsImVerlauf: ["claude"],
   kommentare: [],
-  mergeVon: "github-actions",
+  mergeVon: "automerge",
   ...extra,
 });
 
@@ -75,6 +75,11 @@ test("Hängt: In Progress länger als 2 h, mit letztem Grund", () => {
 });
 
 test("Test: unbekannter Merge-Autor zählt nie als Durchstich; Issue ohne aktuelles Label `claude` wird trotzdem bewertet", () => {
+  const fremd = durchstich([issue("SIN-8", { mergeVon: "jemand-anders" })], kette("SIN-8", 18), ["sinan"], JETZT);
+  assert.deepEqual(fremd.durchstich, []);
+  assert.deepEqual(fremd.mit_eingriff, [{ kennung: "SIN-8", eingriffe: ["Merge durch jemand-anders"] }]);
+  const yml = readFileSync(new URL("../../../.github/workflows/automerge.yml", import.meta.url), "utf8");
+  assert.equal(yml.match(/Auto-Merge: automerge\.yml/g)?.length, 3, "jeder Merge-Weg von automerge.yml setzt den Vermerk");
   const r = durchstich([issue("SIN-5", { mergeVon: null })], kette("SIN-5", 15), ["sinan"], JETZT);
   assert.deepEqual(r.durchstich, []);
   assert.deepEqual(r.ohne_beleg, [{ kennung: "SIN-5", fehlt: ["merge-autor"] }]);

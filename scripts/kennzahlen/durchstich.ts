@@ -5,7 +5,7 @@
  * in die loop_snapshot-Zeile leitstand. DRY_RUN=1: nur Ausgabe. Env: LINEAR_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
  * GH_TOKEN (lesend), GITHUB_REPOSITORY, SINAN_NAMEN (Komma, Standard „Sinan Kahraman,siinanXD“).
  */
-import { durchstich, type Ereignis, type VerlaufIssue } from "../../src/lib/kennzahlen/durchstich";
+import { AUTO_MERGE, AUTO_MERGE_VERMERK, durchstich, type Ereignis, type VerlaufIssue } from "../../src/lib/kennzahlen/durchstich";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -36,13 +36,19 @@ async function linear(): Promise<LinearKnoten[]> {
   return json.data.issues.nodes;
 }
 
-/** Merge-Autor des PR, der am Linear-Issue hängt (Anhang mit /pull/<n>); null, wenn unbekannt oder nicht gemergt. */
+/** Wer hat gemergt? `automerge`, wenn der Squash-Commit den Vermerk von automerge.yml trägt, sonst `merged_by`; null, wenn unbekannt oder nicht gemergt. */
 async function mergeVon(urls: string[]): Promise<string | null> {
   const nr = urls.map((u) => u.match(/\/pull\/(\d+)/)?.[1]).find(Boolean);
   if (!nr || !env.GH_TOKEN) return null;
-  const res = await fetch(`https://api.github.com/repos/${REPO}/pulls/${nr}`, { headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json" } });
+  const kopf = { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json" };
+  const res = await fetch(`https://api.github.com/repos/${REPO}/pulls/${nr}`, { headers: kopf });
   if (!res.ok) return null;
-  return ((await res.json()) as { merged_by?: { login: string } | null }).merged_by?.login ?? null;
+  const pr = (await res.json()) as { merged_by?: { login: string } | null; merge_commit_sha?: string | null };
+  if (pr.merge_commit_sha) {
+    const c = await fetch(`https://api.github.com/repos/${REPO}/commits/${pr.merge_commit_sha}`, { headers: kopf });
+    if (c.ok && ((await c.json()) as { commit?: { message?: string } }).commit?.message?.includes(AUTO_MERGE_VERMERK)) return AUTO_MERGE;
+  }
+  return pr.merged_by?.login ?? null;
 }
 
 async function ereignisse(): Promise<Ereignis[]> {
