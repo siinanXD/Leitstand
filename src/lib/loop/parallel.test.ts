@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { ladePrSchutz, maxParallel, parallelAuswahl, schreibPfade, schuetztNoch } from "./parallel";
+import { abgleichZeilen, konflikt, konfliktGrund, ladePrSchutz, maxParallel, parallelAuswahl, schreibPfade, schuetztNoch, vorschlagPfade } from "./parallel";
 import { pfadeFuer, planeVorhaben } from "./bereich";
-import type { LinearIssue } from "./auswahl";
+import { claimsMitPlatz, type LinearIssue } from "./auswahl";
 
 const issue = (id: string, paths?: string[]): LinearIssue => ({
   id, identifier: id, title: id, description: paths ? `<!-- worker-pfade: ${JSON.stringify(paths)} -->` : null,
@@ -110,4 +110,61 @@ test("SIN-896: wartender risk:high-PR schützt seine Dateien höchstens 24 h", (
   assert.equal(schuetztNoch({ ...hoch, createdAt: "2026-10-21T00:00:00Z" }, jetzt), true);
   assert.equal(schuetztNoch({ ...hoch, labels: ["risk:high", "freigegeben"] }, jetzt), true);
   assert.equal(schuetztNoch({ labels: ["risk:medium"], createdAt: "2026-10-01T00:00:00Z" }, jetzt), true);
+});
+
+test("Test: SIN-913-Pfade gegen SIN-897-Pfade (beide mit `docs/decisions/...`) → kein Konflikt", () => {
+  const a = issue("SIN-913", ["src/lib/agent-testnutzer", "e2e", "docs/abnahme.yml", "docs/decisions/agent-testnutzer-leitstand.md"]);
+  const b = issue("SIN-897", ["src/lib/kennzahlen", "scripts/kennzahlen", "src/app/(uebersicht)", "docs/decisions"]);
+  assert.deepEqual(parallelAuswahl([a], [b], 2).map((i) => i.id), ["SIN-913"]);
+  assert.equal(konflikt(schreibPfade(a), schreibPfade(b)), false);
+});
+
+test("Test: zwei Issues mit `.github/workflows/testnutzer.yml` bzw. `.github/workflows/crawler.yml` → kein Konflikt; eins mit `automerge.yml` + eins mit `dispatch.yml` → Konflikt", () => {
+  const t = issue("A", [".github/workflows/testnutzer.yml"]), c = issue("B", [".github/workflows/crawler.yml"]);
+  assert.deepEqual(parallelAuswahl([c], [t], 2).map((i) => i.id), ["B"]);
+  const gate = issue("C", [".github/workflows/automerge.yml"]), disp = issue("D", [".github/workflows/dispatch.yml"]);
+  assert.deepEqual(parallelAuswahl([disp], [gate], 2), []);
+  // Pauschal „.github/workflows“ bleibt Steuerung.
+  assert.deepEqual(parallelAuswahl([issue("E", [".github/workflows"])], [gate], 2), []);
+});
+
+test("Test: gleiche Produktdatei (`src/lib/x.ts`) → weiterhin Konflikt", () => {
+  const a = issue("A", ["src/lib/x.ts", "docs/decisions/a.md"]), b = issue("B", ["src/lib/x.ts", "docs/decisions/b.md"]);
+  assert.deepEqual(parallelAuswahl([b], [a], 2), []);
+  assert.equal(konflikt([], ["src/lib/y.ts"]), true, "ohne Angabe bleibt exklusiv");
+  assert.equal(konflikt(["docs/decisions/a.md"], ["docs/decisions/b.md"]), false, "nur Sammelpfade: parallel");
+});
+
+test("SIN-919: Pfad-Vorschlag aus Backticks, Unklares leer", () => {
+  assert.deepEqual(vorschlagPfade("Fix in `scripts/loop/loop.ts` und `src/lib/pause.ts`, siehe `npm test`."), ["scripts/loop/loop.ts", "src/lib/pause.ts"]);
+  assert.deepEqual(vorschlagPfade("Nur Text ohne Pfade"), []);
+  assert.deepEqual(vorschlagPfade("`../geheim` und `/etc/passwd`"), []);
+});
+
+test("Test: Trockenlauf des Abgleichs listet die Todo-Issues ohne Pfade mit Vorschlag", () => {
+  // Auszug echter Linear-Beschreibungen vom 21.10. (gekürzt) plus ein Issue mit Pfaden, das nicht erscheinen darf.
+  const zeilen = abgleichZeilen([
+    { identifier: "SIN-892", description: "Vor dem Schreiben prüfen … `needs-human` nur, wenn das Label gesetzt wurde." },
+    { identifier: "SIN-814", description: "API-Endpunkt (`/api/fliessband`) … `src/lib/fliessband/fliessband.ts` und `src/app/api/fliessband/route.ts`." },
+    { identifier: "SIN-913", description: '<!-- worker-pfade: ["src/lib/agent-testnutzer"] -->' },
+  ]).map((z) => z.zeile);
+  assert.deepEqual(zeilen, ["SIN-892: unklar, bleibt allein", 'SIN-814: ["src/app/api/fliessband/route.ts","src/lib/fliessband/fliessband.ts"]']);
+});
+
+test("Test: Claim mit wartendem PR (`risk:high` ohne `freigegeben`) belegt keinen Platz, sein PR schützt weiter die Dateien", () => {
+  const wartet = issue("SIN-897", ["src/lib/kennzahlen"]), laeuft = issue("SIN-905", [".github/workflows/build.yml"]);
+  const belegung = { jetzt: new Date(), offenePrs: [{ titel: "feat: x (SIN-897)", branch: "claude/a", labels: ["risk:high"] }, { titel: "feat: y (SIN-905)", branch: "claude/b", labels: ["risk:medium"] }] };
+  assert.deepEqual(claimsMitPlatz([wartet, laeuft], belegung).map((i) => i.id), ["SIN-905"]);
+  const schutz = [{ description: '<!-- worker-pfade: ["src/lib/kennzahlen/durchstich.ts"] -->' }];
+  assert.deepEqual(parallelAuswahl([issue("SIN-907", ["scripts/diagnose"])], claimsMitPlatz([wartet, laeuft], belegung), 2, schutz).map((i) => i.id), ["SIN-907"]);
+  assert.deepEqual(parallelAuswahl([issue("SIN-X", ["src/lib/kennzahlen"])], claimsMitPlatz([wartet, laeuft], belegung), 2, schutz), [], "PR-Schutz bleibt");
+  assert.equal(claimsMitPlatz([wartet], { ...belegung, offenePrs: [{ ...belegung.offenePrs[0], labels: ["risk:high", "freigegeben"] }] }).length, 1);
+});
+
+test("Test: Kandidat ohne Pfade → „ohne Pfade“; zwei überlappende Pfade → beide Pfade im Text; zwei Steuerungs-Issues → „@steuerung“", () => {
+  const lauf = [issue("SIN-1", ["src/lib/x.ts"]), issue("SIN-2", ["scripts/loop/loop.ts"])];
+  assert.match(konfliktGrund([issue("SIN-3")], [], 2), /SIN-3: ohne Pfade/);
+  assert.match(konfliktGrund([issue("SIN-4", ["src/lib/x.ts"])], lauf.slice(0, 1), 2), /SIN-4↔SIN-1: src\/lib\/x\.ts ↔ src\/lib\/x\.ts/);
+  assert.match(konfliktGrund([issue("SIN-5", ["src/lib/loop/auswahl.ts"])], lauf.slice(1), 2), /SIN-5↔SIN-2: @steuerung/);
+  assert.match(konfliktGrund([issue("SIN-6", ["a"])], lauf, 2), /^kein_platz: SIN-1, SIN-2 belegen alle 2 Plätze/);
 });
