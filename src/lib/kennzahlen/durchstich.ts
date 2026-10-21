@@ -15,7 +15,7 @@ export type VerlaufIssue = {
   doneAm: string | null;
   labelsImVerlauf: readonly string[];
   kommentare: readonly { autor: string; am: string }[];
-  /** GitHub-Login, der den PR gemergt hat; null, wenn unbekannt. */
+  /** GitHub-Login, der den PR gemergt hat; null, wenn unbekannt (kein PR-Anhang, kein Token, GitHub-Fehler). Bei Done ohne Autor nie Durchstich. */
   mergeVon: string | null;
 };
 export type Eingriff = { kennung: string; eingriffe: string[] };
@@ -61,7 +61,8 @@ export function durchstich(issues: readonly VerlaufIssue[], ereignisse: readonly
       out.mit_eingriff.push({ kennung: i.kennung, eingriffe: e });
       continue;
     }
-    const fehlt = fehlendeBelege(i.kennung, ereignisse);
+    // Unbekannter Merge-Autor: nicht geprüft, ob Sinan gemergt hat → kein Durchstich, sondern „ohne Beleg“.
+    const fehlt = [...(i.mergeVon ? [] : ["merge-autor"]), ...fehlendeBelege(i.kennung, ereignisse)];
     if (fehlt.length) out.ohne_beleg.push({ kennung: i.kennung, fehlt });
     else out.durchstich.push(i.kennung);
   }

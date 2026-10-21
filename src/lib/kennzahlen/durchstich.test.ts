@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { durchstich, type Ereignis, type VerlaufIssue } from "./durchstich";
 
@@ -71,4 +72,17 @@ test("Hängt: In Progress länger als 2 h, mit letztem Grund", () => {
     JETZT,
   );
   assert.deepEqual(r.haengt, [{ kennung: "SIN-8", seitMin: 210, grund: "build rot" }]);
+});
+
+test("Unbekannter Merge-Autor (kein PR-Anhang, kein Token, GitHub-Fehler) zählt nie als Durchstich", () => {
+  const r = durchstich([issue("SIN-5", { mergeVon: null })], kette("SIN-5", 15), ["sinan"], JETZT);
+  assert.deepEqual(r.durchstich, []);
+  assert.deepEqual(r.ohne_beleg, [{ kennung: "SIN-5", fehlt: ["merge-autor"] }]);
+});
+
+test("Issue, das das Label claude vor Done verlor, wird trotzdem bewertet", () => {
+  const r = durchstich([issue("SIN-6", { labelsImVerlauf: ["Bug"] })], kette("SIN-6", 16), ["sinan"], JETZT);
+  assert.deepEqual(r.durchstich, ["SIN-6"]);
+  const q = readFileSync(new URL("../../../scripts/kennzahlen/durchstich.ts", import.meta.url), "utf8").match(/const ABFRAGE = `[^`]*`/)?.[0] ?? "";
+  assert.doesNotMatch(q, /labels:\s*\{\s*name/, "Abfrage filtert nicht auf das aktuelle Label");
 });

@@ -1,6 +1,6 @@
 /**
  * Kennzahl „Durchstich“ (SIN-897). Aufruf: npx tsx scripts/kennzahlen/durchstich.ts
- * Liest Linear (Issues des Projekts „Leitstand“ mit Label claude, Verlauf der Labels, Kommentare), loop_events der letzten 48 h
+ * Liest Linear (Issues des Projekts „Leitstand“, die in den letzten 48 h fertig wurden oder laufen – unabhängig vom aktuellen Label, Verlauf der Labels, Kommentare), loop_events der letzten 48 h
  * und den Merge-Autor aus GitHub, rechnet src/lib/kennzahlen/durchstich.ts und schreibt durchstich, mit_eingriff, haengt
  * in die loop_snapshot-Zeile leitstand. DRY_RUN=1: nur Ausgabe. Env: LINEAR_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
  * GH_TOKEN (lesend), GITHUB_REPOSITORY, SINAN_NAMEN (Komma, Standard „Sinan Kahraman,siinanXD“).
@@ -23,13 +23,14 @@ type LinearKnoten = {
   attachments: { nodes: { url: string }[] };
 };
 
-const ABFRAGE = `query { issues(first: 100, filter: { project: { name: { eq: "Leitstand" } }, labels: { name: { eq: "claude" } } }, orderBy: updatedAt) {
+// Kein Filter auf das aktuelle Label `claude`: ein Issue, das das Label vor Done verlor, zählt trotzdem (mit Eingriff oder ohne Beleg).
+const ABFRAGE = `query($ab: DateTimeOrDuration!) { issues(first: 250, filter: { project: { name: { eq: "Leitstand" } }, or: [{ completedAt: { gte: $ab } }, { state: { type: { eq: "started" } } }] }, orderBy: updatedAt) {
   nodes { identifier startedAt completedAt state { type } labels { nodes { name } }
     history(first: 100) { nodes { addedLabels { name } } } comments(first: 100) { nodes { createdAt user { name } } } attachments { nodes { url } } } } }`;
 
 async function linear(): Promise<LinearKnoten[]> {
   if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY fehlt");
-  const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY }, body: JSON.stringify({ query: ABFRAGE }) });
+  const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY }, body: JSON.stringify({ query: ABFRAGE, variables: { ab: "-P2D" } }) });
   const json = (await res.json()) as { data?: { issues: { nodes: LinearKnoten[] } }; errors?: unknown };
   if (!res.ok || json.errors || !json.data) throw new Error(`Linear: ${res.status} ${JSON.stringify(json.errors ?? "")}`);
   return json.data.issues.nodes;
