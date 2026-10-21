@@ -105,3 +105,19 @@ test("Abnahme-Probe gilt nur für die ganze Kennung (SIN-1 ≠ SIN-10)", () => {
   assert.deepEqual(r.ohne_beleg, [{ kennung: "SIN-1", fehlt: ["abnahme ok"] }]);
   assert.deepEqual(durchstich([issue("SIN-1")], [...ohne, { ...ev("abnahme", "ok", "Probe (SIN-1)"), created_at: "2026-10-20T10:06:00Z" }], ["sinan"], JETZT).durchstich, ["SIN-1"]);
 });
+
+
+test("verwirft eine formal vollständige, aber zeitlich falsch geordnete Kette", () => {
+  const [start, workerOk, pruefer, merge, deploy, abnahme] = kette("SIN-11", 31);
+  const falschGeordnet: Ereignis[] = [
+    start,
+    { ...workerOk, created_at: "2026-10-20T10:06:00Z" },
+    { ...pruefer, created_at: "2026-10-20T10:02:00Z" },
+    { ...merge, created_at: "2026-10-20T10:07:00Z" },
+    { ...deploy, created_at: "2026-10-20T10:08:00Z" },
+    { ...abnahme, created_at: "2026-10-20T10:09:00Z" },
+  ];
+  const r = durchstich([issue("SIN-11")], falschGeordnet, ["sinan"], JETZT);
+  assert.deepEqual(r.durchstich, []);
+  assert.deepEqual(r.ohne_beleg, [{ kennung: "SIN-11", fehlt: ["pruefer ok"] }]);
+});
