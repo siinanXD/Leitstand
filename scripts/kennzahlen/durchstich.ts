@@ -18,15 +18,15 @@ type LinearKnoten = {
   completedAt: string | null;
   state: { type: string };
   labels: { nodes: { name: string }[] };
-  history: { nodes: { addedLabels?: { name: string }[] | null }[] };
-  comments: { nodes: { createdAt: string; user: { name: string } | null }[] };
+  history: { nodes: { addedLabels?: { name: string }[] | null }[]; pageInfo: { hasNextPage: boolean } };
+  comments: { nodes: { createdAt: string; user: { name: string } | null }[]; pageInfo: { hasNextPage: boolean } };
   attachments: { nodes: { url: string }[] };
 };
 
 // Kein Filter auf das aktuelle Label `claude`: ein Issue, das das Label vor Done verlor, zählt trotzdem (mit Eingriff oder ohne Beleg).
 const ABFRAGE = `query($ab: DateTimeOrDuration!) { issues(first: 250, filter: { project: { name: { eq: "Leitstand" } }, or: [{ completedAt: { gte: $ab } }, { state: { type: { eq: "started" } } }] }, orderBy: updatedAt) {
   nodes { identifier startedAt completedAt state { type } labels { nodes { name } }
-    history(first: 100) { nodes { addedLabels { name } } } comments(first: 100) { nodes { createdAt user { name } } } attachments { nodes { url } } } } }`;
+    history(first: 250) { nodes { addedLabels { name } } pageInfo { hasNextPage } } comments(first: 250) { nodes { createdAt user { name } } pageInfo { hasNextPage } } attachments { nodes { url } } } } }`;
 
 async function linear(): Promise<LinearKnoten[]> {
   if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY fehlt");
@@ -67,6 +67,8 @@ async function main() {
       labelsImVerlauf: [...new Set([...k.labels.nodes.map((l) => l.name), ...k.history.nodes.flatMap((h) => (h.addedLabels ?? []).map((l) => l.name))])],
       kommentare: k.comments.nodes.filter((c) => c.user).map((c) => ({ autor: c.user!.name, am: c.createdAt })),
       mergeVon: k.state.type === "completed" ? await mergeVon(k.attachments.nodes.map((a) => a.url)) : null,
+      // Mehr als 250 Verlaufs- oder Kommentar-Einträge: nicht alles gelesen → konservativ als Eingriff werten.
+      verlaufVollstaendig: !k.history.pageInfo.hasNextPage && !k.comments.pageInfo.hasNextPage,
     });
   }
   const r = durchstich(issues, await ereignisse(), SINAN, new Date());

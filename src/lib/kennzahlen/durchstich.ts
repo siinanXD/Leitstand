@@ -17,6 +17,8 @@ export type VerlaufIssue = {
   kommentare: readonly { autor: string; am: string }[];
   /** GitHub-Login, der den PR gemergt hat; null, wenn unbekannt (kein PR-Anhang, kein Token, GitHub-Fehler). Bei Done ohne Autor nie Durchstich. */
   mergeVon: string | null;
+  /** false, wenn Verlauf oder Kommentare nicht vollständig gelesen wurden; dann gilt das Issue nie als Durchstich. */
+  verlaufVollstaendig?: boolean;
 };
 export type Eingriff = { kennung: string; eingriffe: string[] };
 export type Haengt = { kennung: string; seitMin: number; grund: string | null };
@@ -29,6 +31,7 @@ const ok = (e: Ereignis) => e.status === "ok";
 export function eingriffe(i: VerlaufIssue, sinan: readonly string[]): string[] {
   const namen = sinan.map((s) => s.toLowerCase());
   const r = EINGRIFF_LABELS.filter((l) => i.labelsImVerlauf.includes(l)).map((l) => `Label ${l}`);
+  if (i.verlaufVollstaendig === false) r.push("Verlauf unvollständig gelesen");
   if (i.mergeVon && namen.includes(i.mergeVon.toLowerCase())) r.push("Merge durch Sinan");
   const start = i.gestartetAm ? ms(i.gestartetAm) : -Infinity;
   if (i.kommentare.some((k) => namen.includes(k.autor.toLowerCase()) && ms(k.am) > start)) r.push("Kommentar von Sinan");

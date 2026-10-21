@@ -86,3 +86,9 @@ test("Issue, das das Label claude vor Done verlor, wird trotzdem bewertet", () =
   const q = readFileSync(new URL("../../../scripts/kennzahlen/durchstich.ts", import.meta.url), "utf8").match(/const ABFRAGE = `[^`]*`/)?.[0] ?? "";
   assert.doesNotMatch(q, /labels:\s*\{\s*name/, "Abfrage filtert nicht auf das aktuelle Label");
 });
+
+test("Unvollständig gelesener Verlauf (mehr als 250 Einträge) zählt konservativ als Eingriff", () => {
+  const r = durchstich([issue("SIN-7", { verlaufVollstaendig: false })], kette("SIN-7", 17), ["sinan"], JETZT);
+  assert.deepEqual(r.durchstich, []);
+  assert.deepEqual(r.mit_eingriff, [{ kennung: "SIN-7", eingriffe: ["Verlauf unvollständig gelesen"] }]);
+});
