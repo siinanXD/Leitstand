@@ -241,6 +241,16 @@ export function reparatur(labels: string[], issueweit = 0): { runde: number } | 
   return { runde: bisher + 1 };
 }
 
+/**
+ * SIN-925: Reparatur nach einem Prüfer-Fund. Nur bei `pruefer:offen` und ohne echtes Risiko (`pruefer:hoch`, `risk:high`):
+ * Risiken entscheidet Sinan. Gleicher Zähler und gleiche Obergrenze wie bei rotem `build`.
+ */
+export function prueferReparatur(labels: string[], issueweit = 0): { runde: number } | { stopp: true } | { keine: string } {
+  if (!labels.includes("pruefer:offen")) return { keine: "kein offener Prüfer-Fund" };
+  if (labels.includes("pruefer:hoch") || labels.includes("risk:high")) return { keine: "echtes Risiko, keine automatische Reparatur" };
+  return reparatur(labels, issueweit);
+}
+
 /** Linear-Rohdaten (GraphQL) in das schlanke Format. */
 export function ausLinear(node: {
   id: string;

@@ -21,7 +21,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
@@ -493,8 +493,12 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
 async function reparaturLauf() {
   const pr = Number(arg("pr"));
   const lauf = arg("lauf") ?? "";
-  const p = await gh<{ title: string; head: { ref: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
+  // SIN-925: `--quelle pruefer` = Prüfer-Fund statt rotem build; nur mit `pruefer:offen`, nie bei echtem Risiko.
+  const pruefer = arg("quelle") === "pruefer";
+  const p = await gh<{ title: string; head: { ref: string; sha?: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
   if (p.state !== "open" || !istWorkerBranch(p.head.ref)) return console.log(`PR #${pr}: nicht offen oder kein Worker-Branch.`);
+  if (pruefer && arg("sha") && p.head.sha !== arg("sha")) return console.log(`PR #${pr}: Prüfer-Lauf gehört zu einem älteren Head.`);
+  const was = pruefer ? "Der Prüfer hat offene Funde" : "Der Check build ist rot";
   const id = linearId(p.title);
   // SIN-832: issueweiter, dauerhafter Zähler; ohne lesbaren Stand keine weitere Runde (Stopp statt Raten).
   const speicher = id ? reservierungen() : null;
@@ -506,20 +510,22 @@ async function reparaturLauf() {
     await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`reservierung_unlesbar: ${(e as Error).message}`) });
     return;
   }
-  const schritt = reparatur(p.labels.map((l) => l.name), stand?.reparaturen ?? 0);
+  const labels = p.labels.map((l) => l.name);
+  const schritt = pruefer ? prueferReparatur(labels, stand?.reparaturen ?? 0) : reparatur(labels, stand?.reparaturen ?? 0);
+  if ("keine" in schritt) return console.log(`PR #${pr}: ${schritt.keine}.`);
   if ("stopp" in schritt) {
     if (p.labels.some((l) => l.name === "needs-human")) return console.log(`PR #${pr}: wartet schon auf Sinan.`);
     if (DRY) return console.log(`[trocken] Stopp für #${pr}`);
     await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
-    await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `build ist nach ${MAX_REPARATUR} Reparaturrunden (issueweit gezählt) noch rot (${lauf}). Stopp, Sinan entscheidet.` } });
+    await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `${was} auch nach ${MAX_REPARATUR} Reparaturrunden (issueweit gezählt, ${lauf}). Stopp, Sinan entscheidet.` } });
     if (id) {
       const issue = await issueNachKennung(id);
       if (issue) {
         await labelSetzen(issue.id, issue.team.id, "needs-human");
-        await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) rot. ${lauf}`);
+        await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) ${pruefer ? "mit offenen Prüfer-Funden" : "rot"}. ${lauf}`);
       }
     }
-    await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: build nach ${MAX_REPARATUR} Reparaturrunden noch rot (${lauf})`) });
+    await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: ${pruefer ? "Prüfer-Funde" : "build"} nach ${MAX_REPARATUR} Reparaturrunden noch offen (${lauf})`) });
     // SIN-832: Stopp ist ein belegtes Ende des Workers; Claim lösen, Zähler bleibt, needs-human hält das Issue an.
     if (id) await gibFrei(id, `https://github.com/${repo}/pull/${pr}`);
     return;
@@ -534,7 +540,7 @@ async function reparaturLauf() {
   await gh(`/repos/${repo}/issues/${pr}/comments`, {
     method: "POST",
     body: {
-      body: `@${p.head.ref.startsWith("codex/") ? "codex" : "claude"} Der Check build ist rot (${lauf}). Ursache im Log suchen, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von ${MAX_REPARATUR}.`,
+      body: `@${p.head.ref.startsWith("codex/") ? "codex" : "claude"} ${was} (${lauf}). ${pruefer ? "Funde im Prüfer-Kommentar des PR lesen" : "Ursache im Log suchen"}, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von ${MAX_REPARATUR}.`,
     },
   });
   await ereignis("repair", "start", { issue: id ?? undefined, pr });

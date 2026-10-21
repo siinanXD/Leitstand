@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -150,6 +150,16 @@ test("reparatur (SIN-832): issueweiter Zähler gilt auch für einen neuen PR ohn
   assert.deepEqual(reparatur([], 2), { stopp: true });
   assert.deepEqual(reparatur(["repair:1"], 2), { stopp: true });
   assert.deepEqual(reparatur([], Number.NaN), { runde: 1 });
+});
+
+test("prueferReparatur (SIN-925): Runde 1 und 2, dritter Fund Stopp, Risiko keine Reparatur", () => {
+  assert.deepEqual(prueferReparatur(["pruefer:offen"]), { runde: 1 });
+  assert.deepEqual(prueferReparatur(["pruefer:offen", "repair:1"]), { runde: 2 });
+  assert.deepEqual(prueferReparatur(["pruefer:offen"], 2), { stopp: true });
+  assert.deepEqual(prueferReparatur(["pruefer:offen", "repair:2"]), { stopp: true });
+  assert.ok("keine" in prueferReparatur(["pruefer:offen", "pruefer:hoch", "risk:high"]));
+  assert.ok("keine" in prueferReparatur(["pruefer:offen", "risk:high"]));
+  assert.ok("keine" in prueferReparatur(["claude"]));
 });
 
 test("ausLinear übernimmt Labels, Status und Blocker", () => {
