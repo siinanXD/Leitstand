@@ -1,7 +1,0 @@
-# SIN-919: Sammelpfade und normale Workflows sind kein Schreibkonflikt
-- id: parallel-sammelpfade
-  produkt: leitstand
-  titel: Sammelpfade zählen nicht als Schreibkonflikt
-  art: datei
-  pfad: src/lib/loop/parallel.ts
-  enthaelt: SAMMELPFADE
