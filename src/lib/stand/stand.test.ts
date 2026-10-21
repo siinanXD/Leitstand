@@ -108,6 +108,9 @@ test("Bericht, Umgang und Ereignis", () => {
   assert.deepEqual(umgang({ thema: "doku", pruefung: "x", status: "veraltet", text: "" }), { art: "pr" });
   assert.equal(umgang(befunde[2]), null);
   assert.equal(ereignisZeile(r, "7", "u").status, "needs_human");
+  // Erlaubte Werte laut loop_events_status_check (Migration 20261021100000)
+  const erlaubt = ["start", "ok", "fehler", "uebersprungen", "needs_human"];
+  assert.ok(erlaubt.includes(ereignisZeile(r, null, null).status));
   const sauber = bericht("leitstand", [befunde[2]], new Date());
   assert.deepEqual(ereignisZeile(sauber, null, null), { project: "leitstand", agent: "betrieb", step: "stand", status: "ok", issue: null, pr: null, run_id: null, run_url: null });
 });
