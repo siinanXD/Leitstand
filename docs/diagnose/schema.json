@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ergebnis der Rolle diagnose",
+  "type": "object",
+  "properties": {
+    "rolle": { "type": "string", "enum": ["diagnose"] },
+    "ziel": { "type": "string", "minLength": 1 },
+    "zeitpunkt": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$" },
+    "ursache": { "type": "string", "minLength": 1 },
+    "beleg": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "art": { "type": "string", "enum": ["code", "lauf", "sinan", "erledigt"] },
+    "vorschlag": { "type": "string", "minLength": 1 }
+  },
+  "required": ["rolle", "ziel", "zeitpunkt", "ursache", "beleg", "art", "vorschlag"],
+  "additionalProperties": false
+}
