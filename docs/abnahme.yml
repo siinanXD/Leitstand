@@ -813,3 +813,11 @@
   art: datei
   pfad: .github/workflows/claude.yml
   enthaelt: Bash(npx tsx scripts/loop/auftrag.ts:*)
+
+# SIN-929: Kriterien-Check beim Anlegen
+- id: kriterien-check
+  produkt: leitstand
+  titel: Der Kriterien-Check ergänzt [nach Aktivierung], nennt Testnamen und sperrt Issues ohne prüfbaren Haken (SIN-929)
+  art: datei
+  pfad: src/lib/vorarbeiter/kriterien.ts
+  enthaelt: kriterien-unklar

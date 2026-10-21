@@ -138,7 +138,7 @@ export function freigegebene(issues: LinearIssue[], belegung: Belegung): LinearI
 // SIN-832: `needs-human` belegt nie einen Platz, sonst steht bei einem Platz die ganze Schlange.
 // SIN-846: Sind nur noch Belege-Haken offen, gehört das Issue dem Prüfer (belege.yml), nicht dem Bau-Worker.
 const startbar = (i: LinearIssue, gespiegelt: Set<string>) =>
-  i.stateType === "unstarted" && hatLabel(i) && !nurBelege(i.description) && !offenBlockiert(i) && !gespiegelt.has(i.identifier) && !i.labels.includes("needs-human");
+  i.stateType === "unstarted" && hatLabel(i) && !nurBelege(i.description) && !offenBlockiert(i) && !gespiegelt.has(i.identifier) && !i.labels.includes("needs-human") && !i.labels.includes("kriterien-unklar");
 
 /** Startbare Todo-Issues, genau wie `waehle` sie sieht (SIN-736): Dispatcher und `loop_snapshot.queue.startable` zählen damit dasselbe. */
 export const startbare = (issues: LinearIssue[], gespiegelt: Set<string>): LinearIssue[] => issues.filter((i) => startbar(i, gespiegelt));
@@ -153,7 +153,7 @@ export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: numb
 }
 
 /** Labels, mit denen ein Backlog-Issue nie automatisch nachrückt (Design zuerst, Aufgabe für Sinan, Stopp). */
-export const NIE_AUTOMATISCH = ["design", "sinan", "needs-human"];
+export const NIE_AUTOMATISCH = ["design", "sinan", "needs-human", "kriterien-unklar"];
 
 /**
  * Nachrücken (SIN-417): Ist kein Todo-Issue mit Label `claude` startbar und noch ein Platz frei, rückt das
