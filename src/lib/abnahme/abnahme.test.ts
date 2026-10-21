@@ -71,8 +71,12 @@ test("Alarm: absichtlich rote Probe löst nach mehr als 2 Stunden Alarm aus, vor
   assert.equal(alarmeAus([{ ...lauf("fehler", 3 * H), step: "worker" }], jetzt).length, 0);
 });
 
+// Abschrift von loop_events_status_check (Supabase), bewusst unabhängig vom Code: ändert sich der Check, hier nachziehen.
+const ERLAUBT_IN_DB = ["start", "ok", "fehler", "uebersprungen"];
+
 test("SIN-903: ereignisZeile schreibt nur Status, die loop_events_status_check erlaubt", () => {
   for (const ok of [true, false]) {
-    assert.ok((LOOP_STATUS as readonly string[]).includes(ereignisZeile(probe(), { ok, grund: "g" }, null, null).status));
+    assert.ok(ERLAUBT_IN_DB.includes(ereignisZeile(probe(), { ok, grund: "g" }, null, null).status));
   }
+  assert.deepEqual([...LOOP_STATUS], ERLAUBT_IN_DB);
 });
