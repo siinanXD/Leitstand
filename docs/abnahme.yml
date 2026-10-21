@@ -698,3 +698,25 @@
   art: datei
   pfad: src/lib/pruefer/pruefer.ts
   enthaelt: hatRisiko
+
+# SIN-918: Warten auf Live-Beleg belegt keinen Platz, kein Neustart
+- id: platz-live-beleg
+  produkt: leitstand
+  titel: Issues, die nur auf den Live-Beleg warten, belegen keinen Platz
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: wartetAufLiveBeleg
+
+# SIN-921: Gate-Restfehler (Labels, Prüfer-Risiko, Pause)
+- id: gate-labelwechsel-raeumt
+  produkt: leitstand
+  titel: Gate räumt hängende risk-Labels weg
+  art: datei
+  pfad: scripts/loop/risiko.mjs
+  enthaelt: l !== risk
+- id: pause-speicherbar
+  produkt: leitstand
+  titel: Pause schreibt nur erlaubte loop_events-Status
+  art: datei
+  pfad: src/lib/pause.ts
+  enthaelt: pausiert ? PAUSIERT
