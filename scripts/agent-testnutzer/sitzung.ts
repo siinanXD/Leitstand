@@ -8,7 +8,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync } from "node:fs";
-import { baueStorageState } from "../../src/lib/agent-testnutzer/sitzung";
+import { baueStorageState, stelleKontoSicher } from "../../src/lib/agent-testnutzer/sitzung";
 
 const env = process.env;
 const ausgabe = process.argv[2];
@@ -25,12 +25,8 @@ const [url, dienst, anon, email, leitstand] = [env.SUPABASE_URL!, env.SUPABASE_S
 const optionen = { auth: { persistSession: false, autoRefreshToken: false } };
 const admin = createClient(url, dienst, optionen);
 
-// Idempotent: "schon registriert" ist kein Fehler.
-const angelegt = await admin.auth.admin.createUser({ email, email_confirm: true });
-if (angelegt.error && !/already|registered|exists/i.test(angelegt.error.message)) throw new Error(`Konto nicht angelegt: ${angelegt.error.message}`);
-const nutzerId = angelegt.data?.user?.id;
-// Lesen wie Sinan: Zeile in leitstand_nutzer (RLS der Lese-Policies); Spalte user_id wie in den Policies.
-if (nutzerId) await admin.from("leitstand_nutzer").upsert({ user_id: nutzerId }, { onConflict: "user_id" });
+// Konto anlegen oder finden, Marker und leitstand_nutzer-Zeile immer setzen (Lesen wie Sinan; Spalte user_id wie in den Policies).
+await stelleKontoSicher(admin, email);
 
 const state = await baueStorageState(admin, createClient(url, anon, optionen), email, url, leitstand);
 writeFileSync(ausgabe, JSON.stringify(state), { mode: 0o600 });

@@ -1,6 +1,7 @@
 name: agent-testnutzer
 
 # SIN-913: Playwright-Smoke mit der Sitzung des Agent-Testkontos (nur lesen). Die Sitzung lebt nur im Job; als Artefakt geht nur der Screenshot.
+# Pull Requests laufen nur als Trockenlauf ohne Secrets; Secrets bekommt nur der Stand main (Handstart, Zeitplan).
 on:
   workflow_dispatch:
     inputs:
@@ -8,6 +9,8 @@ on:
         description: "Nur Konfiguration prüfen, kein Netz"
         type: boolean
         default: true
+  schedule:
+    - cron: "17 5 * * 1"
   pull_request:
     paths:
       - "src/lib/agent-testnutzer/**"
@@ -23,7 +26,24 @@ permissions:
   contents: read
 
 jobs:
+  pruefen:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DRY_RUN: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Konfiguration prüfen (ohne Secrets)
+        run: npx tsx scripts/agent-testnutzer/sitzung.ts "$RUNNER_TEMP/agent-sitzung.json"
+
   smoke:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -32,9 +52,11 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       AGENT_TESTNUTZER_EMAIL: ${{ vars.AGENT_TESTNUTZER_EMAIL }}
       LEITSTAND_URL: ${{ secrets.LEITSTAND_URL || vars.LEITSTAND_URL }}
-      DRY_RUN: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 22

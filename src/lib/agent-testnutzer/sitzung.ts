@@ -11,6 +11,37 @@ export type AnonClient = {
 export type StorageState = { cookies: []; origins: { origin: string; localStorage: { name: string; value: string }[] }[] };
 
 /** Schlüssel, unter dem supabase-js die Sitzung im Browser ablegt: `sb-<erstes Hostlabel>-auth-token`. */
+export type KontoClient = {
+  auth: {
+    admin: {
+      createUser(a: { email: string; email_confirm: boolean; app_metadata: Record<string, unknown> }): PromiseLike<{ data: { user: { id: string } | null } | null; error: { message: string } | null }>;
+      listUsers(a: { page: number; perPage: number }): PromiseLike<{ data: { users: { id: string; email?: string }[] } | null; error: { message: string } | null }>;
+      updateUserById(id: string, a: { app_metadata: Record<string, unknown> }): PromiseLike<{ error: { message: string } | null }>;
+    };
+  };
+  from(t: string): { upsert(row: Record<string, unknown>, o: { onConflict: string }): PromiseLike<{ error: { message: string } | null }> };
+};
+
+/** Konto idempotent anlegen oder finden; Marker `agent_testnutzer` und Zeile in leitstand_nutzer werden immer gesetzt (die RLS-Sperren hängen am Marker). */
+export async function stelleKontoSicher(admin: KontoClient, email: string): Promise<string> {
+  const marker = { agent_testnutzer: true };
+  const neu = await admin.auth.admin.createUser({ email, email_confirm: true, app_metadata: marker });
+  let id = neu.data?.user?.id;
+  if (!id) {
+    if (neu.error && !/already|registered|exists/i.test(neu.error.message)) throw new Error(`Konto nicht angelegt: ${neu.error.message}`);
+    // shortcut: erste 1000 Konten, bei mehr Konten paginieren
+    const liste = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (liste.error) throw new Error(`Konten nicht gelesen: ${liste.error.message}`);
+    id = liste.data?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())?.id;
+    if (!id) throw new Error("Testkonto nicht gefunden");
+    const upd = await admin.auth.admin.updateUserById(id, { app_metadata: marker });
+    if (upd.error) throw new Error(`Marker nicht gesetzt: ${upd.error.message}`);
+  }
+  const zeile = await admin.from("leitstand_nutzer").upsert({ user_id: id }, { onConflict: "user_id" });
+  if (zeile.error) throw new Error(`leitstand_nutzer nicht geschrieben: ${zeile.error.message}`);
+  return id;
+}
+
 export const speicherSchluessel = (supabaseUrl: string) => `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`;
 
 export async function baueStorageState(admin: AdminClient, anon: AnonClient, email: string, supabaseUrl: string, leitstandUrl: string): Promise<StorageState> {
