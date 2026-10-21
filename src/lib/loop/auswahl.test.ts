@@ -126,7 +126,7 @@ test("issueText enthält Markierung, Link und Branch-Regel", () => {
   assert.doesNotMatch(t.body, /Beschreibung/);
 });
 
-test("issueText spiegelt nur Titel, Link und Haken (SIN-911)", () => {
+test("Test: `issueText` liefert für ein Fixture-Issue mit Zitat und Kostenangabe nur Titel, Link, Haken und feste Arbeitsanweisungen (kein Text aus der Beschreibung)", () => {
   const t = issueText(issue({
     identifier: "SIN-911",
     title: "Texte",

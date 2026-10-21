@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { pruefePrText } from "./pr-text";
 
-test("pr-text schlägt bei Betrag und Wunsch an (SIN-911)", () => {
+test("Test: Der `pr-text`-Check schlägt bei einem PR-Text mit „12,40 €“ und „Wunsch Sinan“ an", () => {
   const treffer = pruefePrText("Kosten 12,40 € wegen Wunsch Sinan: billiger");
   assert.ok(treffer.includes("Geldbetrag (€)"));
   assert.ok(treffer.includes("Wunsch einer Person"));
