@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { betroffeneTests, importPfade, loeseAuf } from "./betroffene-tests";
@@ -34,13 +35,13 @@ test("loeseAuf: relativ, Alias, Index, Paket, unbekannt", () => {
   assert.equal(loeseAuf("src/lib/x.ts", "./fehlt", dateien), null);
 });
 
-test("abnahme.ts → abnahme.test.ts und Tests, die abnahme.ts importieren", () => {
+test("Test: Änderung an `src/lib/abnahme/abnahme.ts` → die Auswahl enthält nur `abnahme.test.ts` und die Tests, die `abnahme.ts` importieren (feste Gate-Schritte in `build.yml` bleiben unverändert)", () => {
   const r = betroffeneTests(["src/lib/abnahme/abnahme.ts"], importe, dateien);
   assert.equal(r.alle, false);
   assert.deepEqual(r.tests, ["src/lib/abnahme/abnahme.test.ts", "src/lib/kosten/kosten.test.ts"]);
 });
 
-test("gemeinsame Datei supabase.ts → alle Tests, die sie transitiv importieren", () => {
+test("Test: Änderung an einer gemeinsam genutzten Datei (z. B. `src/lib/supabase.ts`) → alle Tests, die sie importieren", () => {
   const r = betroffeneTests(["src/lib/supabase.ts"], importe, dateien);
   assert.deepEqual(r.tests, ["src/lib/abnahme/abnahme.test.ts", "src/lib/kosten/kosten.test.ts"]);
 });
@@ -59,4 +60,9 @@ test("nur Doku geändert → keine Tests", () => {
   const r = betroffeneTests(["docs/x.md"], importe, dateien);
   assert.equal(r.alle, false);
   assert.deepEqual(r.tests, []);
+});
+
+test("Test: `build.yml` führt außerhalb von PRs (main) `npm test` mit der vollen Reihe aus", () => {
+  const y = readFileSync(new URL("../../../.github/workflows/build.yml", import.meta.url), "utf8");
+  assert.match(y, /if \[ "\$EVENT" != "pull_request" \]; then npm test; exit \$\?; fi/);
 });

@@ -728,3 +728,11 @@
   art: datei
   pfad: src/lib/pause.ts
   enthaelt: pausiert ? PAUSIERT
+
+# SIN-905: im PR nur betroffene Tests, main voll
+- id: tests-nach-schreibpfad
+  produkt: leitstand
+  titel: PR-Build wählt Tests nach geänderten Dateien
+  art: datei
+  pfad: src/lib/ci/betroffene-tests.ts
+  enthaelt: export function
