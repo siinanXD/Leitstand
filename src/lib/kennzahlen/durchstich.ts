@@ -42,22 +42,30 @@ export function eingriffe(i: VerlaufIssue, sinan: readonly string[]): string[] {
   return r;
 }
 
-/** Fehlende Schritte der Kette; leer heißt vollständig belegt. PRs des Issues kommen aus `worker ok` (Feld pr). */
+/** Fehlende Schritte der Kette; alle Nachweise müssen zeitlich aufeinander folgen und zum selben PR gehören. */
 export function fehlendeBelege(kennung: string, ereignisse: readonly Ereignis[]): string[] {
   const eigene = ereignisse.filter((e) => e.issue === kennung);
-  const prs = new Set(eigene.filter((e) => e.step === "worker" && ok(e) && e.pr != null).map((e) => e.pr));
-  const hat = (step: string) => ereignisse.some((e) => e.step === step && ok(e) && (e.issue === kennung || (e.pr != null && prs.has(e.pr))));
-  const fehlt: string[] = [];
-  if (!eigene.some((e) => e.step === "worker" && e.status === "start")) fehlt.push("worker start");
-  if (prs.size === 0) fehlt.push("worker ok (PR)");
-  if (!hat("pruefer")) fehlt.push("pruefer ok");
-  if (!hat("merge")) fehlt.push("merge");
-  if (!hat("deploy")) fehlt.push("deploy");
-  // Die Probe nennt die Kennung im Titel (Feld issue der Abnahme-Zeile).
-  // Ganze Kennung, keine Teilzeichenkette: „SIN-1“ darf nicht in „SIN-10“ treffen.
-  const genau = new RegExp(`(^|[^\\w-])${kennung}(?![\\w])`);
-  if (!ereignisse.some((e) => e.step === "abnahme" && ok(e) && !!e.issue && genau.test(e.issue))) fehlt.push("abnahme ok");
-  return fehlt;
+  const start = eigene.filter((e) => e.step === "worker" && e.status === "start").sort((a, b) => ms(a.created_at) - ms(b.created_at))[0];
+  if (!start) return ["worker start"];
+  const workerOk = eigene.filter((e) => e.step === "worker" && ok(e) && e.pr != null && ms(e.created_at) > ms(start.created_at)).sort((a, b) => ms(a.created_at) - ms(b.created_at));
+  if (workerOk.length === 0) return ["worker ok (PR)"];
+  // Prüfe jeden PR-Kandidaten vollständig. Ereignisse vor dem vorherigen Schritt zählen nicht.
+  const genau = new RegExp("(^|[^\\w-])" + kennung + "(?![\\w])");
+  const kandidaten = workerOk.map((worker) => {
+    const nach = (step: string, ab: Ereignis) => ereignisse.filter((e) => e.step === step && ok(e) && e.pr === worker.pr && ms(e.created_at) > ms(ab.created_at)).sort((a, b) => ms(a.created_at) - ms(b.created_at))[0];
+    const pruefer = nach("pruefer", worker);
+    if (!pruefer) return ["pruefer ok"];
+    const merge = nach("merge", pruefer);
+    if (!merge) return ["merge"];
+    const deploy = nach("deploy", merge);
+    if (!deploy) return ["deploy"];
+    const abnahme = ereignisse.filter((e) => e.step === "abnahme" && ok(e) && !!e.issue && genau.test(e.issue) && ms(e.created_at) > ms(deploy.created_at)).sort((a, b) => ms(a.created_at) - ms(b.created_at))[0];
+    if (!abnahme) return ["abnahme ok"];
+    return [];
+  });
+  if (kandidaten.some((fehlt) => fehlt.length === 0)) return [];
+  // Berichte den PR, der am weitesten durch die Kette gekommen ist.
+  return kandidaten.sort((a, b) => a.length - b.length)[0];
 }
 
 export function durchstich(issues: readonly VerlaufIssue[], ereignisse: readonly Ereignis[], sinan: readonly string[], jetzt: Date): Durchstich {
