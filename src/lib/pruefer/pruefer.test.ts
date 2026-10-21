@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { hatHoch, hatRisiko, prueferLabels, istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
+import { hatHoch, hatProbe, hatRisiko, prueferLabels, istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
 
 import { entscheide, leseHaken } from "../loop/haken";
 import { labelWechsel, stufe } from "../../../scripts/loop/risiko.mjs";
@@ -216,4 +216,10 @@ test("SIN-921: Codefehler mit dem Wort Token ist kein Sicherheitsrisiko, art=sic
   assert.equal(hatRisiko(fund("codefehler")), false);
   assert.equal(hatRisiko(fund("sicherheit")), true);
   assert.equal(hatRisiko({ bestanden: false, funde: [{ datei: "a.ts", zeile: 1, schwere: "hoch" as const, text: "Secret im Log" }] }), true);
+});
+
+test("SIN-921: Probe je Issue in docs/abnahme/<name>.yml zählt", () => {
+  assert.equal(hatProbe(["docs/abnahme/platz-live-beleg.yml"]), true);
+  assert.equal(hatProbe(["docs/abnahme.yml"]), true);
+  assert.equal(hatProbe(["docs/abnahme/unter/x.yml", "docs/abnahme-alt.yml"]), false);
 });
