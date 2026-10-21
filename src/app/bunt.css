@@ -67,6 +67,15 @@
   padding: 0;
 }
 
+/* Durchstich-Kachel (SIN-897): Kopfzeile als Ziel mindestens 44 px hoch. */
+.einfach-block > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--touch-min);
+  cursor: pointer;
+}
+
 .aufklapp summary {
   display: grid;
   gap: var(--space-4);

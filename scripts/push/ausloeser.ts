@@ -15,7 +15,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { alarmeAus } from "../../src/lib/abnahme/abnahme";
-import { abbruchAus, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, produktFertigAus, rollenStillstandAus, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
+import { abbruchAus, berlinZeit, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, produktFertigAus, rollenStillstandAus, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
 import { leseHaken } from "../../src/lib/loop/haken";
@@ -216,7 +216,11 @@ async function main() {
   if (fehlerGesendet) throw new Error(`leitstand_push_gesendet: ${fehlerGesendet.message}`);
   const gesendet = new Set((rohGesendet ?? []).map((r: { schluessel: string }) => r.schluessel));
 
-  const plan = plane(ereignisse, gesendet, jetzt.getTime());
+  // SIN-897: Durchstich von heute; fehlt die Spalte (Migration offen) oder der Tageswert, entfällt der Zusatz.
+  const { data: rohDurchstich } = await db.from("loop_snapshot").select("durchstich").eq("project", "leitstand").maybeSingle();
+  const tagswert = rohDurchstich?.durchstich as { tag?: string; liste?: unknown[] } | null | undefined;
+  const durchstich = tagswert?.tag === berlinZeit(jetzt.getTime()).tag && Array.isArray(tagswert.liste) ? tagswert.liste.length : null;
+  const plan = plane(ereignisse, gesendet, jetzt.getTime(), [], durchstich);
   // Wochen-Check (SIN-631): sonntags zur eingestellten Stunde; fehlt die Einstellung (Migration offen), gilt 19 Uhr.
   const { data: stunde } = await db.from("leitstand_einstellungen").select("wert").eq("schluessel", EINSTELLUNG);
   const woche = pushVorbereiten(jetzt.getTime(), pushStunde(stunde?.[0]?.wert), gesendet);
