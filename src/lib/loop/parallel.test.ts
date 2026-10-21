@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { ladePrSchutz, maxParallel, parallelAuswahl, schreibPfade, schuetztNoch } from "./parallel";
+import { konflikt, ladePrSchutz, maxParallel, parallelAuswahl, schreibPfade, schuetztNoch, vorschlagPfade } from "./parallel";
 import { pfadeFuer, planeVorhaben } from "./bereich";
 import type { LinearIssue } from "./auswahl";
 
@@ -110,4 +110,33 @@ test("SIN-896: wartender risk:high-PR schützt seine Dateien höchstens 24 h", (
   assert.equal(schuetztNoch({ ...hoch, createdAt: "2026-10-21T00:00:00Z" }, jetzt), true);
   assert.equal(schuetztNoch({ ...hoch, labels: ["risk:high", "freigegeben"] }, jetzt), true);
   assert.equal(schuetztNoch({ labels: ["risk:medium"], createdAt: "2026-10-01T00:00:00Z" }, jetzt), true);
+});
+
+test("SIN-919: SIN-913-Pfade gegen SIN-897-Pfade (beide mit docs/decisions/...) → kein Konflikt", () => {
+  const a = issue("SIN-913", ["src/lib/agent-testnutzer", "e2e", "docs/abnahme.yml", "docs/decisions/agent-testnutzer-leitstand.md"]);
+  const b = issue("SIN-897", ["src/lib/kennzahlen", "scripts/kennzahlen", "src/app/(uebersicht)", "docs/decisions"]);
+  assert.deepEqual(parallelAuswahl([a], [b], 2).map((i) => i.id), ["SIN-913"]);
+  assert.equal(konflikt(schreibPfade(a), schreibPfade(b)), false);
+});
+
+test("SIN-919: zwei normale Workflows → kein Konflikt; automerge.yml + dispatch.yml → Konflikt", () => {
+  const t = issue("A", [".github/workflows/testnutzer.yml"]), c = issue("B", [".github/workflows/crawler.yml"]);
+  assert.deepEqual(parallelAuswahl([c], [t], 2).map((i) => i.id), ["B"]);
+  const gate = issue("C", [".github/workflows/automerge.yml"]), disp = issue("D", [".github/workflows/dispatch.yml"]);
+  assert.deepEqual(parallelAuswahl([disp], [gate], 2), []);
+  // Pauschal „.github/workflows“ bleibt Steuerung.
+  assert.deepEqual(parallelAuswahl([issue("E", [".github/workflows"])], [gate], 2), []);
+});
+
+test("SIN-919: gleiche Produktdatei (src/lib/x.ts) → weiterhin Konflikt", () => {
+  const a = issue("A", ["src/lib/x.ts", "docs/decisions/a.md"]), b = issue("B", ["src/lib/x.ts", "docs/decisions/b.md"]);
+  assert.deepEqual(parallelAuswahl([b], [a], 2), []);
+  assert.equal(konflikt([], ["src/lib/y.ts"]), true, "ohne Angabe bleibt exklusiv");
+  assert.equal(konflikt(["docs/decisions/a.md"], ["docs/decisions/b.md"]), false, "nur Sammelpfade: parallel");
+});
+
+test("SIN-919: Pfad-Vorschlag aus Backticks, Unklares leer", () => {
+  assert.deepEqual(vorschlagPfade("Fix in `scripts/loop/loop.ts` und `src/lib/pause.ts`, siehe `npm test`."), ["scripts/loop/loop.ts", "src/lib/pause.ts"]);
+  assert.deepEqual(vorschlagPfade("Nur Text ohne Pfade"), []);
+  assert.deepEqual(vorschlagPfade("`../geheim` und `/etc/passwd`"), []);
 });

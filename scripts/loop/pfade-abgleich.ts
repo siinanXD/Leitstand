@@ -1,0 +1,43 @@
+/**
+ * SIN-919: Einmaliger Abgleich. Todo-Issues mit Label `claude` ohne `worker-pfade` bekommen einen Vorschlag aus ihrer Beschreibung.
+ *   DRY_RUN=1 npx tsx scripts/loop/pfade-abgleich.ts            (nur Liste)
+ *   npx tsx scripts/loop/pfade-abgleich.ts --apply               (schreibt den Block in Linear)
+ * Env: LINEAR_API_KEY; ohne Key: Eingabe als JSON-Datei über PFADE_JSON (Liste aus {identifier, description}).
+ * Unklare Issues (kein Pfad gefunden) bleiben ohne Block und laufen weiter allein.
+ */
+import { readFileSync } from "node:fs";
+import { schreibPfade, vorschlagPfade } from "../../src/lib/loop/parallel";
+
+type Eintrag = { id?: string; identifier: string; description: string | null };
+const env = process.env;
+const APPLY = process.argv.includes("--apply") && env.DRY_RUN !== "1";
+
+async function linear<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  const res = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY! }, body: JSON.stringify({ query, variables }) });
+  const json = (await res.json()) as { data?: T; errors?: unknown };
+  if (!res.ok || json.errors) throw new Error(`Linear: ${res.status} ${JSON.stringify(json.errors ?? "")}`);
+  return json.data as T;
+}
+
+async function lade(): Promise<Eintrag[]> {
+  if (env.PFADE_JSON) return JSON.parse(readFileSync(env.PFADE_JSON, "utf8")) as Eintrag[];
+  if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY oder PFADE_JSON fehlt");
+  const d = await linear<{ issues: { nodes: Eintrag[] } }>(`{ issues(first: 100, filter: { project: { name: { eq: "Leitstand" } }, state: { type: { eq: "unstarted" } }, labels: { name: { eq: "claude" } } }) { nodes { id identifier description } } }`);
+  return d.issues.nodes;
+}
+
+async function main() {
+  const ohne = (await lade()).filter((i) => !schreibPfade(i).length);
+  console.log(`${ohne.length} Todo-Issues ohne worker-pfade`);
+  for (const i of ohne) {
+    const p = vorschlagPfade(i.description);
+    console.log(`${i.identifier}: ${p.length ? JSON.stringify(p) : "unklar, bleibt allein"}`);
+    if (!APPLY || !p.length || !i.id) continue;
+    await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: i.id, d: `${i.description ?? ""}\n\n<!-- worker-pfade: ${JSON.stringify(p)} -->` });
+  }
+}
+
+main().catch((e) => {
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});

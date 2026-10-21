@@ -36,6 +36,30 @@ export function maxParallel(repo: string, produkt?: string, leitstand?: string):
   return Number.isSafeInteger(n) && n > 0 ? eigenes ? Math.min(2, n) : n : 1;
 }
 
+/** SIN-919: Steuerung im Sinne von AGENTS.md (Gate, Dispatcher, Loop). Ein pauschales `.github`/`.github/workflows` bleibt Steuerung. */
+const STEUERUNG = /^(\.github(\/workflows)?$|\.github\/workflows\/(automerge|dispatch|pruefer|claude|repair)\.ya?ml$|scripts\/(loop|waechter|vorarbeiter)(\/|$)|src\/lib\/(loop|waechter)(\/|$))/;
+export const istSteuerung = (p: string) => STEUERUNG.test(p);
+
+/**
+ * SIN-919: Sammelpfade. Jedes Issue legt dort eine eigene Datei an (Entscheidung, Probe) oder hängt nur an (LEHREN, Changelog).
+ * Das ist kein Schreibkonflikt; einen Merge-Konflikt beim Anhängen löst der Worker. Sonst lief im Leitstand fast nie etwas parallel.
+ */
+export const SAMMELPFADE = ["docs/decisions", "docs/abnahme", "docs/abnahme.yml", "docs/autonomy/LEHREN.md", "CHANGELOG.md"];
+const istSammel = (p: string) => SAMMELPFADE.some((s) => p === s || p.startsWith(`${s}/`));
+
+/** Überschneidung zweier Schreib-Scopes ohne Sammelpfade. Leerer Scope (nicht angegeben) bleibt exklusiv. */
+export function konflikt(meine: string[], andere: string[]): boolean {
+  if (!meine.length || !andere.length) return true;
+  return gemeinsam(meine.filter((p) => !istSammel(p)), andere.filter((p) => !istSammel(p)));
+}
+
+/** SIN-919: Pfad-Vorschlag aus der Beschreibung (Pfade in Backticks), für Issues ohne `worker-pfade`. Leer = unklar. */
+export function vorschlagPfade(text: string | null | undefined): string[] {
+  const treffer = [...String(text ?? "").matchAll(/`([^`\s]+)`/g)].map((m) => m[1].replace(/[:,.]+$/, ""));
+  const pfade = treffer.filter((p) => /^(src|scripts|docs|e2e|supabase|public|\.github)\//.test(p) && !p.includes("..") && /^[\w.\-/[\]()]+$/.test(p));
+  return [...new Set(pfade)].sort();
+}
+
 /** Expliziter Schreib-Scope statt aus beiläufigen Links vermuteter Dateien; unbekannt bleibt exklusiv. */
 export function schreibPfade(i: Pick<LinearIssue, "description">): string[] {
   // Linear maskiert Markdown in der API-Antwort (\[, \], \_); der Block muss trotzdem lesbar bleiben (SIN-896).
@@ -44,8 +68,8 @@ export function schreibPfade(i: Pick<LinearIssue, "description">): string[] {
     const p: unknown = m ? JSON.parse(m[1]) : null;
     if (!Array.isArray(p) || !p.length || !p.every(x => typeof x === "string" && /^[\w.\-/[\]()]+$/.test(x) && !x.startsWith("/") && !x.split("/").some(s => s === "." || s === ".." || !s))) return [];
     const pfade = p as string[];
-    // Steuerung wird auch bei verschiedenen Dateien nacheinander geändert.
-    return pfade.some(x => /^(\.github|scripts\/(loop|waechter|vorarbeiter)|src\/lib\/(loop|waechter))(\/|$)/.test(x)) ? [...pfade, "@steuerung"] : pfade;
+    // Steuerung (Gate, Dispatcher, Loop) wird auch bei verschiedenen Dateien nacheinander geändert (SIN-919: andere Workflows nicht).
+    return pfade.some(istSteuerung) ? [...pfade, "@steuerung"] : pfade;
   } catch {
     return [];
   }
@@ -60,10 +84,7 @@ export function parallelAuswahl(kandidaten: LinearIssue[], laufend: LinearIssue[
     const b = bereichVon(i.labels);
     if (b && [...laufend, ...wahl].some(a => bereichVon(a.labels) === b)) continue;
     const meine = schreibPfade(i);
-    if ([...laufend, ...offenePrs, ...wahl].some(a => {
-      const andere = schreibPfade(a);
-      return !meine.length || !andere.length || gemeinsam(meine, andere);
-    })) continue;
+    if ([...laufend, ...offenePrs, ...wahl].some(a => konflikt(meine, schreibPfade(a)))) continue;
     wahl.push(i);
   }
   return wahl;
