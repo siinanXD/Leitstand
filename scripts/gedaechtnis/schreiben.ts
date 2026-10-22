@@ -325,7 +325,9 @@ async function lernDateien(jetzt: Date): Promise<Dateien> {
     // Ein Tag Vorlauf, damit der erste Tag des Fensters vollständig ist.
     const von = new Date(jetzt.getTime() - (TAGE_FEHLER + 1) * 86_400_000).toISOString();
     const zeilen = (await supabase(`loop_events?select=created_at,project,issue,status,grund&status=eq.fehler&created_at=gte.${von}&order=created_at.desc&limit=2000`)) as FehlerZeile[];
-    Object.assign(out, fehlerNotizen(zeilen, tagBerlin(new Date(jetzt.getTime() - TAGE_FEHLER * 86_400_000))), lehrenAusFehlern(zeilen, jetzt));
+    const ab = tagBerlin(new Date(jetzt.getTime() - TAGE_FEHLER * 86_400_000));
+    // Lehren nur aus Tagen, für die es eine Fehler-Notiz gibt; sonst zeigt [[Fehler/<Tag>]] des Vorlauftags ins Leere.
+    Object.assign(out, fehlerNotizen(zeilen, ab), lehrenAusFehlern(zeilen.filter((z) => tagBerlin(new Date(z.created_at)) >= ab), jetzt));
   } catch (e) {
     console.warn(`Warnung: Fehler-Notizen übersprungen: ${(e as Error).message}`);
   }

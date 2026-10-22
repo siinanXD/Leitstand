@@ -25,6 +25,7 @@ test("Derselbe Grund dreimal wird zur Lehre mit Link auf den Tag", () => {
   const text = Object.values(d)[0];
   assert.match(text, /typ: lehre/);
   assert.match(text, /\[\[Fehler\/2026-10-20\]\]/);
+  assert.equal(eigenschaften(text).datum, "2026-10-20", "Datum = erster Tag des Musters, nicht der Lauftag");
 });
 
 test("LEHREN.md: nur Zeilen mit Pfeil werden Lehren", () => {

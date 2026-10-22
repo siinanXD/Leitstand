@@ -47,7 +47,8 @@ export function lehrenAusFehlern(zeilen: FehlerZeile[], jetzt: Date): Dateien {
     [...tage].flatMap(([grund, je]) => {
       const n = [...je.values()].reduce((s, x) => s + x, 0);
       if (n < WIEDERHOLUNG) return [];
-      const kopfZeilen = kopf("lehre", "alle", tagBerlin(jetzt), "gilt", `Grund trat ${n}× auf: ${kurz(grund, 70)}`, QUELLE_FEHLER);
+      // Datum = erster Tag des Musters, damit es nicht bei jedem Lauf wechselt.
+      const kopfZeilen = kopf("lehre", "alle", [...je.keys()].sort()[0] ?? tagBerlin(jetzt), "gilt", `Grund trat ${n}× auf: ${kurz(grund, 70)}`, QUELLE_FEHLER);
       const text = [...kopfZeilen, `# ${kurz(grund, 80)}`, "", `${n}× in roten Läufen. Ursache klären, bevor derselbe Lauf wieder startet.`, "", ...[...je.keys()].sort().map((t) => `- [[Fehler/${t}]]`), ""].join("\n");
       return [[`Lehren/Wiederholt - ${dateiname(kurz(grund, 60))}.md`, text] as [string, string]];
     }),
