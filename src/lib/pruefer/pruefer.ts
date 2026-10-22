@@ -12,6 +12,8 @@ export const MARKER = "<!-- pruefer-zweites-modell -->";
 export const KOSTENDECKEL_USD = 0.1;
 // Gemeinsames Budget für Reasoning und fertiges Review; im Kostendeckel mitgerechnet.
 export const MAX_AUSGABE_TOKENS = 6000;
+// SIN-970: Claude-Rückfall ohne Reasoning-Anteil, aber große PRs mit vielen Haken brauchen mehr als 6000 Antwort-Tokens.
+export const MAX_AUSGABE_TOKENS_RUECKFALL = 16000;
 export const PROBEN_DATEI = "docs/abnahme.yml";
 const nachAktivierung = (text: string) => text.startsWith("[nach Aktivierung] ") || text.startsWith("\\[nach Aktivierung\\] ");
 const SCHWEREN: Schwere[] = ["hoch", "mittel", "niedrig"];

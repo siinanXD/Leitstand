@@ -60,6 +60,7 @@ global.fetch = async (url, init) => {
   if (url.includes('anthropic.com')) {
     assert.equal(body.tools, undefined);
     assert.equal(body.tool_choice, undefined);
+    assert.equal(body.max_tokens, 16000, 'Claude-Rückfall braucht eigenes, größeres Antwortbudget (SIN-970)');
     assert.equal(body.output_config.format.type, 'json_schema');
     assert.deepEqual(body.output_config.format.schema.required, ['bestanden', 'funde', 'haken']);
     if (mode === 'fallback-error') return new Response('invalid_request sk-fixture-anthropic', {status:400});

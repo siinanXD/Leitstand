@@ -12,7 +12,7 @@ import { lesePrDiff } from "../../src/lib/pruefer/git";
 import { ladeAuftrag, standMarker } from "../loop/beleg-stand.mjs";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { ANWEISUNG, MAX_AUSGABE_TOKENS, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, geaenderteZeilen, hatHoch, hatRisiko, kommentar, kostenUsd, leseAntwort, leseVorfunde, lesePreise, MARKER, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Folgerunde, type Reviewer } from "../../src/lib/pruefer/pruefer";
+import { ANWEISUNG, MAX_AUSGABE_TOKENS, MAX_AUSGABE_TOKENS_RUECKFALL, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, geaenderteZeilen, hatHoch, hatRisiko, kommentar, kostenUsd, leseAntwort, leseVorfunde, lesePreise, MARKER, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Folgerunde, type Reviewer } from "../../src/lib/pruefer/pruefer";
 
 const env = process.env;
 const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
@@ -53,7 +53,7 @@ async function claude(text: string): Promise<{ ergebnis: Ergebnis; ein: number; 
     headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: CLAUDE_MODELL,
-      max_tokens: MAX_AUSGABE_TOKENS,
+      max_tokens: MAX_AUSGABE_TOKENS_RUECKFALL,
       system: ANWEISUNG,
       messages: [{ role: "user", content: text }],
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
@@ -63,7 +63,7 @@ async function claude(text: string): Promise<{ ergebnis: Ergebnis; ein: number; 
   const body = await res.text();
   if (!res.ok) throw apiFehler("Anthropic", res.status, body, [env.OPENAI_API_KEY ?? "", env.ANTHROPIC_API_KEY ?? ""]);
   const j = leseApiJson(body, "Anthropic") as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
-  if (j?.stop_reason === "max_tokens") throw new Error(`Anthropic: Tokenbudget (${MAX_AUSGABE_TOKENS}) ausgeschöpft; kein vollständiger Review`);
+  if (j?.stop_reason === "max_tokens") throw new Error(`Anthropic: Tokenbudget (${MAX_AUSGABE_TOKENS_RUECKFALL}) ausgeschöpft; kein vollständiger Review`);
   if (j?.stop_reason === "refusal") throw new Error("Anthropic: Review abgelehnt (refusal)");
   const textAntwort = j?.content?.filter((c) => c.type === "text").map((c) => c.text ?? "").join("") ?? "";
   return { ergebnis: leseAntwort(textAntwort), ein: j.usage?.input_tokens ?? 0, aus: j.usage?.output_tokens ?? 0 };
