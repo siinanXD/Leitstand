@@ -615,7 +615,7 @@
   titel: Bestandsabgleich CLI-Fixture durch CI geprüft - kein Live-Inventar (SIN-858)
   art: http
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?event=push&branch=main&status=completed&per_page=1
-  enthaelt: '"success"'
+  enthaelt: '"conclusion": "success"'
 
 - id: leitstand-merge-aktuelle-belege
   produkt: leitstand
@@ -630,7 +630,7 @@
   titel: CI - Merge-Phasen, Gate und Reparatur-CLI auf main geprüft (SIN-854, kein Live-Nachweis)
   art: http
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?event=push&branch=main&status=completed&per_page=1
-  enthaelt: '"success"'
+  enthaelt: '"conclusion": "success"'
 
 - id: leitstand-bestand-pagination
   produkt: leitstand
@@ -672,7 +672,7 @@
   titel: Phasen-Regression mit Originalreviews in CI geprüft (SIN-877, kein Live-Review)
   art: http
   url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/build.yml/runs?event=push&branch=main&status=completed&per_page=1
-  enthaelt: '"success"'
+  enthaelt: '"conclusion": "success"'
 
 # SIN-896
 - id: leitstand-bereichs-spuren

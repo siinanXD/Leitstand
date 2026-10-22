@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
+import { bewerteText } from "../abnahme/abnahme";
 import { ERLAUBT, pruefeLauf } from "./lauf";
 
 // Fehlerklassen-Tests (SIN-967): wiederkehrende Fehler als feste Prüfung statt nur als Zeile in LEHREN.md.
@@ -39,5 +40,6 @@ test("Probe-Text der drei CI-Proben passt auf die echte API-Antwort (geprüft ge
   const proben = readFileSync(new URL("../../../docs/abnahme.yml", import.meta.url), "utf8");
   const ci = [...proben.matchAll(/url: [^\n]*build\.yml\/runs\?[^\n]*\n\s+enthaelt: '([^']+)'/g)].map((m) => m[1]);
   assert.equal(ci.length, 3);
-  for (const text of ci) for (const antwort of formate) assert.ok(antwort.includes(text), `„${text}“ fehlt in der Antwort`);
+  // Bewertet wie scripts/abnahme (bewerteText), nicht mit einem eigenen Vergleich.
+  for (const text of ci) for (const antwort of formate) assert.ok(bewerteText({ id: "ci", produkt: "leitstand", titel: "ci", art: "http", enthaelt: text }, antwort).ok, `„${text}“ fehlt in der Antwort`);
 });
