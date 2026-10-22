@@ -12,7 +12,7 @@ export const ERLAUBT: Regel[] = [
   { repo: "siinanXD/Content-Agent-Lernapp", workflow: "content-publish.yml", eingaben: { keyword: /^[\p{L} /-]{3,40}$/u, dry_run: /^true$/ } },
   { repo: "siinanXD/Content-Agent-Lernapp", workflow: "run-task.yml", eingaben: { task: /^(judge-backfill|cost-report|goldset-indkfl|safety-sample|content-bereinigen)$/, kurs: /^[\p{L} /-]{0,40}$/u, dry_run: /^(true|false)$/ } },
   { repo: "siinanXD/Leitstand", workflow: "migrationen.yml", eingaben: { dry_run: /^true$/ } },
-  { repo: "siinanXD/Leitstand", workflow: "abnahme.yml", eingaben: {} },
+  { repo: "siinanXD/Leitstand", workflow: "abnahme.yml", eingaben: { dry_run: /^(true|false)$/ } },
 ];
 
 /** Pflicht-Eingaben, die immer gesetzt sein müssen (sonst würde der Workflow-Standard greifen). */
@@ -20,6 +20,8 @@ const PFLICHT: Record<string, string[]> = {
   "content-publish.yml": ["keyword", "dry_run"],
   "run-task.yml": ["task"],
   "migrationen.yml": ["dry_run"],
+  // SIN-967: Standard ist true; ohne Eingabe wäre der Lauf wirkungslos.
+  "abnahme.yml": ["dry_run"],
 };
 
 /** `content-bereinigen` schreibt in Produktion: über die Lauf-Spur nur als Trockenlauf. */
