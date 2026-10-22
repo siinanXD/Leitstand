@@ -706,6 +706,10 @@
   enthaelt: hatRisiko
 
 # SIN-919: Sammelpfade und normale Workflows sind kein Schreibkonflikt
+# Live-Beleg nach Aktivierung (24 h, Anteil `scope_konflikt` soll unter 30 % liegen):
+#   select round(100.0 * count(*) filter (where grund like 'scope_konflikt%') / nullif(count(*), 0), 1) as anteil_prozent
+#   from loop_events
+#   where projekt = 'leitstand' and step = 'dispatch' and created_at > now() - interval '24 hours';
 - id: parallel-sammelpfade
   produkt: leitstand
   titel: Sammelpfade zählen nicht als Schreibkonflikt
