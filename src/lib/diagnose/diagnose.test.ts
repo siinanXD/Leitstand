@@ -81,8 +81,10 @@ test("Sperre: höchstens eine Diagnose je Issue/Workflow in 6 h", () => {
 
 const diagnoseWorkflow = readFileSync(".github/workflows/diagnose.yml", "utf8");
 
-test("SIN-907: Diagnose-Dateiwerkzeug nutzt keine wirkungslose Pfadfreigabe", () => {
+test("SIN-907: Agent liefert strukturiert, nur der Workflow schreibt das Ergebnisartefakt", () => {
   const tools = diagnoseWorkflow.match(/--allowedTools \"([^\"]+)\"/)?.[1].split(",") ?? [];
-  assert.deepEqual(tools.filter((tool) => tool === "Write" || tool.startsWith("Write(")), ["Write"], "nur der dokumentierte Write-Toolname gibt das Ergebnisartefakt frei");
-  assert.match(diagnoseWorkflow, /Schreibe diagnose-ergebnis\.json im Repo-Wurzelverzeichnis\. Sonst nichts ändern\./);
+  assert.deepEqual(tools.filter((tool) => tool === "Write" || tool.startsWith("Write(")), [], "der Agent erhält kein Schreibwerkzeug");
+  assert.match(diagnoseWorkflow, /--json-schema '\$\{\{ steps\.diagnose-schema\.outputs\.json \}\}'/);
+  assert.match(diagnoseWorkflow, /DIAGNOSE_ERGEBNIS: \$\{\{ steps\.diagnose\.outputs\.structured_output \}\}/);
+  assert.match(diagnoseWorkflow, /printf '%s\\n' "\$DIAGNOSE_ERGEBNIS" > diagnose-ergebnis\.json/);
 });
