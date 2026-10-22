@@ -16,3 +16,11 @@ test("Zusätzliche Dokurechte sind auf zwei Context7-Tools und offizielle Web-Do
   ]);
   assert.doesNotMatch(workflow, /CONTEXT7_API_KEY|bypassPermissions|dangerously-skip-permissions/);
 });
+
+test("Worker darf das Gedächtnis lesen, das der Prompt verlangt, und sonst kein gh api (SIN-615)", () => {
+  const workflow = readFileSync(".github/workflows/claude.yml", "utf8");
+  const tools = workflow.match(/--allowedTools "([^"]+)"/)?.[1].split(",") ?? [];
+  assert.deepEqual(tools.filter((t) => t.startsWith("Bash(gh api")), ["Bash(gh api repos/siinanXD/gedaechtnis/contents:*)"]);
+  // Jeder gh-api-Aufruf im Prompt muss von dieser Freigabe gedeckt sein, sonst verweigert der Headless-Lauf ihn still.
+  for (const m of workflow.matchAll(/gh api (\S+)/g)) assert.ok(m[1].startsWith("repos/siinanXD/gedaechtnis/contents"), m[1]);
+});
