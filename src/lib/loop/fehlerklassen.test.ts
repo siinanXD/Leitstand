@@ -27,6 +27,11 @@ test("Test: Automatik startet keinen Workflow ungewollt als Trockenlauf (gh work
   }
 });
 
+test("Test: Kein Workflow vergleicht github.event.workflow_run.name (Laufname statt Workflowname, SIN-971)", () => {
+  // Mit `run-name:` liefert workflow_run.name den Laufnamen („pruefer PR 381“), nicht den Workflow; Vergleiche darauf sind immer falsch.
+  for (const [datei, yml] of workflows) assert.doesNotMatch(yml, /workflow_run\.name\s*[!=]=/, `${datei} vergleicht workflow_run.name, besser workflow_run.path`);
+});
+
 test("CI-Proben in abnahme.yml hängen nicht am Head-SHA (SIN-967)", () => {
   const proben = readFileSync(new URL("../../../docs/abnahme.yml", import.meta.url), "utf8");
   assert.doesNotMatch(proben, /build\.yml\/runs\?[^\n]*head_sha=/, "head_sha macht die Probe direkt nach einem Merge rot");

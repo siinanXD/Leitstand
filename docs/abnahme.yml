@@ -924,3 +924,11 @@
   art: datei
   pfad: scripts/pruefer/pruefer.ts
   enthaelt: "max_tokens: MAX_AUSGABE_TOKENS_RUECKFALL"
+
+# SIN-971: repair.yml erkennt den Prüfer am Workflow-Pfad, nicht am Laufnamen
+- id: repair-erkennt-pruefer
+  produkt: leitstand
+  titel: Reparatur startet auch nach Prüfer-Funden (Workflow-Pfad statt Laufname)
+  art: datei
+  pfad: .github/workflows/repair.yml
+  enthaelt: "github.event.workflow_run.path == '.github/workflows/pruefer.yml'"
