@@ -18,6 +18,10 @@ Ganz oben auf der Startseite stehen drei Kacheln mit Wort, Zahl und 8-Wochen-Ver
 
 `zeileText()` / `zahlText()` liefern die Schreibweise für `00 Wo stehen wir.md` und die Content-Landkarte-Routine. Eine Zeile pro Kennzahl.
 
+## Messlauf (SIN-969)
+
+`scripts/kennzahlen/woche.ts` läuft als Schritt in `waechter.yml` und schreibt die laufende Woche per Upsert nach `kennzahlen_woche` (Rechnung: `wochenZeilen()`). Ohne Nenner keine Zeile. Kosten kommen aus `pipeline_run_costs`, gemergte PRs aus GitHub (zurückgenommen = späterer PR „Revert …“ mit `#<Nr>`, repariert = „fix …“ mit `#<Nr>`, je binnen 48 h). Einheiten liest das Skript aus der Sicht `kennzahlen_einheiten` der Lern-App-Datenbank mit den Spalten `bestanden_am`, `veroeffentlicht`, `erster_durchlauf_bestanden`, `quelle_kurs_passend`, `in_roter_probe`; fehlt die Sicht, gibt es nur die Zeile „Fehlgeschlagene Änderungen“ und eine Warnung. Grenze: rote Proben werden den PRs noch nicht zugeordnet.
+
 ## Offen
 
 - Der Messlauf, der `kennzahlen_woche` füllt, braucht Lesezugriff auf die Lern-App-Datenbank (Richter-Ergebnisse, `pipeline_run_costs`) und Langfuse. Bis dahin zeigt die Kachel „noch keine Zahl“. Aufgabe für Sinan, siehe PR.

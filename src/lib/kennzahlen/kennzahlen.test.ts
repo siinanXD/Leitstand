@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { alle, fehlgeschlagen, reihe, verkaufsfertig, wochenStart, zahlText, zeileText, type Einheit } from "./kennzahlen";
+import { alle, fehlgeschlagen, reihe, verkaufsfertig, wochenStart, wochenZeilen, zahlText, zeileText, type Einheit } from "./kennzahlen";
 
 const ok: Einheit = { veroeffentlicht: true, ersterDurchlaufBestanden: true, quelleKursPassend: true, inRoterProbe: false };
 
@@ -49,4 +49,20 @@ test("Texte: Prozent, Euro, ohne Daten ehrlich", () => {
   assert.equal(k.length, 3);
   assert.equal(zahlText(k[1]), "1,75 €");
   assert.equal(zeileText(k[0]), "Verkaufsfertig: noch keine Zahl");
+});
+
+test("wochenZeilen: Kennzahl mit Nenner > 0 bekommt eine Zeile, ohne Nenner keine", () => {
+  const woche = "2026-10-12";
+  const einheiten: Einheit[] = [
+    { ...ok, bestandenAm: "2026-10-13T10:00:00Z" },
+    { ...ok, bestandenAm: "2026-10-14T10:00:00Z", inRoterProbe: true },
+    { ...ok, bestandenAm: "2026-10-05T10:00:00Z" },
+  ];
+  const kosten = [{ am: "2026-10-13T08:00:00Z", eur: 3 }, { am: "2026-10-15T08:00:00Z", eur: 1.5 }, { am: "2026-10-06T08:00:00Z", eur: 99 }];
+  assert.deepEqual(wochenZeilen(woche, einheiten, kosten, []), [
+    { kennzahl: "verkaufsfertig", woche, zaehler: 2, nenner: 3 },
+    { kennzahl: "kosten_je_einheit", woche, zaehler: 4.5, nenner: 2 },
+  ]);
+  const prs = [{ gemergtAm: "2026-10-13T10:00:00Z", zurueckgenommenAm: "2026-10-13T12:00:00Z" }, { gemergtAm: "2026-10-14T10:00:00Z" }, { gemergtAm: "2026-10-01T10:00:00Z" }];
+  assert.deepEqual(wochenZeilen(woche, [], kosten, prs), [{ kennzahl: "fehlgeschlagene_aenderungen", woche, zaehler: 1, nenner: 2 }]);
 });

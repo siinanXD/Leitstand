@@ -53,6 +53,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: npx tsx scripts/kennzahlen/durchstich.ts
+      # SIN-969: Wochenwerte der drei Kennzahlen (Upsert, idempotent). Ein Fehler hier stoppt den Wächter nicht.
+      - name: Kennzahlen-Wochenwerte berechnen
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/kennzahlen/woche.ts
       # SIN-967: GitHub lässt geplante Läufe oft aus (abnahme.yml lief 41-mal in 7 Tagen statt stündlich).
       # Der Wächter läuft per externem Takt alle 15 Min und stößt die Abnahme an, wenn ihr letzter Lauf älter als 55 Min ist.
       - name: Abnahme anstoßen, wenn der Stundenlauf ausfiel
