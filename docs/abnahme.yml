@@ -813,3 +813,11 @@
   art: datei
   pfad: .github/workflows/claude.yml
   enthaelt: Bash(npx tsx scripts/loop/auftrag.ts:*)
+
+# Prüfer: abgehakte Auftragspunkte sperren Folge-PRs nicht
+- id: pruefer-erledigte-haken
+  produkt: leitstand
+  titel: Prüfer wertet im Auftrag abgehakte Punkte als belegt, offene bleiben Pflicht
+  art: datei
+  pfad: src/lib/pruefer/pruefer.ts
+  enthaelt: bereits als erledigt markiert

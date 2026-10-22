@@ -48,3 +48,4 @@ Nur Quellmetadaten auf Secrets prüfen reicht nicht → auch die frei eingegeben
 - SIN-877: Fehlende Codestelle ist kein Phasennachweis; nur explizit klassifizierte Nachweise an aktuellen Nachaktivierungs-Haken zurückstellen, alte Funde konservativ lassen.
 - SIN-903: `loop_events.status` hat einen Check (start/ok/fehler/uebersprungen); ein anderer Wert ("failed") lässt den ganzen Sammel-Insert scheitern → nur erlaubte Werte schreiben, Test gegen die Liste.
 - Worker soll Linear per `curl … $LINEAR_API_KEY` lesen → claude-code-action lehnt Befehle mit Umgebungsvariablen ab; Key gehört in ein Skript (`scripts/loop/auftrag.ts`), das in allowedTools steht (SIN-945).
+- Folge-PR zu einem schon gemergten Auftrag (SIN-907 #366) blieb am Prüfer hängen, weil er auch `- [x]`-Haken erneut im Diff verlangte → abgehakte Punkte gelten als belegt (früherer PR), nur `- [ ]` ist vor dem Merge Pflicht (`bewerte` in `pruefer.ts`).
