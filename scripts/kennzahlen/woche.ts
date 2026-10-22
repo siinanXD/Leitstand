@@ -3,6 +3,7 @@
  * Berechnet die laufende Woche (Montag, UTC) mit src/lib/kennzahlen/kennzahlen.ts und schreibt per Upsert in kennzahlen_woche
  * (on_conflict=produkt,kennzahl,woche; idempotent). Ohne Nenner keine Zeile. DRY_RUN=1: nur Ausgabe.
  * Quellen: pipeline_run_costs und die Sicht kennzahlen_einheiten (Lern-App-Datenbank, Spalten siehe Entscheidungsdatei), GitHub-PRs.
+ * Lesen und Schreiben nutzen dasselbe SUPABASE_URL: dieses Projekt muss die Sicht und pipeline_run_costs enthalten (Lern-App-Datenbank).
  * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GH_TOKEN (lesend), KENNZAHLEN_REPOS (Standard Leitstand und Lern-App), KENNZAHLEN_PRODUKT (Standard lernapp).
  */
 import { wochenStart, wochenZeilen, type Aenderung, type Einheit, type Kosten } from "../../src/lib/kennzahlen/kennzahlen";
@@ -44,9 +45,9 @@ async function kosten(ab: string): Promise<Kosten[]> {
   return z.flatMap((r) => (Number.isFinite(Number(r.cost_eur)) && r.cost_eur !== null && typeof r.created_at === "string" ? [{ am: r.created_at, eur: Number(r.cost_eur) }] : []));
 }
 
-type Pr = { number: number; title: string; body: string | null; merged_at: string | null };
+type Pr = { number: number; title: string; body: string | null; merged_at: string | null; labels?: { name: string }[] };
 
-/** Gemergte PRs ab `ab`. Ein späterer PR binnen 48 h, der `#<nr>` nennt, nimmt zurück (Titel „Revert“) oder repariert (Titel „fix“). shortcut: eine Seite mit 100 je Repo, rote Probe je PR nicht zuordenbar, bei Bedarf ausbauen. */
+/** Gemergte PRs ab `ab`. Ein späterer PR binnen 48 h, der `#<nr>` nennt, nimmt zurück (Titel „Revert“) oder repariert (Titel „fix“); ein Label `repair:*` am PR selbst zählt als repariert. shortcut: eine Seite mit 100 je Repo, rote Probe je PR nicht zuordenbar, bei Bedarf ausbauen. */
 async function aenderungen(ab: number): Promise<Aenderung[]> {
   const aus: Aenderung[] = [];
   for (const repo of REPOS) {
@@ -59,7 +60,7 @@ async function aenderungen(ab: number): Promise<Aenderung[]> {
     for (const p of prs) {
       const nennt = (q: Pr) => new RegExp(`#${p.number}\\b`).test(`${q.title} ${q.body ?? ""}`);
       const spaeter = (muster: RegExp) => prs.find((q) => q.number !== p.number && Date.parse(q.merged_at!) > Date.parse(p.merged_at) && muster.test(q.title) && nennt(q))?.merged_at ?? null;
-      aus.push({ gemergtAm: p.merged_at, zurueckgenommenAm: spaeter(/^revert/i), repariertAm: spaeter(/^fix/i) });
+      aus.push({ gemergtAm: p.merged_at, zurueckgenommenAm: spaeter(/^revert/i), repariertAm: p.labels?.some((l) => l.name.startsWith("repair:")) ? p.merged_at : spaeter(/^fix/i) });
     }
   }
   return aus;
