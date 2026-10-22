@@ -39,3 +39,19 @@ test("Dispatcher-Plan: Text ergänzen, unklare Todo-Issues markieren, markierte 
   assert.deepEqual(plan.map((a) => [a.identifier, a.label, a.beschreibung !== null]), [["SIN-1", true, false], ["SIN-2", false, true]]);
   assert.ok(plan[1]!.beschreibung!.includes("[nach Aktivierung] Lauf-Link nach dem Merge"));
 });
+
+test("Test: maskierter Marker zählt als Marker, kein zweiter davor, kein Neuschreiben", () => {
+  const linear = "## Fertig, wenn\n\n- [ ] Test: A → B\n- [ ] \\[nach Aktivierung\\] Zählung aus `loop_events`\n\n<!-- testnamen: \\[\"Test: A → B\"\\] -->\n";
+  const p = pruefeKriterien(linear);
+  assert.deepEqual(p.ergaenzt, []);
+  assert.equal((p.beschreibung.match(/nach Aktivierung/g) ?? []).length, 1);
+  assert.deepEqual(kriterienPlan([{ identifier: "SIN-1", description: linear, stateType: "unstarted", labels: ["claude"] }]), []);
+});
+
+test("Test: Mehrfach-Marker werden auf einen zurückgeführt", () => {
+  const kaputt = "- [ ] Test: A\n- [ ] \\[nach Aktivierung\\] \\[nach Aktivierung\\] \\[nach Aktivierung\\] 1 Woche lang 0 Läufe\n";
+  const p = pruefeKriterien(kaputt);
+  assert.match(p.beschreibung, /- \[ \] \[nach Aktivierung\] 1 Woche lang 0 Läufe/);
+  assert.equal((p.beschreibung.match(/nach Aktivierung/g) ?? []).length, 1);
+  assert.equal(kriterienPlan([{ identifier: "SIN-2", description: kaputt, stateType: "unstarted", labels: ["claude"] }]).length, 1);
+});
