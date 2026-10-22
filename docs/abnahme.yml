@@ -897,6 +897,15 @@
   art: datei
   pfad: .github/workflows/repair.yml
   enthaelt: "github.event.workflow_run.path == '.github/workflows/pruefer.yml'"
+
+# SIN-891: Worker darf Läufe lesen
+- id: worker-liest-laeufe
+  produkt: leitstand
+  titel: claude.yml erlaubt gh run list für den Worker
+  art: datei
+  pfad: .github/workflows/claude.yml
+  enthaelt: "Bash(gh run list:*)"
+
 # Aufräumen (SIN-958)
 - id: leitstand-markt-workflow-entfernt
   produkt: leitstand
