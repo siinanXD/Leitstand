@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, gemergteIds, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -274,4 +274,11 @@ test("Test: Issue ohne gemergten PR → unverändert", () => {
   assert.equal(wartetAufLiveBeleg(lauf, ["SIN-904"]), false);
   assert.deepEqual(laufende([lauf], belegung(["SIN-904"])).map((i) => i.identifier), ["SIN-913"]);
   assert.deepEqual(waehle([todo], new Set(), 2, belegung([])).map((i) => i.identifier), ["SIN-913"]);
+});
+
+test("SIN-918: gemergter „Part of“-PR zählt; nur Live-Haken offen → kein Neustart", () => {
+  const prs = [{ title: "fix(loop): Teil (SIN-918)", merged_at: "2026-10-21T18:00:00Z" }, { title: "fix(x): offen (SIN-1)", merged_at: null }];
+  assert.deepEqual(gemergteIds(prs), ["SIN-918"]);
+  assert.deepEqual(waehle([issue({ identifier: "SIN-918", description: LIVE })], new Set(), 2, belegung(gemergteIds(prs))), []);
+  assert.deepEqual(waehle([issue({ identifier: "SIN-918", description: NORMAL })], new Set(), 2, belegung(gemergteIds(prs))).map((i) => i.identifier), ["SIN-918"], "normaler Haken offen: Folge-Worker");
 });
