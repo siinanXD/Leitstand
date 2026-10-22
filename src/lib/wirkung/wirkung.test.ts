@@ -84,8 +84,8 @@ test("Fokus (SIN-627): Marketing, Trend und Visionär ruhen mit Grund, der Knopf
   assert.equal(rollenStand(fokus, [alt], JETZT)[0].pausiert, true);
 });
 
-test("Fokus (SIN-627): marketing.yml und trend.yml haben keinen Zeitplan mehr, workflow_dispatch bleibt", () => {
-  for (const f of ["marketing", "trend"]) {
+test("Fokus (SIN-627): marketing.yml hat keinen Zeitplan mehr, workflow_dispatch bleibt", () => {
+  for (const f of ["marketing"]) {
     const text = readFileSync(`.github/workflows/${f}.yml`, "utf8");
     assert.doesNotMatch(text, /^\s*schedule:/m);
     assert.match(text, /^\s*workflow_dispatch:/m);

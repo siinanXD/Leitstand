@@ -12,7 +12,7 @@ export const WIRKUNG_AB = Date.parse("2026-10-15T00:00:00Z");
 
 /** SIN-627 Fokus: bis die Lern-App v1 steht, ruhen diese Rollen (Zeitplan aus, `workflow_dispatch` bleibt). Der Knopf „Wieder anschalten“ hebt es auf. */
 export const FOKUS_AB = Date.parse("2026-10-14T00:00:00Z");
-export const FOKUS_PAUSE: readonly string[] = ["marketing", "trend", "visionaer"];
+export const FOKUS_PAUSE: readonly string[] = ["marketing", "visionaer"];
 export const FOKUS_GRUND = "pausiert bis MAF v1";
 
 export type RollenEreignis = { agent: string | null; step: string | null; status: string | null; created_at: string; wirkung?: number | null; cost?: number | null; grund?: string | null };

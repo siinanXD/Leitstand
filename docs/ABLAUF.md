@@ -15,8 +15,6 @@ flowchart LR
   hausmeister["Hausmeister"]
   anwalt["Anwalt"]
   gedaechtnis["Gedächtnis"]
-  botadvisor["Bot Advisor"]
-  trend["Trend"]
   ceo --> research
   ceo --> visionaer
   planer --> bauen
@@ -24,7 +22,6 @@ flowchart LR
   bauen --> research
   content --> pruefen
   marketing --> anwalt
-  botadvisor --> pruefen
 ```
 
 Bau-Spuren: Spur A · Claude Max, Spur B · Claude Max, Spur C · API mit Haiku.
@@ -42,5 +39,3 @@ Bau-Spuren: Spur A · Claude Max, Spur B · Claude Max, Spur C · API mit Haiku.
 | Hausmeister | alle 20 Merges (merges_seit_hausmeister) | montags 07:00 | Bash, knip |
 | Anwalt | PR ändert Migrationen, Tracking, Prompts mit Nutzerdaten, Rechtstexte oder Werbemittel | monatlich AVV-Abgleich | GitHub |
 | Gedächtnis | nach jedem Merge | täglich 05:50 | GitHub |
-| Bot Advisor | Sinan beschreibt in einem Satz, was automatisiert werden soll | keins | Gedächtnis, Infisical (nur Namen) |
-| Trend | sonntags (Bewertung); täglich (Sternzuwachs) | sonntags 04:30, täglich Kurzlauf | GitHub-Suche, Hugging Face Hub API, Release-Seiten, Linear, Supabase |

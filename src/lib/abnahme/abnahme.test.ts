@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { FOKUS_PAUSE } from "../wirkung/wirkung";
 import { alarmeAus, bewerteText, bewerteZeilen, einsetzen, ereignisZeile, LOOP_STATUS, parseProben, staende, type Probe } from "./abnahme";
 
 const H = 3_600_000;
@@ -18,8 +19,10 @@ test("docs/abnahme.yml ist lesbar und hat mindestens 10 Proben für Leitstand, G
 test("docs/abnahme.yml hat für jede Rolle aus agents.json eine Ereignis-Probe (SIN-830)", () => {
   const ids = new Set(parseProben(readFileSync("docs/abnahme.yml", "utf8")).map((p) => p.id));
   const { rollen } = JSON.parse(readFileSync("docs/autonomy/agents.json", "utf8")) as { rollen: { id: string }[] };
-  assert.ok(rollen.length >= 13);
-  for (const r of rollen) assert.ok(ids.has(`leitstand-rolle-${r.id}`), r.id);
+  assert.ok(rollen.length >= 11);
+  // Ausgenommen (SIN-958): pausierte Rollen (Fokus) und Research, das als Skill im Worker läuft und kein eigenes Ereignis schreibt.
+  const ohneProbe = new Set([...FOKUS_PAUSE, "research"]);
+  for (const r of rollen.filter((x) => !ohneProbe.has(x.id))) assert.ok(ids.has(`leitstand-rolle-${r.id}`), r.id);
 });
 
 test("parseProben: Felder, Anführungszeichen, Kommentare; Fehler bei doppelter id und unbekannter Art", () => {
