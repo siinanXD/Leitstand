@@ -21,6 +21,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
+import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
 import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
@@ -78,6 +79,8 @@ async function ereignis(step: string, status: "start" | "ok" | "fehler" | "ueber
     return;
   }
   if (DRY) return;
+  const projekt = extra.projekt ?? "leitstand";
+  if (istLaufzustand(step, status) && istWiederholung(await letztesEreignis(projekt, step, extra.issue ?? null), { step, status, grund: extra.grund ?? null }, new Date())) return;
   const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : null;
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
     method: "POST",
@@ -87,9 +90,21 @@ async function ereignis(step: string, status: "start" | "ok" | "fehler" | "ueber
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({ project: extra.projekt ?? "leitstand", step, status, grund: extra.grund ?? null, issue: extra.issue ?? null, pr: extra.pr ?? null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
+    body: JSON.stringify({ project: projekt, step, status, grund: extra.grund ?? null, issue: extra.issue ?? null, pr: extra.pr ?? null, run_id: env.GITHUB_RUN_ID ?? null, run_url: runUrl }),
   }).catch((e: Error) => ({ ok: false, status: 0, text: async () => e.message }));
   if (!res.ok) console.log(`::warning::loop_event nicht geschrieben: ${res.status} ${await res.text()}`);
+}
+
+/** Letztes Ereignis zu Projekt, Schritt und Issue; bei Lesefehler `null` (dann wird geschrieben, nichts geht verloren). */
+async function letztesEreignis(projekt: string, step: string, issue: string | null): Promise<LetztesEreignis | null> {
+  const key = env.SUPABASE_SERVICE_ROLE_KEY!;
+  const q = new URLSearchParams({ project: `eq.${projekt}`, step: `eq.${step}`, issue: issue ? `eq.${issue}` : "is.null", select: "status,grund,created_at", order: "created_at.desc", limit: "1" });
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?${q}`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    return res.ok ? (((await res.json()) as LetztesEreignis[])[0] ?? null) : null;
+  } catch {
+    return null;
+  }
 }
 
 // ------------------------------------------------------------------ Reservierung (SIN-832)
