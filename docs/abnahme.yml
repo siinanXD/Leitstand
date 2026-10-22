@@ -916,3 +916,11 @@
   art: datei
   pfad: .github/workflows/waechter.yml
   enthaelt: "default: false"
+
+# SIN-891: Worker darf Läufe lesen
+- id: worker-liest-laeufe
+  produkt: leitstand
+  titel: claude.yml erlaubt gh run list für den Worker
+  art: datei
+  pfad: .github/workflows/claude.yml
+  enthaelt: "Bash(gh run list:*)"
