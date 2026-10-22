@@ -767,6 +767,14 @@
   pfad: src/lib/diagnose/diagnose.ts
   enthaelt: export function vorbefund
 
+# SIN-907: Agent ohne Schreibwerkzeug
+- id: diagnose-structured-output
+  produkt: leitstand
+  titel: Diagnose-Agent liefert Schema-Ausgabe, nur der Workflow schreibt die Ergebnisdatei
+  art: datei
+  pfad: .github/workflows/diagnose.yml
+  enthaelt: steps.diagnose.outputs.structured_output
+
 # SIN-911: öffentliche Texte schlank
 - id: oeffentliche-texte
   produkt: leitstand

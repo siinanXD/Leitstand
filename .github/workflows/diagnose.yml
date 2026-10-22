@@ -46,7 +46,12 @@ jobs:
           DIAGNOSE_WORKFLOW: ${{ github.event.workflow_run.name }}
           DIAGNOSE_RUN_URL: ${{ github.event.workflow_run.html_url }}
         run: npx tsx scripts/diagnose/diagnose.ts ziel
-      - name: Diagnose
+      - id: diagnose-schema
+        name: Ausgabeschema laden
+        if: steps.ziel.outputs.ziel == 'ja'
+        run: echo "json=$(jq -c . docs/diagnose/schema.json)" >> "$GITHUB_OUTPUT"
+      - id: diagnose
+        name: Diagnose
         if: steps.ziel.outputs.ziel == 'ja'
         uses: anthropics/claude-code-action@v1
         with:
@@ -54,16 +59,21 @@ jobs:
           github_token: ${{ github.token }}
           prompt: |
             Lies docs/skills/diagnose/SKILL.md und führe sie für das Ziel in diagnose-ziel.json aus.
-            Schreibe diagnose-ergebnis.json im Repo-Wurzelverzeichnis. Sonst nichts ändern.
+            Gib das Ergebnis ausschließlich gemäß dem JSON-Schema zurück. Ändere keine Dateien.
             Die Tabellen loop_events, loop_snapshot und leitstand_aufgaben liegen lesbar in diagnose-daten.json.
           claude_args: |
             --model claude-sonnet-5-5
             --max-turns 30
-            --allowedTools "Read,Grep,Glob,Write(diagnose-ergebnis.json),Bash(gh run view:*),Bash(gh run list:*),Bash(gh issue view:*),Bash(gh pr view:*)"
+            --allowedTools "Read,Grep,Glob,Bash(gh run view:*),Bash(gh run list:*),Bash(gh issue view:*),Bash(gh pr view:*)"
+            --json-schema '${{ steps.diagnose-schema.outputs.json }}'
       - name: Ergebnis prüfen und melden
         if: steps.ziel.outputs.ziel == 'ja'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-        run: npx tsx scripts/diagnose/diagnose.ts auswerten
+          DIAGNOSE_ERGEBNIS: ${{ steps.diagnose.outputs.structured_output }}
+        run: |
+          test -n "$DIAGNOSE_ERGEBNIS"
+          printf '%s\n' "$DIAGNOSE_ERGEBNIS" > diagnose-ergebnis.json
+          npx tsx scripts/diagnose/diagnose.ts auswerten

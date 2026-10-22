@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { issueAusloeser, kommentar, pruefeDiagnose, vorbefund, workflowAusloeser, type Diagnose, type Ereignis } from "./diagnose";
 
@@ -76,4 +77,14 @@ test("Sperre: höchstens eine Diagnose je Issue/Workflow in 6 h", () => {
   assert.equal(issueAusloeser([...lauefe, diag(7, "SIN-4")], jetzt).length, 1);
   assert.equal(workflowAusloeser("abnahme", "u", [diag(1, null, "workflow:abnahme: art=sinan")], jetzt), null);
   assert.deepEqual(workflowAusloeser("abnahme", "u", [diag(7, null, "workflow:abnahme: art=sinan")], jetzt), { schluessel: "workflow:abnahme", art: "workflow", beleg: ["u"] });
+});
+
+const diagnoseWorkflow = readFileSync(".github/workflows/diagnose.yml", "utf8");
+
+test("SIN-907: Agent liefert strukturiert, nur der Workflow schreibt das Ergebnisartefakt", () => {
+  const tools = diagnoseWorkflow.match(/--allowedTools \"([^\"]+)\"/)?.[1].split(",") ?? [];
+  assert.deepEqual(tools.filter((tool) => tool === "Write" || tool.startsWith("Write(")), [], "der Agent erhält kein Schreibwerkzeug");
+  assert.match(diagnoseWorkflow, /--json-schema '\$\{\{ steps\.diagnose-schema\.outputs\.json \}\}'/);
+  assert.match(diagnoseWorkflow, /DIAGNOSE_ERGEBNIS: \$\{\{ steps\.diagnose\.outputs\.structured_output \}\}/);
+  assert.match(diagnoseWorkflow, /printf '%s\\n' "\$DIAGNOSE_ERGEBNIS" > diagnose-ergebnis\.json/);
 });
