@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { issueAusloeser, kommentar, pruefeDiagnose, vorbefund, workflowAusloeser, type Diagnose, type Ereignis } from "./diagnose";
 
@@ -76,4 +77,12 @@ test("Sperre: höchstens eine Diagnose je Issue/Workflow in 6 h", () => {
   assert.equal(issueAusloeser([...lauefe, diag(7, "SIN-4")], jetzt).length, 1);
   assert.equal(workflowAusloeser("abnahme", "u", [diag(1, null, "workflow:abnahme: art=sinan")], jetzt), null);
   assert.deepEqual(workflowAusloeser("abnahme", "u", [diag(7, null, "workflow:abnahme: art=sinan")], jetzt), { schluessel: "workflow:abnahme", art: "workflow", beleg: ["u"] });
+});
+
+const diagnoseWorkflow = readFileSync(".github/workflows/diagnose.yml", "utf8");
+
+test("SIN-907: Diagnose-Dateiwerkzeug nutzt keine wirkungslose Pfadfreigabe", () => {
+  const tools = diagnoseWorkflow.match(/--allowedTools \"([^\"]+)\"/)?.[1].split(",") ?? [];
+  assert.ok(!tools.some((tool) => tool.startsWith("Write(")), "Write-Pfadmatcher wird von der Action nicht als Dateiwerkzeug freigegeben");
+  assert.match(diagnoseWorkflow, /Schreibe diagnose-ergebnis\.json im Repo-Wurzelverzeichnis\. Sonst nichts ändern\./);
 });
