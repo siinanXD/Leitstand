@@ -26,7 +26,6 @@ import { notizPfad } from "../../src/lib/wochencheck/wochencheck";
 import { abschliessen } from "../../src/lib/gedaechtnis/vault";
 import { fehlerNotizen, lehrenAusDatei, lehrenAusFehlern, type FehlerZeile } from "../../src/lib/gedaechtnis/lernen";
 import { PROJEKTE, alleProjekte } from "../../src/lib/projekte";
-import { gedaechtnisZeilen, type Fund } from "../../src/lib/trend/trend";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
 import { fortschritt } from "../../src/lib/uebersicht-einfach";
 import { aufgabenFuerDich, inArbeitZeilen } from "../../src/lib/uebersicht-b1";
@@ -241,18 +240,8 @@ async function sammle(jetzt: Date): Promise<Eingabe> {
     // shortcut: nur Agenten-Kosten aus loop_events (USD), nicht die Quellen von /api/kosten; bei Bedarf dorthin umstellen.
     kostenUsd: events.length ? kosten : null,
     probleme,
-    trends: trendZeilen(),
     ceo,
   };
-}
-
-/** Trend-Radar 2 (SIN-575): die besten drei Funde aus docs/markt/trends.json; fehlt die Datei, steht nichts in der Notiz. */
-function trendZeilen(): string[] {
-  try {
-    return gedaechtnisZeilen((JSON.parse(readFileSync("docs/markt/trends.json", "utf8")) as { funde?: Fund[] }).funde ?? []);
-  } catch {
-    return [];
-  }
 }
 
 function schreibeLokal(ziel: string, d: Dateien) {
