@@ -53,3 +53,17 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: npx tsx scripts/kennzahlen/durchstich.ts
+      # SIN-967: GitHub lässt geplante Läufe oft aus (abnahme.yml lief 41-mal in 7 Tagen statt stündlich).
+      # Der Wächter läuft per externem Takt alle 15 Min und stößt die Abnahme an, wenn ihr letzter Lauf älter als 55 Min ist.
+      - name: Abnahme anstoßen, wenn der Stundenlauf ausfiel
+        if: ${{ !inputs.dry_run }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+        run: |
+          zuletzt=$(gh api "repos/${{ github.repository }}/actions/workflows/abnahme.yml/runs?per_page=1" -q '.workflow_runs[0].created_at')
+          if [ -z "$zuletzt" ] || [ $(( $(date +%s) - $(date -d "$zuletzt" +%s) )) -gt 3300 ]; then
+            gh workflow run abnahme.yml --repo "${{ github.repository }}" -f dry_run=false
+          else
+            echo "Abnahme lief zuletzt $zuletzt, nichts zu tun"
+          fi
