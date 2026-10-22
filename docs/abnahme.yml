@@ -879,6 +879,7 @@
   art: datei
   pfad: src/lib/vorarbeiter/kriterien.ts
   enthaelt: MARKER_AM_ANFANG
+
 # SIN-887: Lauf-Spur – Lauf-Issues starten vorhandene Workflows aus der Erlaubt-Liste
 - id: lauf-spur-erlaubt
   produkt: leitstand
