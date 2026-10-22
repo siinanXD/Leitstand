@@ -961,3 +961,10 @@
   art: datei
   pfad: .github/workflows/pruefer.yml
   enthaelt: "startsWith(github.head_ref, 'codex/')"
+
+- id: loop-codex-pruefer-test
+  produkt: leitstand
+  titel: Ein Test belegt, dass der Prüfer codex/-Branches wie claude/-Branches behandelt
+  art: datei
+  pfad: src/lib/pruefer/workflow.test.ts
+  enthaelt: '"codex/sin-827"'
