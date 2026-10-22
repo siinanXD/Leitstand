@@ -40,7 +40,7 @@ test("Dispatcher-Plan: Text ergänzen, unklare Todo-Issues markieren, markierte 
   assert.ok(plan[1]!.beschreibung!.includes("[nach Aktivierung] Lauf-Link nach dem Merge"));
 });
 
-test("Linear-Maskierung: `\\[nach Aktivierung\\]` zählt als Marker, kein zweiter davor, kein Neuschreiben bei jedem Dispatch", () => {
+test("Test: maskierter Marker zählt als Marker, kein zweiter davor, kein Neuschreiben", () => {
   const linear = "## Fertig, wenn\n\n- [ ] Test: A → B\n- [ ] \\[nach Aktivierung\\] Zählung aus `loop_events`\n\n<!-- testnamen: \\[\"Test: A → B\"\\] -->\n";
   const p = pruefeKriterien(linear);
   assert.deepEqual(p.ergaenzt, []);
@@ -48,7 +48,7 @@ test("Linear-Maskierung: `\\[nach Aktivierung\\]` zählt als Marker, kein zweite
   assert.deepEqual(kriterienPlan([{ identifier: "SIN-1", description: linear, stateType: "unstarted", labels: ["claude"] }]), []);
 });
 
-test("Mehrfach-Marker aus dem alten Fehler werden auf einen zurückgeführt", () => {
+test("Test: Mehrfach-Marker werden auf einen zurückgeführt", () => {
   const kaputt = "- [ ] Test: A\n- [ ] \\[nach Aktivierung\\] \\[nach Aktivierung\\] \\[nach Aktivierung\\] 1 Woche lang 0 Läufe\n";
   const p = pruefeKriterien(kaputt);
   assert.match(p.beschreibung, /- \[ \] \[nach Aktivierung\] 1 Woche lang 0 Läufe/);
