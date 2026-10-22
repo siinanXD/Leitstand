@@ -903,3 +903,11 @@
   art: datei
   pfad: .github/workflows/waechter.yml
   enthaelt: "default: false"
+
+# SIN-970: Claude-Rückfall des Prüfers hat ein eigenes, größeres Antwortbudget
+- id: pruefer-rueckfall-budget
+  produkt: leitstand
+  titel: Prüfer-Rückfall auf Claude fordert ein eigenes Antwortbudget an
+  art: datei
+  pfad: scripts/pruefer/pruefer.ts
+  enthaelt: "max_tokens: MAX_AUSGABE_TOKENS_RUECKFALL"
