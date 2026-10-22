@@ -41,15 +41,26 @@ export function gleicheAbsicht(a: string, b: string): boolean {
   return kurz.size >= 2 && [...kurz].filter((w) => lang.has(w)).length / kurz.size >= 0.6;
 }
 
-/** Bis zu `n` (höchstens MAX_NEU_JE_LAUF) offene Punkte ohne Issue gleicher Absicht; Treffer landen in `uebersprungen` mit dem vorhandenen Titel. Nie doppelt. */
-export function pruefeDubletten(md: string, vorhandeneTitel: string[], n: number): { neu: string[]; uebersprungen: { titel: string; vorhanden: string }[] } {
+/** Feste Kennung eines Fertig-Listen-Punkts (SIN-890): aus dem Punkttext, unabhängig vom Issue-Titel. */
+export const kennung = (punkt: string) => `leitstand/${norm(punkt).replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 60)}`;
+
+/** Marker für die Issue-Beschreibung. */
+export const kennungMarker = (punkt: string) => `<!-- fertig: ${kennung(punkt)} -->`;
+
+/** Kennungen aus Beschreibungen (`<!-- fertig: x -->`). */
+export const leseKennungen = (beschreibung: string): string[] => [...beschreibung.matchAll(/<!--\s*fertig:\s*(\S+?)\s*-->/g)].map((m) => m[1]);
+
+/** Bis zu `n` (höchstens MAX_NEU_JE_LAUF) offene Punkte ohne Issue gleicher Absicht; Treffer landen in `uebersprungen` mit dem vorhandenen Titel. Nie doppelt.
+ *  Ein Issue mit gleicher Kennung gilt immer als vorhanden, egal welcher Titel, welches Label oder welcher Status (SIN-890). */
+export function pruefeDubletten(md: string, vorhandeneTitel: string[], n: number, vorhandeneKennungen: string[] = []): { neu: string[]; uebersprungen: { titel: string; vorhanden: string }[] } {
   const bekannt = [...vorhandeneTitel];
   const neu: string[] = [];
   const uebersprungen: { titel: string; vorhanden: string }[] = [];
   const max = Math.min(n, MAX_NEU_JE_LAUF);
   for (const p of punkte(md)) {
     if (p.fertig || neu.length >= max) continue;
-    const treffer = bekannt.find((t) => gleicheAbsicht(t, p.titel));
+    const k = kennung(p.titel);
+    const treffer = vorhandeneKennungen.includes(k) ? k : bekannt.find((t) => gleicheAbsicht(t, p.titel));
     if (treffer) uebersprungen.push({ titel: p.titel, vorhanden: treffer });
     else {
       bekannt.push(p.titel);

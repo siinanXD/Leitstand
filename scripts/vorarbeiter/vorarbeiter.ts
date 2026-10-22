@@ -17,7 +17,7 @@ import { ladeProjektIssues } from "../../src/lib/loop/projekt-issues";
  */
 import { readFile } from "node:fs/promises";
 import { luecke, startbar } from "../../src/lib/ceo/ceo";
-import { pruefeDubletten } from "../../src/lib/ceo/fertig";
+import { kennungMarker, leseKennungen, pruefeDubletten } from "../../src/lib/ceo/fertig";
 import { ausLinear, PROJEKT, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { parseSnapshot } from "../../src/lib/uebersicht";
@@ -131,15 +131,15 @@ const LERNAPP_REPO = PROJEKTE.find((x) => x.id === "lernapp")?.repo;
 async function legeLeitstandIssuesAn(n: number) {
   const md = await readFile("docs/FERTIG.md", "utf8").catch(() => "");
   if (DRY || !env.LINEAR_API_KEY) return console.log(`[trocken] leitstand: bis zu ${n} Issues aus FERTIG.md: ${pruefeDubletten(md, [], n).neu.join(" | ") || "keine offenen Punkte"}`);
-  const d = await linear<{ projects: { nodes: { id: string; teams: { nodes: { id: string }[] }; projectMilestones: { nodes: { id: string; name: string }[] }; issues: { nodes: { title: string }[] } }[] } }>(
+  const d = await linear<{ projects: { nodes: { id: string; teams: { nodes: { id: string }[] }; projectMilestones: { nodes: { id: string; name: string }[] }; issues: { nodes: { title: string; description: string | null; state: { type: string } }[] } }[] } }>(
     `query($p: String!) { projects(first: 1, filter: { name: { eq: $p } }) { nodes { id teams(first: 1) { nodes { id } } projectMilestones(first: 20) { nodes { id name } }
-      issues(first: 250) { nodes { title } } } } }`,
+      issues(first: 250) { nodes { title description state { type } } } } } }`,
     { p: PROJEKT },
   );
   const projekt = d.projects.nodes[0];
   const teamId = projekt?.teams.nodes[0]?.id;
   if (!projekt || !teamId) throw new Error(`Linear-Projekt „${PROJEKT}“ nicht gefunden`);
-  const { neu: titel, uebersprungen } = pruefeDubletten(md, projekt.issues.nodes.map((i) => i.title), n);
+  const { neu: titel, uebersprungen } = pruefeDubletten(md, projekt.issues.nodes.map((i) => i.title), n, projekt.issues.nodes.filter((i) => i.state.type !== "canceled").flatMap((i) => leseKennungen(i.description ?? "")));
   for (const u of uebersprungen) console.log(`leitstand: Dublette übersprungen: „${u.titel}“ ≈ „${u.vorhanden}“`);
   if (!titel.length) return console.log("leitstand: keine neuen Punkte in docs/FERTIG.md");
   const t = await linear<{ team: { states: { nodes: { id: string; name: string }[] }; labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { states { nodes { id name } } labels(first: 250) { nodes { id name } } } }`, { t: teamId });
@@ -150,7 +150,7 @@ async function legeLeitstandIssuesAn(n: number) {
   for (const title of titel) {
     // Genau ein Art-Label (SIN-887); fehlt `lauf`/`sinan` in Linear, bleibt es bei `claude`.
     const labelId = label(artLabel(title)) ?? label("claude");
-    await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, priority: 2, description: "Offener Punkt aus docs/FERTIG.md (angelegt vom Planer, SIN-636).\n\n## Fertig-Kriterien\n- [ ] Der Punkt ist live und in docs/abnahme.yml mit einer grünen Probe belegt.", labelIds: [labelId], stateId } });
+    await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, priority: 2, description: `Offener Punkt aus docs/FERTIG.md (angelegt vom Planer, SIN-636).\n\n${kennungMarker(title)}\n\n## Fertig-Kriterien\n- [ ] Der Punkt ist live und in docs/abnahme.yml mit einer grünen Probe belegt.`, labelIds: [labelId], stateId } });
     console.log(`leitstand: Issue angelegt (${artLabel(title)}): ${title}`);
   }
 }

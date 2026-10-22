@@ -9,6 +9,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-planer-kennung
+  produkt: leitstand
+  titel: Der Planer gleicht Fertig-Listen-Punkte an einer festen Kennung ab, nicht am Titel (SIN-890)
+  art: datei
+  pfad: src/lib/ceo/fertig.ts
+  enthaelt: leseKennungen
 - id: leitstand-agent-testnutzer
   produkt: leitstand
   titel: Der Sitzungs-Helfer für das Agent-Testkonto (nur lesen) liegt im Repo (SIN-913)
