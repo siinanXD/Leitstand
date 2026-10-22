@@ -65,6 +65,19 @@ jobs:
               [ -n "$f" ] && gh api "repos/siinanXD/gedaechtnis/contents/Lehren/$(jq -rn --arg f "$f" '$f|@uri')" -H "Accept: application/vnd.github.raw" > ".gedaechtnis/Lehren/$f"
             done
           fi
+      # SIN-891: letzte loop_events zum Issue als Lesekopie. Der Service-Key bleibt in diesem Schritt, der Worker bekommt ihn nie.
+      - name: Ereignisse bereitlegen (nur lesen)
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TITEL: ${{ github.event.issue.title || github.event.pull_request.title }}
+        run: |
+          id=$(printf '%s' "$TITEL" | grep -oE 'SIN-[0-9]+' | head -1 || true)
+          [ -n "$id" ] && [ -n "$SUPABASE_URL" ] || exit 0
+          mkdir -p .gedaechtnis
+          curl -sSf "$SUPABASE_URL/rest/v1/loop_events?select=created_at,step,status,grund&issue=eq.$id&order=created_at.desc&limit=10" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" > .gedaechtnis/ereignisse.json
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:

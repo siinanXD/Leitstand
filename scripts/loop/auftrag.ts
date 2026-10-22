@@ -1,9 +1,10 @@
 /**
  * Auftrag aus Linear lesen (SIN-945): Der Worker darf keine Shell-Befehle mit $LINEAR_API_KEY ausführen,
  * deshalb liest dieses Skript das Issue selbst. Aufruf: npx tsx scripts/loop/auftrag.ts SIN-123
- * Ausgabe: Titel, Status, Labels, Blocker, die 5 neuesten Kommentare (ohne Pause) vor der Beschreibung, optional die letzten 10 loop_events. Nur lesend.
+ * Ausgabe: Titel, Status, Labels, Blocker, die 5 neuesten Kommentare (ohne Pause) vor der Beschreibung, die letzten 10 loop_events (Lesekopie aus claude.yml). Nur lesend.
  */
-import { formatiere, type Auftrag, type Ereignis } from "../../src/lib/loop/auftrag";
+import { readFileSync } from "node:fs";
+import { formatiere, leseEreignisse, type Auftrag, type Ereignis } from "../../src/lib/loop/auftrag";
 
 const id = process.argv[2] ?? "";
 if (!/^SIN-\d+$/.test(id)) {
@@ -18,15 +19,10 @@ if (!key) {
 const query = `query($id: String!) { issue(id: $id) { identifier title url description state { name }
   labels { nodes { name } } inverseRelations { nodes { type issue { identifier state { name } } } }
   comments(last: 20) { nodes { createdAt body } } } }`;
-/** Letzte 10 loop_events zum Issue (SIN-891). Ohne SUPABASE_*-Variablen oder bei Lesefehler leer: der Auftrag bleibt lesbar. */
-async function ereignisse(): Promise<Ereignis[]> {
-  const url = process.env.SUPABASE_URL;
-  const sk = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !sk) return [];
+/** Letzte 10 loop_events zum Issue (SIN-891): legt claude.yml vorab als Lesekopie ab, der Worker hat keinen Supabase-Key. Fehlt die Datei, bleibt die Liste leer. */
+function ereignisse(): Ereignis[] {
   try {
-    const q = `select=created_at,step,status,grund&grund=ilike.*${id}*&order=created_at.desc&limit=10`;
-    const res = await fetch(`${url}/rest/v1/loop_events?${q}`, { headers: { apikey: sk, Authorization: `Bearer ${sk}` } });
-    return res.ok ? ((await res.json()) as Ereignis[]) : [];
+    return leseEreignisse(readFileSync(".gedaechtnis/ereignisse.json", "utf8"));
   } catch {
     return [];
   }
@@ -47,7 +43,7 @@ async function main() {
     );
     process.exit(1);
   }
-  console.log(formatiere(json.data.issue, await ereignisse()));
+  console.log(formatiere(json.data.issue, ereignisse()));
 }
 main().catch((e) => {
   console.error(e.message);

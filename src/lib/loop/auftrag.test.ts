@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { formatiere } from "./auftrag";
+import { formatiere, leseEreignisse } from "./auftrag";
 import { issueText } from "./auswahl";
 
 const auftrag = {
@@ -33,6 +33,16 @@ test("Worker darf Läufe lesen, aber nicht schreiben", () => {
   assert.match(workflow, /Bash\(gh run list:\*\)/);
   assert.match(workflow, /Bash\(gh run view:\*\)/);
   assert.doesNotMatch(workflow, /Bash\(gh (run (rerun|cancel|delete)|api)/);
+});
+
+test("Ereignisse kommen als Lesekopie; der Worker-Schritt bekommt keinen Supabase-Key (SIN-891)", () => {
+  assert.deepEqual(leseEreignisse('[{"created_at":"2026-10-20T11:00:00Z","step":"repair","status":"fehler","grund":"x"},{"step":1}]').length, 1);
+  assert.deepEqual(leseEreignisse('{"message":"JWT expired"}'), []);
+  assert.deepEqual(leseEreignisse("kein json"), []);
+  const workflow = readFileSync(".github/workflows/claude.yml", "utf8");
+  const worker = workflow.slice(workflow.indexOf("- name: Run Claude Code"));
+  assert.doesNotMatch(worker, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(workflow, /loop_events\?select=created_at,step,status,grund&issue=eq\.\$id/);
 });
 
 test("Worker liest den Auftrag per Skript, nicht per curl mit Key", () => {

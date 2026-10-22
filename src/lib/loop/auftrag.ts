@@ -8,6 +8,17 @@ export type Auftrag = {
 
 export type Ereignis = { created_at: string; step: string; status: string; grund?: string | null };
 
+/** Lesekopie der loop_events (JSON-Array aus PostgREST); alles andere ergibt eine leere Liste. */
+export function leseEreignisse(text: string): Ereignis[] {
+  try {
+    const daten: unknown = JSON.parse(text);
+    if (!Array.isArray(daten)) return [];
+    return daten.filter((e): e is Ereignis => !!e && typeof e.created_at === "string" && typeof e.step === "string" && typeof e.status === "string");
+  } catch {
+    return [];
+  }
+}
+
 const ANZAHL_KOMMENTARE = 5;
 const ANZAHL_EREIGNISSE = 10;
 const istPause = (body: string) => /^\s*(⏸\s*)?pause\b/i.test(body);
