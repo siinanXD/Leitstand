@@ -933,9 +933,9 @@
   pfad: .github/workflows/repair.yml
   enthaelt: "github.event.workflow_run.path == '.github/workflows/pruefer.yml'"
 # Aufräumen (SIN-958)
-- id: leitstand-rollen-ohne-markt
+- id: leitstand-markt-workflow-entfernt
   produkt: leitstand
-  titel: Die Rollen-Liste führt marketing mit Takt aus weiter (markt ist entfernt)
-  art: datei
-  pfad: docs/autonomy/rollen.json
-  enthaelt: '"schritt": "marketing", "takt": "aus"'
+  titel: markt.yml existiert nicht mehr auf main (GitHub liefert 404)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/contents/.github/workflows/markt.yml?ref=main
+  status: "404"
