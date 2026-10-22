@@ -31,6 +31,11 @@ jobs:
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner, repo, pull_number: pr.number, per_page: 100,
             });
+            // Die API listet höchstens 3000 Dateien je PR; darüber wäre der Scan unvollständig.
+            if (files.length >= 3000 || pr.changed_files > files.length) {
+              core.setFailed(`PR ändert ${pr.changed_files} Dateien, API liefert ${files.length}; Scan unvollständig, PR aufteilen.`);
+              return;
+            }
             const dir = path.join(process.env.RUNNER_TEMP, "gitleaks-diff");
             fs.mkdirSync(dir, { recursive: true });
             let ohnePatch = 0;
