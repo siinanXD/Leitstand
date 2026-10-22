@@ -871,3 +871,11 @@
   art: datei
   pfad: scripts/loop/loop.ts
   enthaelt: istWiederholung(await letztesEreignis(
+
+# SIN-887: Lauf-Spur – Lauf-Issues starten vorhandene Workflows aus der Erlaubt-Liste
+- id: lauf-spur-erlaubt
+  produkt: leitstand
+  titel: Dispatcher startet Lauf-Issues nur aus der Erlaubt-Liste
+  art: datei
+  pfad: scripts/loop/loop.ts
+  enthaelt: await laufSpur()
