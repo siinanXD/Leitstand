@@ -773,6 +773,14 @@
   pfad: src/lib/diagnose/diagnose.ts
   enthaelt: export function vorbefund
 
+# SIN-907: Agent ohne Schreibwerkzeug
+- id: diagnose-structured-output
+  produkt: leitstand
+  titel: Diagnose-Agent liefert Schema-Ausgabe, nur der Workflow schreibt die Ergebnisdatei
+  art: datei
+  pfad: .github/workflows/diagnose.yml
+  enthaelt: steps.diagnose.outputs.structured_output
+
 # SIN-911: öffentliche Texte schlank
 - id: oeffentliche-texte
   produkt: leitstand
@@ -841,3 +849,11 @@
   art: datei
   pfad: src/lib/pruefer/pruefer.ts
   enthaelt: bereits als erledigt markiert
+
+# SIN-948: vertrauenswürdiger gitleaks-Scan der PR-Diffs
+- id: gitleaks-pr
+  produkt: leitstand
+  titel: gitleaks-Workflow scannt PR-Diffs ohne Checkout, mit geprüfter Prüfsumme (SIN-948)
+  art: datei
+  pfad: .github/workflows/gitleaks-pr.yml
+  enthaelt: sha256sum -c -
