@@ -879,3 +879,19 @@
   art: datei
   pfad: src/lib/vorarbeiter/kriterien.ts
   enthaelt: MARKER_AM_ANFANG
+
+# SIN-887: Lauf-Spur – Lauf-Issues starten vorhandene Workflows aus der Erlaubt-Liste
+- id: lauf-spur-erlaubt
+  produkt: leitstand
+  titel: Dispatcher startet Lauf-Issues nur aus der Erlaubt-Liste
+  art: datei
+  pfad: scripts/loop/loop.ts
+  enthaelt: await laufSpur()
+
+# SIN-887: Planer setzt genau ein Art-Label (claude, lauf, sinan)
+- id: planer-art-label
+  produkt: leitstand
+  titel: Planer legt Issues mit Art-Label aus artLabel an
+  art: datei
+  pfad: scripts/vorarbeiter/vorarbeiter.ts
+  enthaelt: label(artLabel(title))

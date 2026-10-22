@@ -21,6 +21,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
+import { starteLaeufe } from "../../src/lib/loop/lauf";
 import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
 import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
@@ -268,6 +269,8 @@ async function dispatch() {
     await ereignis("dispatch", "uebersprungen", { grund: `pause: seit ${pause.seit}` });
     return;
   }
+  // SIN-887: Läufe brauchen kein Claude und keinen Worker-Platz, darum vor der Kontingent-Prüfung.
+  await laufSpur().catch((e: Error) => console.error(`::warning::Lauf-Spur: ${e.message}`));
   // Kontingent (SIN-581): Der Worker braucht Claude. Läuft eine Pause, startet nichts.
   const claudePause = aktivePause(await ladeOffenePausen(), "claude", new Date());
   if (claudePause) {
@@ -290,6 +293,36 @@ async function dispatch() {
     }
   }
   if (fehler) process.exit(1);
+}
+
+/**
+ * Lauf-Spur (SIN-887): Todo-Issues mit Label `lauf` aus allen Projekten startet der Dispatcher per `workflow_dispatch`
+ * (nur Erlaubt-Liste, `src/lib/loop/lauf.ts`). Kein Worker, kein PR, kein Worker-Platz. Das Issue geht auf „In Progress“
+ * und bekommt den Link zu den Läufen; die Belege hakt der Belege-Prüfer ab (SIN-846).
+ */
+async function laufSpur() {
+  const d = await linear<{ issues: { nodes: (ProjektKnoten & { team: { id: string } })[] } }>(
+    `query { issues(first: 25, filter: { labels: { name: { eqIgnoreCase: "lauf" } }, state: { type: { eq: "unstarted" } } }) {
+      nodes { id identifier title description priority url createdAt startedAt team { id }
+        labels { nodes { name } } state { type }
+        inverseRelations { nodes { type issue { identifier state { type } } } } } } }`,
+  );
+  const team = new Map(d.issues.nodes.map((n) => [n.id, n.team.id]));
+  await starteLaeufe(d.issues.nodes.map(ausLinear), {
+    ueberspringe: async (i, grund) => {
+      console.log(`Lauf ${i.identifier} nicht gestartet: ${grund}`);
+      await ereignis("lauf", "uebersprungen", { issue: i.identifier, grund: `lauf_ungueltig: ${grund}` });
+    },
+    starte: async (i, { repo: r, workflow, inputs }) => {
+      if (DRY) return console.log(`[trocken] würde Lauf starten: ${i.identifier} → ${r}/${workflow} ${JSON.stringify(inputs)}`);
+      const standard = (await gh<{ default_branch: string }>(`/repos/${r}`)).default_branch;
+      await gh(`/repos/${r}/actions/workflows/${workflow}/dispatches`, { method: "POST", body: { ref: standard, inputs } });
+      await setzeStatus(i.id, team.get(i.id)!, "In Progress");
+      await kommentar(i.id, `Lauf gestartet (SIN-887): ${workflow} mit ${JSON.stringify(inputs)} – https://github.com/${r}/actions/workflows/${workflow}`);
+      await ereignis("lauf", "ok", { issue: i.identifier });
+      console.log(`Lauf gestartet: ${i.identifier} → ${r}/${workflow}`);
+    },
+  });
 }
 
 /** Voraussetzung im Produkt-Repo (SIN-763): claude.yml vorhanden und Secret gesetzt. Gibt den Grund zurück, wenn etwas fehlt. */

@@ -1,3 +1,4 @@
+import { artLabel } from "../../src/lib/loop/lauf";
 import { ladeProjektIssues } from "../../src/lib/loop/projekt-issues";
 /**
  * Planer (SIN-636; der Pfad stammt vom Vorarbeiter, SIN-553, der im Planer aufgegangen ist). Aufruf aus planer.yml (.github/workflows/planer.yml):
@@ -143,12 +144,14 @@ async function legeLeitstandIssuesAn(n: number) {
   if (!titel.length) return console.log("leitstand: keine neuen Punkte in docs/FERTIG.md");
   const t = await linear<{ team: { states: { nodes: { id: string; name: string }[] }; labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { states { nodes { id name } } labels(first: 250) { nodes { id name } } } }`, { t: teamId });
   const stateId = t.team.states.nodes.find((s) => s.name === "Backlog")?.id;
-  const labelId = t.team.labels.nodes.find((l) => l.name.toLowerCase() === "claude")?.id;
-  if (!stateId || !labelId) throw new Error("Status „Backlog“ oder Label „claude“ in Linear nicht gefunden");
+  const label = (name: string) => t.team.labels.nodes.find((l) => l.name.toLowerCase() === name)?.id;
+  if (!stateId || !label("claude")) throw new Error("Status „Backlog“ oder Label „claude“ in Linear nicht gefunden");
   const meilensteinId = projekt.projectMilestones.nodes.find((m) => m.name === MEILENSTEIN)?.id;
   for (const title of titel) {
+    // Genau ein Art-Label (SIN-887); fehlt `lauf`/`sinan` in Linear, bleibt es bei `claude`.
+    const labelId = label(artLabel(title)) ?? label("claude");
     await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, priority: 2, description: "Offener Punkt aus docs/FERTIG.md (angelegt vom Planer, SIN-636).\n\n## Fertig-Kriterien\n- [ ] Der Punkt ist live und in docs/abnahme.yml mit einer grünen Probe belegt.", labelIds: [labelId], stateId } });
-    console.log(`leitstand: Issue angelegt: ${title}`);
+    console.log(`leitstand: Issue angelegt (${artLabel(title)}): ${title}`);
   }
 }
 
