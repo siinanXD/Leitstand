@@ -15,7 +15,7 @@ export async function ladeProjektIssues(
     const d = await linear(
       `query($p: String!, $after: String) {
         issues(first: 25, after: $after, filter: { project: { name: { eq: $p } }, state: { type: { in: ["backlog", "unstarted", "started"] } } }) {
-          nodes { id identifier title description priority url createdAt startedAt team { id }
+          nodes { id identifier title description priority url createdAt startedAt delegate { name } team { id }
             labels { nodes { name } } state { type }
             inverseRelations { nodes { type issue { identifier state { type } } } } }
           pageInfo { hasNextPage endCursor }

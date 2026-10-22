@@ -23,7 +23,7 @@ import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/vision
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { starteLaeufe } from "../../src/lib/loop/lauf";
 import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
-import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { kriterienPlan, LABEL_UNKLAR, UNKLAR_KOMMENTAR } from "../../src/lib/vorarbeiter/kriterien";
@@ -214,6 +214,61 @@ async function rueckeNach(i: LinearIssue, teamId: string) {
   console.log(`Nachgerückt: ${i.identifier}`);
 }
 
+/** Linear-Nutzer „Codex“ (Codex for Linear). Fehlt er, ist die App im Workspace nicht installiert. */
+async function codexNutzer(): Promise<string> {
+  const d = await linear<{ users: { nodes: { id: string; name: string }[] } }>(`query { users(first: 250) { nodes { id name } } }`);
+  const u = d.users.nodes.find((x) => x.name.toLowerCase() === CODEX_NAME.toLowerCase());
+  if (!u) throw new Error(`Linear-Nutzer „${CODEX_NAME}“ nicht gefunden: Codex for Linear im Workspace installieren`);
+  return u.id;
+}
+
+/**
+ * Codex-Spur (SIN-936): Issues mit Label `codex` bekommen Codex als Delegate statt eines Claude-Laufs (kein GitHub-Spiegel, kein Platz).
+ * Ohne Branch `codex/` nach CODEX_MINUTEN nimmt der Dispatcher das Delegate zurück und gibt das Issue an Claude (Label, Todo, Kommentar).
+ * Gibt die Issues so zurück, wie sie danach in Linear stehen, damit die Claude-Auswahl sie richtig sieht.
+ */
+async function codexSpur(repo: string, issues: LinearIssue[], nodes: ProjektKnoten[], prs: { title: string; head: { ref: string } }[], projekt: string): Promise<LinearIssue[]> {
+  const jetzt = new Date();
+  const neu = new Map(issues.map((i) => [i.identifier, i]));
+  const refs = issues.some((i) => i.delegate) ? await gh<{ ref: string }[]>(`/repos/${repo}/git/matching-refs/heads/codex/`) : [];
+  const pruefe = [...refs.map((r) => ({ titel: "", branch: r.ref.replace("refs/heads/", "") })), ...prs.map((p) => ({ titel: p.title, branch: p.head.ref }))];
+  for (const i of codexRueckfall(issues, pruefe, jetzt)) {
+    const team = nodes.find((n) => n.id === i.id)!.team.id;
+    const grund = `Codex hat in ${CODEX_MINUTEN} Minuten keinen Commit auf einem Branch codex/ gemeldet (seit ${i.startedAt}). Delegate zurückgenommen, das Issue geht an Claude (SIN-936).`;
+    if (DRY) { console.log(`[trocken] ${i.identifier}: ${grund}`); continue; }
+    try {
+      const l = await linear<{ team: { labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { labels(first: 250) { nodes { id name } } } }`, { t: team });
+      const id = (n: string) => l.team.labels.nodes.find((x) => x.name.toLowerCase() === n)?.id;
+      const claude = id(LABEL);
+      if (!claude) throw new Error(`Linear-Label „${LABEL}“ nicht gefunden`);
+      await linear(`mutation($id: String!, $a: [String!], $r: [String!]) { issueUpdate(id: $id, input: { delegateId: null, addedLabelIds: $a, removedLabelIds: $r }) { success } }`, { id: i.id, a: [claude], r: [id(LABEL_CODEX)].filter((x): x is string => !!x) });
+      await setzeStatus(i.id, team, "Todo");
+      await kommentar(i.id, grund);
+      await ereignis("dispatch", "ok", { projekt, issue: i.identifier, grund: "codex_rueckfall: kein Commit auf codex/" });
+      neu.set(i.identifier, { ...i, delegate: null, stateType: "unstarted", labels: [...i.labels.filter((x) => x.toLowerCase() !== LABEL_CODEX), LABEL] });
+    } catch (e) {
+      await ereignis("dispatch", "fehler", { projekt, issue: i.identifier, grund: fehlergrund(`codex_rueckfall: ${(e as Error).message}`) });
+    }
+  }
+  const start = codexStarts([...neu.values()]);
+  const codexId = start.length && !DRY ? await codexNutzer().catch(async (e: Error) => (await ereignis("dispatch", "fehler", { projekt, grund: fehlergrund(`codex_nutzer: ${e.message}`) }), null)) : null;
+  for (const i of start) {
+    if (DRY) { console.log(`[trocken] würde an Codex geben: ${i.identifier}`); continue; }
+    if (!codexId) break;
+    const team = nodes.find((n) => n.id === i.id)!.team.id;
+    try {
+      await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { delegateId: $d }) { success } }`, { id: i.id, d: codexId });
+      await setzeStatus(i.id, team, "In Progress");
+      await kommentar(i.id, `An Codex übergeben (Delegate, SIN-936). Ohne Commit auf einem Branch codex/ nach ${CODEX_MINUTEN} Minuten geht das Issue an Claude.`);
+      await ereignis("dispatch", "ok", { projekt, issue: i.identifier, grund: "codex_zugewiesen" });
+      neu.set(i.identifier, { ...i, delegate: CODEX_NAME, stateType: "started", startedAt: jetzt.toISOString() });
+    } catch (e) {
+      await ereignis("dispatch", "fehler", { projekt, issue: i.identifier, grund: fehlergrund(`codex_zuweisung: ${(e as Error).message}`) });
+    }
+  }
+  return issues.map((i) => neu.get(i.identifier)!);
+}
+
 /** Passende Lehren und Skills für das Issue (SIN-512). Fehlt der Ordner, gibt es keine Hinweise. */
 function lehrenHinweise(i: LinearIssue): string {
   try {
@@ -391,6 +446,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
       prs = [...prs, ...weitere];
     }
   }
+  issues = await codexSpur(repo, issues, nodes, prs, projekt);
   // Neueste zuerst: der jüngste gemergte PR eines Issues entscheidet, ob es nur auf Folge-Haken wartet (SIN-781).
   const zuletzt = await gh<{ title: string; body: string | null; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
   const belegung: Belegung = {

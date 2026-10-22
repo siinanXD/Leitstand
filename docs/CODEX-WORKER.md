@@ -14,7 +14,9 @@ Beispiel: `docs(worker): Übergabeprotokoll [codex-worker] (SIN-832)`.
 
 Der Auslöser ist außerhalb der GitHub-Actions-Workflows eingerichtet. Er startet eine Worker-Sitzung mit den verbundenen GitHub-/Linear-Zugängen. Seine Konfiguration allein belegt keinen erfolgreichen Arbeitslauf. Es gibt keine zugesicherte Startzeit; ein fehlender Claim bleibt als offener Übergabestatus sichtbar.
 
-Direkte Linear-Ereignisse werden in diesem Rollout nicht unterstützt. Das bloße Setzen eines Labels, eine Titeländerung an einem bestehenden PR oder ein Kommentar startet diesen Übergabeweg nicht. Die produktive Planer-/Dispatcher-Auswahl bleibt unverändert: Der Pilot verteilt noch nicht automatisch Aufgaben zwischen Claude und Codex.
+**Linear-Zuweisung (SIN-936):** Der Dispatcher gibt Issues mit Label `codex` als Delegate an Codex (Codex for Linear), ohne GitHub-Spiegel und ohne Claude-Platz. Meldet Codex nach 60 Minuten keinen Branch `codex/`, nimmt er das Delegate zurück, tauscht das Label gegen `claude`, setzt „Todo“ und kommentiert den Grund. Voraussetzung: Codex for Linear im Workspace installiert. Dieser Weg ersetzt den Draft-PR-Auslöser (SIN-832).
+
+Im Draft-PR-Weg werden direkte Linear-Ereignisse nicht unterstützt. Das bloße Setzen eines Labels, eine Titeländerung an einem bestehenden PR oder ein Kommentar startet diesen Übergabeweg nicht. Die produktive Planer-/Dispatcher-Auswahl bleibt unverändert: Der Pilot verteilt noch nicht automatisch Aufgaben zwischen Claude und Codex.
 
 ## Übergabe durch den bisherigen Worker
 

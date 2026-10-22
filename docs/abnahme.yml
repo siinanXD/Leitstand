@@ -946,3 +946,11 @@
   art: datei
   pfad: .github/workflows/claude.yml
   enthaelt: "Bash(gh run list:*)"
+
+# SIN-936: Codex baut über Linear-Zuweisung (Label codex, Delegate, Rückfall nach 60 Minuten)
+- id: loop-codex-delegate
+  produkt: leitstand
+  titel: Der Dispatcher gibt Issues mit Label codex per Delegate an Codex und nimmt sie nach 60 Minuten ohne Commit zurück
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: "codexRueckfall"
