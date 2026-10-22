@@ -30,13 +30,13 @@ export type Dateien = Record<string, string>;
 export const tagBerlin = (d: Date): string => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
 
 /** Einzeilig, gekürzt, ohne Zeichen, die Obsidian-Links oder Frontmatter brechen. */
-const kurz = (text: string, max = MAX_ZEICHEN): string => {
+export const kurz = (text: string, max = MAX_ZEICHEN): string => {
   const t = text.replace(/\s+/g, " ").replace(/[[\]|]/g, "").trim();
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 };
 
 /** Dateiname-tauglich: keine Pfad- und Obsidian-Sonderzeichen. */
-const dateiname = (text: string): string => text.replace(/[\\/:*?"<>|#^[\]]+/g, "-").trim() || "ohne-name";
+export const dateiname = (text: string): string => text.replace(/[\\/:*?"<>|#^[\]]+/g, "-").trim() || "ohne-name";
 
 const slug = (id: string): string => id.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
