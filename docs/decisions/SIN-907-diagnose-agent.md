@@ -9,3 +9,5 @@ Entscheidung (Sinan, 21.10.2026): Urteilsarbeit über Agenten, festen Code nur f
 - **Kosten:** Claude-Abo (`CLAUDE_CODE_OAUTH_TOKEN`), keine API.
 - **Grenze der Tests:** Die Fixtures prüfen den Vertrag (Schema, Auslöser, Sperre, Kommentar), nicht das Urteil des Modells. Ob die Diagnosen taugen, zeigt erst der erste echte Lauf.
 - **Workflow-Auslöser:** `workflow_run` (failure) für abnahme, build, dispatch, loop-merge, repair, belege, migrationen; alle 2 Stunden für Issues; von Hand mit `dry_run`.
+
+- **Betriebskorrektur (22.10.2026):** `Write(diagnose-ergebnis.json)` ist kein dokumentierter Dateiwerkzeug-Eintrag der Action und führte im echten Lauf zu Berechtigungsablehnungen ohne Ergebnisdatei. Die Freigabe entfällt; die Action stellt Dateioperationen standardmäßig bereit, während Prompt, read-only GitHub-Rechte und nachgelagerte Schema-Prüfung die dauerhafte Wirkung begrenzen. Aktivierung erst nach unabhängiger Freigabe des Draft-PRs.
