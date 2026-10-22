@@ -5,8 +5,8 @@ import { tagBerlin, type Dateien } from "./gedaechtnis";
 export const PFLICHT = ["typ", "produkt", "status", "datum", "quelle", "beschreibung"] as const;
 /** Ohne Eigenschaften und ohne Verlinkungspflicht: Regeldatei, Katalog, Protokoll. */
 const OHNE_PRUEFUNG = new Set(["CLAUDE.md", "index.md", "log.md"]);
-/** Tagesberichte und die Übersicht werden nicht verlinkt, sondern erzeugt. */
-const OHNE_VERLINKUNG = new Set(["tag", "uebersicht"]);
+/** Tagesberichte, Fehler, Lehren und die Übersicht werden nicht verlinkt, sondern erzeugt (der Index katalogisiert sie). */
+const OHNE_VERLINKUNG = new Set(["tag", "uebersicht", "fehler", "lehre"]);
 const IDEE_ALT_TAGE = 30;
 
 export type Befund = { art: "eigenschaft" | "link" | "unverlinkt" | "widerspruch" | "idee-alt"; pfad: string; text: string };

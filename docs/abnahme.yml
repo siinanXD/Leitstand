@@ -146,6 +146,13 @@
   repo: siinanXD/gedaechtnis
   pfad: index.md
   enthaelt: "# Index"
+- id: gedaechtnis-fehler-20-10
+  produkt: gedaechtnis
+  titel: Die Fehler-Notiz vom 20.10. liegt im Vault (SIN-615)
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: Fehler/2026-10-20.md
+  enthaelt: Kein Diff
 
 # Lern-App
 - id: lernapp-snapshot

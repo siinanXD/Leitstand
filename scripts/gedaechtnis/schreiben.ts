@@ -21,9 +21,10 @@ import { readFile } from "node:fs/promises";
 import { letzteJeProdukt } from "../../src/lib/ceo/ceo";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
 import { EINGANG_LABEL, eingangDateien, schlussKommentar, zuSchliessen, type EingangIssue } from "../../src/lib/gedaechtnis/eingang";
-import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, vereinige, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type Erledigt, type OffenerPunkt, type Pr, type Quelle } from "../../src/lib/gedaechtnis/gedaechtnis";
+import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, tagBerlin, vereinige, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type Erledigt, type OffenerPunkt, type Pr, type Quelle } from "../../src/lib/gedaechtnis/gedaechtnis";
 import { notizPfad } from "../../src/lib/wochencheck/wochencheck";
 import { abschliessen } from "../../src/lib/gedaechtnis/vault";
+import { fehlerNotizen, lehrenAusDatei, lehrenAusFehlern, type FehlerZeile } from "../../src/lib/gedaechtnis/lernen";
 import { PROJEKTE, alleProjekte } from "../../src/lib/projekte";
 import { gedaechtnisZeilen, type Fund } from "../../src/lib/trend/trend";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
@@ -315,13 +316,37 @@ async function wochenChecks(jetzt: Date): Promise<Dateien> {
   }
 }
 
+const TAGE_FEHLER = 14;
+
+/** Fehler/ aus roten loop_events (14 Tage, je Tag eine Notiz) und Lehren/ aus wiederholten Gründen und LEHREN.md beider Repos; Quelle ohne Antwort ergibt nur eine Warnung. */
+async function lernDateien(jetzt: Date): Promise<Dateien> {
+  const out: Dateien = {};
+  try {
+    // Ein Tag Vorlauf, damit der erste Tag des Fensters vollständig ist.
+    const von = new Date(jetzt.getTime() - (TAGE_FEHLER + 1) * 86_400_000).toISOString();
+    const zeilen = (await supabase(`loop_events?select=created_at,project,issue,status,grund&status=eq.fehler&created_at=gte.${von}&order=created_at.desc&limit=2000`)) as FehlerZeile[];
+    const ab = tagBerlin(new Date(jetzt.getTime() - TAGE_FEHLER * 86_400_000));
+    // Lehren nur aus Tagen, für die es eine Fehler-Notiz gibt; sonst zeigt [[Fehler/<Tag>]] des Vorlauftags ins Leere.
+    Object.assign(out, fehlerNotizen(zeilen, ab), lehrenAusFehlern(zeilen.filter((z) => tagBerlin(new Date(z.created_at)) >= ab), jetzt));
+  } catch (e) {
+    console.warn(`Warnung: Fehler-Notizen übersprungen: ${(e as Error).message}`);
+  }
+  for (const repo of REPOS_ENTSCHEIDUNGEN) {
+    for (const pfad of ["LEHREN.md", "docs/autonomy/LEHREN.md"]) {
+      const datei = await ghJson<{ content?: string }>(`/repos/${repo}/contents/${pfad}`);
+      if (datei?.content) Object.assign(out, lehrenAusDatei(Buffer.from(datei.content, "base64").toString("utf8"), repo, jetzt));
+    }
+  }
+  return out;
+}
+
 async function main() {
   const jetzt = new Date();
   const ein = await eingang(jetzt).catch((e: Error): Eingang => {
     console.warn(`Warnung: Eingang übersprungen: ${e.message}`);
     return { issues: [], erledigtStatus: new Map() };
   });
-  const d = { ...dateien(await sammle(jetzt)), ...eingangDateien(ein.issues), ...(await wochenChecks(jetzt)) };
+  const d = { ...dateien(await sammle(jetzt)), ...eingangDateien(ein.issues), ...(await wochenChecks(jetzt)), ...(await lernDateien(jetzt)) };
   const treffer = mitGeheimnis(d);
   if (treffer.length) {
     console.error(`Abbruch: Inhalt sieht nach Geheimnis aus in ${treffer.join(", ")}. Nichts geschrieben.`);
