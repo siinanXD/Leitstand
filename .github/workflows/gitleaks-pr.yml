@@ -52,12 +52,17 @@ jobs:
               // Kein Patch (große oder binäre Datei): ganze Datei vom PR-Head laden und scannen, nie leer durchwinken.
               ohnePatch++;
               // Vom Head-Repository lesen: bei Fork-PRs liegt der Head-Commit nicht im Basis-Repository.
-              const { data } = await github.rest.repos.getContent({ owner: pr.head.repo.owner.login, repo: pr.head.repo.name, path: file.filename, ref: pr.head.sha });
-              if (Array.isArray(data) || data.type !== "file" || typeof data.content !== "string") {
-                core.setFailed(`${file.filename}: kein Patch und Inhalt nicht lesbar; Scan unvollständig.`);
+              // Raw-Format statt JSON: über 1 MB liefert die JSON-Antwort `content: ""`, das Raw-Format den ganzen Inhalt.
+              const res = await github.request("GET /repos/{owner}/{repo}/contents/{path}", {
+                owner: pr.head.repo.owner.login, repo: pr.head.repo.name, path: file.filename, ref: pr.head.sha,
+                headers: { accept: "application/vnd.github.raw+json" },
+              });
+              const inhalt = Buffer.isBuffer(res.data) ? res.data : Buffer.from(typeof res.data === "string" ? res.data : "", "utf8");
+              if (res.status !== 200 || (inhalt.length === 0 && file.additions > 0)) {
+                core.setFailed(`${file.filename}: kein Patch und Inhalt leer oder nicht lesbar; Scan unvollständig.`);
                 return;
               }
-              fs.writeFileSync(ziel, Buffer.from(data.content, data.encoding === "base64" ? "base64" : "utf8"));
+              fs.writeFileSync(ziel, inhalt);
             }
             core.setOutput("dir", dir);
             core.info(`Prepared ${files.length} changed files (${ohnePatch} without patch, loaded whole); PR code was not checked out.`);
