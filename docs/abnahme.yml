@@ -123,7 +123,7 @@
   produkt: gedaechtnis
   titel: Das Gedächtnis wurde in den letzten 26 Stunden aktualisiert
   art: db
-  rest: loop_events?step=eq.gedaechtnis&select=created_at&order=created_at.desc&limit=1
+  rest: loop_events?agent=eq.betrieb&step=eq.gedaechtnis&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 1560
 
@@ -269,7 +269,7 @@
   produkt: leitstand
   titel: Gedächtnis hat in den letzten 48 Stunden ein Ereignis geschrieben
   art: db
-  rest: loop_events?step=eq.gedaechtnis&select=created_at&order=created_at.desc&limit=1
+  rest: loop_events?agent=eq.betrieb&step=eq.gedaechtnis&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
 - id: leitstand-rolle-botadvisor
