@@ -1,4 +1,4 @@
-import { leitstandNutzer, protokolliere } from "@/lib/server-nutzer";
+import { protokolliere, verweigert } from "@/lib/server-nutzer";
 import { entscheide, leseEingabe, protokollZeile } from "@/lib/werbemittel";
 import { wartendeWerbemittel, werbemittelSpeicher } from "@/lib/werbemittel-server";
 
@@ -8,7 +8,8 @@ const antwort = (status: number, body: unknown) => Response.json(body, { status,
 
 /** Lesen: Werbemittel, die auf Freigabe warten. Nur für Sinan. */
 export async function GET(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   try {
     const eintraege = await wartendeWerbemittel();
     if (!eintraege) return antwort(503, { fehler: "SUPABASE_SERVICE_ROLE_KEY fehlt" });
@@ -20,7 +21,8 @@ export async function GET(anfrage: Request) {
 
 /** Freigeben oder Ablehnen mit Grund, serverseitig mit Service-Role-Key, danach Eintrag in loop_events. */
 export async function POST(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const eingabe = leseEingabe(await anfrage.json().catch(() => null));
   if (!eingabe) return antwort(400, { fehler: "id, aktion oder grund ungültig" });
   const speicher = werbemittelSpeicher();

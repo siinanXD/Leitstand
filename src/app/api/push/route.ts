@@ -1,6 +1,6 @@
 import { speichereAbo } from "@/lib/push/push";
 import { supabaseSpeicher } from "@/lib/push/server";
-import { leitstandNutzer } from "@/lib/server-nutzer";
+import { verweigert } from "@/lib/server-nutzer";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +14,16 @@ function speicher() {
 
 /** Öffentlicher VAPID-Schlüssel für `pushManager.subscribe` (nur mit Sitzung). */
 export async function GET(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const key = process.env.VAPID_PUBLIC_KEY;
   return key ? antwort(200, { publicKey: key }) : antwort(503, { fehler: "Push nicht konfiguriert" });
 }
 
 /** Abo speichern. */
 export async function POST(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const db = speicher();
   if (!db) return antwort(503, { fehler: "Push nicht konfiguriert" });
   const body: unknown = await anfrage.json().catch(() => null);
@@ -34,7 +36,8 @@ export async function POST(anfrage: Request) {
 
 /** Abo löschen (Schalter aus). */
 export async function DELETE(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const db = speicher();
   if (!db) return antwort(503, { fehler: "Push nicht konfiguriert" });
   const body: unknown = await anfrage.json().catch(() => null);

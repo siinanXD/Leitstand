@@ -1,5 +1,5 @@
 import { PROJEKTE } from "@/lib/projekte";
-import { leitstandNutzer, protokolliere } from "@/lib/server-nutzer";
+import { protokolliere, verweigert } from "@/lib/server-nutzer";
 import { goEingabe, SCHRITT, staende, standZeile } from "@/lib/visionaer/visionaer";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,8 @@ async function ladeStand(produkt: string) {
 
 /** Sinans „go“ für die vorgeschlagene Version: nur wenn ein Vorschlag wartet. Schreibt VERSION `go`; ohne Protokoll gilt die Aktion als fehlgeschlagen. */
 export async function POST(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const eingabe = goEingabe(await anfrage.json().catch(() => null), PROJEKTE.map((p) => p.id));
   if (!eingabe) return antwort(400, { fehler: "Produkt oder go ungültig" });
   const stand = await ladeStand(eingabe.produkt);

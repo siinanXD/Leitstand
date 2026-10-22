@@ -9,6 +9,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-agent-testnutzer
+  produkt: leitstand
+  titel: Der Sitzungs-Helfer für das Agent-Testkonto (nur lesen) liegt im Repo (SIN-913)
+  art: datei
+  pfad: src/lib/agent-testnutzer/sitzung.ts
+  enthaelt: baueStorageState
 - id: leitstand-aufbauphase-integration
   produkt: leitstand
   titel: Gate-Simulation prüft Altfristen, high, Draft, Stopplabel und rote Checks; kein Live-Nachweis (SIN-855)

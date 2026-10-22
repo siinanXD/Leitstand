@@ -1,5 +1,5 @@
 import { linearNetz } from "@/lib/idee";
-import { leitstandNutzer } from "@/lib/server-nutzer";
+import { verweigert } from "@/lib/server-nutzer";
 import { EINSTELLUNG, ergebnisEingabe, ergebnisMarkdown, pushStunde } from "@/lib/wochencheck/wochencheck";
 import { berlinZeit } from "@/lib/push/ausloeser";
 
@@ -31,7 +31,8 @@ async function issueAnlegen(key: string, titel: string, label: string): Promise<
 
 /** Uhrzeit des Push und ob diese Woche schon abgeschlossen wurde. */
 export async function GET(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const q = db();
   if (!q) return antwort(503, { fehler: "Supabase nicht eingerichtet" });
   const res = await q(`leitstand_einstellungen?select=wert&schluessel=eq.${EINSTELLUNG}`);
@@ -41,7 +42,8 @@ export async function GET(anfrage: Request) {
 
 /** `{ stunde }` speichert die Push-Uhrzeit; `{ haken, fehler, vorrang }` schließt den Check ab: Korrektur-Issues, Vorrang-Issue, Notiz fürs Gedächtnis. */
 export async function POST(anfrage: Request) {
-  if (!(await leitstandNutzer(anfrage))) return antwort(401, { fehler: "nicht angemeldet" });
+  const nein = await verweigert(anfrage);
+  if (nein) return nein;
   const q = db();
   if (!q) return antwort(503, { fehler: "Supabase nicht eingerichtet" });
   const body: unknown = await anfrage.json().catch(() => null);

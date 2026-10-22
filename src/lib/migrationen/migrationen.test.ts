@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { erwartungen, fehlendes, jeDatei, offene, type Ist } from "./migrationen";
@@ -67,4 +67,11 @@ test("offene: nur wenn das jüngste Ereignis der Datei fehlt", () => {
   const z = (min: number, status: string, issue: string) => ({ created_at: new Date(Date.UTC(2026, 9, 13, 12, min)).toISOString(), step: "migration", status, issue });
   const events = [z(0, "fehlt", "a.sql: Spalte t.x fehlt"), z(5, "ok", "a.sql: ok"), z(1, "fehlt", "b.sql: Tabelle u fehlt"), z(6, "fehlt", "b.sql: Tabelle u fehlt"), { created_at: z(7, "", "").created_at, step: "merge", status: "fehlt", issue: "c.sql: x" }];
   assert.deepEqual(offene(events), [{ datei: "b.sql", grund: "Tabelle u fehlt", zeit: Date.UTC(2026, 9, 13, 12, 6) }]);
+});
+
+test("SIN-913: jede Tabelle der Leitstand-Migrationen hat RLS, sonst greift die Agent-Schreibsperre nicht", () => {
+  const sql = readdirSync("supabase/migrations/leitstand").filter((f) => f.endsWith(".sql")).map(lies).join("\n").toLowerCase();
+  const tabellen = [...sql.matchAll(/create table (?:if not exists )?(?:public\.)?([a-z_]+)/g)].map((m) => m[1]!);
+  assert.ok(tabellen.length > 0);
+  for (const t of new Set(tabellen)) assert.match(sql, new RegExp(`alter table (?:public\\.)?${t} enable row level security`), `${t} ohne RLS`);
 });
