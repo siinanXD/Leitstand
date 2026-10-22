@@ -73,7 +73,7 @@ test("Register: jede Rolle hat eine Kennzahl mit Ziel", () => {
   for (const x of r.rollen) assert.ok(x.wirkung?.kennzahl && x.wirkung.ziel, x.id);
 });
 
-test("Fokus (SIN-627): Marketing, Trend und Visionär ruhen mit Grund, der Knopf schaltet sie wieder an", () => {
+test("Fokus (SIN-627): Marketing und Visionär ruhen mit Grund, der Knopf schaltet sie wieder an", () => {
   const fokus = [{ id: "marketing", name: "Marketing" }, { id: "ceo", name: "CEO" }];
   const [marketing, ceo] = rollenStand(fokus, [], JETZT);
   assert.deepEqual([marketing.pausiert, marketing.grund, ceo.pausiert, ceo.grund], [true, "pausiert bis MAF v1", false, null]);
