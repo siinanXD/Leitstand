@@ -21,7 +21,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { laufKandidaten, leseLauf, pruefeLauf } from "../../src/lib/loop/lauf";
+import { starteLaeufe } from "../../src/lib/loop/lauf";
 import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
 import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
@@ -307,27 +307,22 @@ async function laufSpur() {
         labels { nodes { name } } state { type }
         inverseRelations { nodes { type issue { identifier state { type } } } } } } }`,
   );
-  for (const i of laufKandidaten(d.issues.nodes.map(ausLinear))) {
-    const node = d.issues.nodes.find((n) => n.id === i.id)!;
-    const auftrag = leseLauf(i.description);
-    const grund = pruefeLauf(auftrag);
-    if (grund || !auftrag) {
+  const team = new Map(d.issues.nodes.map((n) => [n.id, n.team.id]));
+  await starteLaeufe(d.issues.nodes.map(ausLinear), {
+    ueberspringe: async (i, grund) => {
       console.log(`Lauf ${i.identifier} nicht gestartet: ${grund}`);
       await ereignis("lauf", "uebersprungen", { issue: i.identifier, grund: `lauf_ungueltig: ${grund}` });
-      continue;
-    }
-    const { repo: r, workflow, inputs } = auftrag;
-    if (DRY) {
-      console.log(`[trocken] würde Lauf starten: ${i.identifier} → ${r}/${workflow} ${JSON.stringify(inputs)}`);
-      continue;
-    }
-    const standard = (await gh<{ default_branch: string }>(`/repos/${r}`)).default_branch;
-    await gh(`/repos/${r}/actions/workflows/${workflow}/dispatches`, { method: "POST", body: { ref: standard, inputs } });
-    await setzeStatus(i.id, node.team.id, "In Progress");
-    await kommentar(i.id, `Lauf gestartet (SIN-887): ${workflow} mit ${JSON.stringify(inputs)} – https://github.com/${r}/actions/workflows/${workflow}`);
-    await ereignis("lauf", "ok", { issue: i.identifier });
-    console.log(`Lauf gestartet: ${i.identifier} → ${r}/${workflow}`);
-  }
+    },
+    starte: async (i, { repo: r, workflow, inputs }) => {
+      if (DRY) return console.log(`[trocken] würde Lauf starten: ${i.identifier} → ${r}/${workflow} ${JSON.stringify(inputs)}`);
+      const standard = (await gh<{ default_branch: string }>(`/repos/${r}`)).default_branch;
+      await gh(`/repos/${r}/actions/workflows/${workflow}/dispatches`, { method: "POST", body: { ref: standard, inputs } });
+      await setzeStatus(i.id, team.get(i.id)!, "In Progress");
+      await kommentar(i.id, `Lauf gestartet (SIN-887): ${workflow} mit ${JSON.stringify(inputs)} – https://github.com/${r}/actions/workflows/${workflow}`);
+      await ereignis("lauf", "ok", { issue: i.identifier });
+      console.log(`Lauf gestartet: ${i.identifier} → ${r}/${workflow}`);
+    },
+  });
 }
 
 /** Voraussetzung im Produkt-Repo (SIN-763): claude.yml vorhanden und Secret gesetzt. Gibt den Grund zurück, wenn etwas fehlt. */

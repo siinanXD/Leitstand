@@ -62,3 +62,40 @@ const ERLEDIGT = new Set(["completed", "canceled"]);
  */
 export const laufKandidaten = <T extends LaufIssue>(issues: T[]): T[] =>
   issues.filter((i) => i.stateType === "unstarted" && i.labels.some((l) => l.toLowerCase() === LAUF_LABEL) && !i.blockiertVon.some((b) => !ERLEDIGT.has(b.stateType)));
+
+export type LaufStart<T> = { starte: (i: T, a: LaufAuftrag) => Promise<void>; ueberspringe: (i: T, grund: string) => Promise<void> };
+
+/**
+ * Dispatcher-Schritt der Lauf-Spur: jedes startbare Lauf-Issue mit gültigem Auftrag geht an `starte` (im Betrieb
+ * `workflow_dispatch`), alle anderen an `ueberspringe` mit Grund. Kein Worker, kein PR. Gibt die gestarteten Kennungen zurück.
+ */
+export async function starteLaeufe<T extends LaufIssue & { description?: string | null }>(issues: T[], d: LaufStart<T>): Promise<string[]> {
+  const gestartet: string[] = [];
+  for (const i of laufKandidaten(issues)) {
+    const a = leseLauf(i.description);
+    const grund = pruefeLauf(a);
+    if (grund || !a) {
+      await d.ueberspringe(i, grund ?? "kein Auftrag");
+      continue;
+    }
+    await d.starte(i, a);
+    gestartet.push(i.identifier);
+  }
+  return gestartet;
+}
+
+export type Art = "claude" | "lauf" | "sinan";
+const SINAN = /\b(Freigabe|freigeben|Konto|Abo|Vertrag|Secret|API-Key|bezahlen)\b/i;
+const LAUF = /\b(veröffentlichen|Richterlauf|Trockenlauf|Backfill|Migration einspielen|neu indexieren)\b/i;
+
+/**
+ * Art-Label beim Anlegen (SIN-887): genau eins. Ein Lauf-Block oder ein reiner Workflow-Lauf → `lauf`; Konto, Geld,
+ * Secret oder Freigabe → `sinan`; sonst Code → `claude`. Der Block gewinnt, weil er den Lauf schon festlegt.
+ * shortcut: Stichwörter statt Modell, reicht für die Planer-Titel aus docs/FERTIG.md; ausbauen, wenn Fehlgriffe auftauchen.
+ */
+export function artLabel(titel: string, beschreibung: string | null = null): Art {
+  if (leseLauf(beschreibung)) return "lauf";
+  if (SINAN.test(titel)) return "sinan";
+  if (LAUF.test(titel)) return "lauf";
+  return "claude";
+}

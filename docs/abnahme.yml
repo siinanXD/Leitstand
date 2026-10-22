@@ -887,3 +887,11 @@
   art: datei
   pfad: scripts/loop/loop.ts
   enthaelt: await laufSpur()
+
+# SIN-887: Planer setzt genau ein Art-Label (claude, lauf, sinan)
+- id: planer-art-label
+  produkt: leitstand
+  titel: Planer legt Issues mit Art-Label aus artLabel an
+  art: datei
+  pfad: scripts/vorarbeiter/vorarbeiter.ts
+  enthaelt: label(artLabel(title))
