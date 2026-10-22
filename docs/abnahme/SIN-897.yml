@@ -1,0 +1,9 @@
+# SIN-897: Kennzahl Durchstich
+- id: leitstand-durchstich-kennzahl
+  produkt: leitstand
+  titel: Die Kennzahl Durchstich liegt als Tageswert in loop_snapshot (SIN-897)
+  art: db
+  rest: loop_snapshot?project=eq.leitstand&select=durchstich,updated_at&durchstich=not.is.null
+  zeitfeld: updated_at
+  max_alter_min: 1500
+  nicht_leer: durchstich

@@ -152,11 +152,11 @@ jobs:
                 const aktuellBelegt = belegAktuell({ stand: leseStand(comments.filter(k => ["github-actions[bot]", context.repo.owner].includes(k.user?.login)).map(k => k.body || "")), headSha: final.head.sha, hash: auftrag.hash });
                 const finalLabels = final.labels.map(l => l.name);
                 if (!aktuellBelegt.ok || final.state !== "open" || final.base?.ref !== "main" || final.base?.sha !== pr.base?.sha || final.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}` || final.head.sha !== pr.head.sha || final.draft || finalLabels.includes("no-automerge") || ((high || finalLabels.includes("risk:high")) && !finalLabels.includes("freigegeben"))) return core.warning("Unmittelbar vor Merge geändert oder nicht freigegeben; kein Merge.");
-                await github.rest.pulls.merge({ ...context.repo, pull_number: pr.number, merge_method: "squash", sha: final.head.sha }).catch(e => core.warning(`Synchroner Merge durch GitHub abgewiesen: ${e.message}`));
+                await github.rest.pulls.merge({ ...context.repo, pull_number: pr.number, merge_method: "squash", sha: final.head.sha, commit_message: "Auto-Merge: automerge.yml" }).catch(e => core.warning(`Synchroner Merge durch GitHub abgewiesen: ${e.message}`));
               } else {
-                await gql(`mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) { clientMutationId } }`, { id: pr.node_id }).catch(async e => {
+                await gql(`mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH, commitBody: "Auto-Merge: automerge.yml"}) { clientMutationId } }`, { id: pr.node_id }).catch(async e => {
                   if (!/\bclean status/i.test(e.message)) return core.warning(`Auto-Merge nicht gesetzt: ${e.message}`);
-                  await github.rest.pulls.merge({ ...context.repo, pull_number: pr.number, merge_method: "squash", sha: pr.head.sha }).catch(m => core.warning(`Direkt-Merge fehlgeschlagen: ${m.message}`));
+                  await github.rest.pulls.merge({ ...context.repo, pull_number: pr.number, merge_method: "squash", sha: pr.head.sha, commit_message: "Auto-Merge: automerge.yml" }).catch(m => core.warning(`Direkt-Merge fehlgeschlagen: ${m.message}`));
                 });
               }
             } else {

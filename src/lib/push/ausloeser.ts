@@ -84,8 +84,8 @@ function gebuendelt(ereignisse: readonly Ereignis[]): Nachricht {
 }
 
 /** Tages-Auswertung: selbst Behobenes und was auf dich wartet; gesammelt, nie einzeln. */
-function auswertung(behoben: readonly Ereignis[], wartend: readonly Ereignis[]): Nachricht {
-  const erste = `${behoben.length} selbst behoben, ${wartend.length} warten auf dich`;
+function auswertung(behoben: readonly Ereignis[], wartend: readonly Ereignis[], durchstich: number | null): Nachricht {
+  const erste = `${behoben.length} selbst behoben, ${wartend.length} warten auf dich${durchstich === null ? "" : `, ${durchstich} ohne dich fertig`}`;
   return { titel: "Auswertung", text: zweiZeilen(erste, vereinigt(behoben)), url: "/auswertung" };
 }
 
@@ -103,7 +103,7 @@ export const spaeter = (ereignis: Ereignis, jetzt: number): Erinnerung => ({ ere
  * - Selbst behoben: nur in der Auswertung um 20:00 (einmal pro Berliner Tag).
  * - Erinnerungen („Später“): wie Braucht dich, ab fälliger Zeit; Erinnerungen an Alarme auch nachts.
  */
-export function plane(ereignisse: readonly Ereignis[], gesendet: Gesendet, jetzt: number, erinnerungen: readonly Erinnerung[] = []): Plan {
+export function plane(ereignisse: readonly Ereignis[], gesendet: Gesendet, jetzt: number, erinnerungen: readonly Erinnerung[] = [], durchstich: number | null = null): Plan {
   const nachrichten: Nachricht[] = [];
   const neu: string[] = [];
   const ruhe = inRuhe(jetzt);
@@ -143,7 +143,7 @@ export function plane(ereignisse: readonly Ereignis[], gesendet: Gesendet, jetzt
   if (stunde >= AUSWERTUNG_STUNDE && !ruhe && !gesendet.has(schluessel)) {
     const behoben = offen.filter((x) => x.art === "selbst-behoben");
     const wartend = braucht.filter((x) => x.art === "braucht-dich" && !neu.includes(x.id));
-    nachrichten.push(auswertung(behoben, wartend));
+    nachrichten.push(auswertung(behoben, wartend, durchstich));
     neu.push(schluessel, ...behoben.map((e) => e.id));
   }
 
