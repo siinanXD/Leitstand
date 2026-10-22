@@ -954,3 +954,10 @@
   art: datei
   pfad: src/lib/loop/auswahl.ts
   enthaelt: "codexRueckfall"
+
+- id: loop-codex-pruefer-branch
+  produkt: leitstand
+  titel: Der Prüfer behandelt codex/-Branches wie claude/-Branches (Test in src/lib/pruefer/workflow.test.ts)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: "startsWith(github.head_ref, 'codex/')"
