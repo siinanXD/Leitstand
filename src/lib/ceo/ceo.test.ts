@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import type { SnapshotRow } from "../uebersicht";
 import { bezugVon, chefSatz, entscheide, fertigMeldung, entscheidungsZeile, gedaechtnisZeile, letzteJeProdukt, luecke, ohneDaten, startbar, type ProduktLage } from "./ceo";
-import { gleicheAbsicht, ideenGesperrt, neueIssueTitel, pruefeDubletten, zaehleHaken } from "./fertig";
+import { gleicheAbsicht, ideenGesperrt, kennungMarker, leseKennungen, neueIssueTitel, pruefeDubletten, zaehleHaken } from "./fertig";
 
 const lage: ProduktLage = { id: "lernapp", name: "Lern-App", startbar: 1, fertig: 3, gesamt: 10, rot: null, wartetAufSinan: [], metaPrsHeute: 0, ideenDieseWoche: 0 };
 const zeile = (o: Partial<SnapshotRow>): SnapshotRow => ({ project: "lernapp", stage: null, status: "Todo", title: null, updated_at: null, quota_name: null, quota_used: null, quota_limit: null, issue: "SIN-1", blocked_by: [], quotas: [], labels: ["claude"], minutes: null, pr: null, open_prs: [], ...o });
@@ -97,6 +97,14 @@ test("Dubletten-Prüfung (SIN-613): gleiche Absicht, anderer Titel → kein neue
   assert.deepEqual(r.uebersprungen, [{ titel: "Screenreader-Test der Kernrouten dokumentieren", vorhanden: "Manueller Screenreader-Test der Kernrouten dokumentieren" }]);
   assert.equal(r.neu.length, 3);
   assert.equal(gleicheAbsicht("Ablauf-Ansicht", "Projekt-Karten"), false);
+});
+
+test("Test: Issue mit geändertem Titel und ohne `claude` → der Planer legt kein neues an (SIN-890)", () => {
+  const punkt = "Industriekaufmann/-frau veröffentlichen";
+  const md = `- [ ] ${punkt}\n`;
+  const kennungen = leseKennungen(`Beliebiger Text\n${kennungMarker(punkt)}`);
+  assert.deepEqual(pruefeDubletten(md, ["Etwas ganz anderes"], 3, kennungen).neu, []);
+  assert.deepEqual(pruefeDubletten(md, ["Etwas ganz anderes"], 3).neu, [punkt]);
 });
 
 test("Chef-Satz verfällt mit der Aufgabe (SIN-579)", () => {
