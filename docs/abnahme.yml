@@ -152,7 +152,7 @@
   produkt: lernapp
   titel: Lern-App-Snapshot ist frisch und die Schlange gefüllt
   art: db
-  rest: loop_snapshot?project=eq.lernapp&select=updated_at,queue
+  rest: loop_snapshot?project=eq.Content-Agent-Lernapp&select=updated_at,queue
   zeitfeld: updated_at
   max_alter_min: 60
   nicht_leer: queue

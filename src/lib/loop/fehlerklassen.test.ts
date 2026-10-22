@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
+import { bewerteText } from "../abnahme/abnahme";
 import { ERLAUBT, pruefeLauf } from "./lauf";
 
 // Fehlerklassen-Tests (SIN-967): wiederkehrende Fehler als feste Prüfung statt nur als Zeile in LEHREN.md.
@@ -32,10 +33,13 @@ test("CI-Proben in abnahme.yml hängen nicht am Head-SHA (SIN-967)", () => {
 });
 
 test("Probe-Text der drei CI-Proben passt auf die echte API-Antwort (geprüft gegen `build.yml`-Runs von `main`)", () => {
-  // Auszug der echten Antwort ohne Token (so ruft scripts/abnahme die URL ab), 22.10.2026: GitHub liefert eingerücktes JSON.
-  const antwort = readFileSync(new URL("./fixtures/build-runs-main.json", import.meta.url), "utf8");
+  // Auszug der echten Antwort (22.10.2026). GitHub rückt JSON nur für curl ein; fetch in scripts/abnahme bekommt es kompakt.
+  // Der Probe-Text muss deshalb auf beide Formate passen (SIN-967).
+  const daten = JSON.parse(readFileSync(new URL("./fixtures/build-runs-main.json", import.meta.url), "utf8"));
+  const formate = [JSON.stringify(daten), JSON.stringify(daten, null, 2)];
   const proben = readFileSync(new URL("../../../docs/abnahme.yml", import.meta.url), "utf8");
   const ci = [...proben.matchAll(/url: [^\n]*build\.yml\/runs\?[^\n]*\n\s+enthaelt: '([^']+)'/g)].map((m) => m[1]);
   assert.equal(ci.length, 3);
-  for (const text of ci) assert.ok(antwort.includes(text), `„${text}“ fehlt in der echten Antwort`);
+  // Bewertet wie scripts/abnahme (bewerteText), nicht mit einem eigenen Vergleich.
+  for (const text of ci) for (const antwort of formate) assert.ok(bewerteText({ id: "ci", produkt: "leitstand", titel: "ci", art: "http", enthaelt: text }, antwort).ok, `„${text}“ fehlt in der Antwort`);
 });

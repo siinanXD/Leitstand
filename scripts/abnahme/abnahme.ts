@@ -23,7 +23,10 @@ const supabaseKopf = () => ({ apikey: env.SUPABASE_SERVICE_ROLE_KEY ?? "", Autho
 async function fuehreAus(p: Probe): Promise<Ergebnis> {
   const feld = (n: string) => einsetzen(p[n] ?? "", env);
   if (p.art === "http") {
-    const res = await fetch(feld("url"), { signal: zeitlimit() });
+    const url = feld("url");
+    // SIN-967: GitHub-API mit Token abrufen; ohne Token teilen sich Runner 60 Abrufe je Stunde und IP.
+    const kopf = url.startsWith("https://api.github.com/") && env.GH_TOKEN ? { Authorization: `Bearer ${env.GH_TOKEN}` } : undefined;
+    const res = await fetch(url, { headers: kopf, signal: zeitlimit() });
     const erwartet = Number(p.status ?? 200);
     return res.status === erwartet ? bewerteText(p, await res.text()) : { ok: false, grund: `HTTP ${res.status}, erwartet ${erwartet}` };
   }

@@ -66,8 +66,11 @@ export function bewerteZeilen(probe: Probe, zeilen: unknown, jetzt: number): Erg
 }
 
 /** Bewertet Text (Datei oder Antwort): muss `enthaelt` enthalten, falls angegeben. */
+/** JSON kommt je nach Abrufer kompakt oder eingerückt (`"a": "b"` vs. `"a":"b"`, SIN-967): Leerraum nach `":` zählt nicht. */
+const ohneJsonLeerraum = (t: string) => t.replace(/":\s+/g, '":');
+
 export function bewerteText(probe: Probe, text: string): Ergebnis {
-  return !probe.enthaelt || text.includes(probe.enthaelt) ? { ok: true, grund: "ok" } : { ok: false, grund: `„${probe.enthaelt}“ fehlt` };
+  return !probe.enthaelt || ohneJsonLeerraum(text).includes(ohneJsonLeerraum(probe.enthaelt)) ? { ok: true, grund: "ok" } : { ok: false, grund: `„${probe.enthaelt}“ fehlt` };
 }
 
 /** Zeile für `loop_events`: Schritt abnahme, `issue` trägt den Titel der Probe (so liest ihn die Seite ohne weitere Abfrage). */

@@ -80,3 +80,10 @@ test("SIN-903: ereignisZeile schreibt nur Status, die loop_events_status_check e
   }
   assert.deepEqual([...LOOP_STATUS], ERLAUBT_IN_DB);
 });
+
+test("bewerteText: JSON-Paar passt kompakt und eingerückt (SIN-967)", () => {
+  const p = probe({ enthaelt: '"conclusion": "success"' });
+  assert.equal(bewerteText(p, '{"conclusion":"success"}').ok, true);
+  assert.equal(bewerteText(p, '{\n  "conclusion": "success"\n}').ok, true);
+  assert.equal(bewerteText(p, '{"conclusion":"failure","display_title":"success"}').ok, false);
+});
