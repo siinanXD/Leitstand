@@ -13,7 +13,7 @@
  * DRY_RUN=1: nur anzeigen, was erwartet wird; Datenbank wird nur gelesen, wenn die Zugangsdaten da sind, nie geschrieben.
  */
 import { readdirSync, readFileSync } from "node:fs";
-import { dateiAus, ereignisIssue, FEHLT, erwartungen, fehlendes, jeDatei, type Ist } from "../../src/lib/migrationen/migrationen";
+import { dateiAus, ereignisIssue, erwartungen, fehlendes, jeDatei, type Ist } from "../../src/lib/migrationen/migrationen";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -76,7 +76,7 @@ async function main() {
     const d = dateiAus(e.issue);
     if (gesehen.has(d)) continue;
     gesehen.add(d);
-    if (FEHLT.includes(e.status)) war.add(d);
+    if (e.status === "fehlt") war.add(d);
   }
 
   const lauf = env.GITHUB_RUN_ID ?? null;
@@ -85,8 +85,7 @@ async function main() {
   // shortcut: `fehlt` wird bei jedem Lauf neu geschrieben (die Übersicht liest nur 24 h); ausbauen, wenn die Tabelle wächst.
   const ok = [...war].filter((d) => !fehlt.some((f) => f.datei === d)).map((d) => zeile("ok", `${d}: eingespielt`));
   if (DRY) return console.log(`[trocken] würde schreiben: ${fehlt.length} fehlt, ${ok.length} ok`);
-  // `fehlt` lehnt loop_events_status_check ab (der Lauf wurde rot, die Meldung kam nie an); `needs_human` ist erlaubt.
-  await schreibe([...fehlt.map((f) => zeile("needs_human", ereignisIssue(f))), ...ok]);
+  await schreibe([...fehlt.map((f) => zeile("fehlt", ereignisIssue(f))), ...ok]);
 }
 
 main().catch((e) => {

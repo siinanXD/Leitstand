@@ -21,7 +21,7 @@ import { ladeClaudeRest, ladeOffenePausen } from "../kontingent/pausen";
 import { knappSatz } from "../../src/lib/kontingent/prioritaet";
 import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/visionaer/visionaer";
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
-import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { kriterienPlan, LABEL_UNKLAR, UNKLAR_KOMMENTAR } from "../../src/lib/vorarbeiter/kriterien";
@@ -349,8 +349,8 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     jetzt: new Date(),
     offenePrs: prs.map((p) => ({ titel: p.title, branch: p.head.ref, labels: p.labels.map((l) => l.name) })),
     teilGemergt: teilGemergte(zuletzt.map((p) => ({ titel: p.title, body: p.body, gemergt: !!p.merged_at }))),
-    // SIN-918: voll gemergte PRs; wartet das Issue nur noch auf den Live-Beleg, belegt es keinen Platz und startet nicht neu.
-    gemergt: zuletzt.filter((p) => p.merged_at && !istTeil(p.title, p.body)).map((p) => linearId(p.title)).filter((x): x is string => !!x),
+    // SIN-918: gemergte PRs (auch „Part of“); wartet das Issue nur noch auf den Live-Beleg, belegt es keinen Platz und startet nicht neu.
+    gemergt: gemergteIds(zuletzt),
   };
   const max = maxParallel(repo, env.LOOP_MAX_PARALLEL, env.LEITSTAND_MAX_PARALLEL);
   const schutz = repo.toLowerCase() === "siinanxd/leitstand"

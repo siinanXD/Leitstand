@@ -259,9 +259,3 @@ test("SIN-832: issueweiter Reparaturzähler stoppt auch einen neuen PR ohne repa
   assert.equal(erkennePrHaenger([pr()], jetzt, new Map([["SIN-1", 3]]))[0]?.art, "stopp");
   assert.equal(erkennePrHaenger([pr()], jetzt, new Map([["SIN-2", 3]]))[0]?.art, "reparatur");
 });
-
-test("SIN-918: In Progress ohne PR, nur Live-Haken offen → In Review statt Todo (kein Neustart ohne Bauauftrag)", () => {
-  const live = issue({ identifier: "SIN-918", stateType: "started", startedAt: vor(1), description: "- [x] Test grün\n- [ ] \\[nach Aktivierung\\] Zeile" });
-  assert.deepEqual(erkenneIssueHaenger([live], [], jetzt).map((a) => a.art), ["live-beleg"]);
-  assert.equal(erkenneIssueHaenger([live], [pr({ titel: "fix(loop): x (SIN-918)" })], jetzt).length, 0, "offener PR: nichts tun");
-});

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gemergteFuerLaufende, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
+import { ausLinear, freigegebene, gemergteFuerLaufende, gemergteIds, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -268,23 +268,17 @@ test("Test: gemergter PR + ein normaler Haken offen → bleibt wie bisher (Folge
   assert.equal(statusNachMerge({ status: "done", offen: [] }), "Done");
 });
 
-const NEU = "## Fertig, wenn\n\n- [ ] Test grün\n- [ ] \\[nach Aktivierung\\] Zeile in loop_events\n";
-
 test("Test: Issue ohne gemergten PR → unverändert", () => {
-  const lauf = issue({ identifier: "SIN-913", description: NEU, stateType: "started", startedAt: "2026-10-21T17:30:00Z" });
-  const todo = issue({ identifier: "SIN-913", description: NEU });
+  const lauf = issue({ identifier: "SIN-913", description: LIVE, stateType: "started", startedAt: "2026-10-21T17:30:00Z" });
+  const todo = issue({ identifier: "SIN-913", description: LIVE });
   assert.equal(wartetAufLiveBeleg(lauf, ["SIN-904"]), false);
   assert.deepEqual(laufende([lauf], belegung(["SIN-904"])).map((i) => i.identifier), ["SIN-913"]);
   assert.deepEqual(waehle([todo], new Set(), 2, belegung([])).map((i) => i.identifier), ["SIN-913"]);
 });
 
-test("SIN-918: „Part of“-PR oder PR außerhalb der letzten 30 gemergt, nur Live-Haken offen → kein Neustart, kein Platz", () => {
-  // Abgehakte Haken setzt nur der Merge; ohne Kennung in `gemergt` startete der Dispatcher das Issue sonst immer wieder.
-  const todo = issue({ identifier: "SIN-918", description: LIVE });
-  const lauf = issue({ identifier: "SIN-918", description: LIVE, stateType: "started", startedAt: "2026-10-21T17:55:00Z" });
-  assert.equal(wartetAufLiveBeleg(todo, []), true);
-  assert.deepEqual(waehle([todo], new Set(), 2, belegung([])), []);
-  assert.deepEqual(laufende([lauf], belegung([])), []);
-  assert.equal(wartetAufLiveBeleg(issue({ identifier: "SIN-918", description: NORMAL }), []), false, "normaler Haken offen: Folge-Worker");
-  assert.equal(wartetAufLiveBeleg(issue({ identifier: "SIN-918", description: "- [x] Test grün\n" }), []), false, "alles abgehakt ohne Merge: nicht raten");
+test("SIN-918: gemergter „Part of“-PR zählt; nur Live-Haken offen → kein Neustart", () => {
+  const prs = [{ title: "fix(loop): Teil (SIN-918)", merged_at: "2026-10-21T18:00:00Z" }, { title: "fix(x): offen (SIN-1)", merged_at: null }];
+  assert.deepEqual(gemergteIds(prs), ["SIN-918"]);
+  assert.deepEqual(waehle([issue({ identifier: "SIN-918", description: LIVE })], new Set(), 2, belegung(gemergteIds(prs))), []);
+  assert.deepEqual(waehle([issue({ identifier: "SIN-918", description: NORMAL })], new Set(), 2, belegung(gemergteIds(prs))).map((i) => i.identifier), ["SIN-918"], "normaler Haken offen: Folge-Worker");
 });

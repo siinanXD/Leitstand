@@ -65,13 +65,10 @@ export function jeDatei(f: readonly Fehlt[]): Fehlt[] {
 export const ereignisIssue = (f: Fehlt) => `${f.datei}: ${f.grund}`;
 export const dateiAus = (issue: string) => issue.split(": ")[0];
 
-/** Status „Migration fehlt“: `needs_human` (erlaubt in loop_events); `fehlt` aus alten Zeilen, die nie gespeichert wurden. */
-export const FEHLT: readonly (string | null)[] = ["needs_human", "fehlt"];
-
 type Zeile = { created_at: string; step: string | null; status: string | null; issue: string | null };
 export type Offen = { datei: string; grund: string; zeit: number };
 
-/** Offen = jüngstes Ereignis der Datei ist FEHLT; `zeit` ist dessen Zeitpunkt (ms). */
+/** Offen = jüngstes Ereignis der Datei ist `fehlt`; `zeit` ist dessen Zeitpunkt (ms). */
 export function offene(events: readonly Zeile[]): Offen[] {
   const neuste = new Map<string, Zeile>();
   for (const e of events) {
@@ -80,5 +77,5 @@ export function offene(events: readonly Zeile[]): Offen[] {
     const alt = neuste.get(datei);
     if (!alt || Date.parse(e.created_at) > Date.parse(alt.created_at)) neuste.set(datei, e);
   }
-  return [...neuste].filter(([, e]) => FEHLT.includes(e.status)).map(([datei, e]) => ({ datei, grund: e.issue!.slice(datei.length + 2), zeit: Date.parse(e.created_at) }));
+  return [...neuste].filter(([, e]) => e.status === "fehlt").map(([datei, e]) => ({ datei, grund: e.issue!.slice(datei.length + 2), zeit: Date.parse(e.created_at) }));
 }

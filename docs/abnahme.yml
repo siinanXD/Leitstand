@@ -721,6 +721,14 @@
   pfad: src/lib/loop/auswahl.ts
   enthaelt: wartetAufLiveBeleg
 
+# SIN-918: „Part of“-PRs zählen als gemergt (kein Neustart, Claim sperrt @steuerung nicht)
+- id: platz-live-beleg-teil-pr
+  produkt: leitstand
+  titel: Gemergte „Part of“-PRs zählen beim Warten auf den Live-Beleg
+  art: datei
+  pfad: scripts/loop/loop.ts
+  enthaelt: "gemergt: gemergteIds(zuletzt)"
+
 # SIN-921: Gate-Restfehler (Labels, Prüfer-Risiko, Pause)
 - id: gate-labelwechsel-raeumt
   produkt: leitstand

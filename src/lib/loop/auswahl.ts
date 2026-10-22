@@ -48,15 +48,16 @@ export type Belegung = { jetzt: Date; offenePrs: OffenerPr[]; teilGemergt?: stri
 export const nachAktivierung = (text: string) => /^\\?\[nach Aktivierung\\?\]/i.test(text.trim());
 
 /**
- * SIN-918: PR gemergt, offen sind nur noch `[nach Aktivierung]`-Haken. Das Issue wartet auf den Live-Beleg, nicht auf einen Worker.
- * Auch ohne bekannten PR: Abgehakte Haken setzt nur der Merge (`setzeHaken`). Sonst startete ein „Part of“-PR oder ein PR
- * außerhalb der letzten 30 das Issue immer wieder, der Worker endete ohne PR und sein Claim sperrte die Steuerung.
+ * SIN-918: Kennungen aus gemergten PRs, auch „Part of“. Ob nur noch Live-Haken offen sind, prüft `wartetAufLiveBeleg`;
+ * ohne „Part of“ startete ein Issue nach einem Teil-PR immer wieder, der Worker endete ohne PR und sein Claim sperrte `@steuerung`.
  */
+export const gemergteIds = (prs: { title: string; merged_at: string | null }[]): string[] =>
+  prs.filter((p) => p.merged_at).map((p) => linearId(p.title)).filter((x): x is string => !!x);
+
+/** SIN-918: PR gemergt, offen sind nur noch `[nach Aktivierung]`-Haken. Das Issue wartet auf den Live-Beleg, nicht auf einen Worker. */
 export function wartetAufLiveBeleg(i: Pick<LinearIssue, "identifier" | "description">, gemergt: readonly string[]): boolean {
-  const haken = leseHaken(i.description);
-  const offen = haken.filter((h) => !h.erledigt);
-  if (!gemergt.includes(i.identifier) && !(offen.length && haken.some((h) => h.erledigt))) return false;
-  return offen.every((h) => nachAktivierung(h.text));
+  if (!gemergt.includes(i.identifier)) return false;
+  return leseHaken(i.description).filter((h) => !h.erledigt).every((h) => nachAktivierung(h.text));
 }
 
 /** SIN-918: Status nach dem Merge. Nur noch Live-Haken offen → „In Review“ (kein Neustart); andere offene Haken → „Todo“ für den Folge-Worker. */
@@ -130,8 +131,8 @@ export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssu
 /** SIN-923: Claims, deren offener PR nur noch auf Sinan wartet, belegen keinen Startplatz (die Dateien schützt der PR-Schutz weiter). */
 export function claimsMitPlatz(claims: LinearIssue[], belegung: Belegung): LinearIssue[] {
   return claims.filter((i) => {
-    // Ein Claim auf ein Issue, das nur noch auf den Live-Beleg wartet, hält keinen Platz und keinen Schreibbereich.
-    if (wartetAufLiveBeleg(i, belegung.gemergt ?? [])) return false;
+    // SIN-918: Ein Claim auf ein Issue, das nur noch auf den Live-Beleg wartet, hält keinen Platz und keinen Schreibbereich.
+    if (belegung.gemergt && wartetAufLiveBeleg(i, belegung.gemergt)) return false;
     const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
     return !(eigene.length && eigene.every(wartetAufSinan));
   });

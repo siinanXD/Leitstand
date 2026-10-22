@@ -67,8 +67,6 @@ test("offene: nur wenn das jüngste Ereignis der Datei fehlt", () => {
   const z = (min: number, status: string, issue: string) => ({ created_at: new Date(Date.UTC(2026, 9, 13, 12, min)).toISOString(), step: "migration", status, issue });
   const events = [z(0, "fehlt", "a.sql: Spalte t.x fehlt"), z(5, "ok", "a.sql: ok"), z(1, "fehlt", "b.sql: Tabelle u fehlt"), z(6, "fehlt", "b.sql: Tabelle u fehlt"), { created_at: z(7, "", "").created_at, step: "merge", status: "fehlt", issue: "c.sql: x" }];
   assert.deepEqual(offene(events), [{ datei: "b.sql", grund: "Tabelle u fehlt", zeit: Date.UTC(2026, 9, 13, 12, 6) }]);
-  // loop_events lässt `fehlt` nicht zu; der Prüfer schreibt `needs_human`.
-  assert.deepEqual(offene([z(8, "needs_human", "d.sql: Spalte t.y fehlt")]).map((o) => o.datei), ["d.sql"]);
 });
 
 test("SIN-913: jede Tabelle der Leitstand-Migrationen hat RLS, sonst greift die Agent-Schreibsperre nicht", () => {
