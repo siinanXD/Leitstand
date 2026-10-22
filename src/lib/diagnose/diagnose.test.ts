@@ -83,6 +83,6 @@ const diagnoseWorkflow = readFileSync(".github/workflows/diagnose.yml", "utf8");
 
 test("SIN-907: Diagnose-Dateiwerkzeug nutzt keine wirkungslose Pfadfreigabe", () => {
   const tools = diagnoseWorkflow.match(/--allowedTools \"([^\"]+)\"/)?.[1].split(",") ?? [];
-  assert.ok(!tools.some((tool) => tool.startsWith("Write(")), "Write-Pfadmatcher wird von der Action nicht als Dateiwerkzeug freigegeben");
+  assert.deepEqual(tools.filter((tool) => tool === "Write" || tool.startsWith("Write(")), ["Write"], "nur der dokumentierte Write-Toolname gibt das Ergebnisartefakt frei");
   assert.match(diagnoseWorkflow, /Schreibe diagnose-ergebnis\.json im Repo-Wurzelverzeichnis\. Sonst nichts ändern\./);
 });

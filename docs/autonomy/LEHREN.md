@@ -49,4 +49,4 @@ Nur Quellmetadaten auf Secrets prüfen reicht nicht → auch die frei eingegeben
 - SIN-903: `loop_events.status` hat einen Check (start/ok/fehler/uebersprungen); ein anderer Wert ("failed") lässt den ganzen Sammel-Insert scheitern → nur erlaubte Werte schreiben, Test gegen die Liste.
 - Worker soll Linear per `curl … $LINEAR_API_KEY` lesen → claude-code-action lehnt Befehle mit Umgebungsvariablen ab; Key gehört in ein Skript (`scripts/loop/auftrag.ts`), das in allowedTools steht (SIN-945).
 
-Dateispezifisches `Write(datei)` in `claude-code-action --allowedTools` erzeugt Berechtigungsablehnungen und kein Artefakt → Dateiwerkzeuge nicht mit undokumentiertem Pfadmatcher ergänzen; Ergebnisname im Prompt festlegen und Ausgabe danach strikt prüfen (SIN-907).
+Dateispezifisches `Write(datei)` in `claude-code-action --allowedTools` erzeugt Berechtigungsablehnungen und kein Artefakt → den Matcher durch den dokumentierten Toolnamen `Write` ersetzen; Ergebnisname im Prompt festlegen und Ausgabe danach strikt prüfen (SIN-907).
