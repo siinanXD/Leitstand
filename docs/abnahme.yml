@@ -229,7 +229,7 @@
   produkt: leitstand
   titel: Bauen hat in den letzten 48 Stunden ein Ereignis geschrieben
   art: db
-  rest: loop_events?agent=eq.bauen&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  rest: loop_events?step=eq.worker&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
 - id: leitstand-rolle-pruefen
@@ -255,23 +255,21 @@
   max_alter_min: 2880
 - id: leitstand-rolle-hausmeister
   produkt: leitstand
-  titel: Hausmeister hat in den letzten 48 Stunden ein Ereignis geschrieben
-  art: db
-  rest: loop_events?agent=eq.hausmeister&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
-  zeitfeld: created_at
-  max_alter_min: 2880
+  titel: Hausmeister hat einen erfolgreichen Lauf (wöchentlich, schreibt keine loop_events)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/hausmeister.yml/runs?status=success&per_page=1
+  enthaelt: '"success"'
 - id: leitstand-rolle-anwalt
   produkt: leitstand
-  titel: Anwalt hat in den letzten 48 Stunden ein Ereignis geschrieben
-  art: db
-  rest: loop_events?agent=eq.anwalt&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
-  zeitfeld: created_at
-  max_alter_min: 2880
+  titel: Anwalt hat einen erfolgreichen Lauf (schreibt keine loop_events)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/actions/workflows/anwalt.yml/runs?status=success&per_page=1
+  enthaelt: '"success"'
 - id: leitstand-rolle-gedaechtnis
   produkt: leitstand
   titel: Gedächtnis hat in den letzten 48 Stunden ein Ereignis geschrieben
   art: db
-  rest: loop_events?agent=eq.gedaechtnis&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
+  rest: loop_events?agent=eq.betrieb&step=eq.gedaechtnis&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
 - id: leitstand-rolle-botadvisor
@@ -865,3 +863,11 @@
   art: datei
   pfad: .github/workflows/gitleaks-pr.yml
   enthaelt: sha256sum -c -
+
+# SIN-952: Leerlauf – gleiche Dispatch-/Platz-Ereignisse nicht wiederholen
+- id: leerlauf-ereignis-wiederholung
+  produkt: leitstand
+  titel: Dispatcher speichert gleiche Leerlauf-Ereignisse nicht erneut
+  art: datei
+  pfad: scripts/loop/loop.ts
+  enthaelt: istWiederholung(await letztesEreignis(
