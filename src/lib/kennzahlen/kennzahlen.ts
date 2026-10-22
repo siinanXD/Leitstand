@@ -17,7 +17,7 @@ export const NAMEN: Record<Kennzahl, string> = {
   fehlgeschlagene_aenderungen: "Fehlgeschlagene Änderungen",
 };
 
-export type Einheit = { veroeffentlicht: boolean; ersterDurchlaufBestanden: boolean; quelleKursPassend: boolean; inRoterProbe: boolean };
+export type Einheit = { bestandenAm?: string | null; veroeffentlicht: boolean; ersterDurchlaufBestanden: boolean; quelleKursPassend: boolean; inRoterProbe: boolean };
 export type Aenderung = { gemergtAm: string; zurueckgenommenAm?: string | null; repariertAm?: string | null; roteProbeAm?: string | null };
 
 /** Zähler und Nenner „Verkaufsfertig“: Anteil veröffentlichter Einheiten, die alle drei Bedingungen erfüllen. */
@@ -34,6 +34,23 @@ export function fehlgeschlagen(aenderungen: readonly Aenderung[]): { zaehler: nu
   };
   const schlecht = aenderungen.filter((a) => [a.zurueckgenommenAm, a.repariertAm, a.roteProbeAm].some((w) => binnen48h(a, w)));
   return { zaehler: schlecht.length, nenner: aenderungen.length };
+}
+
+export type Kosten = { am: string; eur: number };
+
+/** Zeilen für `kennzahlen_woche` der Woche ab `woche` (Montag, YYYY-MM-DD). Nenner 0 → keine Zeile, nie 0 und nie geschätzt. */
+export function wochenZeilen(woche: string, einheiten: readonly Einheit[], kosten: readonly Kosten[], aenderungen: readonly Aenderung[]): WochenZeile[] {
+  const von = Date.parse(woche);
+  const inWoche = (t: string | null | undefined) => {
+    const ms = t ? Date.parse(t) : NaN;
+    return ms >= von && ms < von + WOCHE_MS;
+  };
+  const zeilen: [Kennzahl, { zaehler: number; nenner: number }][] = [
+    ["verkaufsfertig", verkaufsfertig(einheiten)],
+    ["kosten_je_einheit", { zaehler: kosten.filter((k) => inWoche(k.am)).reduce((s, k) => s + k.eur, 0), nenner: einheiten.filter((e) => inWoche(e.bestandenAm)).length }],
+    ["fehlgeschlagene_aenderungen", fehlgeschlagen(aenderungen.filter((a) => inWoche(a.gemergtAm)))],
+  ];
+  return zeilen.filter(([, r]) => r.nenner > 0).map(([kennzahl, r]) => ({ kennzahl, woche, ...r }));
 }
 
 export type Punkt = { woche: string; wert: number | null };
