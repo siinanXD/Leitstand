@@ -872,6 +872,14 @@
   pfad: scripts/loop/loop.ts
   enthaelt: istWiederholung(await letztesEreignis(
 
+# SIN-953: Kriterien-Check erkennt den von Linear maskierten Marker
+- id: kriterien-marker-maskiert
+  produkt: leitstand
+  titel: Kriterien-Check erkennt den maskierten Marker und setzt keinen zweiten
+  art: datei
+  pfad: src/lib/vorarbeiter/kriterien.ts
+  enthaelt: MARKER_AM_ANFANG
+
 # SIN-887: Lauf-Spur – Lauf-Issues starten vorhandene Workflows aus der Erlaubt-Liste
 - id: lauf-spur-erlaubt
   produkt: leitstand
