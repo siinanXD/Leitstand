@@ -5,7 +5,7 @@ export type LetztesEreignis = { status: string | null; grund: string | null; cre
 export const WIEDERHOLUNG_STUNDEN = 6;
 
 /** Diese Ereignisse wiederholen sich bei jedem Dispatch (alle 15 Min) unverändert: über 1.000 Zeilen je Woche ohne Neuigkeit. */
-export const istLaufzustand = (step: string, status: string) => status === "uebersprungen" || step === "platz";
+export const istLaufzustand = (step: string, status: string) => status === "uebersprungen" || (step === "platz" && status === "ok");
 
 /**
  * Leerlauf (Bewertung 22.10.): Gleicher Status und Grund wie das letzte Ereignis innerhalb von WIEDERHOLUNG_STUNDEN →

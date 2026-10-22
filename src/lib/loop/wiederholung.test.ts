@@ -22,4 +22,7 @@ test("Leerlauf: Fehler und Starts werden immer gespeichert", () => {
   const f = { step: "dispatch", status: "fehler", grund: "x" };
   assert.equal(istWiederholung({ status: "fehler", grund: "x", created_at: vor(0.1) }, f, jetzt), false);
   assert.equal(istWiederholung({ status: "ok", grund: null, created_at: vor(0.1) }, { step: "dispatch", status: "ok", grund: null }, jetzt), false);
+  // platz: nur das wiederholte „ok“ (Platz freigegeben) entfällt, nie Start oder Fehler
+  assert.equal(istWiederholung({ status: "fehler", grund: "x", created_at: vor(0.1) }, { step: "platz", status: "fehler", grund: "x" }, jetzt), false);
+  assert.equal(istWiederholung({ status: "start", grund: null, created_at: vor(0.1) }, { step: "platz", status: "start", grund: null }, jetzt), false);
 });
