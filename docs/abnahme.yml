@@ -814,6 +814,20 @@
   pfad: .github/workflows/claude.yml
   enthaelt: Bash(npx tsx scripts/loop/auftrag.ts:*)
 
+# SIN-929: Kriterien-Check beim Anlegen
+- id: kriterien-check
+  produkt: leitstand
+  titel: Der Dispatcher ruft den Kriterien-Check vor der Auswahl auf und setzt kriterien-unklar (SIN-929)
+  art: datei
+  pfad: scripts/loop/loop.ts
+  enthaelt: kriterienAnwenden(issues, nodes, projekt)
+- id: kriterien-check-test
+  produkt: leitstand
+  titel: Test belegt Marker, Testnamen-Block und Sperre unklarer Issues (SIN-929)
+  art: datei
+  pfad: src/lib/vorarbeiter/kriterien.test.ts
+  enthaelt: unklare Todo-Issues markieren
+
 # Prüfer: abgehakte Auftragspunkte sperren Folge-PRs nicht
 - id: pruefer-erledigte-haken
   produkt: leitstand
