@@ -340,6 +340,12 @@
   rest: kennzahlen_woche?select=aktualisiert_at&order=aktualisiert_at.desc&limit=1
   zeitfeld: aktualisiert_at
   max_alter_min: 10080
+- id: leitstand-kennzahlen-messlauf
+  produkt: leitstand
+  titel: Der Messlauf für die Wochenwerte liegt im Repo (SIN-969)
+  art: datei
+  pfad: scripts/kennzahlen/woche.ts
+  enthaelt: kennzahlen_woche
 # Prüfer mit zweitem Modell (SIN-639)
 - id: leitstand-pruefer
   produkt: leitstand
