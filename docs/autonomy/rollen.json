@@ -17,6 +17,7 @@
     { "schritt": "gedaechtnis", "takt": "taeglich", "grenze_h": 26, "alias": [] },
     { "schritt": "infisical-secret-read-smoke", "takt": "aus", "grenze_h": 0, "alias": [] },
     { "schritt": "infisical-oidc-smoke", "takt": "aus", "grenze_h": 0, "alias": [] },
+    { "schritt": "gitleaks-pr", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "hausmeister", "takt": "woechentlich", "grenze_h": 192, "alias": [] },
     { "schritt": "lernen", "takt": "woechentlich", "grenze_h": 192, "alias": [] },
     { "schritt": "loop-merge", "takt": "ereignis", "grenze_h": 24, "alias": [] },

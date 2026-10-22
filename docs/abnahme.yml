@@ -843,3 +843,11 @@
   art: datei
   pfad: src/lib/pruefer/pruefer.ts
   enthaelt: bereits als erledigt markiert
+
+# SIN-948: vertrauenswürdiger gitleaks-Scan der PR-Diffs
+- id: gitleaks-pr
+  produkt: leitstand
+  titel: gitleaks-Workflow scannt PR-Diffs ohne Checkout, mit geprüfter Prüfsumme (SIN-948)
+  art: datei
+  pfad: .github/workflows/gitleaks-pr.yml
+  enthaelt: sha256sum -c -

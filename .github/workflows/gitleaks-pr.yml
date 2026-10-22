@@ -1,0 +1,83 @@
+name: gitleaks-pr
+
+# Trusted scanner: workflow comes from the base branch and never checks out or executes PR code.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: gitleaks-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    if: github.event.pull_request != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Added diff lines only
+        id: diff
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number: pr.number, per_page: 100,
+            });
+            // Die API listet höchstens 3000 Dateien je PR; darüber wäre der Scan unvollständig.
+            if (files.length >= 3000 || pr.changed_files > files.length) {
+              core.setFailed(`PR ändert ${pr.changed_files} Dateien, API liefert ${files.length}; Scan unvollständig, PR aufteilen.`);
+              return;
+            }
+            const dir = path.join(process.env.RUNNER_TEMP, "gitleaks-diff");
+            fs.mkdirSync(dir, { recursive: true });
+            let ohnePatch = 0;
+            for (const [i, file] of files.entries()) {
+              const ziel = path.join(dir, `${i}__${path.basename(file.filename)}`);
+              if (file.status === "removed") continue;
+              if (typeof file.patch === "string") {
+                const added = file.patch.split("\n")
+                  .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+                  .map((line) => line.slice(1)).join("\n");
+                fs.writeFileSync(ziel, added);
+                continue;
+              }
+              // Kein Patch (große oder binäre Datei): ganze Datei vom PR-Head laden und scannen, nie leer durchwinken.
+              ohnePatch++;
+              // Vom Head-Repository lesen: bei Fork-PRs liegt der Head-Commit nicht im Basis-Repository.
+              // Raw-Format statt JSON: über 1 MB liefert die JSON-Antwort `content: ""`, das Raw-Format den ganzen Inhalt.
+              const res = await github.request("GET /repos/{owner}/{repo}/contents/{path}", {
+                owner: pr.head.repo.owner.login, repo: pr.head.repo.name, path: file.filename, ref: pr.head.sha,
+                headers: { accept: "application/vnd.github.raw+json" },
+              });
+              const inhalt = Buffer.isBuffer(res.data) ? res.data : Buffer.from(typeof res.data === "string" ? res.data : "", "utf8");
+              if (res.status !== 200 || (inhalt.length === 0 && file.additions > 0)) {
+                core.setFailed(`${file.filename}: kein Patch und Inhalt leer oder nicht lesbar; Scan unvollständig.`);
+                return;
+              }
+              fs.writeFileSync(ziel, inhalt);
+            }
+            core.setOutput("dir", dir);
+            core.info(`Prepared ${files.length} changed files (${ohnePatch} without patch, loaded whole); PR code was not checked out.`);
+
+      - name: Install pinned gitleaks (SHA-256 geprüft)
+        env:
+          GITLEAKS_VERSION: "8.28.0"
+          # aus gitleaks_8.28.0_checksums.txt des Releases
+          GITLEAKS_SHA256: "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb"
+          DIFF_DIR: ${{ steps.diff.outputs.dir }}
+        run: |
+          set -euo pipefail
+          archiv="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl -sSfL --retry 5 --retry-delay 3 --retry-all-errors -o "$archiv" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  ${archiv}" | sha256sum -c -
+          tar -xz -C "$RUNNER_TEMP" -f "$archiv" gitleaks
+          "$RUNNER_TEMP/gitleaks" detect --no-git --source "$DIFF_DIR" --redact --no-banner --exit-code 1
