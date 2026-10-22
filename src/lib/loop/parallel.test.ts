@@ -168,3 +168,10 @@ test("Test: Kandidat ohne Pfade → „ohne Pfade“; zwei überlappende Pfade �
   assert.match(konfliktGrund([issue("SIN-5", ["src/lib/loop/auswahl.ts"])], lauf.slice(1), 2), /SIN-5↔SIN-2: @steuerung/);
   assert.match(konfliktGrund([issue("SIN-6", ["a"])], lauf, 2), /^kein_platz: SIN-1, SIN-2 belegen alle 2 Plätze/);
 });
+
+test("SIN-918: Claim auf ein Issue, das nur noch auf den Live-Beleg wartet, sperrt weder Platz noch @steuerung", () => {
+  const live = { ...issue("SIN-918", ["src/lib/loop/auswahl.ts"]), description: "<!-- worker-pfade: [\"src/lib/loop/auswahl.ts\"] -->\n- [x] Test grün\n- [ ] \\[nach Aktivierung\\] Zeile in loop_events" };
+  const belegung = { jetzt: new Date("2026-10-22T09:51:00Z"), offenePrs: [], gemergt: [] };
+  assert.deepEqual(claimsMitPlatz([live], belegung), []);
+  assert.deepEqual(parallelAuswahl([issue("SIN-919", ["src/lib/loop/parallel.ts"])], claimsMitPlatz([live], belegung), 2).map((i) => i.id), ["SIN-919"]);
+});

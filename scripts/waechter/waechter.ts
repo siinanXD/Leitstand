@@ -354,6 +354,13 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
       await kommentar(h.issue.id, "Wächter: Der Lauf scheiterte am Claude-Kontingent, kein Hänger. Zurück auf Todo, startet nach der Pause von selbst.");
       await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
       await claimNachZuruecksetzen(projekt.name, h.issue.identifier);
+    } else if (h.art === "live-beleg") {
+      log(projekt.name, `${h.issue.identifier} wartet nur noch auf den Live-Beleg → In Review`);
+      if (DRY) continue;
+      const review = team.status("In Review");
+      if (review) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: review });
+      await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
+      await claimNachZuruecksetzen(projekt.name, h.issue.identifier, repo);
     } else if (h.art === "zuruecksetzen") {
       log(projekt.name, `${h.issue.identifier} hängt seit über 6 h ohne PR → zurück auf Todo`);
       if (DRY) continue;

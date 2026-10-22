@@ -3,7 +3,7 @@
  * Das Skript scripts/waechter/waechter.ts holt Daten aus Linear und GitHub und führt die geplanten Aktionen aus.
  */
 import { istRepo, type RepoName } from "../freigabe";
-import { HAENGER_STUNDEN, LABEL, linearId, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, startbare, type LinearIssue } from "../loop/auswahl";
+import { HAENGER_STUNDEN, LABEL, linearId, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, startbare, wartetAufLiveBeleg, type LinearIssue } from "../loop/auswahl";
 
 export const PLANUNG_TITEL = "Nächste Schritte planen";
 export const EINRICHTEN_TITEL = "Projekt einrichten";
@@ -116,7 +116,7 @@ export function planungsIssue(projekt: string): { title: string; description: st
 
 // ------------------------------------------------------------------ Hänger
 
-export type HaengerAktion = { art: "zuruecksetzen" | "needs-human"; issue: WaechterIssue; kontingent?: true };
+export type HaengerAktion = { art: "zuruecksetzen" | "needs-human" | "live-beleg"; issue: WaechterIssue; kontingent?: true };
 
 const prGehoertZu = (pr: PrInfo, i: LinearIssue) =>
   pr.titel.includes(i.identifier) || pr.branch.toLowerCase().includes(i.identifier.toLowerCase());
@@ -132,6 +132,11 @@ export function erkenneIssueHaenger(issues: WaechterIssue[], offenePrs: PrInfo[]
     if (!hatLabel(i, LABEL)) continue;
     if (hatLabel(i, "needs-human")) continue;
     if (offenePrs.some((pr) => prGehoertZu(pr, i))) continue;
+    // SIN-918: Nur noch Live-Haken offen: nicht zurück auf Todo (sonst Neustart ohne Bauauftrag), sondern „In Review“.
+    if (wartetAufLiveBeleg(i, [])) {
+      r.push({ art: "live-beleg", issue: i });
+      continue;
+    }
     // Kontingent (SIN-581): Wurde nach dem Start eine Claude-Pause gemeldet, scheiterte der Lauf am Limit: sofort zurück auf Todo, nie needs-human.
     if (claudePausen.some((at) => ms(at) >= ms(i.startedAt!))) {
       r.push({ art: "zuruecksetzen", issue: i, kontingent: true });
