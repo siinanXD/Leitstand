@@ -933,9 +933,9 @@
   pfad: .github/workflows/repair.yml
   enthaelt: "github.event.workflow_run.path == '.github/workflows/pruefer.yml'"
 # Aufräumen (SIN-958)
-- id: leitstand-markt-workflow-entfernt
+- id: leitstand-rollen-ohne-markt
   produkt: leitstand
-  titel: Der gelöschte Workflow markt.yml existiert nicht mehr
+  titel: Die Rollen-Liste führt marketing mit Takt aus weiter (markt ist entfernt)
   art: datei
-  pfad: .github/workflows/markt.yml
-  abwesend: ja
+  pfad: docs/autonomy/rollen.json
+  enthaelt: '"schritt": "marketing", "takt": "aus"'

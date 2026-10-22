@@ -37,8 +37,6 @@ async function fuehreAus(p: Probe): Promise<Ergebnis> {
     return res.ok ? bewerteZeilen(p, await res.json(), Date.now()) : { ok: false, grund: `Abfrage: HTTP ${res.status}` };
   }
   if (p.art === "datei") {
-    // `abwesend: ja` (SIN-958): grün, wenn die Datei nicht mehr existiert (gelöschte Workflows).
-    if (p.abwesend === "ja") return existsSync(p.pfad) ? { ok: false, grund: `${p.pfad} existiert noch` } : { ok: true, grund: "ok" };
     return existsSync(p.pfad) ? bewerteText(p, readFileSync(p.pfad, "utf8")) : { ok: false, grund: `${p.pfad} fehlt` };
   }
   if (!env.GH_TOKEN) throw new Error("GH_TOKEN fehlt");
