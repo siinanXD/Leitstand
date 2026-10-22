@@ -30,3 +30,12 @@ test("CI-Proben in abnahme.yml hängen nicht am Head-SHA (SIN-967)", () => {
   const proben = readFileSync(new URL("../../../docs/abnahme.yml", import.meta.url), "utf8");
   assert.doesNotMatch(proben, /build\.yml\/runs\?[^\n]*head_sha=/, "head_sha macht die Probe direkt nach einem Merge rot");
 });
+
+test("Probe-Text der drei CI-Proben passt auf die echte API-Antwort (geprüft gegen `build.yml`-Runs von `main`)", () => {
+  // Auszug der echten Antwort ohne Token (so ruft scripts/abnahme die URL ab), 22.10.2026: GitHub liefert eingerücktes JSON.
+  const antwort = readFileSync(new URL("./fixtures/build-runs-main.json", import.meta.url), "utf8");
+  const proben = readFileSync(new URL("../../../docs/abnahme.yml", import.meta.url), "utf8");
+  const ci = [...proben.matchAll(/url: [^\n]*build\.yml\/runs\?[^\n]*\n\s+enthaelt: '([^']+)'/g)].map((m) => m[1]);
+  assert.equal(ci.length, 3);
+  for (const text of ci) assert.ok(antwort.includes(text), `„${text}“ fehlt in der echten Antwort`);
+});
