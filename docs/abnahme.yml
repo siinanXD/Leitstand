@@ -828,6 +828,14 @@
   pfad: src/lib/vorarbeiter/kriterien.test.ts
   enthaelt: unklare Todo-Issues markieren
 
+# Prüfer: abgehakte Auftragspunkte sperren Folge-PRs nicht
+- id: pruefer-erledigte-haken
+  produkt: leitstand
+  titel: Prüfer wertet im Auftrag abgehakte Punkte als belegt, offene bleiben Pflicht
+  art: datei
+  pfad: src/lib/pruefer/pruefer.ts
+  enthaelt: bereits als erledigt markiert
+
 # SIN-948: vertrauenswürdiger gitleaks-Scan der PR-Diffs
 - id: gitleaks-pr
   produkt: leitstand
