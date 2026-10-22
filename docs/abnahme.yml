@@ -813,3 +813,11 @@
   art: datei
   pfad: .github/workflows/claude.yml
   enthaelt: Bash(npx tsx scripts/loop/auftrag.ts:*)
+
+# SIN-948: vertrauenswürdiger gitleaks-Scan der PR-Diffs
+- id: gitleaks-pr
+  produkt: leitstand
+  titel: gitleaks-Workflow scannt PR-Diffs ohne Checkout, mit geprüfter Prüfsumme (SIN-948)
+  art: datei
+  pfad: .github/workflows/gitleaks-pr.yml
+  enthaelt: sha256sum -c -

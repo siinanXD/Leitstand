@@ -33,22 +33,40 @@ jobs:
             });
             const dir = path.join(process.env.RUNNER_TEMP, "gitleaks-diff");
             fs.mkdirSync(dir, { recursive: true });
-            files.forEach((file, i) => {
-              const added = (file.patch ?? "").split("\n")
-                .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
-                .map((line) => line.slice(1)).join("\n");
-              fs.writeFileSync(path.join(dir, `${i}__${path.basename(file.filename)}`), added);
-            });
+            let ohnePatch = 0;
+            for (const [i, file] of files.entries()) {
+              const ziel = path.join(dir, `${i}__${path.basename(file.filename)}`);
+              if (file.status === "removed") continue;
+              if (typeof file.patch === "string") {
+                const added = file.patch.split("\n")
+                  .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+                  .map((line) => line.slice(1)).join("\n");
+                fs.writeFileSync(ziel, added);
+                continue;
+              }
+              // Kein Patch (große oder binäre Datei): ganze Datei vom PR-Head laden und scannen, nie leer durchwinken.
+              ohnePatch++;
+              const { data } = await github.rest.repos.getContent({ owner, repo, path: file.filename, ref: pr.head.sha });
+              if (Array.isArray(data) || data.type !== "file" || typeof data.content !== "string") {
+                core.setFailed(`${file.filename}: kein Patch und Inhalt nicht lesbar; Scan unvollständig.`);
+                return;
+              }
+              fs.writeFileSync(ziel, Buffer.from(data.content, data.encoding === "base64" ? "base64" : "utf8"));
+            }
             core.setOutput("dir", dir);
-            core.info(`Prepared added lines from ${files.length} changed files; PR code was not checked out.`);
+            core.info(`Prepared ${files.length} changed files (${ohnePatch} without patch, loaded whole); PR code was not checked out.`);
 
-      - name: Install pinned gitleaks
+      - name: Install pinned gitleaks (SHA-256 geprüft)
         env:
           GITLEAKS_VERSION: "8.28.0"
+          # aus gitleaks_8.28.0_checksums.txt des Releases
+          GITLEAKS_SHA256: "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb"
           DIFF_DIR: ${{ steps.diff.outputs.dir }}
         run: |
           set -euo pipefail
-          curl -sSfL --retry 5 --retry-delay 3 --retry-all-errors \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | tar -xz -C "$RUNNER_TEMP" gitleaks
+          archiv="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl -sSfL --retry 5 --retry-delay 3 --retry-all-errors -o "$archiv" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  ${archiv}" | sha256sum -c -
+          tar -xz -C "$RUNNER_TEMP" -f "$archiv" gitleaks
           "$RUNNER_TEMP/gitleaks" detect --no-git --source "$DIFF_DIR" --redact --no-banner --exit-code 1
