@@ -15,14 +15,18 @@ export type KontoClient = {
   auth: {
     admin: {
       createUser(a: { email: string; email_confirm: boolean; app_metadata: Record<string, unknown> }): PromiseLike<{ data: { user: { id: string } | null } | null; error: { message: string } | null }>;
-      listUsers(a: { page: number; perPage: number }): PromiseLike<{ data: { users: { id: string; email?: string }[] } | null; error: { message: string } | null }>;
-      updateUserById(id: string, a: { app_metadata: Record<string, unknown> }): PromiseLike<{ error: { message: string } | null }>;
+      listUsers(a: { page: number; perPage: number }): PromiseLike<{ data: { users: { id: string; email?: string; app_metadata?: Record<string, unknown> }[] } | null; error: { message: string } | null }>;
     };
   };
   from(t: string): { upsert(row: Record<string, unknown>, o: { onConflict: string }): PromiseLike<{ error: { message: string } | null }> };
 };
 
-/** Konto idempotent anlegen oder finden; Marker `agent_testnutzer` und Zeile in leitstand_nutzer werden immer gesetzt (die RLS-Sperren hängen am Marker). */
+/**
+ * Konto idempotent anlegen oder finden; Zeile in leitstand_nutzer wird immer gesetzt (die RLS-Sperren hängen am Marker).
+ * Ein bestehendes Konto zählt nur, wenn es den Marker `agent_testnutzer` schon beim Anlegen bekommen hat: der Marker wird nie
+ * nachträglich auf ein fremdes Konto gesetzt, sonst könnte eine falsch konfigurierte Adresse eine Magic-Link-Sitzung
+ * für ein echtes Konto erzeugen (Prüfer-Fund SIN-913).
+ */
 export async function stelleKontoSicher(admin: KontoClient, email: string): Promise<string> {
   const marker = { agent_testnutzer: true };
   const neu = await admin.auth.admin.createUser({ email, email_confirm: true, app_metadata: marker });
@@ -33,11 +37,11 @@ export async function stelleKontoSicher(admin: KontoClient, email: string): Prom
       const liste = await admin.auth.admin.listUsers({ page, perPage: 1000 });
       if (liste.error) throw new Error(`Konten nicht gelesen: ${liste.error.message}`);
       const users = liste.data?.users ?? [];
-      id = users.find((u) => u.email?.toLowerCase() === email.toLowerCase())?.id;
+      const konto = users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+      if (konto && konto.app_metadata?.agent_testnutzer !== true) throw new Error("Adresse gehört einem bestehenden Konto ohne Marker agent_testnutzer; Abbruch (kein fremdes Konto übernehmen)");
+      id = konto?.id;
       if (!id && users.length < 1000) throw new Error("Testkonto nicht gefunden");
     }
-    const upd = await admin.auth.admin.updateUserById(id, { app_metadata: marker });
-    if (upd.error) throw new Error(`Marker nicht gesetzt: ${upd.error.message}`);
   }
   const zeile = await admin.from("leitstand_nutzer").upsert({ user_id: id }, { onConflict: "user_id" });
   if (zeile.error) throw new Error(`leitstand_nutzer nicht geschrieben: ${zeile.error.message}`);
