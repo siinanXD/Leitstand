@@ -112,6 +112,16 @@ test("Merge-Prüfung: fehlender oder leerer Codebeleg sperrt trotz Modell-Erfolg
   }
 });
 
+test("Im Auftrag abgehakte Punkte (früherer PR) sperren einen Folge-PR nicht; offene bleiben Pflicht", () => {
+  const auftrag = "- [x] Test: Fixture A → Ergebnis\n- [X] Probe `a` in `docs/abnahme.yml`\n- [ ] Test: Fixture B → Ergebnis";
+  const offen = bewerte({ ...gut, haken: [] }, probeDateien, false, auftrag);
+  assert.equal(offen.bestanden, false);
+  assert.deepEqual(offen.funde.filter(f => f.text.startsWith("Vor Merge erforderlicher Beleg fehlt")).map(f => f.text), ["Vor Merge erforderlicher Beleg fehlt: Test: Fixture B → Ergebnis"]);
+  const alle = bewerte({ ...gut, haken: [{ text: "Test: Fixture B → Ergebnis", belegt: true, beleg: "src/b.test.ts" }] }, probeDateien, false, auftrag);
+  assert.equal(alle.bestanden, true);
+  assert.equal(alle.haken?.filter(h => h.belegt).length, 3);
+});
+
 test("Ohne explizite Phasenmarkierung bleibt ein Live-Kriterium vor Merge verpflichtend", () => {
   const e = bewerte({ ...gut, haken: [] }, probeDateien, false, "- [ ] Echter Live-Lauf muss belegt sein");
   assert.equal(e.bestanden, false);

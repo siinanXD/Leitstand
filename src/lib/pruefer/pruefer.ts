@@ -169,6 +169,9 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, 
       return { text: h.text, belegt: false, beleg: "Phase muss im Auftrag eindeutig sein." };
     }
     const beleg = modell.haken?.find(b => b.text === h.text && b.belegt && b.beleg.trim());
+    // Ein im Auftrag schon abgehakter Punkt (`- [x]`) wurde durch einen früheren PR belegt; ein Folge-PR (Reparatur,
+    // Betriebskorrektur) muss ihn nicht erneut im Diff beweisen. Unmarkierte `- [ ]`-Punkte bleiben Pflicht.
+    if (!beleg && h.erledigt) return { text: h.text, belegt: true, beleg: "Im Auftrag bereits als erledigt markiert (früherer PR)." };
     if (!beleg) funde.push({ datei: "(Issue)", zeile: 0, schwere: "hoch", text: `Vor Merge erforderlicher Beleg fehlt: ${h.text}` });
     return beleg ?? { text: h.text, belegt: false, beleg: "Vor Merge erforderlicher Beleg fehlt." };
   });
