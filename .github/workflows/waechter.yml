@@ -1,6 +1,6 @@
 # Projekt-Wächter (SIN-419).
 # Stündlich und von Hand. Je Linear-Projekt „In Progress“ mit GitHub-Link: Schlange füllen, Hänger reparieren,
-# Tages-Update; neue Projekte einrichten. Trockenlauf: von Hand mit dry_run.
+# Tages-Update; neue Projekte einrichten. Trockenlauf: von Hand mit Haken dry_run.
 name: waechter
 
 on:
@@ -11,7 +11,8 @@ on:
       dry_run:
         description: "Nur anzeigen, nichts ändern"
         type: boolean
-        default: true
+        # SIN-965: Der Takt kommt per workflow_dispatch ohne Eingaben; mit true lief der Wächter nur trocken.
+        default: false
 
 concurrency:
   group: waechter

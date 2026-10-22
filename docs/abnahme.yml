@@ -895,3 +895,11 @@
   art: datei
   pfad: scripts/vorarbeiter/vorarbeiter.ts
   enthaelt: label(artLabel(title))
+
+# SIN-965: Wächter-Takt per workflow_dispatch läuft echt, nicht trocken
+- id: waechter-dispatch-schreibt
+  produkt: leitstand
+  titel: waechter.yml startet per workflow_dispatch ohne Eingabe nicht als Trockenlauf
+  art: datei
+  pfad: .github/workflows/waechter.yml
+  enthaelt: "default: false"

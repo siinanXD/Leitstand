@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { waehle } from "../loop/auswahl";
@@ -258,4 +259,11 @@ test("Ohne passenden Kommentar bleibt die Frage offen (SIN-651)", () => {
 test("SIN-832: issueweiter Reparaturzähler stoppt auch einen neuen PR ohne repair-Labels", () => {
   assert.equal(erkennePrHaenger([pr()], jetzt, new Map([["SIN-1", 3]]))[0]?.art, "stopp");
   assert.equal(erkennePrHaenger([pr()], jetzt, new Map([["SIN-2", 3]]))[0]?.art, "reparatur");
+});
+
+test("waechter.yml: Start per workflow_dispatch ohne Eingabe schreibt (dry_run-Standard false)", () => {
+  // Der Takt kommt von außen per workflow_dispatch ohne Eingaben (geplante Läufe fallen bei GitHub oft aus).
+  // Mit Standard true lief der Wächter 66-mal am Tag nur trocken und der Leitstand-Snapshot blieb stehen.
+  const yml = readFileSync(new URL("../../../.github/workflows/waechter.yml", import.meta.url), "utf8");
+  assert.equal(yml.match(/dry_run:[\s\S]*?default: (\w+)/)?.[1], "false");
 });
