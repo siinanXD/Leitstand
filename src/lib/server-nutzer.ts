@@ -1,8 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { aktionsStatus } from "./agent-testnutzer/aktion";
 
-/** Nur Sinan: gültige Sitzung und eine Zeile in `leitstand_nutzer`, die RLS dem Nutzer zeigt. Gibt dessen E-Mail-Adresse zurück, sonst null. */
-export async function leitstandNutzer(anfrage: Request): Promise<{ email: string } | null> {
+/**
+ * Nur Sinan (und das Agent-Testkonto, SIN-913): gültige Sitzung und eine Zeile in `leitstand_nutzer`, die RLS dem Nutzer zeigt.
+ * Gibt E-Mail und den Marker `app_metadata.agent_testnutzer` zurück, sonst null.
+ */
+export async function leitstandNutzer(anfrage: Request): Promise<{ email: string; agent?: boolean } | null> {
   const token = /^Bearer (.+)$/.exec(anfrage.headers.get("authorization") ?? "")?.[1];
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -12,7 +15,8 @@ export async function leitstandNutzer(anfrage: Request): Promise<{ email: string
     const { data: nutzer, error } = await client.auth.getUser(token);
     if (error || !nutzer.user?.email) return null;
     const { data, error: lesefehler } = await client.from("leitstand_nutzer").select("*").limit(1);
-    return !lesefehler && Array.isArray(data) && data.length > 0 ? { email: nutzer.user.email } : null;
+    if (lesefehler || !Array.isArray(data) || data.length === 0) return null;
+    return { email: nutzer.user.email, agent: nutzer.user.app_metadata?.agent_testnutzer === true };
   } catch {
     return null;
   }
@@ -41,10 +45,10 @@ export async function verweigert(anfrage: Request): Promise<Response | null> {
 }
 
 /** Wie `verweigert`, für Routen, die den Nutzer schon geladen haben. */
-export async function pruefeNutzer(anfrage: Request, nutzer: { email: string } | null): Promise<Response | null> {
+export async function pruefeNutzer(anfrage: Request, nutzer: { email: string; agent?: boolean } | null): Promise<Response | null> {
   const kopf = { "Cache-Control": "no-store" };
   if (!nutzer) return Response.json({ fehler: "nicht angemeldet" }, { status: 401, headers: kopf });
-  if (aktionsStatus(nutzer.email, anfrage.method, process.env.AGENT_TESTNUTZER_EMAIL) === 200) return null;
+  if (aktionsStatus(nutzer.email, anfrage.method, process.env.AGENT_TESTNUTZER_EMAIL, nutzer.agent === true) === 200) return null;
   await protokolliere({ project: "leitstand", step: "agent-testnutzer", status: "fehler", grund: `Aktion abgelehnt: ${anfrage.method} ${new URL(anfrage.url).pathname}` });
   return Response.json({ fehler: "Das Testkonto darf nur lesen" }, { status: 403, headers: kopf });
 }

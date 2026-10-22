@@ -29,11 +29,13 @@ export async function stelleKontoSicher(admin: KontoClient, email: string): Prom
   let id = neu.data?.user?.id;
   if (!id) {
     if (neu.error && !/already|registered|exists/i.test(neu.error.message)) throw new Error(`Konto nicht angelegt: ${neu.error.message}`);
-    // shortcut: erste 1000 Konten, bei mehr Konten paginieren
-    const liste = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (liste.error) throw new Error(`Konten nicht gelesen: ${liste.error.message}`);
-    id = liste.data?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())?.id;
-    if (!id) throw new Error("Testkonto nicht gefunden");
+    for (let page = 1; !id; page++) {
+      const liste = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (liste.error) throw new Error(`Konten nicht gelesen: ${liste.error.message}`);
+      const users = liste.data?.users ?? [];
+      id = users.find((u) => u.email?.toLowerCase() === email.toLowerCase())?.id;
+      if (!id && users.length < 1000) throw new Error("Testkonto nicht gefunden");
+    }
     const upd = await admin.auth.admin.updateUserById(id, { app_metadata: marker });
     if (upd.error) throw new Error(`Marker nicht gesetzt: ${upd.error.message}`);
   }

@@ -19,3 +19,10 @@ test("istAgent ignoriert Groß-/Kleinschreibung und Leerraum", () => {
   assert.equal(istAgent(" Agent@Example.invalid ", AGENT), true);
   assert.equal(istAgent("x@example.org", AGENT), false);
 });
+
+test("Sitzungs-Marker sperrt auch ohne AGENT_TESTNUTZER_EMAIL (kein fail-open)", () => {
+  assert.equal(aktionsStatus(AGENT, "POST", undefined, true), 403);
+  assert.equal(aktionsStatus("sinan@example.org", "DELETE", "", true), 403);
+  assert.equal(aktionsStatus(AGENT, "GET", undefined, true), 200);
+  assert.equal(aktionsStatus("sinan@example.org", "POST", AGENT, false), 200);
+});
