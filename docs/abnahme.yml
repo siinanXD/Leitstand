@@ -817,7 +817,13 @@
 # SIN-929: Kriterien-Check beim Anlegen
 - id: kriterien-check
   produkt: leitstand
-  titel: Der Kriterien-Check ergänzt [nach Aktivierung], nennt Testnamen und sperrt Issues ohne prüfbaren Haken (SIN-929)
+  titel: Der Dispatcher ruft den Kriterien-Check vor der Auswahl auf und setzt kriterien-unklar (SIN-929)
   art: datei
-  pfad: src/lib/vorarbeiter/kriterien.ts
-  enthaelt: kriterien-unklar
+  pfad: scripts/loop/loop.ts
+  enthaelt: kriterienAnwenden(issues, nodes, projekt)
+- id: kriterien-check-test
+  produkt: leitstand
+  titel: Test belegt Marker, Testnamen-Block und Sperre unklarer Issues (SIN-929)
+  art: datei
+  pfad: src/lib/vorarbeiter/kriterien.test.ts
+  enthaelt: unklare Todo-Issues markieren

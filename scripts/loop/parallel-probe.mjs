@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const fall = process.env.PARALLEL_PROBE_CHILD;
 if (fall) {
-  const scope = p => `<!-- worker-pfade: ${JSON.stringify([p])} -->`;
+  // Ein prüfbarer Haken je Issue, sonst sperrt der Kriterien-Check (SIN-929) das Issue vor der Auswahl.
+  const scope = p => `- [ ] Test: ${p} baut\n<!-- worker-pfade: ${JSON.stringify([p])} -->`;
   const issues = [1, 2, 3].map(n => ({ id: `SIN-${n}`, identifier: `SIN-${n}`, title: `Aufgabe ${n}`, description: scope(`src/app/${n}`), priority: n, url: `https://linear.app/test/issue/SIN-${n}`, createdAt: '2026-01-01T00:00:00Z', startedAt: '2020-01-01T00:00:00Z', labels: { nodes: [{ name: 'claude' }] }, state: { type: 'unstarted' }, team: { id: 'team' }, inverseRelations: { nodes: [] } }));
   if (fall === 'gemeinsam') issues[1].description = issues[0].description;
   if (fall === 'claim-unklar') issues[0].description = null;
@@ -18,7 +19,7 @@ if (fall) {
     const u = new URL(String(input)), method = init.method ?? 'GET', body = init.body ? JSON.parse(init.body) : {};
     if (u.hostname === 'api.linear.app') {
       if (body.query.includes('issues(first: 25')) return json({ data: { issues: { nodes: body.variables.p === 'Leitstand' ? issues : [], pageInfo: { hasNextPage: false, endCursor: null } } } });
-      if (body.query.includes('team(id:')) return json({ data: { team: { states: { nodes: [{ id: 'started', name: 'In Progress' }] } } } });
+      if (body.query.includes('team(id:')) return json({ data: { team: { states: { nodes: [{ id: 'started', name: 'In Progress' }] }, labels: { nodes: [{ id: 'l-unklar', name: 'kriterien-unklar' }] } } } });
       if (/issueUpdate|commentCreate/.test(body.query)) return json({ data: { issueUpdate: { success: true }, commentCreate: { success: true } } });
     }
     if (u.hostname === 'fixture.invalid') {

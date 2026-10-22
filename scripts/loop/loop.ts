@@ -24,6 +24,7 @@ import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
+import { kriterienPlan, LABEL_UNKLAR, UNKLAR_KOMMENTAR } from "../../src/lib/vorarbeiter/kriterien";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
 import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, workerJeClaim, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
@@ -318,6 +319,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   await ereignis("dispatch", "start", { projekt });
   const nodes = await projektIssues(ziel.linearProjekt);
   let issues = nodes.map(ausLinear);
+  issues = await kriterienAnwenden(issues, nodes, projekt);
   const eigenes = repo.toLowerCase() === (env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand").toLowerCase();
   if (!eigenes) {
     const fehlt = await fehlendeVoraussetzung(repo);
@@ -454,10 +456,42 @@ async function issueMitHaken(identifier: string) {
   return d.issue;
 }
 
-/** Label am Linear-Issue setzen (z. B. needs-human). */
-async function labelSetzen(issueId: string, teamId: string, name: string) {
+/**
+ * Kriterien-Check beim Anlegen (SIN-929): vor der Auswahl Live-Haken mit `[nach Aktivierung]` und Testnamen-Block
+ * in die Issue-Beschreibung schreiben; ohne prüfbaren Haken Label `kriterien-unklar` setzen und einmal kommentieren.
+ * Gibt die Issues mit aktualisiertem Text und Label zurück, damit `waehle` sie nicht startet.
+ */
+async function kriterienAnwenden(issues: LinearIssue[], nodes: ProjektKnoten[], projekt: string): Promise<LinearIssue[]> {
+  const plan = kriterienPlan(issues);
+  if (!plan.length) return issues;
+  const neu = new Map(issues.map((i) => [i.identifier, i]));
+  for (const a of plan) {
+    const i = neu.get(a.identifier)!;
+    const team = nodes.find((n) => n.id === i.id)!.team.id;
+    console.log(`${a.identifier}: Kriterien-Check${a.beschreibung !== null ? ", Text ergänzt" : ""}${a.label ? `, ${LABEL_UNKLAR}` : ""}`);
+    if (DRY) continue;
+    if (a.beschreibung !== null) {
+      await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: i.id, d: a.beschreibung });
+      neu.set(a.identifier, { ...i, description: a.beschreibung });
+    }
+    if (a.label) {
+      await labelSetzen(i.id, team, LABEL_UNKLAR, true);
+      neu.set(a.identifier, { ...neu.get(a.identifier)!, labels: [...i.labels, LABEL_UNKLAR] });
+      await kommentar(i.id, UNKLAR_KOMMENTAR);
+      await ereignis("dispatch", "uebersprungen", { projekt, issue: a.identifier, grund: "kriterien-unklar: kein prüfbarer Fertig-Haken" });
+    }
+  }
+  return issues.map((i) => neu.get(i.identifier)!);
+}
+
+/** Label am Linear-Issue setzen (z. B. needs-human); `anlegen` legt ein fehlendes Label im Team an (kriterien-unklar). */
+async function labelSetzen(issueId: string, teamId: string, name: string, anlegen = false) {
   const d = await linear<{ team: { labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { labels(first: 250) { nodes { id name } } } }`, { t: teamId });
-  const l = d.team.labels.nodes.find((x) => x.name.toLowerCase() === name);
+  let l = d.team.labels.nodes.find((x) => x.name.toLowerCase() === name);
+  if (!l && anlegen && !DRY) {
+    const neu = await linear<{ issueLabelCreate: { issueLabel: { id: string; name: string } } }>(`mutation($t: String!, $n: String!) { issueLabelCreate(input: { teamId: $t, name: $n }) { issueLabel { id name } } }`, { t: teamId, n: name });
+    l = neu.issueLabelCreate.issueLabel;
+  }
   if (!l) throw new Error(`Linear-Label „${name}“ nicht gefunden`);
   if (DRY) return console.log(`[trocken] Label ${name}`);
   await linear(`mutation($id: String!, $l: [String!]) { issueUpdate(id: $id, input: { addedLabelIds: $l }) { success } }`, { id: issueId, l: [l.id] });

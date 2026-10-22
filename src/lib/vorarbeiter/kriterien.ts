@@ -39,3 +39,24 @@ export function pruefeKriterien(beschreibung: string): Pruefung {
   if (testnamen.length) text = `${text.trimEnd()}\n\n<!-- testnamen: ${JSON.stringify(testnamen)} -->\n`;
   return { beschreibung: text, testnamen, unklar: !arten.some((a) => a === "test" || a === "diff"), ergaenzt };
 }
+
+export const UNKLAR_KOMMENTAR = `Kriterien-Check (SIN-929): kein Fertig-Haken ist prüfbar (weder \`Test: …\` noch im Diff belegbar). Label \`${LABEL_UNKLAR}\` gesetzt, das Issue startet nicht. Haken präzisieren, dann das Label entfernen.`;
+
+export type KriterienIssue = { identifier: string; description: string | null; stateType: string; labels: string[] };
+export type KriterienAenderung = { identifier: string; beschreibung: string | null; label: boolean };
+
+/**
+ * Welche Todo-Issues (Label `claude`) der Dispatcher vor der Auswahl anfassen muss (SIN-929):
+ * `beschreibung` = neuer Text (Marker/Testnamen ergänzt) oder null, `label` = `kriterien-unklar` setzen (und einmal kommentieren).
+ * Issues, die das Label schon tragen oder bei denen nichts zu ändern ist, tauchen nicht auf; das Label ist der Wiederholungsschutz.
+ */
+export function kriterienPlan(issues: KriterienIssue[]): KriterienAenderung[] {
+  return issues.flatMap((i) => {
+    const labels = i.labels.map((l) => l.toLowerCase());
+    if (i.stateType !== "unstarted" || !labels.includes("claude") || labels.includes(LABEL_UNKLAR)) return [];
+    const p = pruefeKriterien(i.description ?? "");
+    const beschreibung = p.beschreibung !== (i.description ?? "") ? p.beschreibung : null;
+    if (!p.unklar && beschreibung === null) return [];
+    return [{ identifier: i.identifier, beschreibung, label: p.unklar }];
+  });
+}
