@@ -919,3 +919,25 @@
   art: http
   url: https://api.github.com/repos/siinanXD/Leitstand/contents/.github/workflows/trend.yml?ref=main
   status: "404"
+
+# SIN-936: Codex baut über Linear-Zuweisung (Label codex, Delegate, Rückfall nach 60 Minuten)
+- id: loop-codex-delegate
+  produkt: leitstand
+  titel: Der Dispatcher gibt Issues mit Label codex per Delegate an Codex und nimmt sie nach 60 Minuten ohne Commit zurück
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: "codexRueckfall"
+
+- id: loop-codex-pruefer-branch
+  produkt: leitstand
+  titel: Der Prüfer behandelt codex/-Branches wie claude/-Branches (Test in src/lib/pruefer/workflow.test.ts)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: "startsWith(github.head_ref, 'codex/')"
+
+- id: loop-codex-pruefer-test
+  produkt: leitstand
+  titel: Ein Test belegt, dass der Prüfer codex/-Branches wie claude/-Branches behandelt
+  art: datei
+  pfad: src/lib/pruefer/workflow.test.ts
+  enthaelt: '"codex/sin-827"'

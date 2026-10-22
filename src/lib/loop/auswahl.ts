@@ -31,6 +31,8 @@ export type LinearIssue = {
   stateType: string;
   /** Wann das Issue auf „In Progress“ ging (Linear `startedAt`). */
   startedAt?: string | null;
+  /** Name des Delegates in Linear (SIN-936), z. B. „Codex“; `null` ohne Delegate. */
+  delegate?: string | null;
   /** Issues, die dieses Issue blockieren, mit ihrem Status-Typ. */
   blockiertVon: { identifier: string; stateType: string }[];
 };
@@ -95,6 +97,15 @@ export const offeneSpiegel = (githubIssues: GithubIssue[], identifier: string): 
   githubIssues.filter((i) => i.state === "open" && i.body?.match(MARKER_RE)?.[1] === identifier).map((i) => i.number);
 
 const hatLabel = (i: LinearIssue) => i.labels.some((l) => l.toLowerCase() === LABEL);
+
+/** SIN-936: Label für Issues, die Codex über die Linear-Zuweisung baut (ChatGPT-Abo statt Claude). */
+export const LABEL_CODEX = "codex";
+/** Name des Codex-Nutzers in Linear (Delegate). */
+export const CODEX_NAME = "Codex";
+/** Meldet Codex so lange keinen Commit auf `codex/`, fällt das Issue an Claude zurück (SIN-936). */
+export const CODEX_MINUTEN = 60;
+const istCodex = (i: LinearIssue) => i.labels.some((l) => l.toLowerCase() === LABEL_CODEX);
+const beiCodex = (i: LinearIssue) => i.delegate?.toLowerCase() === CODEX_NAME.toLowerCase();
 const offenBlockiert = (i: LinearIssue) => i.blockiertVon.some((b) => !ERLEDIGT.has(b.stateType));
 
 /** Linear-Priorität: 1 dringend … 4 niedrig, 0 = keine (zuletzt). */
@@ -114,7 +125,8 @@ const prGehoertZu = (pr: OffenerPr, i: LinearIssue) =>
  */
 export function laufende(issues: LinearIssue[], belegung?: Belegung): LinearIssue[] {
   return issues.filter((i) => {
-    if (i.stateType !== "started" || !hatLabel(i) || nurBelege(i.description)) return false;
+    // SIN-936: Ein Issue bei Codex belegt keinen Claude-Platz.
+    if (i.stateType !== "started" || !hatLabel(i) || istCodex(i) || beiCodex(i) || nurBelege(i.description)) return false;
     if (!belegung) return true;
     const eigene = belegung.offenePrs.filter((pr) => prGehoertZu(pr, i));
     if (eigene.length) return !eigene.every(wartetAufSinan);
@@ -141,16 +153,36 @@ export function claimsMitPlatz(claims: LinearIssue[], belegung: Belegung): Linea
 /** Issues „In Progress“ mit Label `claude`, deren Platz `laufende` freigegeben hat (für den Eintrag in loop_events). */
 export function freigegebene(issues: LinearIssue[], belegung: Belegung): LinearIssue[] {
   const belegt = new Set(laufende(issues, belegung).map((i) => i.identifier));
-  return issues.filter((i) => i.stateType === "started" && hatLabel(i) && !belegt.has(i.identifier));
+  return issues.filter((i) => i.stateType === "started" && hatLabel(i) && !istCodex(i) && !beiCodex(i) && !belegt.has(i.identifier));
 }
 
 // SIN-832: `needs-human` belegt nie einen Platz, sonst steht bei einem Platz die ganze Schlange.
 // SIN-846: Sind nur noch Belege-Haken offen, gehört das Issue dem Prüfer (belege.yml), nicht dem Bau-Worker.
 const startbar = (i: LinearIssue, gespiegelt: Set<string>) =>
-  i.stateType === "unstarted" && hatLabel(i) && !nurBelege(i.description) && !offenBlockiert(i) && !gespiegelt.has(i.identifier) && !i.labels.includes("needs-human") && !i.labels.includes("kriterien-unklar");
+  i.stateType === "unstarted" && hatLabel(i) && !istCodex(i) && !beiCodex(i) && !nurBelege(i.description) && !offenBlockiert(i) && !gespiegelt.has(i.identifier) && !i.labels.includes("needs-human") && !i.labels.includes("kriterien-unklar");
 
 /** Startbare Todo-Issues, genau wie `waehle` sie sieht (SIN-736): Dispatcher und `loop_snapshot.queue.startable` zählen damit dasselbe. */
 export const startbare = (issues: LinearIssue[], gespiegelt: Set<string>): LinearIssue[] => issues.filter((i) => startbar(i, gespiegelt));
+
+/**
+ * SIN-936: Todo-Issues mit Label `codex`, die jetzt an Codex gehen (Delegate setzen, Status „In Progress“). Kein Claude-Lauf,
+ * kein GitHub-Spiegel, kein Platz. Gleiche Sperren wie bei Claude: blockiert, `needs-human`, `kriterien-unklar`, nur noch Belege.
+ */
+export const codexStarts = (issues: LinearIssue[]): LinearIssue[] =>
+  issues.filter((i) => i.stateType === "unstarted" && istCodex(i) && !beiCodex(i) && !nurBelege(i.description) && !offenBlockiert(i) && !i.labels.includes("needs-human") && !i.labels.includes("kriterien-unklar"));
+
+/**
+ * SIN-936: Issues bei Codex („In Progress“, Delegate Codex) ohne Branch `codex/` oder PR zur Kennung nach CODEX_MINUTEN.
+ * Sie gehen an Claude zurück. `pruefe`: Branches (Titel leer) und offene PRs.
+ * shortcut: ein Codex-Branch ohne Kennung im Namen und ohne PR-Titel mit Kennung zählt nicht; ausbauen, wenn Codex so benennt.
+ */
+export function codexRueckfall(issues: LinearIssue[], pruefe: OffenerPr[], jetzt: Date): LinearIssue[] {
+  return issues.filter((i) => {
+    if (i.stateType !== "started" || !beiCodex(i) || !i.startedAt) return false;
+    if (jetzt.getTime() - Date.parse(i.startedAt) < CODEX_MINUTEN * 60_000) return false;
+    return !pruefe.some((p) => /^codex\//.test(p.branch) && prGehoertZu(p, i));
+  });
+}
 
 /** `rest`: geschätzter Claude-Rest in Prozent (SIN-633). Reihenfolge nach Stufe, dann Priorität; bei knappem Rest fällt weg, was nicht passt. */
 export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung, rest: number | null = null): LinearIssue[] {
@@ -270,6 +302,7 @@ export function ausLinear(node: {
   url: string;
   createdAt: string;
   startedAt?: string | null;
+  delegate?: { name: string } | null;
   labels?: { nodes: { name: string }[] };
   state: { type: string };
   inverseRelations?: { nodes: { type: string; issue: { identifier: string; state: { type: string } } }[] };
@@ -283,6 +316,7 @@ export function ausLinear(node: {
     url: node.url,
     createdAt: node.createdAt,
     startedAt: node.startedAt ?? null,
+    delegate: node.delegate?.name ?? null,
     labels: (node.labels?.nodes ?? []).map((l) => l.name),
     stateType: node.state.type,
     blockiertVon: (node.inverseRelations?.nodes ?? [])

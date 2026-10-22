@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, freigegebene, gemergteFuerLaufende, gemergteIds, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
+import { ausLinear, codexRueckfall, codexStarts, freigegebene, gemergteFuerLaufende, gemergteIds, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -281,4 +281,31 @@ test("SIN-918: gemergter „Part of“-PR zählt; nur Live-Haken offen → kein 
   assert.deepEqual(gemergteIds(prs), ["SIN-918"]);
   assert.deepEqual(waehle([issue({ identifier: "SIN-918", description: LIVE })], new Set(), 2, belegung(gemergteIds(prs))), []);
   assert.deepEqual(waehle([issue({ identifier: "SIN-918", description: NORMAL })], new Set(), 2, belegung(gemergteIds(prs))).map((i) => i.identifier), ["SIN-918"], "normaler Haken offen: Folge-Worker");
+});
+
+test("Test: Issue mit Label codex geht an Codex und belegt keinen Claude-Platz (SIN-936)", () => {
+  const codex = issue({ identifier: "SIN-936", labels: ["codex"] });
+  const beide = issue({ identifier: "SIN-937", labels: ["claude", "codex"] });
+  const claude = issue({ identifier: "SIN-938" });
+  const liste = [codex, beide, claude];
+  assert.deepEqual(codexStarts(liste).map((i) => i.identifier), ["SIN-936", "SIN-937"]);
+  assert.deepEqual(waehle(liste, new Set(), 5).map((i) => i.identifier), ["SIN-938"]);
+  const laeuft = [codex, beide].map((i) => ({ ...i, stateType: "started", delegate: "Codex" }));
+  assert.equal(laufende(laeuft).length, 0);
+  assert.deepEqual(waehle([...laeuft, claude], new Set(), 1).map((i) => i.identifier), ["SIN-938"]);
+  assert.equal(codexStarts(laeuft).length, 0);
+  assert.equal(codexStarts([{ ...codex, blockiertVon: [{ identifier: "SIN-1", stateType: "started" }] }]).length, 0);
+  assert.equal(ausLinear({ id: "a", identifier: "SIN-1", title: "t", url: "u", createdAt: "x", state: { type: "started" }, delegate: { name: "Codex" } }).delegate, "Codex");
+});
+
+test("Test: Codex ohne Commit nach 60 Minuten fällt an Claude zurück (SIN-936)", () => {
+  const start = "2026-10-22T10:00:00Z";
+  const bei = issue({ identifier: "SIN-936", labels: ["codex"], stateType: "started", delegate: "Codex", startedAt: start });
+  const nach = (min: number) => new Date(Date.parse(start) + min * 60_000);
+  assert.equal(codexRueckfall([bei], [], nach(59)).length, 0);
+  assert.deepEqual(codexRueckfall([bei], [], nach(60)).map((i) => i.identifier), ["SIN-936"]);
+  assert.equal(codexRueckfall([bei], [{ titel: "", branch: "codex/sin-936" }], nach(90)).length, 0);
+  assert.equal(codexRueckfall([bei], [{ titel: "feat: x (SIN-936)", branch: "codex/auftrag" }], nach(90)).length, 0);
+  assert.equal(codexRueckfall([bei], [{ titel: "", branch: "claude/sin-936" }], nach(90)).length, 1);
+  assert.equal(codexRueckfall([{ ...bei, delegate: null }], [], nach(90)).length, 0);
 });
