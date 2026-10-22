@@ -7,9 +7,9 @@ import { pruefeSchema, type Schema } from "./schema";
 
 const lies = <T>(pfad: string) => JSON.parse(readFileSync(pfad, "utf8")) as T;
 const register = () => lies<Register>("docs/autonomy/agents.json");
-const ROLLEN = ["ceo", "visionaer", "planer", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis", "botadvisor", "trend"];
+const ROLLEN = ["ceo", "visionaer", "planer", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis"];
 
-test("docs/schemas hat 13 Rollen-Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
+test("docs/schemas hat 11 Rollen-Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
   // `lernen` (SIN-576) ist das Schema der Wochenmessung, keine Rolle; es wird in schleife.test.ts geprüft.
   const schemas = readdirSync("docs/schemas").filter((f) => f.endsWith(".json") && f !== "lernen.json").map((f) => f.slice(0, -5)).sort();
   assert.deepEqual(schemas, [...ROLLEN].sort());
@@ -63,14 +63,6 @@ test("Änderung an agents.json ändert den Ablauf", () => {
   assert.match(nachher, /Neues Werkzeug/);
   assert.match(nachher, /ceo --> anwalt/);
   assert.notEqual(vorher, nachher);
-});
-
-test("Bot Advisor: höchstens 5 Fragen, Secrets nur als Namen", () => {
-  const s = lies<Schema>("docs/schemas/botadvisor.json");
-  const ok = lies<{ fragen: unknown[]; agent: { secrets: string[] } }>("docs/schemas/fixtures/botadvisor.json");
-  const frage = { id: "x", frage: "?", warum: "w" };
-  assert.match(pruefeSchema({ ...ok, fragen: Array(6).fill(frage) }, s).join(), /fragen: mehr als 5/);
-  assert.match(pruefeSchema({ ...ok, agent: { ...ok.agent, secrets: ["sk-geheim-123"] } }, s).join(), /secrets\[0\]: passt nicht/);
 });
 
 test("Research-Fixture: Entscheidungsdatei mit GitHub- und HF-Treffer", () => {

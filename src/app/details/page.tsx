@@ -12,7 +12,6 @@ import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "../rahmen";
 import { GedaechtnisKachel } from "../gedaechtnis-kachel";
 import { GelerntKachel } from "../gelernt-kachel";
 import { FehlergruendeKachel } from "../fehlergruende-kachel";
-import { TrendsKachel } from "../trends-kachel";
 import { WerbungKachel } from "../werbung-kachel";
 import "../freigabe.css";
 import "../uebersicht.css";
@@ -216,7 +215,6 @@ export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; p
       <div className="einfach bunt" style={{ gridColumn: "1 / -1", padding: 0 }}>
         <WerbungKachel angemeldet />
         <GedaechtnisKachel angemeldet />
-        <TrendsKachel angemeldet />
         <GelerntKachel angemeldet />
         <FehlergruendeKachel angemeldet />
       </div>

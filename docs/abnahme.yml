@@ -217,25 +217,11 @@
   rest: loop_events?agent=eq.ceo&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
-- id: leitstand-rolle-visionaer
-  produkt: leitstand
-  titel: Visionär hat in den letzten 48 Stunden ein Ereignis geschrieben
-  art: db
-  rest: loop_events?agent=eq.visionaer&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
-  zeitfeld: created_at
-  max_alter_min: 2880
 - id: leitstand-rolle-planer
   produkt: leitstand
   titel: Planer hat in den letzten 48 Stunden ein Ereignis geschrieben
   art: db
   rest: loop_events?agent=eq.planer&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
-  zeitfeld: created_at
-  max_alter_min: 2880
-- id: leitstand-rolle-research
-  produkt: leitstand
-  titel: Research hat in den letzten 48 Stunden ein Ereignis geschrieben
-  art: db
-  rest: loop_events?agent=eq.research&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
 - id: leitstand-rolle-bauen
@@ -259,13 +245,6 @@
   rest: loop_events?agent=eq.content&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
-- id: leitstand-rolle-marketing
-  produkt: leitstand
-  titel: Marketing hat in den letzten 48 Stunden ein Ereignis geschrieben
-  art: db
-  rest: loop_events?agent=eq.marketing&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
-  zeitfeld: created_at
-  max_alter_min: 2880
 - id: leitstand-rolle-hausmeister
   produkt: leitstand
   titel: Hausmeister hat einen erfolgreichen Lauf (wöchentlich, schreibt keine loop_events)
@@ -283,20 +262,6 @@
   titel: Gedächtnis hat in den letzten 48 Stunden ein Ereignis geschrieben
   art: db
   rest: loop_events?agent=eq.betrieb&step=eq.gedaechtnis&select=created_at&order=created_at.desc&limit=1
-  zeitfeld: created_at
-  max_alter_min: 2880
-- id: leitstand-rolle-botadvisor
-  produkt: leitstand
-  titel: Bot Advisor hat in den letzten 48 Stunden ein Ereignis geschrieben
-  art: db
-  rest: loop_events?agent=eq.botadvisor&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
-  zeitfeld: created_at
-  max_alter_min: 2880
-- id: leitstand-rolle-trend
-  produkt: leitstand
-  titel: Trend hat in den letzten 48 Stunden ein Ereignis geschrieben
-  art: db
-  rest: loop_events?agent=eq.trend&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
 # Weniger Fehlschläge (SIN-638)
@@ -329,7 +294,7 @@
 # Fokus (SIN-627)
 - id: leitstand-fokus-pause
   produkt: leitstand
-  titel: Marketing und Trend laufen nicht mehr nach Zeitplan
+  titel: Marketing und Visionär ruhen (Fokus), Trend und Bot Advisor sind entfernt (SIN-958)
   art: datei
   pfad: src/lib/wirkung/wirkung.ts
   enthaelt: FOKUS_PAUSE
@@ -425,12 +390,6 @@
   art: datei
   pfad: src/lib/vorarbeiter/vorarbeiter.ts
   enthaelt: anstossEntscheidung
-- id: leitstand-botadvisor
-  produkt: leitstand
-  titel: Die Rolle Bot Advisor ist im Register eingetragen
-  art: datei
-  pfad: docs/autonomy/agents.json
-  enthaelt: '"id": "botadvisor"'
 # SJCODE Website (SIN-118)
 - id: sjcode-website-live
   produkt: sjcode-website
@@ -946,6 +905,20 @@
   art: datei
   pfad: .github/workflows/claude.yml
   enthaelt: "Bash(gh run list:*)"
+
+# Aufräumen (SIN-958)
+- id: leitstand-markt-workflow-entfernt
+  produkt: leitstand
+  titel: markt.yml existiert nicht mehr auf main (GitHub liefert 404)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/contents/.github/workflows/markt.yml?ref=main
+  status: "404"
+- id: leitstand-trend-workflow-entfernt
+  produkt: leitstand
+  titel: trend.yml existiert nicht mehr auf main (GitHub liefert 404)
+  art: http
+  url: https://api.github.com/repos/siinanXD/Leitstand/contents/.github/workflows/trend.yml?ref=main
+  status: "404"
 
 # SIN-936: Codex baut über Linear-Zuweisung (Label codex, Delegate, Rückfall nach 60 Minuten)
 - id: loop-codex-delegate

@@ -256,13 +256,17 @@ async function codexSpur(repo: string, issues: LinearIssue[], nodes: ProjektKnot
     if (DRY) { console.log(`[trocken] würde an Codex geben: ${i.identifier}`); continue; }
     if (!codexId) break;
     const team = nodes.find((n) => n.id === i.id)!.team.id;
+    let delegiert = false;
     try {
       await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { delegateId: $d }) { success } }`, { id: i.id, d: codexId });
+      delegiert = true;
       await setzeStatus(i.id, team, "In Progress");
       await kommentar(i.id, `An Codex übergeben (Delegate, SIN-936). Ohne Commit auf einem Branch codex/ nach ${CODEX_MINUTEN} Minuten geht das Issue an Claude.`);
       await ereignis("dispatch", "ok", { projekt, issue: i.identifier, grund: "codex_zugewiesen" });
       neu.set(i.identifier, { ...i, delegate: CODEX_NAME, stateType: "started", startedAt: jetzt.toISOString() });
     } catch (e) {
+      // Halb übergeben (Delegate gesetzt, Status nicht) hinge dauerhaft: codexStarts und der Rückfall übersehen „Todo mit Delegate“. Delegate zurücknehmen.
+      if (delegiert) await linear(`mutation($id: String!) { issueUpdate(id: $id, input: { delegateId: null }) { success } }`, { id: i.id }).catch(() => undefined);
       await ereignis("dispatch", "fehler", { projekt, issue: i.identifier, grund: fehlergrund(`codex_zuweisung: ${(e as Error).message}`) });
     }
   }
