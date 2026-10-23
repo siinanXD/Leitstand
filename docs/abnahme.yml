@@ -1190,3 +1190,10 @@
   art: datei
   pfad: docs/autonomy/kontingente.json
   enthaelt: wieder_da
+- id: leitstand-e2e-kennzahl
+  produkt: leitstand
+  titel: Die Ende-zu-Ende-Kennzahl steht im Snapshot und wurde in den letzten 26 Stunden berechnet (SIN-1054)
+  art: db
+  rest: loop_snapshot?project=eq.leitstand&select=updated_at,e2e
+  nicht_leer: e2e
+  rolle: e2e-strecke

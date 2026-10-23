@@ -15,6 +15,7 @@
     { "schritt": "claude", "takt": "ereignis", "grenze_h": 24, "alias": ["worker", "work"] },
     { "schritt": "diagnose", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "dispatch", "takt": "2h", "grenze_h": 5, "alias": [] },
+    { "schritt": "e2e-strecke", "takt": "taeglich", "grenze_h": 26, "alias": [] },
     { "schritt": "gedaechtnis", "takt": "taeglich", "grenze_h": 26, "alias": [] },
     { "schritt": "infisical-pflegen", "takt": "taeglich", "grenze_h": 26, "alias": [] },
     { "schritt": "infisical-secret-read-smoke", "takt": "aus", "grenze_h": 0, "alias": [] },

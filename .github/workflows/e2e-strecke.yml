@@ -1,0 +1,38 @@
+name: e2e-strecke
+
+# SIN-1054: Ende-zu-Ende-Kennzahl (Todo bis Live-Probe) und wöchentlicher Kanarienlauf. Trockenlauf: von Hand mit dry_run oder DRY_RUN=1.
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur rechnen, nichts schreiben und kein Kanarien-Issue anlegen"
+        type: boolean
+        default: false
+
+concurrency:
+  group: e2e-strecke
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-strecke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Ende-zu-Ende berechnen
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/e2e/strecke.ts
