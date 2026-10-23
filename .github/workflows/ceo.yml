@@ -41,5 +41,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CEO_AUSLOESER: ${{ inputs.ausloeser || 'taeglich' }}
           CEO_ROT: ${{ inputs.rot }}
+          ERGEBNIS_DATEI: /tmp/ceo-ergebnis.json
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: npx tsx scripts/ceo/ceo.ts
+      - name: Ergebnis gegen Schema prüfen (SIN-1045)
+        run: npx tsx scripts/autonomy/schema.ts ceo /tmp/ceo-ergebnis.json

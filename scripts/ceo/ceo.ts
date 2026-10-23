@@ -21,6 +21,7 @@ import { fortschritt } from "../../src/lib/uebersicht-einfach";
 import { aufgabenFuerDich } from "../../src/lib/uebersicht-b1";
 import { wartendePrs } from "../../src/lib/wartende-prs";
 import { fokusVon, standZeile, staende } from "../../src/lib/visionaer/visionaer";
+import { rollenErgebnis, schreibeErgebnis } from "../../src/lib/strukturiert/ergebnis";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY;
@@ -28,6 +29,7 @@ const ausloeser: Ausloeser = AUSLOESER.find((a) => a === env.CEO_AUSLOESER) ?? "
 const META = /^\w+\((loop|meta|waechter|gedaechtnis|ceo|agenten)\)/i;
 const ROT = /fail|error|abort|crash|red|rot|stuck|timeout/i;
 const TAG = 24 * 3_600_000;
+const CEO_ISSUE = "SIN-542"; // Kennung des Rollen-Ergebnisses (docs/autonomy/laeufe/SIN-542.json), der CEO läuft ohne eigenes Issue
 
 const kopf = { apikey: env.SUPABASE_SERVICE_ROLE_KEY ?? "", Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY ?? ""}`, "Content-Type": "application/json" };
 async function supabase(pfad: string, body?: unknown): Promise<unknown> {
@@ -128,13 +130,18 @@ async function main() {
 
   const tag = jetzt.toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
   // Der Satz entsteht bei jedem Lauf (SIN-579), auch wenn nichts zu planen ist: so verfällt er nach jedem Merge, nicht erst am nächsten Morgen.
-  for (const e of [...ohne, ...lagen.map(entscheide)]) {
+  const alle = [...ohne, ...lagen.map(entscheide)];
+  for (const e of alle) {
     console.log(`${gedaechtnisZeile(e, tag)} (Auslöser: ${ausloeser}, Meta: ${e.metaErlaubt ? "ja" : "nein"}, Ideen: ${e.ideenErlaubt ? "ja" : "nein"})`);
     if (DRY) continue;
     const run = env.GITHUB_RUN_ID;
     await supabase("ceo_entscheidungen", entscheidungsZeile(e, ausloeser, null));
     await supabase("loop_events", ereignisZeile(e.produkt, run ?? null, run ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${run}` : null));
   }
+  // SIN-1045: Ergebnis als Datei, danach prüft der Workflow es mit schema.ts. Auch im Trockenlauf, denn es braucht kein Netz.
+  const entscheidungen = alle.map((e) => ({ produkt: e.produkt, entscheidung: e.art, begruendung: e.grund }));
+  const ergebnis = rollenErgebnis("ceo", CEO_ISSUE, { zusammenfassung: `${alle.length} Produkte entschieden (Auslöser: ${ausloeser}).`, naechster_schritt: "Planer legt bei Bedarf neue Issues an." }, { entscheidungen });
+  console.log(`Ergebnis: ${schreibeErgebnis("ceo", ergebnis)}`);
   for (const e of lagen.map(entscheide)) {
     if (e.art === "fertig") await freischalten(e, projektName(e.produkt) ?? e.produkt, events.some((v) => v.project === e.produkt && v.step === FERTIG_SCHRITT));
     if (e.visionaer) await visionaerRufen(e.produkt);

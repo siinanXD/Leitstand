@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
@@ -12,6 +12,8 @@ test("Research-CLI startet trocken ohne Netz und schreibt erst nach beiden Quell
   const cwd = mkdtempSync(join(tmpdir(), "leitstand-research-"));
   try {
     mkdirSync(join(cwd, "docs/decisions"), { recursive: true });
+    mkdirSync(join(cwd, "docs/schemas"));
+    copyFileSync(resolve("docs/schemas/research.json"), join(cwd, "docs/schemas/research.json"));
     const preload = join(cwd, "fetch.cjs");
     writeFileSync(preload, `global.fetch = async (url) => {
       if (process.env.DRY_RUN === '1') throw new Error('Netz im Trockenlauf');
@@ -37,6 +39,9 @@ test("Research-CLI startet trocken ohne Netz und schreibt erst nach beiden Quell
     const bericht = readFileSync(join(cwd, "docs/decisions/SIN-826-research.md"), "utf8");
     assert.match(bericht, /beispiel\/repo/);
     assert.match(bericht, /beispiel\/modell/);
+    const ergebnis = JSON.parse(readFileSync(join(cwd, "docs/autonomy/laeufe/SIN-826.json"), "utf8"));
+    assert.equal(ergebnis.rolle, "research");
+    assert.deepEqual(ergebnis.treffer.map((t: { name: string }) => t.name), ["beispiel/repo", "beispiel/modell"]);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

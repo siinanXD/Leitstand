@@ -1126,3 +1126,10 @@
   art: datei
   pfad: docs/schemas/architekt.json
   enthaelt: zusammenlegen
+
+- id: leitstand-ceo-schema-schritt
+  produkt: leitstand
+  titel: ceo.yml prüft das Rollen-Ergebnis nach dem Lauf gegen das Schema (SIN-1045)
+  art: datei
+  pfad: .github/workflows/ceo.yml
+  enthaelt: scripts/autonomy/schema.ts ceo /tmp/ceo-ergebnis.json

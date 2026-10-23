@@ -1,4 +1,5 @@
 import { artLabel } from "../../src/lib/loop/lauf";
+import { rollenErgebnis, schreibeErgebnis } from "../../src/lib/strukturiert/ergebnis";
 import { AntwortFehler, frageStrukturiert, SCHEMA_DATEIEN } from "../../src/lib/strukturiert/strukturiert";
 import { ladeProjektIssues } from "../../src/lib/loop/projekt-issues";
 /**
@@ -28,6 +29,8 @@ import { ANSTOSS_FENSTER_MS, ANSTOSS_SCHRITT, anstossEntscheidung, anstossZeile,
 const env = process.env;
 const DRY = env.DRY_RUN === "1" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY;
 const repo = env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand";
+const PLANER_ISSUE = "SIN-636"; // Kennung des Rollen-Ergebnisses (docs/autonomy/laeufe/SIN-636.json), der Planer läuft ohne eigenes Issue
+const angelegt: string[] = []; // Titel der in diesem Lauf angelegten Issues, für das Rollen-Ergebnis
 
 async function linear<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
   if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY fehlt");
@@ -172,6 +175,7 @@ async function legeLeitstandIssuesAn(n: number) {
       },
       haengeAn: haengeBildAn,
     });
+    angelegt.push(title);
     console.log(`leitstand: Issue angelegt (${artLabel(title)}): ${title}`);
   }
 }
@@ -216,6 +220,13 @@ async function main() {
   for (const w of plan.wartet) console.log(`wartet: ${w.issue} (${w.grund})`);
   // Erst anlegen, dann planen: neue Issues stehen im Plan des nächsten Laufs (Merge oder täglich), nicht in diesem.
   await fuelleAuf();
+  // SIN-1045: Ergebnis als Datei, danach prüft der Workflow es mit schema.ts. Auch im Trockenlauf, denn es braucht kein Netz.
+  const ergebnis = rollenErgebnis("planer", PLANER_ISSUE, { zusammenfassung: `${plan.spuren.reduce((n, s) => n + s.eintraege.length, 0)} Issues in ${plan.spuren.length} Spuren geplant, ${plan.wartet.length} warten, ${angelegt.length} neu angelegt.`, naechster_schritt: "Dispatcher startet die erste Spur." }, {
+    angelegt,
+    spuren: plan.spuren.map((s) => ({ id: s.id, issues: s.eintraege.map((e) => e.issue) })),
+    wartet: plan.wartet.map((w) => w.issue),
+  });
+  console.log(`Ergebnis: ${schreibeErgebnis("planer", ergebnis)}`);
   if (DRY) return console.log("Trockenlauf: nichts geschrieben, Spur C läuft nicht.");
 
   const erstes = plan.spuren.find((s) => s.id === "C")!.eintraege[0];
