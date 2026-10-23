@@ -1133,3 +1133,10 @@
   art: datei
   pfad: .github/workflows/ceo.yml
   enthaelt: scripts/autonomy/schema.ts ceo /tmp/ceo-ergebnis.json
+
+- id: leitstand-kontingente-vercel
+  produkt: leitstand
+  titel: Der Dispatcher kennt die Kontingent-Sperre vercel-deploy (SIN-1046)
+  art: datei
+  pfad: docs/autonomy/kontingente.json
+  enthaelt: vercel-deploy
