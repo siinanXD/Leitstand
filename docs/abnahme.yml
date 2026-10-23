@@ -1141,3 +1141,10 @@
   art: datei
   pfad: .github/workflows/ceo.yml
   enthaelt: scripts/autonomy/schema.ts ceo /tmp/ceo-ergebnis.json
+
+- id: stromlauf-kontingente
+  produkt: leitstand
+  titel: Für Stromlauf AI gibt es eigene Kontingente im Snapshot (SIN-1049)
+  art: db
+  rest: loop_snapshot?project=eq.stromlauf-ai&select=quotas
+  nicht_leer: quotas
