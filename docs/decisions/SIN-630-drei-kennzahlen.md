@@ -25,4 +25,4 @@ Ganz oben auf der Startseite stehen drei Kacheln mit Wort, Zahl und 8-Wochen-Ver
 ## Offen
 
 - Die Sicht `kennzahlen_einheiten` (aus `question_evaluations` und `judge_runs`) fehlt noch. Sie muss in der Datenbank liegen, deren `SUPABASE_URL` der Messlauf nutzt (Lesen und Schreiben dort; Annahme: gleiche Datenbank wie `kennzahlen_woche`). Langfuse-Kosten fehlen. Bis dahin zeigt die Kachel teils „noch keine Zahl“. Aufgabe für Sinan, siehe PR.
-- Anbindung von `00 Wo stehen wir.md` an `zeileText()` folgt, sobald die Zeilen gefüllt sind.
+- `00 Wo stehen wir.md` ist angebunden: `scripts/gedaechtnis/schreiben.ts` liest `kennzahlen_woche` (Produkt `maf`) und schreibt je Kennzahl eine `zeileText()`-Zeile. Die 25-Zeilen-Grenze bleibt, es passen entsprechend weniger Produkte. Die Probe `gedaechtnis-kennzahlen` (`docs/abnahme/SIN-630.yml`) wird grün, sobald der Messlauf Zeilen gefüllt hat.

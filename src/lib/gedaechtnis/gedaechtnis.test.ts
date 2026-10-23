@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MAX_ZEILEN_TAG, MAX_ZEILEN_UEBERSICHT, aktualisiertSatz, ceoZeilen, dateien, mitGeheimnis, tagBerlin, vereinige, type Eingabe } from "./gedaechtnis";
+import { alle, zeileText } from "../kennzahlen/kennzahlen";
 import { pruefe } from "./vault";
 
 const jetzt = new Date("2026-10-13T04:00:00Z");
@@ -48,6 +49,22 @@ test("Wo stehen wir: je Produkt 3 Zeilen, höchstens 25 Zeilen auch bei vielen P
   const text = dateien(viele)["00 Wo stehen wir.md"];
   assert.ok(zeilen(text) <= MAX_ZEILEN_UEBERSICHT);
   assert.match(text, /nur unter Produkte\//);
+});
+
+test("Gedächtnis-Writer schreibt die drei Kennzahlen aus kennzahlen_woche in „00 Wo stehen wir.md“", () => {
+  const woche = "2026-10-12";
+  const zeilen = [
+    { kennzahl: "verkaufsfertig", woche, zaehler: 801, nenner: 890 },
+    { kennzahl: "kosten_je_einheit", woche, zaehler: 12.5, nenner: 10 },
+    { kennzahl: "fehlgeschlagene_aenderungen", woche, zaehler: 1, nenner: 20 },
+  ];
+  const kennzahlen = alle(zeilen, jetzt).map(zeileText);
+  const text = dateien({ ...fixture, kennzahlen })["00 Wo stehen wir.md"];
+  assert.match(text, /Verkaufsfertig: 90 %\nKosten je bestandener Einheit: 1,25 €\nFehlgeschlagene Änderungen: 5 %/);
+  assert.ok(zeilen.length === 3 && text.trimEnd().split("\n").length <= MAX_ZEILEN_UEBERSICHT);
+  const viele = { ...fixture, kennzahlen, produkte: Array.from({ length: 12 }, (_, i) => ({ ...fixture.produkte[0], id: `p${i}`, name: `Produkt ${i}` })) };
+  assert.ok(dateien(viele)["00 Wo stehen wir.md"].trimEnd().split("\n").length <= MAX_ZEILEN_UEBERSICHT);
+  assert.match(dateien({ ...fixture, kennzahlen: alle([], jetzt).map(zeileText) })["00 Wo stehen wir.md"], /Verkaufsfertig: noch keine Zahl/);
 });
 
 test("Tag: höchstens 30 Zeilen, auch mit sehr vielen PRs und Problemen", () => {
