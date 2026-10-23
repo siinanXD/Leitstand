@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { waehle } from "../loop/auswahl";
+import * as waechter from "./waechter";
 import {
   entscheidungenAusKommentaren,
   entscheidungsText,
@@ -13,7 +14,6 @@ import {
   kurzfassung,
   leitstandSnapshot,
   MARKER_ZURUECK,
-  planeSchlange,
   pruefeNeuesProjekt,
   repoAusLinks,
   snapshotGrundOhneProjekt,
@@ -75,29 +75,16 @@ test("repoAusLinks liest GitHub-Links nach Titel", () => {
   assert.equal(repoAusLinks([]), null);
 });
 
-test("Nachrücken: Backlog-Issue rückt nach, nie design/sinan/needs-human", () => {
-  const issues = [
-    issue({ identifier: "SIN-1", stateType: "backlog", labels: ["design"], priority: 1 }),
-    issue({ identifier: "SIN-2", stateType: "backlog", labels: [], priority: 3 }),
-    issue({ identifier: "SIN-3", stateType: "backlog", labels: [], priority: 2 }),
-  ];
-  const a = planeSchlange(issues, new Set());
-  assert.ok(a && a.art === "nachruecken" && a.issue.identifier === "SIN-3");
+test("Test: Wächter legt keine Issues an (Schlange füllt nur der Planer, SIN-941)", () => {
+  const skript = readFileSync("scripts/waechter/waechter.ts", "utf8");
+  for (const verboten of ["planeSchlange", "planungsIssue", "nachruecken"]) assert.ok(!skript.includes(verboten), `${verboten} gehört in den Planer`);
+  assert.ok(!("planeSchlange" in waechter) && !("planungsIssue" in waechter));
 });
 
-test("Nachrücken: startbares Todo oder laufendes Issue verhindert es", () => {
-  const backlog = issue({ identifier: "SIN-2", stateType: "backlog", labels: [] });
-  assert.equal(planeSchlange([backlog, issue({ identifier: "SIN-3" })], new Set()), null);
-  assert.equal(planeSchlange([backlog, issue({ identifier: "SIN-3", stateType: "started" })], new Set()), null);
-});
-
-test("Planungs-Issue nur bei leerer Schlange und leerem Backlog, höchstens eins", () => {
-  assert.deepEqual(planeSchlange([], new Set()), { art: "planung" });
-  assert.deepEqual(planeSchlange([issue({ identifier: "SIN-9", stateType: "completed" })], new Set()), { art: "planung" });
-  const offenePlanung = issue({ identifier: "SIN-8", stateType: "backlog", labels: ["sinan"], title: "Nächste Schritte planen" });
-  assert.equal(planeSchlange([offenePlanung], new Set()), null);
-  const gesperrt = issue({ identifier: "SIN-7", stateType: "backlog", labels: ["sinan"] });
-  assert.deepEqual(planeSchlange([gesperrt], new Set()), { art: "planung" });
+test("Hänger: In Review wird nie zurückgesetzt, auch nicht ohne offenen PR (SIN-941)", () => {
+  const review = issue({ identifier: "SIN-917", stateType: "started", statusName: "In Review", startedAt: vor(30) });
+  assert.deepEqual(erkenneIssueHaenger([review], [], jetzt, [vor(1)]), []);
+  assert.deepEqual(erkenneIssueHaenger([{ ...review, statusName: "In Progress" }], [], jetzt).map((a) => a.art), ["zuruecksetzen"]);
 });
 
 test("Hänger: In Progress > 6 h ohne PR → zurück, danach needs-human", () => {

@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { FOKUS_PAUSE } from "../wirkung/wirkung";
-import { alarmeAus, bewerteText, bewerteZeilen, einsetzen, ereignisZeile, LOOP_STATUS, parseProben, staende, type Probe } from "./abnahme";
+import { rolleAus } from "../autonomy/rollen";
+import { aktiveProben, alarmeAus, bewerteText, bewerteZeilen, einsetzen, ereignisZeile, LOOP_STATUS, parseProben, staende, type Probe } from "./abnahme";
 
 const H = 3_600_000;
 const jetzt = Date.parse("2026-10-14T12:00:00Z");
@@ -20,8 +21,8 @@ test("docs/abnahme.yml hat für jede Rolle aus agents.json eine Ereignis-Probe (
   const ids = new Set(parseProben(readFileSync("docs/abnahme.yml", "utf8")).map((p) => p.id));
   const { rollen } = JSON.parse(readFileSync("docs/autonomy/agents.json", "utf8")) as { rollen: { id: string }[] };
   assert.ok(rollen.length >= 11);
-  // Ausgenommen (SIN-958): pausierte Rollen (Fokus) und Research, das als Skill im Worker läuft und kein eigenes Ereignis schreibt.
-  const ohneProbe = new Set([...FOKUS_PAUSE, "research"]);
+  // Ausgenommen (SIN-958, SIN-941): pausierte Rollen (Fokus) sowie Research und Bauen, die ohne eigenen Workflow laufen (Skill bzw. Worker).
+  const ohneProbe = new Set([...FOKUS_PAUSE, "research", "bauen"]);
   for (const r of rollen.filter((x) => !ohneProbe.has(x.id))) assert.ok(ids.has(`leitstand-rolle-${r.id}`), r.id);
 });
 
@@ -31,6 +32,35 @@ test("parseProben: Felder, Anführungszeichen, Kommentare; Fehler bei doppelter 
   assert.throws(() => parseProben("- id: a\n  produkt: x\n  titel: t\n  art: http\n- id: a\n  produkt: x\n  titel: u\n  art: http\n"), /doppelt/);
   assert.throws(() => parseProben("- id: a\n  produkt: x\n  titel: t\n  art: sql\n"), /unbekannt/);
   assert.throws(() => parseProben("- id: a\n  produkt: x\n  art: http\n"), /titel/);
+});
+
+test("Test: Probe einer pausierten Rolle wird übersprungen", () => {
+  const rollen = [{ schritt: "marketing", takt: "aus" as const, grenze_h: 0, alias: [] }, { schritt: "ceo", takt: "taeglich" as const, grenze_h: 26, alias: [] }];
+  const proben = [probe({ id: "m", rolle: "marketing" }), probe({ id: "c", rolle: "ceo" }), probe({ id: "o" })];
+  assert.deepEqual(aktiveProben(proben, (r) => rolleAus(r, rollen)).map((p) => p.id), ["c", "o"]);
+  assert.equal(rolleAus("visionaer"), true, "Visionär ruht laut rollen.json");
+  assert.equal(rolleAus("bauen"), false, "unbekannte Rolle gilt als aktiv");
+});
+
+test("Echte docs/abnahme.yml: keine Rollen-Probe für pausierte Rollen oder Rollen ohne Workflow (SIN-941)", () => {
+  const proben = parseProben(readFileSync("docs/abnahme.yml", "utf8"));
+  const rollenProben = proben.map((p) => /^leitstand-rolle-(.+)$/.exec(p.id)?.[1]).filter((r): r is string => !!r);
+  for (const r of rollenProben) assert.equal(rolleAus(r), false, `Probe für pausierte Rolle: ${r}`);
+  for (const r of ["research", "botadvisor", "bauen", "trend", "visionaer", "marketing"]) assert.ok(!rollenProben.includes(r), `Probe für ${r} vorhanden`);
+  // Proben mit rolle:-Feld einer pausierten Rolle werden übersprungen, die echte Datei bleibt dabei vollständig aktiv.
+  assert.equal(aktiveProben(proben, (r) => rolleAus(r)).length, proben.length);
+});
+
+test("Test: Planer hängt nicht an abnahme (SIN-941)", () => {
+  const yml = readFileSync(".github/workflows/planer.yml", "utf8");
+  assert.match(yml, /workflows: \[loop-merge\]/);
+  assert.ok(!/workflows:.*abnahme/.test(yml));
+  assert.match(yml, /cron: "0 4 \* \* \*"/);
+  assert.match(yml, /paths: \[docs\/FERTIG\.md\]/);
+});
+
+test("Probe für Bauen als Rolle ist gelöscht", () => {
+  assert.ok(!parseProben(readFileSync("docs/abnahme.yml", "utf8")).some((p) => p.id === "leitstand-rolle-bauen"));
 });
 
 test("einsetzen: fehlender Wert ist ein Fehler, nie ein leerer Text", () => {

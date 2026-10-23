@@ -10,7 +10,7 @@
 #   - Aufbauphase (SIN-855): keine feste Einspruchsfrist; risk:high bleibt freigabepflichtig.
 #   - Belege (SIN-854): Bei claude/- und codex/-PRs zählt nur ein Prüfer-Beleg für den aktuellen Head und den heutigen Kriterien-Text
 #     des Issues (scripts/loop/beleg-stand.mjs, von main). Neuer Commit oder geänderte Kriterien: Merge gesperrt bis zur neuen Runde.
-#   - Nie: Draft-PRs, Label `no-automerge`.
+#   - Nie: Draft-PRs, Label `no-automerge` oder `needs-human` (SIN-941).
 # Der Grund steht als Kommentar im PR und im Leitstand (wartende PRs).
 name: automerge
 
@@ -137,7 +137,7 @@ jobs:
               belegOk = pruef.ok;
               if (!belegOk) core.warning(`Kein Merge: ${pruef.grund}`);
             }
-            const allowed = !pr.draft && belegOk && !labels.includes("no-automerge") && (!(high || labels.includes("risk:high")) || labels.includes("freigegeben"));
+            const allowed = !pr.draft && belegOk && !labels.includes("no-automerge") && !labels.includes("needs-human") && (!(high || labels.includes("risk:high")) || labels.includes("freigegeben"));
             const gql = github.graphql;
             if (allowed) {
               if (/^(claude|codex)\//.test(pr.head.ref)) {
@@ -151,7 +151,7 @@ jobs:
                 const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: pr.number, per_page: 100 });
                 const aktuellBelegt = belegAktuell({ stand: leseStand(comments.filter(k => ["github-actions[bot]", context.repo.owner].includes(k.user?.login)).map(k => k.body || "")), headSha: final.head.sha, hash: auftrag.hash });
                 const finalLabels = final.labels.map(l => l.name);
-                if (!aktuellBelegt.ok || final.state !== "open" || final.base?.ref !== "main" || final.base?.sha !== pr.base?.sha || final.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}` || final.head.sha !== pr.head.sha || final.draft || finalLabels.includes("no-automerge") || ((high || finalLabels.includes("risk:high")) && !finalLabels.includes("freigegeben"))) return core.warning("Unmittelbar vor Merge geändert oder nicht freigegeben; kein Merge.");
+                if (!aktuellBelegt.ok || final.state !== "open" || final.base?.ref !== "main" || final.base?.sha !== pr.base?.sha || final.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}` || final.head.sha !== pr.head.sha || final.draft || finalLabels.includes("no-automerge") || finalLabels.includes("needs-human") || ((high || finalLabels.includes("risk:high")) && !finalLabels.includes("freigegeben"))) return core.warning("Unmittelbar vor Merge geändert oder nicht freigegeben; kein Merge.");
                 await github.rest.pulls.merge({ ...context.repo, pull_number: pr.number, merge_method: "squash", sha: final.head.sha, commit_message: "Auto-Merge: automerge.yml" }).catch(e => core.warning(`Synchroner Merge durch GitHub abgewiesen: ${e.message}`));
               } else {
                 await gql(`mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH, commitBody: "Auto-Merge: automerge.yml"}) { clientMutationId } }`, { id: pr.node_id }).catch(async e => {
@@ -161,6 +161,6 @@ jobs:
               }
             } else {
               await gql(`mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }`, { id: pr.node_id })
-                .then(() => core.info(`Auto-Merge aus (${pr.draft ? "Draft" : labels.includes("no-automerge") ? "no-automerge" : "risk:high ohne freigegeben"}).`))
+                .then(() => core.info(`Auto-Merge aus (${pr.draft ? "Draft" : labels.includes("no-automerge") ? "no-automerge" : labels.includes("needs-human") ? "needs-human" : "risk:high ohne freigegeben"}).`))
                 .catch(() => core.info("Auto-Merge war nicht an."));
             }

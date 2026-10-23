@@ -6,6 +6,7 @@
 #           zeitfeld + max_alter_min (jüngste Zeile höchstens so alt, Standard 60), nicht_leer (Feld mit Inhalt)
 #   datei   pfad (im Checkout), enthaelt (optional)
 #   github  repo, pfad, enthaelt (optional); liest mit AGENT_WORKFLOW_TOKEN
+#   rolle   (optional, jede Art) Schritt aus docs/autonomy/rollen.json; hat die Rolle takt aus, wird die Probe übersprungen (SIN-941)
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
@@ -222,13 +223,6 @@
   titel: Planer hat in den letzten 48 Stunden ein Ereignis geschrieben
   art: db
   rest: loop_events?agent=eq.planer&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
-  zeitfeld: created_at
-  max_alter_min: 2880
-- id: leitstand-rolle-bauen
-  produkt: leitstand
-  titel: Bauen hat in den letzten 48 Stunden ein Ereignis geschrieben
-  art: db
-  rest: loop_events?step=eq.worker&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
 - id: leitstand-rolle-pruefen

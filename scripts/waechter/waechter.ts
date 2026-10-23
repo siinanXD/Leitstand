@@ -28,8 +28,6 @@ import {
   istPausiert,
   kommtAlsNeuInFrage,
   MARKER_ZURUECK,
-  planeSchlange,
-  planungsIssue,
   pruefeNeuesProjekt,
   repoAusLinks,
   reparaturText,
@@ -43,7 +41,6 @@ import {
   type WaechterIssue,
 } from "../../src/lib/waechter/waechter";
 
-import { maxParallel } from "../../src/lib/loop/parallel";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -131,7 +128,7 @@ async function ladeIssues(projektId: string): Promise<WaechterIssue[]> {
       project(id: $p) {
         issues(first: 100, filter: { or: [{ state: { type: { nin: ["completed", "canceled"] } } }, { completedAt: { gt: "${erledigtSeit(jetzt)}" } }] }) {
           nodes { id identifier title description priority url createdAt startedAt completedAt
-            labels(first: 10) { nodes { name } } state { type }
+            labels(first: 10) { nodes { name } } state { type name }
             inverseRelations(first: 10) { nodes { type issue { identifier state { type } } } }
             comments(first: 20) { nodes { body } } }
         }
@@ -142,6 +139,7 @@ async function ladeIssues(projektId: string): Promise<WaechterIssue[]> {
   return d.project.issues.nodes.map((n) => ({
     ...ausLinear(n),
     startedAt: n.startedAt,
+    statusName: (n.state as { name?: string }).name ?? null,
     completedAt: n.completedAt,
     kommentare: n.comments.nodes.map((c) => c.body),
   }));
@@ -414,32 +412,7 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
 
   if (!fehler.length) await claimsAufraeumen(projekt.name, repo, ids, prs, gespiegelt, stand);
 
-  const zurueckgesetzt = new Set(haenger.filter((h) => h.art === "zuruecksetzen").map((h) => h.issue.identifier));
-  const aktion = planeSchlange(
-    issues.map((i) => (zurueckgesetzt.has(i.identifier) ? { ...i, stateType: "unstarted" } : i)),
-    gespiegelt,
-    maxParallel(repo, env.LOOP_MAX_PARALLEL, env.LEITSTAND_MAX_PARALLEL),
-  );
-  if (aktion?.art === "nachruecken") {
-    log(projekt.name, `rückt nach: ${aktion.issue.identifier} ${aktion.issue.title}`);
-    if (!DRY) {
-      const todo = team.status("Todo");
-      const label = team.label(LABEL);
-      if (!todo || !label) throw new Error("Status „Todo“ oder Label „claude“ in Linear nicht gefunden");
-      await linear(`mutation($id: String!, $s: String!, $l: [String!]) { issueUpdate(id: $id, input: { stateId: $s, addedLabelIds: $l }) { success } }`, {
-        id: aktion.issue.id,
-        s: todo,
-        l: [label],
-      });
-      await kommentar(aktion.issue.id, "Wächter: Schlange war leer, aus dem Backlog nachgerückt (SIN-419, Regel SIN-417).");
-    }
-  } else if (aktion?.art === "planung") {
-    const t = planungsIssue(projekt.name);
-    log(projekt.name, `Schlange und Backlog leer → Planungs-Issue „${t.title}“`);
-    if (!DRY) await neuesIssue(teamId, projekt.id, t.title, t.description, [LABEL]);
-  } else {
-    log(projekt.name, "Schlange ok");
-  }
+  // SIN-941: Die Schlange füllt nur der Planer (Nachrücken, Planungs-Issues).
 
   if (updateFaellig(p.letztesUpdateAt, jetzt)) {
     const stand = tagesstand(issues, haenger, jetzt);

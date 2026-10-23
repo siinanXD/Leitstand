@@ -13,6 +13,7 @@
  * DRY_RUN=1 oder fehlende Supabase-Variablen: nur Ausgabe im Log, nichts geschrieben.
  */
 import { AUSLOESER, bezugVon, ereignisZeile, entscheide, FERTIG_SCHRITT, fertigMeldung, entscheidungsZeile, gedaechtnisZeile, ohneDaten, startbar, type Ausloeser, type Entscheidung, type ProduktLage } from "../../src/lib/ceo/ceo";
+import { rolleAus } from "../../src/lib/autonomy/rollen";
 import { REPOS } from "../../src/lib/freigabe";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
@@ -63,6 +64,8 @@ async function visionaerRufen(produkt: string) {
   console.log(`${DRY ? "[trocken] " : ""}${produkt}: fertig, Dispatcher stoppen und Visionär rufen`);
   if (DRY) return;
   await supabase("loop_events", standZeile(produkt, "pause", ""));
+  // SIN-941: Pausierte Rolle (`takt: aus` in rollen.json) wird nicht gestartet; der Dispatcher bleibt gestoppt.
+  if (rolleAus("visionaer")) return console.log(`${produkt}: Visionär pausiert (rollen.json), nicht gerufen`);
   const res = await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/visionaer.yml/dispatches`, { method: "POST", headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json" }, body: JSON.stringify({ ref: "main", inputs: { produkt } }) });
   // Der Stand `pause` gilt trotzdem: lieber nichts bauen als ohne Plan weiterlaufen. Fehlt visionaer.yml noch, steht es hier im Log.
   if (!res.ok) console.log(`::warning::visionaer.yml nicht gestartet (${res.status}).`);

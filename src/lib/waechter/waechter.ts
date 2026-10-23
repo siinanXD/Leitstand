@@ -3,9 +3,8 @@
  * Das Skript scripts/waechter/waechter.ts holt Daten aus Linear und GitHub und führt die geplanten Aktionen aus.
  */
 import { istRepo, type RepoName } from "../freigabe";
-import { HAENGER_STUNDEN, LABEL, linearId, MAX_REPARATUR, NIE_AUTOMATISCH, nachruecken, reparatur, startbare, type LinearIssue } from "../loop/auswahl";
+import { HAENGER_STUNDEN, LABEL, linearId, MAX_REPARATUR, reparatur, startbare, type LinearIssue } from "../loop/auswahl";
 
-export const PLANUNG_TITEL = "Nächste Schritte planen";
 export const EINRICHTEN_TITEL = "Projekt einrichten";
 export { HAENGER_STUNDEN };
 export const CI_WARTE_MINUTEN = 30;
@@ -35,6 +34,8 @@ export type Projekt = {
 
 export type WaechterIssue = LinearIssue & {
   startedAt: string | null;
+  /** Name des Linear-Status, z. B. „In Review“ (SIN-941). */
+  statusName?: string | null;
   completedAt?: string | null;
   /** Kommentartexte in Linear. */
   kommentare: string[];
@@ -74,45 +75,9 @@ export function repoAusLinks(links: { label: string; url: string }[]): string | 
 export const istPausiert = (p: Projekt) => /pausiert/i.test(p.zusammenfassung ?? "");
 export const istAktiv = (p: Projekt) => p.statusTyp === "started";
 
-// ---------------------------------------------------------------- Schlange
-
-export type SchlangenAktion = { art: "nachruecken"; issue: LinearIssue } | { art: "planung" } | null;
-
+// SIN-941: Die Schlange füllt nur der Planer (Nachrücken, Planungs-Issues); der Wächter repariert Hänger und schreibt das Tages-Update.
 const offen = (i: LinearIssue) => i.stateType !== "completed" && i.stateType !== "canceled";
 const hatLabel = (i: LinearIssue, name: string) => i.labels.some((l) => l.toLowerCase() === name);
-
-/**
- * Schlange füllen: kein startbares Todo → wichtigstes Backlog-Issue nachrücken (Regel SIN-417);
- * auch der Backlog leer → Planungs-Issue, höchstens eins offen je Projekt.
- * `issues` sind alle Issues des Projekts.
- */
-export function planeSchlange(issues: LinearIssue[], gespiegelt: Set<string>, max = 1): SchlangenAktion {
-  const nachr = nachruecken(issues, gespiegelt, max);
-  if (nachr) return { art: "nachruecken", issue: nachr };
-  // Es läuft oder wartet schon etwas mit Label `claude` (auch blockiert): kein Planungs-Issue.
-  if (issues.some((i) => (i.stateType === "unstarted" || i.stateType === "started") && hatLabel(i, "claude"))) return null;
-  // Backlog mit startbaren Issues (nur Platz belegt): nichts tun.
-  const backlogStartbar = issues.some(
-    (i) => i.stateType === "backlog" && !i.labels.some((l) => NIE_AUTOMATISCH.includes(l.toLowerCase())),
-  );
-  if (backlogStartbar) return null;
-  if (issues.some((i) => offen(i) && i.title.trim() === PLANUNG_TITEL)) return null;
-  return { art: "planung" };
-}
-
-export function planungsIssue(projekt: string): { title: string; description: string } {
-  return {
-    title: PLANUNG_TITEL,
-    description: [
-      `Die Schlange im Projekt „${projekt}“ ist leer: kein Todo, kein Backlog.`,
-      "",
-      "- Projektbeschreibung, offene Punkte und den Stand im Repo lesen.",
-      "- Die nächsten 3 bis 5 Schritte als einzelne Linear-Issues im Backlog anlegen (klarer Titel, Ziel, „Fertig, wenn“).",
-      "- Aufgaben, die nur Sinan erledigen kann, mit Label `sinan` versehen.",
-      "- Keine Issues löschen.",
-    ].join("\n"),
-  };
-}
 
 // ------------------------------------------------------------------ Hänger
 
@@ -129,6 +94,8 @@ export function erkenneIssueHaenger(issues: WaechterIssue[], offenePrs: PrInfo[]
   const r: HaengerAktion[] = [];
   for (const i of issues) {
     if (i.stateType !== "started" || !i.startedAt) continue;
+    // SIN-941: „In Review“ hat seinen PR schon (auch gemergt); nur „In Progress“ ohne PR ist ein Hänger.
+    if (i.statusName && i.statusName !== "In Progress") continue;
     if (!hatLabel(i, LABEL)) continue;
     if (hatLabel(i, "needs-human")) continue;
     if (offenePrs.some((pr) => prGehoertZu(pr, i))) continue;
