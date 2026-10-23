@@ -34,6 +34,7 @@ import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "..
 import { beendeterLaufOhnePr, MAX_OHNE_DIFF, OHNE_DIFF_SCHRITT, ohneDiffGrund, zaehleOhneDiff, type WorkerLauf } from "../../src/lib/loop/ohne-pr";
 import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, workerJeClaim, type Reservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
+import { konfliktSchritt } from "../../src/lib/loop/konflikt";
 import { konfliktGrund, ladePrSchutz, maxParallel, parallelAuswahl, parallelRepo, schuetztNoch } from "../../src/lib/loop/parallel";
 
 const env = process.env;
@@ -472,6 +473,26 @@ async function laeufeOhnePr(
   return fertig;
 }
 
+/** SIN-1028: offene Worker-PRs mit Merge-Konflikt einmal je Head-Commit anstoßen, nach zwei Versuchen `needs-human`. */
+async function konfliktAnstoss(repo: string, prs: { number: number; head: { ref: string }; labels: { name: string }[] }[]) {
+  for (const k of prs.filter((p) => istWorkerBranch(p.head.ref))) {
+    const p = await gh<{ mergeable_state?: string; head: { sha: string } }>(`/repos/${repo}/pulls/${k.number}`);
+    if (p.mergeable_state !== "dirty") continue;
+    const kommentare = (await gh<{ body: string }[]>(`/repos/${repo}/issues/${k.number}/comments?per_page=100`)).map((c) => c.body);
+    const schritt = konfliktSchritt({ branch: k.head.ref, headSha: p.head.sha, mergeableState: p.mergeable_state, labels: k.labels.map((l) => l.name), kommentare });
+    if ("keine" in schritt) continue;
+    const was = "stopp" in schritt ? "needs-human" : `Versuch ${schritt.anstoss.versuch}`;
+    if (DRY) { console.log(`[trocken] Konflikt #${k.number}: ${was}`); continue; }
+    if ("stopp" in schritt) {
+      await gh(`/repos/${repo}/issues/${k.number}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
+      await gh(`/repos/${repo}/issues/${k.number}/comments`, { method: "POST", body: { body: "Merge-Konflikt mit main auch nach 2 Versuchen offen. Stopp, Sinan entscheidet." } });
+    } else {
+      await gh(`/repos/${repo}/issues/${k.number}/comments`, { method: "POST", body: { body: schritt.anstoss.text } });
+    }
+    console.log(`PR #${k.number}: Konflikt, ${was}`);
+  }
+}
+
 async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   const repo = ziel.repo;
   const projekt = ziel.id;
@@ -502,6 +523,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
       prs = [...prs, ...weitere];
     }
   }
+  await konfliktAnstoss(repo, prs).catch((e: Error) => console.error(`::warning::Konflikt-Anstoß: ${e.message}`));
   issues = await codexSpur(repo, issues, nodes, prs, projekt);
   // Neueste zuerst: der jüngste gemergte PR eines Issues entscheidet, ob es nur auf Folge-Haken wartet (SIN-781).
   const zuletzt = await gh<{ title: string; body: string | null; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
