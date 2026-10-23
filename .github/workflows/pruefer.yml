@@ -4,7 +4,7 @@
 # Prüfer/Abhängigkeiten vom Basis-Commit; PR-Commits werden nur als Diff gelesen, nie ausgecheckt.
 # SIN-939: Ein Prüfer für alle Produkt-Repos. workflow_dispatch (repo, pr) und repository_dispatch `pruefer-anstoss`
 # (client_payload: repo, pr; Anstoß aus pruefer-anstoss.yml der Lern-App) prüfen Content-Agent-Lernapp wie den Leitstand.
-# Das Ergebnis steht als Kommentar im Produkt-PR; dessen Gate (pr-gate.yml) verlangt den Beleg (docs/lernapp-pruefer.md).
+# Das Ergebnis steht als Kommentar im Produkt-PR; dessen Gate (pr-gate.yml) verlangt den Beleg (scripts/pruefer/lernapp-pruefer.md).
 name: pruefer
 # SIN-932: PR-Nummer im Laufnamen, damit repair.yml auch dispatchte Läufe zuordnen kann.
 # SIN-939: Produkt-Läufe nennen das Repo, damit repair.yml sie nicht einem gleichnummerierten Leitstand-PR zuordnet.
