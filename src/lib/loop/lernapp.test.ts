@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { gemergteFuerLaufende, gespiegelteIds, laufende, marker, statusNachMerge, waehle, type LinearIssue } from "./auswahl";
 import { entscheide, leseHaken } from "./haken";
@@ -76,4 +77,14 @@ test("SIN-937: nach zwei Läufen ohne Diff gilt das Issue als gestoppt, ein Merg
   assert.equal(zaehleOhneDiff([ohne, { step: "merge", grund: null }, ohne, ohne]), 1);
   assert.equal(zaehleOhneDiff([{ step: "worker", grund: "anderer Grund" }, ohne]), 1);
   assert.match(ohneDiffGrund(lauf(), 2), /Lauf 2 von 2/);
+});
+
+test("Test: Lern-App-Merge startet den nächsten Dispatch und setzt das Linear-Issue im selben Lauf", () => {
+  // Auslöser: das post-merge der Lern-App sendet produkt-merge (SIN-812), dispatch.yml startet darauf den Dispatcher.
+  const dispatch = readFileSync(".github/workflows/dispatch.yml", "utf8");
+  assert.match(dispatch, /repository_dispatch:\s+types: \[produkt-merge\]/);
+  // Der Dispatcher setzt gemergte Produkt-PRs über gemergt() (statusNachMerge) vor der Auswahl.
+  const loop = readFileSync("scripts/loop/loop.ts", "utf8");
+  assert.match(loop, /for \(const f of fertig\) await gemergt\(repo, f\.pr, projekt\)/);
+  assert.ok(loopZiele().some((z) => z.id === "lernapp"));
 });
