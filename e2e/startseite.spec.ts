@@ -156,7 +156,7 @@ test("Test: axe-Prüfung der Bubble ist grün (geschlossen und offen, Handy)", a
     user: { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", email: "test@example.org", app_metadata: {}, user_metadata: {}, created_at: new Date(jetzt).toISOString() },
   };
   await page.addInitScript(([schluessel, wert]) => localStorage.setItem(schluessel, wert), [SPEICHER, JSON.stringify(sitzung)]);
-  await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: [] }));
+  await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: [{ id: "1", created_at: new Date(jetzt - 600_000).toISOString(), project: "beispiel", step: "pr", status: "ok", issue: "SIN-1", pr: 1 }] }));
   await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "beispiel", stage: "work", status: "running", title: "Beispiel-Aufgabe" }] }));
   await page.route(`${SUPABASE}/rest/v1/ceo_entscheidungen**`, (route) => route.fulfill({ json: [] }));
   await page.route(`${SUPABASE}/rest/v1/chat_nachrichten**`, (route) => route.fulfill({ json: [{ id: "n1", rolle: "sinan", text: "Wie steht SIN-1?" }, { id: "n2", rolle: "leitstand", text: "SIN-1: nicht bekannt." }] }));

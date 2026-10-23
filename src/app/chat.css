@@ -58,3 +58,11 @@
 .chat-form input {
   min-height: var(--touch-min);
 }
+
+/* Handy: über der festen Reiter-Leiste unten (bunt.css, z-index 10, Knöpfe 56 px). */
+@media (max-width: 899px) {
+  .chat {
+    z-index: 11;
+    bottom: calc(56px + 2 * var(--space-4) + var(--space-16) + env(safe-area-inset-bottom));
+  }
+}
