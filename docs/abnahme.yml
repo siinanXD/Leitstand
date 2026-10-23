@@ -1104,6 +1104,14 @@
   pfad: src/lib/loop/konflikt.ts
   enthaelt: MAX_KONFLIKT
 
+# SIN-1042
+- id: leitstand-vercel-ignorecommand
+  produkt: leitstand
+  titel: Vercel baut Vorschauen nur bei UI-Änderungen (SIN-1042)
+  art: datei
+  pfad: vercel.json
+  enthaelt: ignoreCommand
+
 # SIN-1035
 - id: leitstand-strukturierte-ausgabe
   produkt: leitstand
