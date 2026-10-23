@@ -949,3 +949,12 @@
   art: datei
   pfad: src/lib/loop/ohne-pr.ts
   enthaelt: beendeterLaufOhnePr
+
+# Ein Prüfer für alle Produkt-Repos (SIN-939)
+- id: leitstand-pruefer-produkt-repos
+  produkt: leitstand
+  titel: Der Prüfer nimmt repo und PR per repository_dispatch (pruefer-anstoss) und prüft Lern-App-PRs nur lesend (SIN-939)
+  art: github
+  repo: siinanXD/Leitstand
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: pruefer-anstoss
