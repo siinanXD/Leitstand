@@ -972,3 +972,11 @@
   art: datei
   pfad: .github/workflows/waechter.yml
   enthaelt: scripts/kennzahlen/modelle.ts
+
+# SIN-1004: Ins Gedächtnis schreibt nur der Gedächtnis-Agent
+- id: gedaechtnis-nur-agent-schreibt
+  produkt: leitstand
+  titel: Vault-Regeln verbieten PRs anderer Agenten im Gedächtnis
+  art: datei
+  pfad: src/lib/gedaechtnis/vault.ts
+  enthaelt: Andere Agenten (Worker, Codex, Prüfer) öffnen hier keine PRs
