@@ -155,6 +155,16 @@ jobs:
                 fi
               done
           fi
+      - name: Merge-Gate des Produkt-Repos neu anstoßen
+        if: always() && steps.lauf.outcome == 'success' && env.GH_REPO != github.repository && hashFiles('pruefer-status.txt') != ''
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          HEAD_SHA: ${{ steps.ziel.outputs.head }}
+        run: |
+          # SIN-1027: pr-gate läuft nicht von selbst, wenn der Prüfer-Kommentar auf „bestanden“ springt.
+          grep -q '^bestanden' pruefer-status.txt || exit 0
+          ID=$(gh api "repos/$GH_REPO/actions/runs?head_sha=$HEAD_SHA&per_page=100" --jq '.workflow_runs' | node --import tsx scripts/pruefer/regate.ts)
+          if [ -n "$ID" ]; then gh api -X POST "repos/$GH_REPO/actions/runs/$ID/rerun-failed-jobs"; else echo 'Kein fehlgeschlagener pr-gate-Lauf'; fi
       - name: Rot, wenn nicht bestanden oder Lauf gescheitert
         if: steps.lauf.outcome == 'failure'
         run: exit 1
