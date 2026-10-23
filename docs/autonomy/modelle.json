@@ -1,0 +1,14 @@
+{
+  "stand": "2026-10-23",
+  "quelle": "SIN-942",
+  "hinweis": "Einzige Quelle für Modellnamen. Workflows und Skripte lesen hier. Keine automatische Umschaltung: Änderungen macht ein Mensch oder der Planer mit Beleg aus der Messung (docs/decisions/SIN-942-modell-messung.md). schritte = Namen in loop_events (step oder agent), die zur Rolle zählen. kontextfenster = Eingabe-Tokens.",
+  "rollen": {
+    "worker": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Read", "Edit", "Write", "Bash", "Agent(lese-assistent)", "context7"], "schritte": ["worker", "claude", "work"] },
+    "pruefer": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Diff lesen", "gh api"], "schritte": ["pruefer"] },
+    "richter": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Read", "Grep"], "schritte": ["richter", "wirkung"] },
+    "planer": { "modell": "claude-haiku-5-5", "kontextfenster": 200000, "werkzeuge": ["Linear", "Supabase"], "schritte": ["planer", "vorarbeiter"] },
+    "visionaer": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Read", "Write", "gh api"], "schritte": ["visionaer"] },
+    "diagnose": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Read", "gh api"], "schritte": ["diagnose"] },
+    "marketing": { "modell": "claude-haiku-5-5", "kontextfenster": 200000, "werkzeuge": ["Supabase"], "schritte": ["marketing"] }
+  }
+}

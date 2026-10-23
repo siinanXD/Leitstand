@@ -50,6 +50,10 @@ jobs:
         name: Ausgabeschema laden
         if: steps.ziel.outputs.ziel == 'ja'
         run: echo "json=$(jq -c . docs/diagnose/schema.json)" >> "$GITHUB_OUTPUT"
+      - id: modell
+        name: Modell aus docs/autonomy/modelle.json
+        if: steps.ziel.outputs.ziel == 'ja'
+        run: echo "name=$(jq -r '.rollen.diagnose.modell' docs/autonomy/modelle.json)" >> "$GITHUB_OUTPUT"
       - id: diagnose
         name: Diagnose
         if: steps.ziel.outputs.ziel == 'ja'
@@ -62,7 +66,7 @@ jobs:
             Gib das Ergebnis ausschließlich gemäß dem JSON-Schema zurück. Ändere keine Dateien.
             Die Tabellen loop_events, loop_snapshot und leitstand_aufgaben liegen lesbar in diagnose-daten.json.
           claude_args: |
-            --model claude-sonnet-5-5
+            --model ${{ steps.modell.outputs.name }}
             --max-turns 30
             --allowedTools "Read,Grep,Glob,Bash(gh run view:*),Bash(gh run list:*),Bash(gh issue view:*),Bash(gh pr view:*)"
             --json-schema '${{ steps.diagnose-schema.outputs.json }}'

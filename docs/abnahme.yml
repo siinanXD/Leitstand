@@ -952,3 +952,25 @@
   repo: siinanXD/Leitstand
   pfad: .github/workflows/pruefer.yml
   enthaelt: pruefer-anstoss
+
+# Modell-Messung je Rolle mit Routing-Tabelle (SIN-942)
+- id: leitstand-modelle-routing
+  produkt: leitstand
+  titel: Der Worker-Workflow liest sein Modell aus docs/autonomy/modelle.json (SIN-942)
+  art: datei
+  pfad: .github/workflows/claude.yml
+  enthaelt: modelle.json
+- id: leitstand-modelle-messung
+  produkt: leitstand
+  titel: Der Wächter berechnet die Modell-Messung je Rolle (SIN-942)
+  art: datei
+  pfad: .github/workflows/waechter.yml
+  enthaelt: scripts/kennzahlen/modelle.ts
+
+# SIN-1004: Ins Gedächtnis schreibt nur der Gedächtnis-Agent
+- id: gedaechtnis-nur-agent-schreibt
+  produkt: leitstand
+  titel: Vault-Regeln verbieten PRs anderer Agenten im Gedächtnis
+  art: datei
+  pfad: src/lib/gedaechtnis/vault.ts
+  enthaelt: Andere Agenten (Worker, Codex, Prüfer) öffnen hier keine PRs

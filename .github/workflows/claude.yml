@@ -78,6 +78,9 @@ jobs:
           mkdir -p .gedaechtnis
           curl -sSf "$SUPABASE_URL/rest/v1/loop_events?select=created_at,step,status,grund&issue=eq.$id&order=created_at.desc&limit=10" \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" > .gedaechtnis/ereignisse.json
+      - id: modell
+        name: Modell aus docs/autonomy/modelle.json
+        run: echo "name=$(jq -r '.rollen.worker.modell' docs/autonomy/modelle.json)" >> "$GITHUB_OUTPUT"
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
@@ -85,7 +88,7 @@ jobs:
           github_token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           label_trigger: claude
           claude_args: |
-            --model claude-sonnet-5-5
+            --model ${{ steps.modell.outputs.name }}
             --max-turns 60
             --agents '{"lese-assistent":{"description":"Liest abgegrenzte Dateien für Recherche oder Testanalyse; meldet Befunde mit Pfad und Beleg, ändert nichts.","tools":["Read","Grep","Glob"],"model":"inherit","maxTurns":12,"prompt":"Lies zuerst AGENTS.md. Bearbeite nur die zugewiesene lesende Teilfrage. Keine Änderungen, keine weiteren Subagents, keine Freigabeentscheidung. Liefere eine kurze Zusammenfassung mit Dateipfaden und offenen Fragen."}}'
             --strict-mcp-config
