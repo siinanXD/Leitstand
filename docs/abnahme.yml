@@ -1162,3 +1162,17 @@
   art: datei
   pfad: docs/autonomy/kontingente.json
   enthaelt: vercel-deploy
+
+- id: leitstand-infisical-soll-liste
+  produkt: leitstand
+  titel: Das Register nennt Stromlauf AI samt Infisical-Ordner und Secret-Namen (SIN-1051)
+  art: datei
+  pfad: docs/autonomy/produkte.json
+  enthaelt: stromlauf-ai
+- id: leitstand-infisical-pflegen
+  produkt: leitstand
+  titel: Die tägliche Infisical-Pflege (nur Anlegen, nie Werte) läuft als Rolle infisical-pflegen (SIN-1051)
+  art: datei
+  pfad: scripts/infisical/pflegen.ts
+  enthaelt: legeAn
+  rolle: infisical-pflegen

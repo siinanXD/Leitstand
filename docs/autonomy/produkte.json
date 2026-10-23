@@ -1,15 +1,41 @@
 {
-  "hinweis": "Register der Produkte (SIN-1049). Nur Namen und Kennungen, nie Werte. Werte liegen in Infisical je Produkt-Ordner. null = noch nicht geprüft oder nicht vorhanden; Befund in docs/decisions/SIN-1049-schluessel-je-produkt.md.",
+  "hinweis": "Register der Produkte (SIN-1049). Nur Namen und Kennungen, nie Werte. Werte liegen in Infisical je Produkt-Ordner. null = noch nicht geprüft oder nicht vorhanden; Befund in docs/decisions/SIN-1049-schluessel-je-produkt.md. secrets: Namen mit Zweck und Anleitung, environment ist der Infisical-Slug (SIN-1051, docs/decisions/SIN-1051-infisical-pflegen.md).",
   "produkte": [
     {
       "id": "lernapp",
       "repo": "siinanXD/Content-Agent-Lernapp",
-      "infisicalOrdner": "/lernapp",
+      "infisicalOrdner": "/content-agent-lernapp",
       "langfuse": { "projekt": null, "getrennt": null },
       "sentry": { "projekt": null },
       "vercel": { "projekt": null },
       "supabase": { "projekt": null },
-      "secrets": ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_BASE_URL", "SENTRY_AUTH_TOKEN", "VERCEL_TOKEN"]
+      "secrets": [
+        { "name": "LANGFUSE_PUBLIC_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, öffentlicher Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
+        { "name": "LANGFUSE_SECRET_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, geheimer Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
+        { "name": "LANGFUSE_BASE_URL", "environment": "dev", "zweck": "Adresse der Langfuse-Instanz", "wo_holen": "Langfuse → Projekt → Settings → API Keys (Host)" },
+        { "name": "SENTRY_AUTH_TOKEN", "environment": "dev", "zweck": "Sentry lesen", "wo_holen": "Sentry → Settings → Auth Tokens" },
+        { "name": "VERCEL_TOKEN", "environment": "dev", "zweck": "Vercel-Deployments lesen", "wo_holen": "Vercel → Account Settings → Tokens" },
+        { "name": "AGENT_VARIABLES_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für AGENT_VARIABLES_TOKEN (lernapp)", "wo_holen": "GitHub → Settings → Developer settings → Fine-grained tokens" },
+        { "name": "AGENT_WORKFLOW_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für AGENT_WORKFLOW_TOKEN (lernapp)", "wo_holen": "GitHub → Settings → Developer settings → Fine-grained tokens" },
+        { "name": "ANTHROPIC_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für ANTHROPIC_API_KEY (lernapp)", "wo_holen": "Claude Console → API-Schlüssel" },
+        { "name": "CLAUDE_CODE_OAUTH_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für CLAUDE_CODE_OAUTH_TOKEN (lernapp)", "wo_holen": "claude setup-token (Claude-Abo)" },
+        { "name": "FIGMA_ACCESS_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für FIGMA_ACCESS_TOKEN (lernapp)", "wo_holen": "Figma → Settings → Personal access tokens" },
+        { "name": "HIGGSFIELD_KEY_ID", "environment": "dev", "zweck": "Geheimer Wert für HIGGSFIELD_KEY_ID (lernapp)", "wo_holen": "Higgsfield → API Keys" },
+        { "name": "HIGGSFIELD_KEY_SECRET", "environment": "dev", "zweck": "Geheimer Wert für HIGGSFIELD_KEY_SECRET (lernapp)", "wo_holen": "Higgsfield → API Keys" },
+        { "name": "LINEAR_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für LINEAR_API_KEY (lernapp)", "wo_holen": "Linear → Settings → API" },
+        { "name": "NEXT_PUBLIC_POSTHOG_KEY", "environment": "dev", "zweck": "Geheimer Wert für NEXT_PUBLIC_POSTHOG_KEY (lernapp)", "wo_holen": "Anbieter-Konsole des Dienstes" },
+        { "name": "NEXT_PUBLIC_SENTRY_DSN", "environment": "dev", "zweck": "Geheimer Wert für NEXT_PUBLIC_SENTRY_DSN (lernapp)", "wo_holen": "Anbieter-Konsole des Dienstes" },
+        { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "environment": "dev", "zweck": "Geheimer Wert für NEXT_PUBLIC_SUPABASE_ANON_KEY (lernapp)", "wo_holen": "Anbieter-Konsole des Dienstes" },
+        { "name": "OPENAI_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für OPENAI_API_KEY (lernapp)", "wo_holen": "platform.openai.com → API keys" },
+        { "name": "POSTHOG_PERSONAL_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für POSTHOG_PERSONAL_API_KEY (lernapp)", "wo_holen": "PostHog → Settings → Personal API Keys / Projekt-Key" },
+        { "name": "RAILWAY_API_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für RAILWAY_API_TOKEN (lernapp)", "wo_holen": "Railway → Account → Tokens" },
+        { "name": "STRIPE_SECRET_KEY", "environment": "dev", "zweck": "Geheimer Wert für STRIPE_SECRET_KEY (lernapp)", "wo_holen": "Stripe → Entwickler → API-Schlüssel" },
+        { "name": "SUPABASE_ACCESS_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für SUPABASE_ACCESS_TOKEN (lernapp)", "wo_holen": "Supabase → Project Settings → API" },
+        { "name": "SUPABASE_ANON_KEY", "environment": "dev", "zweck": "Geheimer Wert für SUPABASE_ANON_KEY (lernapp)", "wo_holen": "Supabase → Project Settings → API" },
+        { "name": "SUPABASE_SERVICE_ROLE_KEY", "environment": "dev", "zweck": "Geheimer Wert für SUPABASE_SERVICE_ROLE_KEY (lernapp)", "wo_holen": "Supabase → Project Settings → API" },
+        { "name": "TELEGRAM_BOT_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für TELEGRAM_BOT_TOKEN (lernapp)", "wo_holen": "Telegram BotFather" },
+        { "name": "VERCEL_AUTOMATION_BYPASS_SECRET", "environment": "dev", "zweck": "Geheimer Wert für VERCEL_AUTOMATION_BYPASS_SECRET (lernapp)", "wo_holen": "Vercel → Account → Tokens / Projekt → Deployment Protection" }
+      ]
     },
     {
       "id": "leitstand",
@@ -19,7 +45,47 @@
       "sentry": { "projekt": null },
       "vercel": { "projekt": null },
       "supabase": { "projekt": null },
-      "secrets": ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_BASE_URL", "SENTRY_AUTH_TOKEN", "VERCEL_TOKEN"]
+      "secrets": [
+        { "name": "NEXT_PUBLIC_SUPABASE_URL", "environment": "dev", "zweck": "Adresse der Supabase-Datenbank (Browser)", "wo_holen": "Supabase → Project Settings → API → Project URL" },
+        { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "environment": "dev", "zweck": "Öffentlicher Supabase-Schlüssel (Browser, mit RLS)", "wo_holen": "Supabase → Project Settings → API → anon key" },
+        { "name": "SUPABASE_SERVICE_ROLE_KEY", "environment": "dev", "zweck": "Schreibzugriff auf loop_events und loop_snapshot", "wo_holen": "Supabase → Project Settings → API → service_role key" },
+        { "name": "SUPABASE_URL", "environment": "dev", "zweck": "Adresse der Supabase-Datenbank (Server)", "wo_holen": "Supabase → Project Settings → API → Project URL" },
+        { "name": "SUPABASE_PROJECT_REF", "environment": "dev", "zweck": "Kennung des Supabase-Projekts für Migrationen", "wo_holen": "Supabase → Project Settings → General → Reference ID" },
+        { "name": "SUPABASE_ACCESS_TOKEN", "environment": "dev", "zweck": "Migrationen einspielen", "wo_holen": "Supabase → Account → Access Tokens" },
+        { "name": "SUPABASE_PRUEFER_URL", "environment": "dev", "zweck": "Datenbank-Adresse für den Prüfer", "wo_holen": "Supabase → Project Settings → Database → Connection string" },
+        { "name": "LEITSTAND_GITHUB_TOKEN", "environment": "dev", "zweck": "Leitstand liest und steuert GitHub", "wo_holen": "GitHub → Settings → Developer settings → Fine-grained tokens" },
+        { "name": "AGENT_WORKFLOW_TOKEN", "environment": "dev", "zweck": "Agenten ändern Workflows und lesen alle Repos", "wo_holen": "GitHub → Settings → Developer settings → Fine-grained tokens (Workflows RW)" },
+        { "name": "CLAUDE_CODE_OAUTH_TOKEN", "environment": "dev", "zweck": "Claude Code in GitHub Actions", "wo_holen": "Terminal: claude setup-token" },
+        { "name": "VAPID_PUBLIC_KEY", "environment": "dev", "zweck": "Web-Push, öffentlicher Teil", "wo_holen": "npx web-push generate-vapid-keys" },
+        { "name": "VAPID_PRIVATE_KEY", "environment": "dev", "zweck": "Web-Push, privater Teil", "wo_holen": "npx web-push generate-vapid-keys" },
+        { "name": "VAPID_SUBJECT", "environment": "dev", "zweck": "Web-Push-Absender (mailto:)", "wo_holen": "Eigene Kontaktadresse als mailto:" },
+        { "name": "LANGFUSE_PUBLIC_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, öffentlicher Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
+        { "name": "LANGFUSE_SECRET_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, geheimer Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
+        { "name": "LANGFUSE_BASE_URL", "environment": "dev", "zweck": "Adresse der Langfuse-Instanz", "wo_holen": "Langfuse → Projekt → Settings → API Keys (Host)" },
+        { "name": "KOSTEN_USD_EUR", "environment": "dev", "zweck": "Umrechnungskurs für Kosten", "wo_holen": "Aktueller Kurs USD→EUR als Zahl" },
+        { "name": "KOSTEN_BUDGET_EUR", "environment": "dev", "zweck": "Monatsbudget für Kosten", "wo_holen": "Eigene Entscheidung, Zahl in Euro" },
+        { "name": "KOSTEN_WOCHE_EUR", "environment": "dev", "zweck": "Wochenbudget für Kosten", "wo_holen": "Eigene Entscheidung, Zahl in Euro" },
+        { "name": "GEDAECHTNIS_AUSGABE", "environment": "dev", "zweck": "Ausgabeordner des Gedächtnisses", "wo_holen": "Pfad im Repo, siehe .env.example" },
+        { "name": "TREND_LINEAR_PROJEKT", "environment": "dev", "zweck": "Linear-Projekt für die Trend-Anzeige", "wo_holen": "Linear → Projekt → Kennung" },
+        { "name": "SENTRY_AUTH_TOKEN", "environment": "dev", "zweck": "Sentry lesen", "wo_holen": "Sentry → Settings → Auth Tokens" },
+        { "name": "SENTRY_ORG", "environment": "dev", "zweck": "Sentry-Organisation", "wo_holen": "Sentry → Settings → Organization Slug" },
+        { "name": "POSTHOG_PERSONAL_API_KEY", "environment": "dev", "zweck": "PostHog lesen", "wo_holen": "PostHog → Account → Personal API Keys" },
+        { "name": "POSTHOG_HOST", "environment": "dev", "zweck": "Adresse der PostHog-Instanz", "wo_holen": "PostHog → Project Settings" },
+        { "name": "POSTHOG_PROJECT_ID", "environment": "dev", "zweck": "PostHog-Projektkennung", "wo_holen": "PostHog → Project Settings → Project ID" },
+        { "name": "OPENAI_API_KEY", "environment": "dev", "zweck": "OpenAI-Schnittstelle für den Prüfer", "wo_holen": "platform.openai.com → API keys" },
+        { "name": "PRUEFER_MODELL", "environment": "dev", "zweck": "Modellname des Prüfers", "wo_holen": "Modellliste des Anbieters" },
+        { "name": "PRUEFER_PREIS_EIN", "environment": "dev", "zweck": "Preis je Eingabe-Token des Prüfers", "wo_holen": "Preisliste des Anbieters" },
+        { "name": "PRUEFER_PREIS_AUS", "environment": "dev", "zweck": "Preis je Ausgabe-Token des Prüfers", "wo_holen": "Preisliste des Anbieters" },
+        { "name": "VORARBEITER_PREIS_EIN_USD", "environment": "dev", "zweck": "Preis je Eingabe-Token des Vorarbeiters", "wo_holen": "Preisliste des Anbieters" },
+        { "name": "VORARBEITER_PREIS_AUS_USD", "environment": "dev", "zweck": "Preis je Ausgabe-Token des Vorarbeiters", "wo_holen": "Preisliste des Anbieters" },
+        { "name": "ANTHROPIC_API_KEY", "environment": "dev", "zweck": "Anthropic-Schnittstelle", "wo_holen": "console.anthropic.com → API Keys" },
+        { "name": "POSTMAN_API_KEY", "environment": "dev", "zweck": "Postman-Schnittstelle", "wo_holen": "Postman → Settings → API keys" },
+        { "name": "HF_TOKEN", "environment": "dev", "zweck": "Hugging Face lesen", "wo_holen": "huggingface.co → Settings → Access Tokens" },
+        { "name": "LINEAR_API_KEY", "environment": "dev", "zweck": "Linear lesen und Aufgaben anlegen", "wo_holen": "Linear → Settings → API → Personal API keys" },
+        { "name": "FIGMA_ACCESS_TOKEN", "environment": "dev", "zweck": "Figma lesen", "wo_holen": "Figma → Settings → Security → Personal access tokens" },
+        { "name": "LEITSTAND_URL", "environment": "dev", "zweck": "Adresse des Leitstands", "wo_holen": "Vercel → Projekt → Domains" },
+        { "name": "VERCEL_TOKEN", "environment": "dev", "zweck": "Vercel-Deployments lesen", "wo_holen": "Vercel → Account Settings → Tokens" }
+      ]
     },
     {
       "id": "stromlauf-ai",
@@ -29,7 +95,22 @@
       "sentry": { "projekt": null },
       "vercel": { "projekt": null },
       "supabase": { "projekt": null },
-      "secrets": ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_BASE_URL"]
+      "secrets": [
+        { "name": "LANGFUSE_PUBLIC_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, öffentlicher Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
+        { "name": "LANGFUSE_SECRET_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, geheimer Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
+        { "name": "LANGFUSE_BASE_URL", "environment": "dev", "zweck": "Adresse der Langfuse-Instanz", "wo_holen": "Langfuse → Projekt → Settings → API Keys (Host)" },
+        { "name": "ANTHROPIC_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für ANTHROPIC_API_KEY (stromlauf-ai)", "wo_holen": "Claude Console → API-Schlüssel" },
+        { "name": "API_KEY", "environment": "dev", "zweck": "Geheimer Wert für API_KEY (stromlauf-ai)", "wo_holen": "selbst erzeugen: openssl rand -hex 32" },
+        { "name": "CLAUDE_CODE_OAUTH_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für CLAUDE_CODE_OAUTH_TOKEN (stromlauf-ai)", "wo_holen": "claude setup-token (Claude-Abo)" },
+        { "name": "DATABASE_URL", "environment": "dev", "zweck": "Geheimer Wert für DATABASE_URL (stromlauf-ai)", "wo_holen": "Datenbank-Anbieter → Verbindungs-URL" },
+        { "name": "JWT_SECRET", "environment": "dev", "zweck": "Geheimer Wert für JWT_SECRET (stromlauf-ai)", "wo_holen": "selbst erzeugen: openssl rand -hex 32" },
+        { "name": "NEXT_PUBLIC_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für NEXT_PUBLIC_API_KEY (stromlauf-ai)", "wo_holen": "gleich wie API_KEY des Backends" },
+        { "name": "OPENAI_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für OPENAI_API_KEY (stromlauf-ai)", "wo_holen": "platform.openai.com → API keys" },
+        { "name": "OPEN_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für OPEN_API_KEY (stromlauf-ai)", "wo_holen": "platform.openai.com → API keys" },
+        { "name": "SMTP_URL", "environment": "dev", "zweck": "Geheimer Wert für SMTP_URL (stromlauf-ai)", "wo_holen": "Mail-Anbieter → SMTP-Zugang" },
+        { "name": "STROMLAUF_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für STROMLAUF_API_KEY (stromlauf-ai)", "wo_holen": "selbst erzeugen: openssl rand -hex 32" },
+        { "name": "VOYAGE_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für VOYAGE_API_KEY (stromlauf-ai)", "wo_holen": "Voyage AI → API Keys" }
+      ]
     }
   ]
 }

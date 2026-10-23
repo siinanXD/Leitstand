@@ -1,6 +1,9 @@
 // Register der Produkte und Kontingente je Produkt (SIN-1049). Rein; Netz und Datei in scripts/kontingent/sammler.ts.
 import type { Quota } from "../uebersicht";
 
+/** Ein erwartetes Secret: nur Name und Anleitung, nie ein Wert (SIN-1051). */
+export type SecretSoll = { name: string; environment: string; zweck: string; wo_holen: string };
+
 export type Produkt = {
   id: string;
   repo: string;
@@ -9,8 +12,8 @@ export type Produkt = {
   sentry: { projekt: string | null };
   vercel: { projekt: string | null };
   supabase: { projekt: string | null };
-  /** Nur Namen der Secrets; die Werte stehen in Infisical im Ordner des Produkts. */
-  secrets: string[];
+  /** Soll-Liste der Secrets; die Werte stehen in Infisical im Ordner des Produkts. */
+  secrets: SecretSoll[];
 };
 
 /** Ein gemessener Wert. `konto`: Das Limit gilt für das ganze Konto, nicht je Produkt (z. B. Vercel-Deployments pro Tag). */
@@ -30,7 +33,7 @@ export function pruefeRegister(produkte: Produkt[]): string[] {
     if (ids.has(p.id)) fehler.push(`${p.id}: doppelt`);
     ids.add(p.id);
     if (!p.infisicalOrdner.startsWith("/")) fehler.push(`${p.id}: infisicalOrdner muss mit / beginnen`);
-    for (const s of p.secrets) if (!SECRET_NAME.test(s)) fehler.push(`${p.id}: Secret-Name „${s}“ ist kein Name`);
+    for (const s of p.secrets) if (!SECRET_NAME.test(s.name)) fehler.push(`${p.id}: Secret-Name „${s.name}“ ist kein Name`);
     for (const wert of [p.repo, p.infisicalOrdner, p.langfuse.projekt, p.sentry.projekt, p.vercel.projekt, p.supabase.projekt])
       if (wert && siehtNachSchluesselAus(wert)) fehler.push(`${p.id}: Wert sieht wie ein Schlüssel aus`);
   }
