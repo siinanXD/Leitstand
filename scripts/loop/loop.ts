@@ -23,8 +23,7 @@ import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/vision
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { starteLaeufe } from "../../src/lib/loop/lauf";
 import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
-import { CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
-import { auftragsKommentar } from "../../src/lib/loop/auftrag";
+import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { kriterienPlan, LABEL_UNKLAR, UNKLAR_KOMMENTAR } from "../../src/lib/vorarbeiter/kriterien";
@@ -606,9 +605,9 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     // Label getrennt setzen: das löst `issues: labeled` aus und startet claude.yml.
     // SIN-1005: Produkt-Repos können den Auftrag nicht per Skript lesen; der Kommentar kommt vor dem Label (Start).
     const auftrag = eigenes ? null : auftragsKommentar(i.description);
-    if (auftrag?.text) await gh(`/repos/${repo}/issues/${neu.number}/comments`, { method: "POST", body: { body: auftrag.text } });
-    else if (auftrag) console.warn(`${i.identifier}: Auftrags-Kommentar gesperrt (${auftrag.gesperrt.join(", ")}), Worker liest in Linear`);
-    await gh(`/repos/${repo}/issues/${neu.number}/labels`, { method: "POST", body: { labels: ["claude"] } });
+    if (auftrag) await gh(`/repos/${repo}/issues/${neu.number}/comments`, { method: "POST", body: { body: auftrag.text } });
+    if (auftrag?.gesperrt.length) console.warn(`${i.identifier}: Auftrags-Kommentar gesperrt (${auftrag.gesperrt.join(", ")}), Haken genügen`);
+    await gh(`/repos/${repo}/issues/${neu.number}/labels`, { method: "POST", body: { labels: auftrag?.gesperrt.length ? ["claude", "needs-human"] : ["claude"] } });
     await setzeStatus(i.id, team, "In Progress");
     await kommentar(i.id, `Loop gestartet: ${neu.html_url}`);
     await ereignis("dispatch", "ok", { projekt, issue: i.identifier });
