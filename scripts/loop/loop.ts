@@ -473,9 +473,9 @@ async function laeufeOhnePr(
   return fertig;
 }
 
-/** SIN-1028: offene Worker-PRs mit Merge-Konflikt einmal je Head-Commit anstoßen, nach zwei Versuchen `needs-human`. */
+/** SIN-1028: offene claude/-PRs mit Merge-Konflikt einmal je Head-Commit anstoßen, nach zwei Versuchen `needs-human`. */
 async function konfliktAnstoss(repo: string, prs: { number: number; head: { ref: string }; labels: { name: string }[] }[]) {
-  for (const k of prs.filter((p) => istWorkerBranch(p.head.ref))) {
+  for (const k of prs.filter((p) => p.head.ref.startsWith("claude/"))) {
     const p = await gh<{ mergeable_state?: string; head: { sha: string } }>(`/repos/${repo}/pulls/${k.number}`);
     if (p.mergeable_state !== "dirty") continue;
     const kommentare = (await gh<{ body: string }[]>(`/repos/${repo}/issues/${k.number}/comments?per_page=100`)).map((c) => c.body);

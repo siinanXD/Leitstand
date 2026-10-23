@@ -21,9 +21,9 @@ test("Nach 2 Versuchen kein dritter Anstoß, sondern needs-human", () => {
   assert.deepEqual(konfliktSchritt(pr({ headSha: "ccc3", kommentare: k, labels: ["needs-human"] })), { keine: "wartet schon auf Sinan" });
 });
 
-test("kein Anstoß ohne Konflikt oder ohne Worker-Branch", () => {
+test("kein Anstoß ohne Konflikt oder ohne claude/-Branch", () => {
   assert.ok("keine" in konfliktSchritt(pr({ mergeableState: "clean" })));
   assert.ok("keine" in konfliktSchritt(pr({ mergeableState: null })));
   assert.ok("keine" in konfliktSchritt(pr({ branch: "feature/x" })));
-  assert.ok("anstoss" in konfliktSchritt(pr({ branch: "codex/x" })));
+  assert.ok("keine" in konfliktSchritt(pr({ branch: "codex/x" })));
 });

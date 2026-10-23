@@ -1,5 +1,3 @@
-import { istWorkerBranch } from "./auswahl";
-
 /** Höchstens so viele Anstöße je PR, danach `needs-human` (wie die Lern-App). */
 export const MAX_KONFLIKT = 2;
 
@@ -13,18 +11,17 @@ export const konfliktMarker = (sha: string, versuch: number) => `<!-- konflikt:$
 
 /** Entscheidet für einen offenen PR: einmal je Head-Commit anstoßen, nach MAX_KONFLIKT Versuchen stoppen. */
 export function konfliktSchritt(pr: KonfliktPr): KonfliktSchritt {
-  if (!istWorkerBranch(pr.branch)) return { keine: "kein Worker-Branch" };
+  if (!pr.branch.startsWith("claude/")) return { keine: "kein claude/-Branch" };
   if (pr.mergeableState !== "dirty") return { keine: "kein Merge-Konflikt" };
   if (pr.labels.includes("needs-human")) return { keine: "wartet schon auf Sinan" };
   const bisher = pr.kommentare.flatMap((k) => [...k.matchAll(MARKER)].map((m) => m[1]));
   if (bisher.includes(pr.headSha)) return { keine: "Head-Commit schon angestoßen" };
   if (bisher.length >= MAX_KONFLIKT) return { stopp: true };
   const versuch = bisher.length + 1;
-  const wer = pr.branch.startsWith("codex/") ? "codex" : "claude";
   return {
     anstoss: {
       versuch,
-      text: `@${wer} Dieser PR hat einen Merge-Konflikt mit main (Versuch ${versuch} von ${MAX_KONFLIKT}). origin/main in diesen Branch mergen, Konflikte lösen (bei docs/abnahme.yml beide Seiten behalten), npm run typecheck, npm run lint und npm test lokal grün, dann pushen.\n\n${konfliktMarker(pr.headSha, versuch)}`,
+      text: `@claude Dieser PR hat einen Merge-Konflikt mit main (Versuch ${versuch} von ${MAX_KONFLIKT}). origin/main in diesen Branch mergen, Konflikte lösen (bei docs/abnahme.yml beide Seiten behalten), npm run typecheck, npm run lint und npm test lokal grün, dann pushen.\n\n${konfliktMarker(pr.headSha, versuch)}`,
     },
   };
 }
