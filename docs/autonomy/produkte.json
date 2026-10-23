@@ -1,0 +1,35 @@
+{
+  "hinweis": "Register der Produkte (SIN-1049). Nur Namen und Kennungen, nie Werte. Werte liegen in Infisical je Produkt-Ordner. null = noch nicht geprüft oder nicht vorhanden; Befund in docs/decisions/SIN-1049-schluessel-je-produkt.md.",
+  "produkte": [
+    {
+      "id": "lernapp",
+      "repo": "siinanXD/Content-Agent-Lernapp",
+      "infisicalOrdner": "/lernapp",
+      "langfuse": { "projekt": null, "getrennt": null },
+      "sentry": { "projekt": null },
+      "vercel": { "projekt": null },
+      "supabase": { "projekt": null },
+      "secrets": ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_BASE_URL", "SENTRY_AUTH_TOKEN", "VERCEL_TOKEN"]
+    },
+    {
+      "id": "leitstand",
+      "repo": "siinanXD/Leitstand",
+      "infisicalOrdner": "/leitstand",
+      "langfuse": { "projekt": null, "getrennt": null },
+      "sentry": { "projekt": null },
+      "vercel": { "projekt": null },
+      "supabase": { "projekt": null },
+      "secrets": ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_BASE_URL", "SENTRY_AUTH_TOKEN", "VERCEL_TOKEN"]
+    },
+    {
+      "id": "stromlauf-ai",
+      "repo": "siinanXD/stromlauf-ai",
+      "infisicalOrdner": "/stromlauf-ai",
+      "langfuse": { "projekt": null, "getrennt": null },
+      "sentry": { "projekt": null },
+      "vercel": { "projekt": null },
+      "supabase": { "projekt": null },
+      "secrets": ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_BASE_URL"]
+    }
+  ]
+}

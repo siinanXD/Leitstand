@@ -96,6 +96,16 @@ for (const [groesse, viewport] of GROESSEN) {
       await expect(page.locator("details.aufklapp[open]")).toHaveCount(0);
     });
 
+    test("Kosten: Produktfilter wählt ein Produkt, axe ohne Fehler (SIN-1049)", async ({ page }) => {
+      await oeffne(page, "/kosten");
+      const filter = page.getByRole("group", { name: "Projekt filtern" });
+      await expect(filter).toBeVisible();
+      const zweiter = filter.getByRole("button").nth(1);
+      await zweiter.click();
+      await expect(zweiter).toHaveAttribute("aria-pressed", "true");
+      expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze()).violations).toEqual([]);
+    });
+
     test("Aufgabe: Weg zurück zum Start, Details eingeklappt und Kennung erst danach sichtbar", async ({ page }) => {
       await oeffne(page, "/aufgabe/SIN-456");
       await expect(page.getByText("SIN-456", { exact: true })).toBeHidden();

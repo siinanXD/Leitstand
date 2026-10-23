@@ -1142,6 +1142,20 @@
   pfad: .github/workflows/ceo.yml
   enthaelt: scripts/autonomy/schema.ts ceo /tmp/ceo-ergebnis.json
 
+- id: stromlauf-kontingente
+  produkt: leitstand
+  titel: Für Stromlauf AI gibt es eigene Kontingente im Snapshot (SIN-1049)
+  art: db
+  rest: loop_snapshot?project=eq.stromlauf-ai&select=quotas
+  nicht_leer: quotas
+
+- id: kosten-produktfilter
+  produkt: leitstand
+  titel: e2e prüft den Produktfilter auf /kosten samt axe (SIN-1049)
+  art: datei
+  pfad: e2e/abnahme.spec.ts
+  enthaelt: "Kosten: Produktfilter wählt ein Produkt, axe ohne Fehler"
+
 - id: leitstand-kontingente-vercel
   produkt: leitstand
   titel: Der Dispatcher kennt die Kontingent-Sperre vercel-deploy (SIN-1046)

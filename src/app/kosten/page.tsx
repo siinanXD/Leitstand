@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useSitzung } from "@/lib/sitzung";
 import { useKosten } from "@/lib/kosten-client";
 import { einzigartig, GUTHABEN_UNTER, KONTINGENT_UEBER, restAnteil, type Guthaben } from "@/lib/kosten/guthaben";
 import { kontingente } from "@/lib/uebersicht";
-import { Rahmen } from "../rahmen";
+import { nurProjekt } from "@/lib/projekte";
+import { ProjektFilter, Rahmen, projekteIn } from "../rahmen";
 import { ZustandSymbol, type ZustandArt } from "../zustand-symbol";
 import "../bunt.css";
 
@@ -44,14 +46,16 @@ function einheit(name: string): string {
 export default function Kosten() {
   const sitzung = useSitzung();
   const angemeldet = sitzung.zustand === "ok" && sitzung.sitzung !== null;
+  const [filter, setFilter] = useState<string | null>(null);
   const stand = useKosten(angemeldet);
   const kosten = stand.zustand === "ok" ? stand.kosten : null;
   return (
     <Rahmen aktiv="kosten">
       {(quelle) => {
-        const abo = kontingente(quelle.snapshot).filter((q) => q.schaetzung);
-        const guthaben = einzigartig(quelle.snapshot.flatMap((s) => s.guthaben ?? []));
-        const frei = kontingente(quelle.snapshot).filter((q) => !q.schaetzung);
+        const snapshot = nurProjekt(quelle.snapshot, filter);
+        const abo = kontingente(snapshot).filter((q) => q.schaetzung);
+        const guthaben = einzigartig(snapshot.flatMap((s) => s.guthaben ?? []));
+        const frei = kontingente(snapshot).filter((q) => !q.schaetzung);
         const wochenAnteil = kosten && kosten.woche !== null ? kosten.woche / kosten.wochenDeckel : null;
         const zustand: ZustandArt = kosten?.ampel === "rot" || (wochenAnteil ?? 0) >= 0.9 ? "kaputt" : kosten?.ampel === "gelb" ? "wartet" : "laeuft";
         return (
@@ -59,6 +63,7 @@ export default function Kosten() {
             <div className="kopf-titel">
               <h1>Was kostet das?</h1>
             </div>
+            <ProjektFilter projekte={projekteIn(quelle)} wert={filter} onChange={setFilter} />
             <section className="tile einfach-block pfirsich" aria-labelledby="woche">
               <h2 id="woche" className="karte-titel">
                 Diese Woche
