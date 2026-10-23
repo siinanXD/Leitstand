@@ -18,7 +18,14 @@ export const clipSinnvoll = (a: { interaktion: boolean; routenImAblauf: number }
 
 export type Ansicht = { handy: string | null; desktop: string | null };
 export type NachweisRoute = { route: string; vorher: Ansicht; nachher: Ansicht };
-export type Nachweis = { zeitpunkt: string; routen: NachweisRoute[]; clip: string | null; dateien: { datei: string; was: string | null }[]; diff: string | null };
+export type Nachweis = { zeitpunkt: string; routen: NachweisRoute[]; clip: string | null; planungsbild: string | null; dateien: { datei: string; was: string | null }[]; diff: string | null };
+
+/** Soll (Planungsbild aus Figma, SIN-943) neben Ist (Vorschaubild) als Markdown-Tabelle für den PR; ohne Planungsbild oder Vorschaubild `null`. */
+export function sollIstMarkdown(n: Nachweis): string | null {
+  const ist = n.routen.map((r) => r.nachher.desktop).find((u) => u);
+  if (!n.planungsbild || !ist) return null;
+  return `| Soll (Planung) | Ist (Vorschau) |\n| --- | --- |\n| ![Planungsbild](${n.planungsbild}) | ![Vorschaubild](${ist}) |`;
+}
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
 const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
@@ -56,7 +63,7 @@ export function parseNachweis(raw: unknown, issue: string): Nachweis | null {
       const datei = str(obj(x)?.datei);
       return datei ? [{ datei, was: str(obj(x)?.was) }] : [];
     });
-    return [{ zeitpunkt, routen, clip: https(roh.clip), dateien, diff: str(roh.diff) }];
+    return [{ zeitpunkt, routen, clip: https(roh.clip), planungsbild: https(roh.planungsbild), dateien, diff: str(roh.diff) }];
   });
   return alle.sort((a, b) => Date.parse(a.zeitpunkt) - Date.parse(b.zeitpunkt)).at(-1) ?? null;
 }

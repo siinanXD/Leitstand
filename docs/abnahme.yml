@@ -10,6 +10,12 @@
 # Adressen als ${NAME} werden aus der Umgebung ersetzt; fehlt der Wert, ist die Probe rot ("Nicht geprüft").
 
 # Leitstand
+- id: leitstand-planungsbild
+  produkt: leitstand
+  titel: Der Planer hängt bei Frontend-Issues das Figma-Bild an, ohne Token steht „Figma nicht verfügbar“ (SIN-943)
+  art: datei
+  pfad: src/lib/vorarbeiter/planungsbild.ts
+  enthaelt: legeMitPlanungsbild
 - id: leitstand-planer-kennung
   produkt: leitstand
   titel: Der Planer gleicht Fertig-Listen-Punkte an einer festen Kennung ab, nicht am Titel (SIN-890)
