@@ -9,13 +9,14 @@
  * SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (optional). DRY_RUN=1: kein Netz zu OpenAI und Supabase, Diff und Regeln laufen.
  */
 import { lesePrDiff } from "../../src/lib/pruefer/git";
+import { modellFuer } from "../../src/lib/kennzahlen/modelle";
 import { ladeAuftrag, standMarker } from "../loop/beleg-stand.mjs";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { ANWEISUNG, MAX_AUSGABE_TOKENS, MAX_AUSGABE_TOKENS_RUECKFALL, SCHEMA, apiFehler, leseApiJson, begrenze, bewerte, eingabe, geaenderteZeilen, hatHoch, hatRisiko, kommentar, kostenUsd, leseAntwort, leseVorfunde, lesePreise, MARKER, maxDiffZeichen, pruefeMitRueckfall, type Ergebnis, type Folgerunde, type Reviewer } from "../../src/lib/pruefer/pruefer";
 
 const env = process.env;
-const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || "claude-sonnet-5-5";
+const CLAUDE_MODELL = env.PRUEFER_CLAUDE_MODELL || modellFuer("pruefer");
 const DRY = env.DRY_RUN === "1";
 const [nummer, basis, head] = process.argv.slice(2);
 if (!nummer || !/^\d+$/.test(nummer) || !basis || !head) {

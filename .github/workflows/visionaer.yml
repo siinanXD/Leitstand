@@ -34,6 +34,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - id: modell
+        name: Modell aus docs/autonomy/modelle.json
+        run: echo "name=$(jq -r '.rollen.visionaer.modell' docs/autonomy/modelle.json)" >> "$GITHUB_OUTPUT"
       - name: Visionär plant die nächste Version
         uses: anthropics/claude-code-action@v1
         with:
@@ -43,7 +46,7 @@ jobs:
             Lies docs/skills/visionaer/SKILL.md und führe sie aus für das Produkt ${{ inputs.produkt }}.
             Schreibe die Ausgabe nach visionaer-ergebnis.json im Repo-Wurzelverzeichnis (issue: SIN-573). Sonst nichts ändern.
           claude_args: |
-            --model claude-sonnet-5-5
+            --model ${{ steps.modell.outputs.name }}
             --max-turns 30
             --allowedTools "Read,Write,Bash(gh api:*)"
       - run: npx tsx scripts/visionaer/visionaer.ts "${{ inputs.produkt }}" visionaer-ergebnis.json

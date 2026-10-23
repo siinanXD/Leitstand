@@ -12,11 +12,12 @@
  */
 import { readFileSync } from "node:fs";
 import { pruefeWerbemittel } from "../../src/lib/anwalt/anwalt";
+import { modellFuer } from "../../src/lib/kennzahlen/modelle";
 import { ereignisZeile, leseAusgaben, promptFuer, werbemittelZeilen, type Eingabe } from "../../src/lib/marketing/marketing";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY;
-const MODELL = env.MARKETING_MODELL ?? "claude-haiku-5-5";
+const MODELL = env.MARKETING_MODELL ?? modellFuer("marketing");
 
 async function modell(prompt: string): Promise<unknown> {
   if (!env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY fehlt");
