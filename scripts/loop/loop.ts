@@ -26,6 +26,7 @@ import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src
 import { prueferLaufziel } from "../../src/lib/loop/pruefer-lauf";
 import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
+import { baueBlock, istEchteEntscheidung, LABEL_ENTSCHEIDUNG, leseBlock } from "../../src/lib/entscheidung/entscheidung";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { kriterienPlan, LABEL_UNKLAR, UNKLAR_KOMMENTAR } from "../../src/lib/vorarbeiter/kriterien";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
@@ -666,6 +667,25 @@ async function labelSetzen(issueId: string, teamId: string, name: string, anlege
   await linear(`mutation($id: String!, $l: [String!]) { issueUpdate(id: $id, input: { addedLabelIds: $l }) { success } }`, { id: issueId, l: [l.id] });
 }
 
+/**
+ * SIN-1014: Stopp-Label am Linear-Issue. Routinefehler (Test rot, Reparaturrunden, Prüfer-Fund) bleiben `needs-human`;
+ * eine echte Entscheidung (neues Secret, Kosten, Design, Umfang …) wird `entscheidung` mit Block in der Beschreibung.
+ */
+async function stoppLabel(issue: { id: string; team: string }, grund: string): Promise<"needs-human" | "entscheidung"> {
+  const art = istEchteEntscheidung(grund);
+  if (!art) {
+    await labelSetzen(issue.id, issue.team, "needs-human");
+    return "needs-human";
+  }
+  const d = await linear<{ issue: { description: string | null } }>(`query($id: String!) { issue(id: $id) { description } }`, { id: issue.id });
+  if (!leseBlock(d.issue.description) && !DRY) {
+    const block = baueBlock({ frage: grund, art, optionen: [{ titel: "Freigeben", folge: "Der Loop macht weiter." }, { titel: "Verwerfen", folge: "Das Issue wird nicht gebaut." }], empfehlung: "", recherche: [] });
+    await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: `${d.issue.description ?? ""}\n\n${block}` });
+  }
+  await labelSetzen(issue.id, issue.team, LABEL_ENTSCHEIDUNG, true);
+  return "entscheidung";
+}
+
 async function gemergt(repo: string, pr: number, projekt?: string) {
   const p = await gh<{ title: string; body: string | null; html_url: string; merged: boolean }>(`/repos/${repo}/pulls/${pr}`);
   if (!p.merged) return console.log(`PR #${pr} ist nicht gemergt.`);
@@ -727,8 +747,8 @@ async function reparaturLauf() {
     if (id) {
       const issue = await issueNachKennung(id);
       if (issue) {
-        await labelSetzen(issue.id, issue.team.id, "needs-human");
-        await kommentar(issue.id, `Blocker: PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) ${pruefer ? "mit offenen Prüfer-Funden" : "rot"}. ${lauf}`);
+        const label = await stoppLabel({ id: issue.id, team: issue.team.id }, `${pruefer ? "Prüfer-Funde" : "Test rot"} nach ${MAX_REPARATUR} Reparaturrunden`);
+        await kommentar(issue.id, `Blocker (${label}): PR #${pr} nach ${MAX_REPARATUR} Reparaturrunden (issueweit) ${pruefer ? "mit offenen Prüfer-Funden" : "rot"}. ${lauf}`);
       }
     }
     await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: ${pruefer ? "Prüfer-Funde" : "build"} nach ${MAX_REPARATUR} Reparaturrunden noch offen (${lauf})`) });

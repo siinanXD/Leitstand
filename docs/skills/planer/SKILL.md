@@ -18,3 +18,7 @@ Entscheidung und Vorher/Nachher der Workflow-Läufe: `docs/decisions/SIN-636-ein
 - Zerlege jedes Vorhaben in getrennte Issues je Bereich (`schnittstelle`, `backend`, `frontend`, `infra`), Label und `worker-pfade` aus `src/lib/loop/bereich.ts` (`planeVorhaben`).
 - Brauchen Frontend und Backend denselben Vertrag, kommt zuerst das `schnittstelle`-Issue (Typen, Mock); die anderen hängen per Blocker daran.
 - Gemeinsame Dateien nicht anfassen: Proben in `docs/abnahme/<SIN-xxx>.yml`, Lehren in `docs/lehren/<SIN-xxx>.md`. README und AGENTS ändert nur ein eigenes `infra`-Issue.
+
+## Echte Entscheidung (SIN-1014)
+
+- Echte Entscheidung (Design, Infrastruktur, Kosten, Zugang, Produkt, Umfang) → Label `entscheidung` mit Block (Frage, 2–3 Optionen, Empfehlung, Recherche vorher), nie Frage im PR-Text. Routinefehler bleiben `needs-human`. Siehe `src/lib/entscheidung/entscheidung.ts`.
