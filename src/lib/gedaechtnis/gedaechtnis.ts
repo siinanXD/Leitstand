@@ -22,7 +22,7 @@ export type OffenerPunkt = { titel: string; projekt: string; url: string | null;
 /** In Linear erledigtes Issue der letzten 24 h. */
 export type Erledigt = { id: string; titel: string };
 export type Quelle = "Linear" | "Supabase" | "GitHub";
-export type Eingabe = { jetzt: Date; produkte: Produkt[]; /** `null` = GitHub nicht erreichbar. */ prs: Pr[] | null; /** `null` = Linear nicht erreichbar. */ erledigt?: Erledigt[] | null; /** Quellen, die beim Sammeln nicht antworteten (SIN-614). */ fehlt?: Quelle[]; entscheidungen: Entscheidung[]; offen: OffenerPunkt[]; kostenUsd: number | null; probleme: string[]; /** Trend-Radar 2 (SIN-575): höchstens 3 Zeilen, kommen aus `gedaechtnisZeilen`. */ trends?: string[]; /** CEO-Entscheidung des Tages je Produkt (SIN-636), kommen aus `ceoZeilen`. */ ceo?: string[] };
+export type Eingabe = { jetzt: Date; produkte: Produkt[]; /** `null` = GitHub nicht erreichbar. */ prs: Pr[] | null; /** `null` = Linear nicht erreichbar. */ erledigt?: Erledigt[] | null; /** Quellen, die beim Sammeln nicht antworteten (SIN-614). */ fehlt?: Quelle[]; entscheidungen: Entscheidung[]; offen: OffenerPunkt[]; kostenUsd: number | null; probleme: string[]; /** Drei Kennzahlen (SIN-630), je eine Zeile aus `zeileText`; fehlt das Feld, bleibt der Abschnitt weg. */ kennzahlen?: string[]; /** Trend-Radar 2 (SIN-575): höchstens 3 Zeilen, kommen aus `gedaechtnisZeilen`. */ trends?: string[]; /** CEO-Entscheidung des Tages je Produkt (SIN-636), kommen aus `ceoZeilen`. */ ceo?: string[] };
 
 export type Dateien = Record<string, string>;
 
@@ -54,9 +54,10 @@ const auflistung = (liste: string[] | null, leer: string): string => (liste === 
 
 /** Immer oben: je Produkt genau 3 Zeilen (Stand, was läuft, was Sinan tun muss). Wird jedes Mal komplett neu geschrieben. */
 export function uebersicht(e: Eingabe): string {
-  const maxProdukte = Math.floor((MAX_ZEILEN_UEBERSICHT - 11) / 3);
+  const kennzahlen = (e.kennzahlen ?? []).slice(0, 3).map((z) => kurz(z));
+  const maxProdukte = Math.floor((MAX_ZEILEN_UEBERSICHT - 11 - kennzahlen.length) / 3);
   const sichtbar = e.produkte.slice(0, maxProdukte);
-  const zeilen = [...kopf("uebersicht", "alle", tagBerlin(e.jetzt), "aktuell", "Stand aller Produkte auf einen Blick"), "# Wo stehen wir", ""];
+  const zeilen = [...kopf("uebersicht", "alle", tagBerlin(e.jetzt), "aktuell", "Stand aller Produkte auf einen Blick"), "# Wo stehen wir", "", ...kennzahlen];
   for (const p of sichtbar) {
     zeilen.push(
       `**[[Produkte/${dateiname(p.name)}|${kurz(p.name, 30)}]]** · ${stand(p)} #produkt/${slug(p.id)}`,

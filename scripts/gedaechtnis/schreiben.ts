@@ -19,6 +19,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { readFile } from "node:fs/promises";
 import { letzteJeProdukt } from "../../src/lib/ceo/ceo";
+import { alle, zeileText, type WochenZeile } from "../../src/lib/kennzahlen/kennzahlen";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
 import { EINGANG_LABEL, eingangDateien, schlussKommentar, zuSchliessen, type EingangIssue } from "../../src/lib/gedaechtnis/eingang";
 import { ceoZeilen, dateien, ereignisZeile, mitGeheimnis, tagBerlin, vereinige, VAULT_REPO, type Dateien, type Eingabe, type Entscheidung, type Erledigt, type OffenerPunkt, type Pr, type Quelle } from "../../src/lib/gedaechtnis/gedaechtnis";
@@ -171,6 +172,7 @@ async function sammle(jetzt: Date): Promise<Eingabe> {
   let snapshot: SnapshotRow[] = [];
   let events: LoopEvent[] = [];
   let ceo: string[] = [];
+  let kennzahlen: string[] | undefined;
   const probleme: string[] = [];
   const fehlt: Quelle[] = [];
   const meldeFehlt = (q: Quelle, e: unknown) => {
@@ -184,6 +186,12 @@ async function sammle(jetzt: Date): Promise<Eingabe> {
     meldeFehlt("Supabase", e);
   }
   if (!fehlt.includes("Supabase")) {
+    try {
+      const zeilen = (await supabase("kennzahlen_woche?select=kennzahl,woche,zaehler,nenner&produkt=eq.maf&order=woche.desc&limit=60")) as WochenZeile[];
+      kennzahlen = alle(zeilen, jetzt).map(zeileText);
+    } catch (e) {
+      probleme.push(`Kennzahlen nicht gelesen: ${(e as Error).message}`);
+    }
     try {
       ceo = ceoZeilen(letzteJeProdukt(await supabase(`ceo_entscheidungen?select=produkt,entscheidung,grund,created_at&created_at=gte.${seit.toISOString()}&order=created_at.desc&limit=100`)));
     } catch (e) {
@@ -241,6 +249,7 @@ async function sammle(jetzt: Date): Promise<Eingabe> {
     kostenUsd: events.length ? kosten : null,
     probleme,
     ceo,
+    kennzahlen,
   };
 }
 
