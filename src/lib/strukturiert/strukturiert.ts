@@ -4,6 +4,9 @@ import { pruefeSchema, type Schema } from "../autonomy/schema";
 
 export type Antwort<T> = { wert: T; ein: number; aus: number };
 
+/** Die Antwort kam an, taugt aber nicht (kein JSON, Schema verletzt, abgeschnitten, abgelehnt). Netz-, Schlüssel- und Ledgerfehler sind keine AntwortFehler. */
+export class AntwortFehler extends Error {}
+
 /** Strikte API-Schemas kennen nur diese Schlüsselwörter; Grenzen (minLength, pattern, …) prüft `leseStrukturiert` lokal. */
 function fuerApi(s: Schema): Record<string, unknown> {
   const o: Record<string, unknown> = {};
@@ -22,10 +25,10 @@ export function leseStrukturiert<T>(text: string, schema: Schema): T {
   try {
     wert = JSON.parse(text);
   } catch (e) {
-    throw new Error(`Modellantwort ist kein JSON (${(e as Error).message})`);
+    throw new AntwortFehler(`Modellantwort ist kein JSON (${(e as Error).message})`);
   }
   const fehler = pruefeSchema(wert, schema);
-  if (fehler.length) throw new Error(`Modellantwort verletzt das Schema: ${fehler.join("; ")}`);
+  if (fehler.length) throw new AntwortFehler(`Modellantwort verletzt das Schema: ${fehler.join("; ")}`);
   return wert as T;
 }
 
@@ -44,8 +47,8 @@ export async function frageStrukturiert<T>(p: Parameter): Promise<Antwort<T>> {
   const j = (await res.json()) as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
   const [ein, aus] = [j.usage?.input_tokens ?? 0, j.usage?.output_tokens ?? 0];
   await p.beiVerbrauch?.(ein, aus); // bezahlt ist der Aufruf auch, wenn die Antwort danach nicht taugt
-  if (j.stop_reason === "max_tokens") throw new Error(`Modell: Tokenbudget (${p.maxTokens}) ausgeschöpft, Antwort abgeschnitten`);
-  if (j.stop_reason === "refusal") throw new Error("Modell: Antwort abgelehnt (refusal)");
+  if (j.stop_reason === "max_tokens") throw new AntwortFehler(`Modell: Tokenbudget (${p.maxTokens}) ausgeschöpft, Antwort abgeschnitten`);
+  if (j.stop_reason === "refusal") throw new AntwortFehler("Modell: Antwort abgelehnt (refusal)");
   const text = (j.content ?? []).filter((c) => c.type === "text").map((c) => c.text ?? "").join("");
   return { wert: leseStrukturiert<T>(text, p.schema), ein, aus };
 }

@@ -1,5 +1,5 @@
 import { artLabel } from "../../src/lib/loop/lauf";
-import { frageStrukturiert, SCHEMA_DATEIEN } from "../../src/lib/strukturiert/strukturiert";
+import { AntwortFehler, frageStrukturiert, SCHEMA_DATEIEN } from "../../src/lib/strukturiert/strukturiert";
 import { ladeProjektIssues } from "../../src/lib/loop/projekt-issues";
 /**
  * Planer (SIN-636; der Pfad stammt vom Vorarbeiter, SIN-553, der im Planer aufgegangen ist). Aufruf aus planer.yml (.github/workflows/planer.yml):
@@ -98,6 +98,7 @@ async function baueSpurC(i: LinearIssue, team: string, plan: Plan): Promise<stri
     });
     dateien = leseDateien(antwort.wert, pfade(i.description));
   } catch (e) {
+    if (!(e instanceof AntwortFehler)) throw e; // Netz, Schlüssel, Ledger: Lauf soll rot werden
     return `Spur C: Antwort für ${i.identifier} unbrauchbar, nichts geschrieben (${eur} € im Ledger): ${e instanceof Error ? e.message : e}`;
   }
   if (!dateien) return `Spur C: Antwort für ${i.identifier} unbrauchbar (Pfad nicht erlaubt), nichts geschrieben (${eur} € im Ledger).`;

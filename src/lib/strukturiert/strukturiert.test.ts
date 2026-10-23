@@ -6,7 +6,7 @@ import type { Schema } from "../autonomy/schema";
 import { leseVorschlag } from "../lernen/schleife";
 import { leseAusgaben } from "../marketing/marketing";
 import { leseDateien } from "../vorarbeiter/vorarbeiter";
-import { frageStrukturiert, leseStrukturiert, SCHEMA_DATEIEN, SCHEMA_MARKETING, schemaVorschlag } from "./strukturiert";
+import { AntwortFehler, frageStrukturiert, leseStrukturiert, SCHEMA_DATEIEN, SCHEMA_MARKETING, schemaVorschlag } from "./strukturiert";
 
 const lernen = JSON.parse(readFileSync("docs/schemas/lernen.json", "utf8")) as Schema;
 const anzeige = (plattform: string) => ({ plattform, ueberschrift: "Titel", text: "Text", zielgruppe: "Ausbilder", budgetEurProWoche: 50 });
@@ -65,4 +65,12 @@ test("kein Ausschneiden von JSON aus Freitext mehr in scripts/", () => {
     // git grep endet ohne Treffer mit Exit 1
   }
   assert.equal(treffer, "");
+});
+
+test("Nur unbrauchbare Antworten sind AntwortFehler; HTTP-Fehler und fehlender Schlüssel nicht", async () => {
+  assert.throws(() => leseStrukturiert("kein json", SCHEMA_DATEIEN), AntwortFehler);
+  const schema: Schema = { type: "object" };
+  await assert.rejects(frageStrukturiert({ key: undefined, modell: "m", maxTokens: 1, prompt: "p", schema }), (e) => !(e instanceof AntwortFehler));
+  const abruf = (async () => new Response(null, { status: 500 })) as unknown as typeof fetch;
+  await assert.rejects(frageStrukturiert({ key: "k", modell: "m", maxTokens: 1, prompt: "p", schema, abruf }), (e) => !(e instanceof AntwortFehler));
 });
