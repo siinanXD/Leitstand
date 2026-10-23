@@ -16,7 +16,8 @@ const rest = (pfad: string, init?: RequestInit) => {
 
 async function lies(tabelle: string) {
   const res = await rest(`${tabelle}?select=*&limit=500`);
-  return res.ok ? ((await res.json()) as unknown) : [];
+  if (!res.ok) throw new Error(`${tabelle} nicht lesbar (${res.status})`);
+  return (await res.json()) as unknown;
 }
 
 async function schreibe(faden: string, rolle: "sinan" | "leitstand", text: string, bezug: object = {}) {

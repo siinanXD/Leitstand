@@ -50,3 +50,12 @@ test("andere Fragen bekommen „Ich schaue nach.“; ungültige Eingabe liefert 
   assert.equal((await POST(anfrage({ faden: "x", text: "hi" }, true))).status, 400);
   assert.equal((await POST(anfrage({ faden: FADEN, text: " " }, true))).status, 400);
 });
+
+test("Lesefehler bei loop_snapshot: „Ich schaue nach.“ statt geratener Statusantwort", async () => {
+  umgebung();
+  const vorher = globalThis.fetch;
+  globalThis.fetch = (async (ziel: string | URL | Request, init?: RequestInit) =>
+    String(ziel).includes("loop_snapshot") ? new Response(null, { status: 500 }) : vorher(ziel, init)) as typeof fetch;
+  const body = (await (await POST(anfrage({ faden: FADEN, text: "Wie steht SIN-865?" }, true))).json()) as { antwort: string; sofort: boolean };
+  assert.deepEqual([body.antwort, body.sofort], ["Ich schaue nach.", false]);
+});
