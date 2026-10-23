@@ -329,3 +329,10 @@ test("Auftrags-Kommentar enthält Auftrag (technisch) und Haken; Kosten oder Per
   assert.match(geld.text, /vertrauliche Teile, Haken genügen/);
   assert.deepEqual(auftragsKommentar("Sinan: mach es billig\n- [ ] A").gesperrt, ["Sinan-Zitat"]);
 });
+
+test("Dispatcher startet kein Issue mit Label entscheidung (SIN-1012)", () => {
+  const issues = [issue({ identifier: "SIN-1", labels: ["claude", "entscheidung"] }), issue({ identifier: "SIN-2" })];
+  assert.deepEqual(waehle(issues, new Set(), 5).map((i) => i.identifier), ["SIN-2"]);
+  assert.deepEqual(codexStarts([issue({ identifier: "SIN-3", labels: ["codex", "entscheidung"] })]), []);
+  assert.equal(nachruecken([issue({ identifier: "SIN-4", stateType: "backlog", labels: ["entscheidung"] })], new Set(), 2), null);
+});

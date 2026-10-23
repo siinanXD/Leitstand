@@ -1004,3 +1004,11 @@
   art: datei
   pfad: src/lib/loop/pruefer-lauf.ts
   enthaelt: prueferLaufziel
+
+# SIN-1012
+- id: leitstand-entscheidungen-route
+  produkt: leitstand
+  titel: Die Route /api/entscheidungen liest den Entscheidungs-Block und schreibt Sinans Antwort nach Linear (SIN-1012)
+  art: datei
+  pfad: src/app/api/entscheidungen/route.ts
+  enthaelt: beantworte
