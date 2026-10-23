@@ -158,7 +158,8 @@ test("prueferReparatur (SIN-925): Runde 1 und 2, dritter Fund Stopp, Risiko kein
   assert.deepEqual(prueferReparatur(["pruefer:offen"], 2), { stopp: true });
   assert.deepEqual(prueferReparatur(["pruefer:offen", "repair:2"]), { stopp: true });
   assert.ok("keine" in prueferReparatur(["pruefer:offen", "pruefer:hoch", "risk:high"]));
-  assert.ok("keine" in prueferReparatur(["pruefer:offen", "risk:high"]));
+  assert.deepEqual(prueferReparatur(["pruefer:offen", "risk:high"]), { runde: 1 }); // SIN-1006: Gate-Risiko sperrt nicht
+  assert.ok("keine" in prueferReparatur(["pruefer:offen", "pruefer:hoch"]));
   assert.ok("keine" in prueferReparatur(["claude"]));
 });
 
