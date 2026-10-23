@@ -14,7 +14,27 @@
         { "name": "LANGFUSE_SECRET_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, geheimer Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
         { "name": "LANGFUSE_BASE_URL", "environment": "dev", "zweck": "Adresse der Langfuse-Instanz", "wo_holen": "Langfuse → Projekt → Settings → API Keys (Host)" },
         { "name": "SENTRY_AUTH_TOKEN", "environment": "dev", "zweck": "Sentry lesen", "wo_holen": "Sentry → Settings → Auth Tokens" },
-        { "name": "VERCEL_TOKEN", "environment": "dev", "zweck": "Vercel-Deployments lesen", "wo_holen": "Vercel → Account Settings → Tokens" }
+        { "name": "VERCEL_TOKEN", "environment": "dev", "zweck": "Vercel-Deployments lesen", "wo_holen": "Vercel → Account Settings → Tokens" },
+        { "name": "AGENT_VARIABLES_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für AGENT_VARIABLES_TOKEN (lernapp)", "wo_holen": "GitHub → Settings → Developer settings → Fine-grained tokens" },
+        { "name": "AGENT_WORKFLOW_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für AGENT_WORKFLOW_TOKEN (lernapp)", "wo_holen": "GitHub → Settings → Developer settings → Fine-grained tokens" },
+        { "name": "ANTHROPIC_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für ANTHROPIC_API_KEY (lernapp)", "wo_holen": "Claude Console → API-Schlüssel" },
+        { "name": "CLAUDE_CODE_OAUTH_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für CLAUDE_CODE_OAUTH_TOKEN (lernapp)", "wo_holen": "claude setup-token (Claude-Abo)" },
+        { "name": "FIGMA_ACCESS_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für FIGMA_ACCESS_TOKEN (lernapp)", "wo_holen": "Figma → Settings → Personal access tokens" },
+        { "name": "HIGGSFIELD_KEY_ID", "environment": "dev", "zweck": "Geheimer Wert für HIGGSFIELD_KEY_ID (lernapp)", "wo_holen": "Higgsfield → API Keys" },
+        { "name": "HIGGSFIELD_KEY_SECRET", "environment": "dev", "zweck": "Geheimer Wert für HIGGSFIELD_KEY_SECRET (lernapp)", "wo_holen": "Higgsfield → API Keys" },
+        { "name": "LINEAR_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für LINEAR_API_KEY (lernapp)", "wo_holen": "Linear → Settings → API" },
+        { "name": "NEXT_PUBLIC_POSTHOG_KEY", "environment": "dev", "zweck": "Geheimer Wert für NEXT_PUBLIC_POSTHOG_KEY (lernapp)", "wo_holen": "Anbieter-Konsole des Dienstes" },
+        { "name": "NEXT_PUBLIC_SENTRY_DSN", "environment": "dev", "zweck": "Geheimer Wert für NEXT_PUBLIC_SENTRY_DSN (lernapp)", "wo_holen": "Anbieter-Konsole des Dienstes" },
+        { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "environment": "dev", "zweck": "Geheimer Wert für NEXT_PUBLIC_SUPABASE_ANON_KEY (lernapp)", "wo_holen": "Anbieter-Konsole des Dienstes" },
+        { "name": "OPENAI_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für OPENAI_API_KEY (lernapp)", "wo_holen": "platform.openai.com → API keys" },
+        { "name": "POSTHOG_PERSONAL_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für POSTHOG_PERSONAL_API_KEY (lernapp)", "wo_holen": "PostHog → Settings → Personal API Keys / Projekt-Key" },
+        { "name": "RAILWAY_API_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für RAILWAY_API_TOKEN (lernapp)", "wo_holen": "Railway → Account → Tokens" },
+        { "name": "STRIPE_SECRET_KEY", "environment": "dev", "zweck": "Geheimer Wert für STRIPE_SECRET_KEY (lernapp)", "wo_holen": "Stripe → Entwickler → API-Schlüssel" },
+        { "name": "SUPABASE_ACCESS_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für SUPABASE_ACCESS_TOKEN (lernapp)", "wo_holen": "Supabase → Project Settings → API" },
+        { "name": "SUPABASE_ANON_KEY", "environment": "dev", "zweck": "Geheimer Wert für SUPABASE_ANON_KEY (lernapp)", "wo_holen": "Supabase → Project Settings → API" },
+        { "name": "SUPABASE_SERVICE_ROLE_KEY", "environment": "dev", "zweck": "Geheimer Wert für SUPABASE_SERVICE_ROLE_KEY (lernapp)", "wo_holen": "Supabase → Project Settings → API" },
+        { "name": "TELEGRAM_BOT_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für TELEGRAM_BOT_TOKEN (lernapp)", "wo_holen": "Telegram BotFather" },
+        { "name": "VERCEL_AUTOMATION_BYPASS_SECRET", "environment": "dev", "zweck": "Geheimer Wert für VERCEL_AUTOMATION_BYPASS_SECRET (lernapp)", "wo_holen": "Vercel → Account → Tokens / Projekt → Deployment Protection" }
       ]
     },
     {
@@ -78,7 +98,18 @@
       "secrets": [
         { "name": "LANGFUSE_PUBLIC_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, öffentlicher Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
         { "name": "LANGFUSE_SECRET_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, geheimer Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
-        { "name": "LANGFUSE_BASE_URL", "environment": "dev", "zweck": "Adresse der Langfuse-Instanz", "wo_holen": "Langfuse → Projekt → Settings → API Keys (Host)" }
+        { "name": "LANGFUSE_BASE_URL", "environment": "dev", "zweck": "Adresse der Langfuse-Instanz", "wo_holen": "Langfuse → Projekt → Settings → API Keys (Host)" },
+        { "name": "ANTHROPIC_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für ANTHROPIC_API_KEY (stromlauf-ai)", "wo_holen": "Claude Console → API-Schlüssel" },
+        { "name": "API_KEY", "environment": "dev", "zweck": "Geheimer Wert für API_KEY (stromlauf-ai)", "wo_holen": "selbst erzeugen: openssl rand -hex 32" },
+        { "name": "CLAUDE_CODE_OAUTH_TOKEN", "environment": "dev", "zweck": "Geheimer Wert für CLAUDE_CODE_OAUTH_TOKEN (stromlauf-ai)", "wo_holen": "claude setup-token (Claude-Abo)" },
+        { "name": "DATABASE_URL", "environment": "dev", "zweck": "Geheimer Wert für DATABASE_URL (stromlauf-ai)", "wo_holen": "Datenbank-Anbieter → Verbindungs-URL" },
+        { "name": "JWT_SECRET", "environment": "dev", "zweck": "Geheimer Wert für JWT_SECRET (stromlauf-ai)", "wo_holen": "selbst erzeugen: openssl rand -hex 32" },
+        { "name": "NEXT_PUBLIC_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für NEXT_PUBLIC_API_KEY (stromlauf-ai)", "wo_holen": "gleich wie API_KEY des Backends" },
+        { "name": "OPENAI_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für OPENAI_API_KEY (stromlauf-ai)", "wo_holen": "platform.openai.com → API keys" },
+        { "name": "OPEN_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für OPEN_API_KEY (stromlauf-ai)", "wo_holen": "platform.openai.com → API keys" },
+        { "name": "SMTP_URL", "environment": "dev", "zweck": "Geheimer Wert für SMTP_URL (stromlauf-ai)", "wo_holen": "Mail-Anbieter → SMTP-Zugang" },
+        { "name": "STROMLAUF_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für STROMLAUF_API_KEY (stromlauf-ai)", "wo_holen": "selbst erzeugen: openssl rand -hex 32" },
+        { "name": "VOYAGE_API_KEY", "environment": "dev", "zweck": "Geheimer Wert für VOYAGE_API_KEY (stromlauf-ai)", "wo_holen": "Voyage AI → API Keys" }
       ]
     }
   ]

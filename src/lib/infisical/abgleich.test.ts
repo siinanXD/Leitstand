@@ -17,6 +17,19 @@ test("Soll-Liste: jeder Name aus .env.example und den Workflows steht beim Leits
   assert.ok(beispiel.length > 10);
 });
 
+/** Geheime Namen (Schlüssel, Token, Zugangs-URLs); reine Einstellungen wie CHAT_MODEL gehören nicht nach Infisical. */
+const GEHEIMER_NAME = /(KEY|SECRET|TOKEN|PASSWORD|DSN|DATABASE_URL|SMTP_URL)$|(KEY|TOKEN)_|_KEY_/;
+
+test("Soll-Liste für Leitstand, Stromlauf AI, Content-Agent-Lernapp aus deren `.env.example` und Workflows (Test: jeder dort genannte Name steht in der Liste).", () => {
+  const namen = JSON.parse(readFileSync("docs/autonomy/env-namen.json", "utf8")) as Record<string, string[] | string>;
+  for (const id of ["lernapp", "stromlauf-ai"]) {
+    const soll = new Set(produkt(id).secrets.map((s) => s.name));
+    const fehlt = (namen[id] as string[]).filter((n) => GEHEIMER_NAME.test(n) && !soll.has(n));
+    assert.deepEqual(fehlt, [], id);
+    assert.ok((namen[id] as string[]).length > 10, id);
+  }
+});
+
 test("Soll-Liste: Stromlauf AI und Register sind gültig, jeder Eintrag hat Anleitung", () => {
   assert.deepEqual(pruefeRegister(register), []);
   assert.equal(produkt("stromlauf-ai").infisicalOrdner, "/stromlauf-ai");
@@ -59,7 +72,7 @@ test("Werte kommen in keinem Befund, keiner Erinnerung und keinem Log vor", asyn
   }
 });
 
-test("Pflege legt nur an: Ordner, Variable mit leerem Wert, nie überschreiben, nie löschen", async () => {
+test("Test: Pflege legt nur an (Ordner, Variable mit leerem Wert), nie überschreiben, nie löschen.", async () => {
   const aufrufe: { methode: string; body: unknown }[] = [];
   const f: Fetch = async (_u, init) => {
     aufrufe.push({ methode: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : null });
