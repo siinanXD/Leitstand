@@ -310,12 +310,12 @@ export function reparatur(labels: string[], issueweit = 0): { runde: number } | 
 }
 
 /**
- * SIN-925: Reparatur nach einem Prüfer-Fund. Nur bei `pruefer:offen` und ohne echtes Risiko (`pruefer:hoch`, `risk:high`):
- * Risiken entscheidet Sinan. Gleicher Zähler und gleiche Obergrenze wie bei rotem `build`.
+ * SIN-925: Reparatur nach einem Prüfer-Fund. Nur bei `pruefer:offen` und ohne echtes Risiko (`pruefer:hoch`):
+ * Risiken entscheidet Sinan. `risk:high` vom Gate sperrt nur den Merge, nicht die Reparatur (SIN-1006). Gleicher Zähler wie bei rotem `build`.
  */
 export function prueferReparatur(labels: string[], issueweit = 0): { runde: number } | { stopp: true } | { keine: string } {
   if (!labels.includes("pruefer:offen")) return { keine: "kein offener Prüfer-Fund" };
-  if (labels.includes("pruefer:hoch") || labels.includes("risk:high")) return { keine: "echtes Risiko, keine automatische Reparatur" };
+  if (labels.includes("pruefer:hoch")) return { keine: "echtes Risiko, keine automatische Reparatur" };
   return reparatur(labels, issueweit);
 }
 
