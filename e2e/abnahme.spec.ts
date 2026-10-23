@@ -167,6 +167,57 @@ for (const [groesse, viewport] of GROESSEN) {
   });
 }
 
+test.describe("Entscheidungen", () => {
+  const block = { frage: "Welche Farbe?", art: "design", optionen: [{ titel: "Blau", folge: "Ruhig." }, { titel: "Rot", folge: "Laut." }], empfehlung: "Blau", recherche: ["https://example.org/vergleich"] };
+  const eintrag = { identifier: "SIN-9001", titel: "Farbe wählen", url: "https://linear.app/x", block };
+
+  for (const [groesse, viewport] of GROESSEN) {
+    test(`Test: axe-core ohne Fehler auf /entscheidungen, Ziele ≥ 44 px, Tastatur bedienbar (${groesse})`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      let gesendet: unknown = null;
+      await page.route("**/api/entscheidungen", (route) => {
+        if (route.request().method() === "POST") {
+          gesendet = route.request().postDataJSON();
+          return route.fulfill({ json: { kennung: "SIN-9001", wahl: "Blau", protokolliert: true } });
+        }
+        return route.fulfill({ json: { entscheidungen: [eintrag] } });
+      });
+      await oeffne(page, "/entscheidungen");
+      await expect(page.getByRole("heading", { level: 2, name: "Welche Farbe?" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Blau (Empfehlung)" })).toBeVisible();
+
+      const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+      expect(r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+
+      const zuKlein = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("main button, main a[href], main input")]
+          .filter((el) => el.getClientRects().length > 0 && !(el.tagName === "A" && getComputedStyle(el).display === "inline"))
+          .map((el) => ({ el: (el.textContent ?? "").trim().slice(0, 30), ...el.getBoundingClientRect().toJSON() }))
+          .filter((b) => b.width < 43.5 || b.height < 43.5)
+          .map((b) => `${b.el} ${Math.round(b.width)}×${Math.round(b.height)}`),
+      );
+      expect(zuKlein).toEqual([]);
+
+      // Tastatur: Fokus auf die Option, Enter sendet.
+      await page.getByRole("button", { name: "Blau (Empfehlung)" }).focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("status").filter({ hasText: "Gespeichert: Blau" })).toBeVisible();
+      expect(gesendet).toEqual({ issue: "SIN-9001", option: "Blau" });
+    });
+  }
+
+  test("Fehler steht als Satz da, Leerzustand heißt „Nichts zu entscheiden“", async ({ page }) => {
+    await page.route("**/api/entscheidungen", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 502, json: { fehler: "linear" } }) : route.fulfill({ json: { entscheidungen: [eintrag] } })));
+    await oeffne(page, "/entscheidungen");
+    await page.getByRole("button", { name: "Rot" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Linear hat die Antwort nicht angenommen." })).toBeVisible();
+    await page.unroute("**/api/entscheidungen");
+    await page.route("**/api/entscheidungen", (route) => route.fulfill({ json: { entscheidungen: [] } }));
+    await page.reload();
+    await expect(page.getByText("Nichts zu entscheiden")).toBeVisible();
+  });
+});
+
 test.describe("Skalierbarkeit", () => {
   // 200 % Zoom auf dem Handy entspricht etwa 195×422 CSS-Pixeln (Ersatz für Browser-Zoom).
   test("200 % Zoom: kein waagerechtes Scrollen, kein abgeschnittener Text", async ({ page }) => {

@@ -18,6 +18,7 @@ import { KennzahlenKachel } from "./kennzahlen-kachel";
 import { MitMehr } from "./mit-mehr";
 import { Rahmen, uhrzeit, type Wartende } from "./rahmen";
 import { ZustandSymbol, type ZustandArt } from "./zustand-symbol";
+import { useOffeneEntscheidungen } from "./entscheidungen/offene";
 import { useWartendeWerbung } from "./werbung-kachel";
 import "./bunt.css";
 
@@ -141,7 +142,11 @@ function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet, chef, stan
   const werbeKarte: Karte[] = werbung
     ? [{ key: "werbung", titel: werbung === 1 ? "Ein Werbe-Entwurf wartet auf dein Ja" : `${werbung} Werbe-Entwürfe warten auf dein Ja`, warum: "Video oder Text ansehen, dann freigeben oder ablehnen.", projekt: "Werbung", pr: null, minuten: null, wartender: null, ansehen: "/freigabe/werbemittel", aufladen: null }]
     : [];
-  const aufgaben = [...werbeKarte, ...karten(quelle, wartend.wartende)];
+  const entscheidungen = useOffeneEntscheidungen(angemeldet)?.length ?? 0;
+  const entscheidungKarte: Karte[] = entscheidungen
+    ? [{ key: "entscheidungen", titel: `Entscheidungen: ${entscheidungen}`, warum: "Der Loop wartet auf deine Antwort.", projekt: "Entscheidungen", pr: null, minuten: null, wartender: null, ansehen: "/entscheidungen", aufladen: null }]
+    : [];
+  const aufgaben = [...entscheidungKarte, ...werbeKarte, ...karten(quelle, wartend.wartende)];
   const lage = lageSatz(quelle, aufgaben.length, jetzt);
   const kette = stationen(quelle, wartend.wartende, jetzt);
   const eintraege = kette.flatMap((s) => s.eintraege);

@@ -8,3 +8,4 @@ Routen, die ohne Design-Issue aus vorhandenen Komponenten und Tokens entstanden 
 | Kachel „Häufigste Fehlergründe (24 h)“ auf /details (aus vorhandenen Klassen, wie „Gelernt diese Woche“) | 2026-10-15 | SIN-617 |
 | Kacheln „Was zählt (8 Wochen)“ ganz oben auf / (aus vorhandenen Klassen, Säulen als SVG mit Tokens) | 2026-10-15 | SIN-630 |
 | /wochen-check „Wochen-Check“ (Menüpunkt unter „Mehr“, Checkliste aus vorhandenen Klassen) | 2026-10-15 | SIN-631 |
+| /entscheidungen „Entscheidungen“ (Karten wie /freigabe) und Karte „Entscheidungen: n“ in „Braucht dich“ auf / | 2026-10-23 | SIN-1013 |

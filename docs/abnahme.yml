@@ -1024,3 +1024,10 @@
   art: http
   url: https://api.github.com/repos/siinanXD/stromlauf-ai
   enthaelt: '"industrial-automation"'
+
+# SIN-1013
+- id: leitstand-entscheidungen-seite
+  produkt: leitstand
+  titel: Die Seite /entscheidungen antwortet (SIN-1013)
+  art: http
+  url: ${LEITSTAND_URL}/entscheidungen
