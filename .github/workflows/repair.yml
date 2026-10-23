@@ -39,7 +39,10 @@ jobs:
           TITEL: ${{ github.event.workflow_run.display_title }}
         run: |
           NUMMERN=$(echo "$PRS" | jq -r '.[].number')
-          if [ -z "$NUMMERN" ]; then NUMMERN=$(echo "$TITEL" | sed -nE 's/^pruefer PR ([1-9][0-9]*)$/\1/p'); fi
+          # SIN-1009: Repo und PR aus dem Laufnamen (`pruefer [owner/repo ]PR n`) liest loop.ts (pruefer-lauf.ts, nur freigegebene Repos).
+          if [ -z "$NUMMERN" ]; then
+            npx tsx scripts/loop/loop.ts reparatur --titel "$TITEL" --lauf "$LAUF" --quelle "$QUELLE" --sha "$SHA"
+          fi
           for pr in $NUMMERN; do
             npx tsx scripts/loop/loop.ts reparatur --pr "$pr" --lauf "$LAUF" --quelle "$QUELLE" --sha "$SHA"
           done
