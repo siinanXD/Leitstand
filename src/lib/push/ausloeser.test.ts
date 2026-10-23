@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abbruchAus, alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, fertigAus, inRuhe, menschlich, planerOhneTodosAus, plane, produktFertigAus, nachrichtFuer, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
+import { abbruchAus, alarmeAus, auswertungsSchluessel, berlinZeit, brauchtDich, brauchtDichAus, entscheidungenAus, fertigAus, inRuhe, menschlich, planerOhneTodosAus, plane, produktFertigAus, nachrichtFuer, spaeter, stillstandAus, type Ereignis } from "./ausloeser";
 
 const utc = (s: string) => Date.parse(s);
 const e = (id: string, art: Ereignis["art"], zeit: number, extra: Partial<Ereignis> = {}): Ereignis => ({ id, art, projekt: "Leitstand", kennung: "SIN-1", titel: "Freigabe offen", zeit, ...extra });
@@ -253,4 +253,30 @@ test("SIN-761: Produkt fertig wird eine Mitteilung „Fertig und live“", () =>
   const [ev] = produktFertigAus([{ projekt: "Leitstand", zeit: 1 }]);
   assert.equal(ev.id, "produkt-fertig:Leitstand");
   assert.equal(nachrichtFuer(ev).titel, "Fertig und live");
+});
+
+test("SIN-1029: Eine neue Entscheidung ergibt genau ein Push-Ereignis braucht-dich mit Link auf /entscheidungen", () => {
+  const jetzt = utc("2026-10-23T10:00:00Z");
+  const ereignisse = entscheidungenAus([{ identifier: "SIN-5", titel: "Welches Framework?" }], jetzt);
+  assert.equal(ereignisse.length, 1);
+  assert.equal(ereignisse[0].art, "braucht-dich");
+  const p = plane(ereignisse, new Set(), jetzt);
+  assert.equal(p.nachrichten.length, 1);
+  assert.equal(p.nachrichten[0].url, "/entscheidungen");
+  assert.deepEqual(p.neu, ["entscheidung:SIN-5"]);
+  assert.equal(plane(ereignisse, new Set(p.neu), jetzt).nachrichten.length, 0);
+});
+
+test("SIN-1029: Zwei neue Entscheidungen im selben Lauf werden gebündelt; in der Ruhezeit kein Push", () => {
+  const tag = utc("2026-10-23T10:00:00Z");
+  const zwei = entscheidungenAus([{ identifier: "SIN-5", titel: "A" }, { identifier: "SIN-6", titel: "B" }], tag);
+  const p = plane(zwei, new Set(), tag);
+  assert.equal(p.nachrichten.length, 1);
+  assert.equal(p.nachrichten[0].titel, "Braucht dich (2)");
+  assert.equal(p.nachrichten[0].url, "/entscheidungen");
+  assert.deepEqual(p.neu, ["entscheidung:SIN-5", "entscheidung:SIN-6"]);
+  const nacht = utc("2026-10-23T22:00:00Z"); // 00:00 MESZ
+  const still = plane(entscheidungenAus([{ identifier: "SIN-5", titel: "A" }], nacht), new Set(), nacht);
+  assert.equal(still.nachrichten.length, 0);
+  assert.deepEqual(still.neu, []);
 });

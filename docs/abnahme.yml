@@ -28,6 +28,18 @@
   art: datei
   pfad: src/lib/agent-testnutzer/sitzung.ts
   enthaelt: baueStorageState
+- id: leitstand-testnutzer-routen
+  produkt: leitstand
+  titel: Die Routenliste des Testnutzers liegt im Repo (SIN-1031)
+  art: datei
+  pfad: e2e/routes.ts
+  enthaelt: ROUTEN
+- id: leitstand-testnutzer-abdeckung
+  produkt: leitstand
+  titel: Der Abdeckungstest verlangt jede page.tsx in e2e/routes.ts (SIN-1031)
+  art: datei
+  pfad: src/lib/testnutzer/routen.test.ts
+  enthaelt: jede page.tsx unter src/app
 - id: leitstand-aufbauphase-integration
   produkt: leitstand
   titel: Gate-Simulation prüft Altfristen, high, Draft, Stopplabel und rote Checks; kein Live-Nachweis (SIN-855)
@@ -211,6 +223,12 @@
   rest: leitstand_push_gesendet?schluessel=like.auswertung:*&select=gesendet_at&order=gesendet_at.desc&limit=1
   zeitfeld: gesendet_at
   max_alter_min: 1560
+- id: leitstand-push-entscheidung
+  produkt: leitstand
+  titel: Der Push-Auslöser kennt neue Entscheidungen mit Link auf /entscheidungen
+  art: datei
+  pfad: src/lib/push/ausloeser.ts
+  enthaelt: "/entscheidungen"
 # Wirkung (SIN-637): jede aktive Rolle schreibt mindestens alle 48 Stunden ein Ereignis; die Spalte wirkung ist angewendet
 - id: leitstand-wirkung-spalte
   produkt: leitstand
@@ -1069,3 +1087,11 @@
   art: datei
   pfad: src/lib/chat/sofort.ts
   enthaelt: sofortAntwort
+
+# SIN-1028
+- id: leitstand-konflikt-anstoss
+  produkt: leitstand
+  titel: Der Loop bittet bei Merge-Konflikt auf einem claude/-PR höchstens zweimal um Auflösung (SIN-1028)
+  art: datei
+  pfad: src/lib/loop/konflikt.ts
+  enthaelt: MAX_KONFLIKT

@@ -79,7 +79,7 @@ function gebuendelt(ereignisse: readonly Ereignis[]): Nachricht {
   return {
     titel: `${new Set(ereignisse.map((e) => e.art)).size === 1 ? KOPF[ereignisse[0].art] : "Neues"} (${ereignisse.length})`,
     text: zweiZeilen(`${projekte}: ${ereignisse.map((e) => e.kennung || e.titel).join(", ")}`, vereinigt(ereignisse)),
-    url: "/",
+    url: new Set(ereignisse.map((e) => e.url)).size === 1 ? (ereignisse[0].url ?? "/") : "/",
   };
 }
 
@@ -116,7 +116,14 @@ export function plane(ereignisse: readonly Ereignis[], gesendet: Gesendet, jetzt
     neu.push(e.id);
   }
 
-  const braucht = offen.filter((x) => SOFORT_TAGSUEBER.has(x.art));
+  const alleBraucht = offen.filter((x) => SOFORT_TAGSUEBER.has(x.art));
+  // Neue Entscheidungen (SIN-1029) gehen als eine Nachricht mit Link auf /entscheidungen raus, nie als Flut.
+  const entscheidungen = alleBraucht.filter((x) => x.id.startsWith(ENTSCHEIDUNG_PRAEFIX));
+  const braucht = alleBraucht.filter((x) => !entscheidungen.includes(x));
+  if (!ruhe && entscheidungen.length) {
+    nachrichten.push(entscheidungen.length === 1 ? nachrichtFuer(entscheidungen[0]) : gebuendelt(entscheidungen));
+    neu.push(...entscheidungen.map((e) => e.id));
+  }
   if (!ruhe) {
     const nachts = braucht.filter((x) => inRuhe(x.zeit));
     // Mehr als drei auf einmal (z. B. erster Lauf nach einer Pause): eine gesammelte Mitteilung statt einer Flut.
@@ -142,7 +149,7 @@ export function plane(ereignisse: readonly Ereignis[], gesendet: Gesendet, jetzt
   // Ab 20 Uhr bis zur Ruhe: fällt der Lauf um 20 Uhr aus, kommt sie beim nächsten (SIN-635). Der Tagesschlüssel verhindert Doppeltes.
   if (stunde >= AUSWERTUNG_STUNDE && !ruhe && !gesendet.has(schluessel)) {
     const behoben = offen.filter((x) => x.art === "selbst-behoben");
-    const wartend = braucht.filter((x) => x.art === "braucht-dich" && !neu.includes(x.id));
+    const wartend = [...braucht, ...entscheidungen].filter((x) => x.art === "braucht-dich" && !neu.includes(x.id));
     nachrichten.push(auswertung(behoben, wartend, durchstich));
     neu.push(schluessel, ...behoben.map((e) => e.id));
   }
@@ -172,6 +179,11 @@ export function alarmeAus(lage: Lage, projekt: string, jetzt: number): Ereignis[
 export type Wartendes = { key: string; titel: string; projekt: string; url?: string };
 export const brauchtDichAus = (liste: readonly Wartendes[], jetzt: number): Ereignis[] =>
   liste.map((w) => ({ id: `braucht:${w.key}`, art: "braucht-dich", projekt: w.projekt, kennung: "", titel: w.titel, zeit: jetzt, url: w.url ?? "/" }));
+
+/** Neue offene Entscheidung (Label `entscheidung`, SIN-1012) als „Braucht dich“ mit Link auf die Seite. */
+export const ENTSCHEIDUNG_PRAEFIX = "entscheidung:";
+export const entscheidungenAus = (offene: readonly { identifier: string; titel: string }[], jetzt: number): Ereignis[] =>
+  offene.map((o) => ({ id: `${ENTSCHEIDUNG_PRAEFIX}${o.identifier}`, art: "braucht-dich", projekt: "Leitstand", kennung: o.identifier, titel: o.titel, zeit: jetzt, url: "/entscheidungen" }));
 
 /** Schlange je Projekt aus `loop_snapshot.queue` und das jüngste Ereignis aus `loop_events` (ms). */
 export type Schlange = { projekt: string; name: string; startbar: number; laeuft: number; pausiert: boolean; letztesEreignis: number | null };
