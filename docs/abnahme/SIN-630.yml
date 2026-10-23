@@ -1,0 +1,8 @@
+# SIN-630: Drei Kennzahlen im Gedächtnis
+- id: gedaechtnis-kennzahlen
+  produkt: gedaechtnis
+  titel: Die Seite Wo stehen wir im Vault nennt die Kennzahl Fehlgeschlagene Änderungen aus kennzahlen_woche (SIN-630)
+  art: github
+  repo: siinanXD/gedaechtnis
+  pfad: 00 Wo stehen wir.md
+  enthaelt: Fehlgeschlagene Änderungen
