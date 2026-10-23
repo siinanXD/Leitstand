@@ -1,4 +1,5 @@
 Zahl ohne Wort → zeitInWorten()/Einheit (SIN-578)
+Fehlender Codex-Branch nach Timeout beweist bei Review/Planung weder Stillstand noch Agentenende → explizite Rollen, globaler Einzelplatz und keine zweite Umsetzung bei unklarem Start; nur vor einer Delegation sicher an Claude zurückgeben (SIN-1052).
 enableAutoMerge bei grünen Checks → clean status → direkt mergen (SIN-585)
 Geplanter GitHub-Cron fällt unter Last aus → wichtige Läufe zusätzlich per workflow_run nach dem Merge starten (SIN-593)
 Push-Fenster kürzer als Ruhezeit → nachts Gemergtes verfällt; Fenster ab Merge in der Ruhe auf 10 h (SIN-593)

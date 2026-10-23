@@ -103,11 +103,18 @@ const hatLabel = (i: LinearIssue) => i.labels.some((l) => l.toLowerCase() === LA
 export const LABEL_CODEX = "codex";
 /** Name des Codex-Nutzers in Linear (Delegate). */
 export const CODEX_NAME = "Codex";
-/** Meldet Codex so lange keinen Commit auf `codex/`, fällt das Issue an Claude zurück (SIN-936). */
+/** Mindestwartezeit der Übergabe-Policy; zusätzlich ist ein bestätigtes Agentenende nötig (SIN-1052). */
 export const CODEX_MINUTEN = 60;
 const istCodex = (i: LinearIssue) => i.labels.some((l) => l.toLowerCase() === LABEL_CODEX);
 const beiCodex = (i: LinearIssue) => i.delegate?.toLowerCase() === CODEX_NAME.toLowerCase();
 const offenBlockiert = (i: LinearIssue) => i.blockiertVon.some((b) => !ERLEDIGT.has(b.stateType));
+
+/** Expliziter Auftrag statt Titelheuristik: Codex übernimmt keine allgemeine Entwicklung. */
+export function codexRolle(beschreibung: string | null): "review" | "planer" | "content" | null {
+  const marker = [...(beschreibung ?? "").matchAll(/<!--\s*codex-rolle:\s*([^\n]*?)\s*-->/g)];
+  const rolle = marker[0]?.[1];
+  return marker.length === 1 && (rolle === "review" || rolle === "planer" || rolle === "content") ? rolle : null;
+}
 
 /** Linear-Priorität: 1 dringend … 4 niedrig, 0 = keine (zuletzt). */
 const rang = (p: number) => (p > 0 ? p : 5);
@@ -170,16 +177,25 @@ export const startbare = (issues: LinearIssue[], gespiegelt: Set<string>): Linea
  * SIN-936: Todo-Issues mit Label `codex`, die jetzt an Codex gehen (Delegate setzen, Status „In Progress“). Kein Claude-Lauf,
  * kein GitHub-Spiegel, kein Platz. Gleiche Sperren wie bei Claude: blockiert, `needs-human`, `kriterien-unklar`, nur noch Belege.
  */
-export const codexStarts = (issues: LinearIssue[]): LinearIssue[] =>
-  issues.filter((i) => i.stateType === "unstarted" && istCodex(i) && !beiCodex(i) && !nurBelege(i.description) && !offenBlockiert(i) && !i.labels.includes("needs-human") && !i.labels.includes("entscheidung") && !i.labels.includes("kriterien-unklar"));
+export function codexStarts(issues: LinearIssue[], bestand: LinearIssue[] | null = issues): LinearIssue[] {
+  // Auch eine halb erfolgte Delegation hält den einen projektübergreifenden Platz.
+  if (!bestand || bestand.some(i => !ERLEDIGT.has(i.stateType) && (beiCodex(i) || (istCodex(i) && i.stateType === "started")))) return [];
+  return issues.filter(i => i.stateType === "unstarted" && istCodex(i) && !i.delegate && codexRolle(i.description)
+    && !nurBelege(i.description) && !offenBlockiert(i)
+    && !i.labels.some(l => ["needs-human", "entscheidung", "kriterien-unklar", "sinan", "design", "lauf"].includes(l.toLowerCase())))
+    .sort((a, b) => rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt)).slice(0, 1);
+}
 
 /**
  * SIN-936: Issues bei Codex („In Progress“, Delegate Codex) ohne Branch `codex/` oder PR zur Kennung nach CODEX_MINUTEN.
- * Sie gehen an Claude zurück. `pruefe`: Branches (Titel leer) und offene PRs.
+ * Nur mit bestätigtem Agentenende dürfen sie an Claude zurück. `pruefe`: Branches (Titel leer) und offene PRs.
  * shortcut: ein Codex-Branch ohne Kennung im Namen und ohne PR-Titel mit Kennung zählt nicht; ausbauen, wenn Codex so benennt.
  */
-export function codexRueckfall(issues: LinearIssue[], pruefe: OffenerPr[], jetzt: Date): LinearIssue[] {
+export function codexRueckfall(issues: LinearIssue[], pruefe: OffenerPr[], jetzt: Date, beendet: ReadonlySet<string> = new Set()): LinearIssue[] {
   return issues.filter((i) => {
+    // Ohne belegtes Agentenende ist ein fehlender Branch kein sicherer Übergabegrund.
+    // Der aktuelle Adapter liefert diesen Nachweis noch nicht: daher kein Timeout-Wechsel im Betrieb.
+    if (!beendet.has(i.identifier)) return false;
     if (i.stateType !== "started" || !beiCodex(i) || !i.startedAt) return false;
     if (jetzt.getTime() - Date.parse(i.startedAt) < CODEX_MINUTEN * 60_000) return false;
     return !pruefe.some((p) => /^codex\//.test(p.branch) && prGehoertZu(p, i));

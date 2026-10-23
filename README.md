@@ -59,11 +59,13 @@ Der vorgeschlagene gehärtete Prüfer lädt seine Implementierung und Abhängigk
 
 ## Claude/Codex-Fallback (SIN-832)
 
+**Rollenrouting (SIN-1052):** Claude bleibt Hauptworker. Codex übernimmt explizite Review-, Planungs- oder Content-Aufträge über den vorhandenen Linear-Delegate, höchstens einen gleichzeitig im gesteuerten Projektbestand. Ein fehlender Branch oder Timeout ist kein Nachweis eines beendeten Agenten; der Dispatcher startet deshalb keinen zweiten Worker. Fehlt die Codex-App bereits vor der Delegation, übernimmt Claude den ungestarteten Auftrag. Rollenmarker, Ergebnisvertrag und offene Live-Abnahme: [CODEX-WORKER.md](docs/CODEX-WORKER.md). Bestehende direkte Modell-APIs bleiben separat; kein API-Aufruf wird durch diese Änderung auf ein Abo umgebucht.
+
 Die vorbereitete [Fallback-Policy](src/lib/loop/fallback.ts) unterscheidet Kontingent-, Auth-, Netzwerk-, Verbindungs- und fachliche Fehler, begrenzt Wiederholungen und erhält vorhandene PRs und Worker-Claims. `node --import tsx src/lib/loop/fallback.test.ts` führt die isolierten Simulationen ohne Modellaufruf aus.
 
 **Dauerhafte Reservierung (SIN-832):** Vor jedem Start reserviert der Dispatcher das Issue per Compare-and-swap in `leitstand_aufgaben` ([reservierung.ts](src/lib/loop/reservierung.ts), Spalten `claim_*`, `reparaturen`). Ohne bestätigte Reservierung startet nichts; Merge, Reparaturstopp und ein belegt verwaister Claim (Wächter: kein PR, kein Spiegel, kein laufender Worker, älter als 6 h) geben sie frei. Reparaturrunden zählen issueweit über PRs und Provider. Die Spalten kommen per Lern-App-Migration (Content-Agent-Lernapp #433) und müssen vor dem Merge angewendet sein.
 
-**Noch kein autonomer Produktionsfallback:** Ein Codex-Startweg fehlt (Kommentar-Eingang meldet Zuordnungsfehler); der Dispatcher startet nur Claude. Linear hält die bisherigen Aufträge. Datei-Proben und simulierte Reservierungen ersetzen keine Live-Abnahme. Belege und Wiederaufnahmebedingungen: [SIN-832-fallback.md](docs/decisions/SIN-832-fallback.md).
+**Live-Abnahme weiterhin offen:** Der aktuelle Codex-Startweg ist der Linear-Delegate (SIN-936/SIN-1052), der frühere Kommentar-Eingang bleibt historisch. Für einen automatischen Wechsel nach einem gestarteten Codex-Auftrag fehlt weiterhin ein bestätigter Agenten-Endzustand. Datei-Proben und simulierte Reservierungen ersetzen keine Live-Abnahme. Historische Belege: [SIN-832-fallback.md](docs/decisions/SIN-832-fallback.md); aktuelle Grenzen: [CODEX-WORKER.md](docs/CODEX-WORKER.md).
 
 ## Zwei Bau-Worker und lesende Subagents (SIN-856)
 
