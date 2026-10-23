@@ -195,8 +195,8 @@ export function waehle(issues: LinearIssue[], gespiegelt: Set<string>, max: numb
   return passend(geordnet, rest).slice(0, frei);
 }
 
-/** Labels, mit denen ein Backlog-Issue nie automatisch nachrückt (Design zuerst, Aufgabe für Sinan, Stopp). */
-export const NIE_AUTOMATISCH = ["design", "sinan", "needs-human", "entscheidung", "kriterien-unklar"];
+/** Labels, mit denen ein Backlog-Issue nie automatisch nachrückt (Design zuerst, Aufgabe für Sinan, Stopp, Ideen-Sammlung). */
+export const NIE_AUTOMATISCH = ["design", "sinan", "needs-human", "entscheidung", "kriterien-unklar", "sammlung"];
 
 /**
  * Nachrücken (SIN-417): Ist kein Todo-Issue mit Label `claude` startbar und noch ein Platz frei, rückt das
