@@ -1025,6 +1025,22 @@
   url: https://api.github.com/repos/siinanXD/stromlauf-ai
   enthaelt: '"industrial-automation"'
 
+# SIN-1014
+- id: leitstand-entscheidung-eingang
+  produkt: leitstand
+  titel: Agenten fragen echte Entscheidungen über das Label entscheidung mit Block, Routinefehler bleiben needs-human (SIN-1014)
+  art: datei
+  pfad: src/lib/entscheidung/entscheidung.ts
+  enthaelt: istEchteEntscheidung
+
+# SIN-1027
+- id: leitstand-pruefer-regate
+  produkt: leitstand
+  titel: Der Prüfer startet nach „bestanden“ den fehlgeschlagenen pr-gate-Lauf des Produkt-Repos neu (SIN-1027)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: rerun-failed-jobs
+
 # SIN-1013
 - id: leitstand-entscheidungen-seite
   produkt: leitstand

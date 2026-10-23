@@ -26,6 +26,8 @@ import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src
 import { prueferLaufziel } from "../../src/lib/loop/pruefer-lauf";
 import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
+import { baueBlock, istEchteEntscheidung, LABEL_ENTSCHEIDUNG, leseBlock } from "../../src/lib/entscheidung/entscheidung";
+import { GITHUB_URL, githubTreffer } from "../../src/lib/autonomy/research";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { kriterienPlan, LABEL_UNKLAR, UNKLAR_KOMMENTAR } from "../../src/lib/vorarbeiter/kriterien";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
@@ -666,6 +668,31 @@ async function labelSetzen(issueId: string, teamId: string, name: string, anlege
   await linear(`mutation($id: String!, $l: [String!]) { issueUpdate(id: $id, input: { addedLabelIds: $l }) { success } }`, { id: issueId, l: [l.id] });
 }
 
+/**
+ * SIN-1014: Ein Worker fragt eine echte Entscheidung (neues Secret, Kosten, Design, Umfang …) über
+ * `loop.ts frage <SIN-ID> --grund "…" [--empfehlung "…"]`: GitHub-Recherche, Block in der Beschreibung, Label `entscheidung`.
+ * Routinefehler (Test rot, Reparaturrunden, Prüfer-Fund) bleiben `needs-human` und lösen diesen Befehl nicht aus.
+ */
+async function frage() {
+  const kennung = process.argv[3] ?? "";
+  const grund = arg("grund") ?? "";
+  const art = istEchteEntscheidung(grund);
+  if (!/^SIN-\d+$/.test(kennung) || !art) throw new Error("frage: <SIN-ID> und --grund mit echter Entscheidung (Zugang, Kosten, Design, Infrastruktur, Umfang) nötig");
+  const issue = await issueNachKennung(kennung);
+  if (!issue) throw new Error(`frage: ${kennung} nicht gefunden`);
+  const token = env.GITHUB_TOKEN ?? env.GH_TOKEN;
+  const antwort = await fetch(`${GITHUB_URL}${encodeURIComponent(grund.slice(0, 100))}`, { headers: token ? { authorization: `Bearer ${token}` } : {} }).then((r) => (r.ok ? r.json() : null), () => null);
+  const recherche = githubTreffer(antwort, new Date().toISOString());
+  if (DRY) return console.log(`[trocken] ${kennung}: Block (${art}), ${recherche.length} Treffer`);
+  const d = await linear<{ issue: { description: string | null } }>(`query($id: String!) { issue(id: $id) { description } }`, { id: issue.id });
+  if (!leseBlock(d.issue.description)) {
+    const block = baueBlock({ frage: grund, art, optionen: [{ titel: "Freigeben", folge: "Der Loop macht weiter." }, { titel: "Verwerfen", folge: "Das Issue wird nicht gebaut." }], empfehlung: arg("empfehlung") ?? "", recherche });
+    await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { description: $d }) { success } }`, { id: issue.id, d: `${d.issue.description ?? ""}\n\n${block}` });
+  }
+  await labelSetzen(issue.id, issue.team.id, LABEL_ENTSCHEIDUNG, true);
+  await kommentar(issue.id, `Entscheidung nötig (${art}): Block in der Beschreibung, ${recherche.length} Recherche-Treffer.`);
+}
+
 async function gemergt(repo: string, pr: number, projekt?: string) {
   const p = await gh<{ title: string; body: string | null; html_url: string; merged: boolean }>(`/repos/${repo}/pulls/${pr}`);
   if (!p.merged) return console.log(`PR #${pr} ist nicht gemergt.`);
@@ -753,10 +780,10 @@ async function reparaturLauf() {
 }
 
 const befehl = process.argv[2];
-const laeufe: Record<string, () => Promise<unknown>> = { dispatch, gemergt: () => gemergt(repo, Number(arg("pr"))), reparatur: reparaturLauf };
+const laeufe: Record<string, () => Promise<unknown>> = { dispatch, gemergt: () => gemergt(repo, Number(arg("pr"))), reparatur: reparaturLauf, frage };
 const lauf = laeufe[befehl ?? ""];
 if (!lauf) {
-  console.error("Befehl: dispatch | gemergt --pr N | reparatur --pr N --lauf URL");
+  console.error("Befehl: dispatch | gemergt --pr N | reparatur --pr N --lauf URL | frage SIN-ID --grund TEXT");
   process.exit(2);
 }
 lauf().catch(async (e: Error) => {
