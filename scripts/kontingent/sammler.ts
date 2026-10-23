@@ -8,7 +8,8 @@
  * shortcut: gemessen werden nur Vercel-Deployments der letzten 24 h; Langfuse und Sentry folgen, sobald das Register ihre Projekte nennt.
  */
 import { readFileSync } from "node:fs";
-import { langfuseLuecken, pruefeRegister, sammle, type Messwert, type Produkt } from "../../src/lib/kontingent/produkte";
+import { langfuseLuecken, mischeQuotas, pruefeRegister, sammle, type Messwert, type Produkt } from "../../src/lib/kontingent/produkte";
+import type { Quota } from "../../src/lib/uebersicht";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -40,7 +41,11 @@ async function messe(produkte: Produkt[]): Promise<Messwert[]> {
   return werte;
 }
 
-async function schreibe(project: string, quotas: unknown[]) {
+async function schreibe(project: string, neu: Quota[]) {
+  const kopf = { apikey: env.SUPABASE_SERVICE_ROLE_KEY!, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` };
+  const alt = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_snapshot?project=eq.${encodeURIComponent(project)}&select=quotas`, { headers: kopf });
+  if (!alt.ok) throw new Error(`loop_snapshot ${project} lesen: ${alt.status}`);
+  const quotas = mischeQuotas(((await alt.json()) as { quotas?: unknown }[])[0]?.quotas, neu);
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_snapshot?on_conflict=project`, {
     method: "POST",
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY!, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
@@ -58,7 +63,7 @@ async function main() {
   console.log(JSON.stringify(s, null, 2));
   if (DRY) return;
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt");
-  // Ohne Messwert bleiben bestehende quotas (z. B. aus status.mjs) unberührt.
+  // Ohne Messwert bleibt die Zeile unberührt; sonst werden neue Werte nach Name in die bestehenden quotas gemischt.
   for (const [id, quotas] of Object.entries(s.je_produkt)) if (quotas.length || (id === "leitstand" && s.konto.length)) await schreibe(id, id === "leitstand" ? [...quotas, ...s.konto] : quotas);
 }
 

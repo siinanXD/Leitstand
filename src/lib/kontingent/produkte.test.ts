@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { langfuseLuecken, pruefeRegister, sammle, siehtNachSchluesselAus, type Produkt } from "./produkte";
+import { langfuseLuecken, mischeQuotas, pruefeRegister, sammle, siehtNachSchluesselAus, type Produkt } from "./produkte";
 
 const roh = readFileSync("docs/autonomy/produkte.json", "utf8");
 const register = (JSON.parse(roh) as { produkte: Produkt[] }).produkte;
@@ -43,4 +43,11 @@ test("Sammler: Quota-Liste je Produkt, Summe für konto-weite Limits", () => {
   assert.deepEqual(r.je_produkt.leitstand, []);
   assert.deepEqual(r.je_produkt["stromlauf-ai"].map((q) => q.name), ["Deploys pro Tag", "Langfuse-Einheiten"]);
   assert.deepEqual(r.konto, [{ name: "Deploys pro Tag (alle Produkte)", used: 45, limit: 100, schaetzung: false }]);
+});
+
+test("mischeQuotas: neue Werte ersetzen gleichnamige, fremde Einträge bleiben", () => {
+  const alt = [{ key: "langfuse_units_monat", name: "Langfuse: Units im Monat", value: 5 }, { name: "Deploys pro Tag", used: 1, limit: 100 }];
+  const neu = [{ name: "Deploys pro Tag", used: 7, limit: 100, schaetzung: false }];
+  assert.deepEqual(mischeQuotas(alt, neu), [alt[0], neu[0]]);
+  assert.deepEqual(mischeQuotas(null, neu), neu);
 });

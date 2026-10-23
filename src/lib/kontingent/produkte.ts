@@ -60,3 +60,10 @@ export function sammle(produkte: Produkt[], messwerte: Messwert[]): Sammlung {
   }
   return { je_produkt, konto: [...summen.values()].map((q) => ({ ...q, name: `${q.name} (alle Produkte)` })) };
 }
+
+/** Neue Messwerte in vorhandene quotas einer Zeile mischen (gleicher Name wird ersetzt, Rest bleibt), damit andere Sammler (status.mjs) nichts verlieren. */
+export function mischeQuotas(alt: unknown, neu: Quota[]): unknown[] {
+  const vorher = Array.isArray(alt) ? alt : [];
+  const namen = new Set(neu.map((q) => q.name));
+  return [...vorher.filter((q) => !(q && typeof q === "object" && namen.has((q as { name?: unknown }).name as string))), ...neu];
+}

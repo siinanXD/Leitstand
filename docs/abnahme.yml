@@ -1151,7 +1151,7 @@
 
 - id: kosten-produktfilter
   produkt: leitstand
-  titel: Die Seite Kosten bietet den Produktfilter an; axe prüft sie in e2e/abnahme.spec.ts (SIN-1049)
+  titel: e2e prüft den Produktfilter auf /kosten samt axe (SIN-1049)
   art: datei
-  pfad: src/app/kosten/page.tsx
-  enthaelt: <ProjektFilter
+  pfad: e2e/abnahme.spec.ts
+  enthaelt: "Kosten: Produktfilter wählt ein Produkt, axe ohne Fehler"
