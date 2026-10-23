@@ -31,6 +31,7 @@
     { "schritt": "revert-guard", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "stand", "takt": "taeglich", "grenze_h": 26, "alias": [] },
     { "schritt": "visionaer", "takt": "aus", "grenze_h": 0, "alias": [] },
+    { "schritt": "vitrine", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "waechter", "takt": "stuendlich", "grenze_h": 3, "alias": [] },
     { "schritt": "werkzeuge", "takt": "stuendlich", "grenze_h": 3, "alias": [] },
     { "schritt": "wirkung", "takt": "taeglich", "grenze_h": 26, "alias": [] }

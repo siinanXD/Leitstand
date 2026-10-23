@@ -1,0 +1,25 @@
+# Vitrine (SIN-739): setzt Beschreibung und Topics der öffentlichen Repos aus docs/vitrine.json.
+# Läuft nach Änderungen an der Datei auf main und von Hand. Schreibt nur Repo-Metadaten, keinen Code.
+name: vitrine
+on:
+  push:
+    branches: [main]
+    paths: [docs/vitrine.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  setzen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Beschreibung und Topics setzen
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+        run: |
+          for repo in $(jq -r 'keys[]' docs/vitrine.json); do
+            jq -c --arg r "$repo" '{description: .[$r].description}' docs/vitrine.json | gh api -X PATCH "repos/$repo" --input - > /dev/null
+            jq -c --arg r "$repo" '{names: .[$r].topics}' docs/vitrine.json | gh api -X PUT "repos/$repo/topics" --input - > /dev/null
+            echo "$repo: gesetzt"
+          done
