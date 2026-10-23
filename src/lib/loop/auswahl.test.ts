@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ausLinear, codexRueckfall, codexStarts, freigegebene, gemergteFuerLaufende, gemergteIds, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
+import { auftragsKommentar, ausLinear, codexRueckfall, codexStarts, freigegebene, gemergteFuerLaufende, gemergteIds, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -308,4 +308,23 @@ test("Test: Codex ohne Commit nach 60 Minuten fällt an Claude zurück (SIN-936)
   assert.equal(codexRueckfall([bei], [{ titel: "feat: x (SIN-936)", branch: "codex/auftrag" }], nach(90)).length, 0);
   assert.equal(codexRueckfall([bei], [{ titel: "", branch: "claude/sin-936" }], nach(90)).length, 1);
   assert.equal(codexRueckfall([{ ...bei, delegate: null }], [], nach(90)).length, 0);
+});
+
+const produktIssue: LinearIssue = { id: "x", identifier: "SIN-1005", title: "T", description: null, priority: 3, url: "https://linear.app/x/issue/SIN-1005", createdAt: "2026-10-01T00:00:00Z", labels: ["claude"], stateType: "unstarted", blockiertVon: [] };
+
+test("issueText für ein Produkt-Repo nennt auftrag.ts nicht, für den Leitstand weiter", () => {
+  assert.doesNotMatch(issueText(produktIssue, "", false).body, /auftrag\.ts/);
+  assert.match(issueText(produktIssue, "", false).body, /ersten Kommentar/);
+  assert.match(issueText(produktIssue).body, /scripts\/loop\/auftrag\.ts SIN-1005/);
+});
+
+test("Auftrags-Kommentar enthält Auftrag (technisch) und Haken; Kosten oder Personen ersetzen ihn durch den Hinweis", () => {
+  const ok = auftragsKommentar("Baue X in src/x.ts.\n\n## Fertig, wenn\n- [ ] Test A\n- [x] Test B");
+  assert.deepEqual(ok.gesperrt, []);
+  assert.match(ok.text, /## Auftrag \(technisch\)\nBaue X in src\/x\.ts\./);
+  assert.match(ok.text, /- \[ \] Test A\n- \[x\] Test B/);
+  const geld = auftragsKommentar("Guthaben 12,40 €\n- [ ] A");
+  assert.deepEqual(geld.gesperrt, ["Geldbetrag (€)"]);
+  assert.match(geld.text, /vertrauliche Teile, Haken genügen/);
+  assert.deepEqual(auftragsKommentar("Sinan: mach es billig\n- [ ] A").gesperrt, ["Sinan-Zitat"]);
 });

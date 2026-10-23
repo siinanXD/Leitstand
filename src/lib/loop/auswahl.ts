@@ -5,6 +5,7 @@
 
 import { passend, stufe } from "../kontingent/prioritaet";
 import { nurBelege } from "../belege/belege";
+import { pruefePrText } from "../pr-text/pr-text";
 import { istTeil, leseHaken, type Entscheidung } from "./haken";
 
 export const PROJEKT ="Leitstand";
@@ -214,7 +215,7 @@ export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max:
  * Text des GitHub-Issues, das den Worker (claude.yml) startet (SIN-911): GitHub ist öffentlich, deshalb nur Titel,
  * Linear-Link und Fertig-Haken. Den vollen Auftrag holt der Worker über die Linear-API.
  */
-export function issueText(i: LinearIssue, hinweise = ""): { title: string; body: string } {
+export function issueText(i: LinearIssue, hinweise = "", eigenes = true): { title: string; body: string } {
   const kurz = i.identifier.toLowerCase();
   const haken = leseHaken(i.description);
   return {
@@ -223,7 +224,10 @@ export function issueText(i: LinearIssue, hinweise = ""): { title: string; body:
       marker(i.identifier),
       `Linear: ${i.url}`,
       "",
-      `Der volle Auftrag steht nur in Linear. Lies ihn zuerst mit: npx tsx scripts/loop/auftrag.ts ${i.identifier}`,
+      // SIN-1005: Produkt-Repos haben kein auftrag.ts; dort steht der Auftrag im ersten Kommentar dieses Issues.
+      eigenes
+        ? `Der volle Auftrag steht nur in Linear. Lies ihn zuerst mit: npx tsx scripts/loop/auftrag.ts ${i.identifier}`
+        : "Der volle Auftrag steht im ersten Kommentar dieses Issues (Auftrag (technisch) und Fertig-Haken).",
       "",
       "## Fertig, wenn",
       ...(haken.length ? haken.map((h) => `- [${h.erledigt ? "x" : " "}] ${h.text}`) : ["(keine Haken)"]),
@@ -235,6 +239,29 @@ export function issueText(i: LinearIssue, hinweise = ""): { title: string; body:
     ].join("\n"),
   };
 }
+
+/**
+ * SIN-1005: Auftrag für Produkt-Repos ohne auftrag.ts, als erster Kommentar im öffentlichen GitHub-Issue.
+ * Treffer der Verbotsliste (Kosten, Personen) ersetzen den Text durch den Hinweis, dass die Haken genügen;
+ * `gesperrt` nennt dann die Treffer (der Dispatcher setzt `needs-human`).
+ */
+export function auftragsKommentar(beschreibung: string | null | undefined): { text: string; gesperrt: string[] } {
+  const zeilen = String(beschreibung ?? "").replace(/\\([\[\]])/g, "$1").split("\n");
+  const ende = zeilen.findIndex((z) => /^#{1,4}\s*Fertig/i.test(z) || /^\s*[-*]\s+\[[ xX]\]\s/.test(z));
+  const umsetzung = zeilen.slice(0, ende < 0 ? zeilen.length : ende).join("\n").trim();
+  const haken = leseHaken(beschreibung);
+  const text = [
+    "## Auftrag (technisch)",
+    umsetzung || "(keine Beschreibung)",
+    "",
+    "## Fertig, wenn",
+    ...(haken.length ? haken.map((h) => `- [${h.erledigt ? "x" : " "}] ${h.text}`) : ["(keine Haken)"]),
+  ].join("\n");
+  const treffer = pruefePrText(text);
+  return treffer.length ? { text: GESPERRTER_AUFTRAG, gesperrt: treffer } : { text, gesperrt: [] };
+}
+
+export const GESPERRTER_AUFTRAG = "Auftrag enthält vertrauliche Teile, Haken genügen.";
 
 /**
  * Grund für `dispatch uebersprungen`, wenn nichts startbar ist (SIN-654): belegte Plätze mit Kennungen,
