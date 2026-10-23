@@ -41,7 +41,9 @@ globalThis.fetch = async (input, init = {}) => {
     return json([]);
   }
   if (u.hostname === 'api.github.com') {
+    if (u.pathname.startsWith('/repos/siinanXD/Content-Agent-Lernapp/') && (u.pathname.endsWith('/contents/.github/workflows/claude.yml') || u.pathname.endsWith('/actions/secrets/CLAUDE_CODE_OAUTH_TOKEN'))) return json({});
     if (u.pathname.includes('matching-refs')) return json([]);
+    if (u.pathname.endsWith('/statuses')) return json([]);
     if (u.pathname.endsWith('/pulls')) return json(fall === 'pr' && u.searchParams.get('state') === 'open' ? [{ number: 99, title: 'Review (SIN-1)', head: { ref: 'claude/sin-1', sha: 'a'.repeat(40) }, labels: [], created_at: '2099-01-01' }] : []);
     if (u.pathname.endsWith('/pulls/99/files')) return json([{ filename: 'docs/reviews/1.md' }]);
     if (u.pathname.endsWith('/issues')) return json(fall === 'spiegel' ? [{ number: 99, state: 'open', body: '<!-- linear:SIN-1 -->' }] : []);
