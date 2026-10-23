@@ -22,6 +22,8 @@ if (!nummer || !/^\d+$/.test(nummer) || !basis || !head) {
   console.error("Aufruf: pruefer.ts <PR-Nummer> <Basis-SHA> <Head-SHA>");
   process.exit(2);
 }
+// SIN-939: Produkt-PR (gh liest GH_REPO) landet im Ledger unter dem Produkt, nicht unter leitstand.
+const produkt = /\/Content-Agent-Lernapp$/i.test(env.GH_REPO ?? "") ? "lernapp" : "leitstand";
 const sh = (cmd: string, ...a: string[]) => execFileSync(cmd, a, { encoding: "utf8", maxBuffer: 50_000_000 });
 
 async function modell(text: string, name: string): Promise<{ ergebnis: Ergebnis; ein: number; aus: number }> {
@@ -76,7 +78,7 @@ async function ledger(ok: boolean, payload: unknown) {
     method: "POST",
     headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     // SIN-848: `grund` ist die Pflichtspalte für rote Läufe (SIN-617); `payload` hält das Ergebnis als Structured JSON.
-    body: JSON.stringify({ project: "leitstand", agent: "pruefer", step: "pruefer", status: ok ? "ok" : "fehler", issue: null, pr: Number(nummer), run_id: env.GITHUB_RUN_ID ?? null, grund: ok ? null : String((payload as { grund?: string })?.grund ?? "unbekannt").slice(0, 500), payload }),
+    body: JSON.stringify({ project: produkt, agent: "pruefer", step: "pruefer", status: ok ? "ok" : "fehler", issue: null, pr: Number(nummer), run_id: env.GITHUB_RUN_ID ?? null, grund: ok ? null : String((payload as { grund?: string })?.grund ?? "unbekannt").slice(0, 500), payload }),
     signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) console.log(`::warning::loop_events: HTTP ${res.status}`);

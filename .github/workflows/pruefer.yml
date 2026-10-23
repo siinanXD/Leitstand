@@ -2,17 +2,26 @@
 # Ergebnis als PR-Kommentar. Echte Risiken setzen risk:high + Marker pruefer:hoch, andere Funde pruefer:offen (SIN-909).
 # „Bestanden“ entfernt nur pruefer:offen; risk:high senkt allein das Gate (automerge.yml), und nur mit Marker. Kosten landen in loop_events.
 # Prüfer/Abhängigkeiten vom Basis-Commit; PR-Commits werden nur als Diff gelesen, nie ausgecheckt.
+# SIN-939: Ein Prüfer für alle Produkt-Repos. workflow_dispatch (repo, pr) und repository_dispatch `pruefer-anstoss`
+# (client_payload: repo, pr; Anstoß aus pruefer-anstoss.yml der Lern-App) prüfen Content-Agent-Lernapp wie den Leitstand.
+# Das Ergebnis steht als Kommentar im Produkt-PR; dessen Gate (pr-gate.yml) verlangt den Beleg (scripts/pruefer/lernapp-pruefer.md).
 name: pruefer
 # SIN-932: PR-Nummer im Laufnamen, damit repair.yml auch dispatchte Läufe zuordnen kann.
-run-name: pruefer PR ${{ github.event.pull_request.number || inputs.pr }}
+# SIN-939: Produkt-Läufe nennen das Repo, damit repair.yml sie nicht einem gleichnummerierten Leitstand-PR zuordnet.
+run-name: pruefer${{ (github.event.client_payload.repo || inputs.repo) && format(' {0}', github.event.client_payload.repo || inputs.repo) || '' }} PR ${{ github.event.pull_request.number || github.event.client_payload.pr || inputs.pr }}
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review, edited]
+  repository_dispatch:
+    types: [pruefer-anstoss]
   workflow_dispatch:
     inputs:
       pr:
         description: PR-Nummer (Trockenlauf ohne OpenAI)
         required: true
+      repo:
+        description: Produkt-Repo (leer = dieses Repo, sonst z. B. siinanXD/Content-Agent-Lernapp)
+        default: ''
       pruefen:
         description: Echte erneute Prüfung des aktuellen Linear-Auftrags
         type: boolean
@@ -21,26 +30,35 @@ permissions:
   contents: read
   pull-requests: write
 concurrency:
-  group: pruefer-${{ github.event.pull_request.number || inputs.pr }}
+  group: pruefer-${{ github.event.client_payload.repo || inputs.repo || github.repository }}-${{ github.event.pull_request.number || github.event.client_payload.pr || inputs.pr }}
   cancel-in-progress: true
 jobs:
   pruefen:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || ((startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'codex/')) && github.event.pull_request.head.repo.full_name == github.repository && ((github.event.action == 'edited' && github.event.changes.base) || (!github.event.pull_request.draft && github.event.action != 'edited'))))
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || ((startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'codex/')) && github.event.pull_request.head.repo.full_name == github.repository && ((github.event.action == 'edited' && github.event.changes.base) || (!github.event.pull_request.draft && github.event.action != 'edited'))))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PR: ${{ github.event.pull_request.number || inputs.pr }}
+      PR: ${{ github.event.pull_request.number || github.event.client_payload.pr || inputs.pr }}
+      # SIN-939: gh liest GH_REPO (pr view/comment/edit, label create); der Schritt ziel lässt nur freigegebene Repos zu.
+      GH_REPO: ${{ github.event.client_payload.repo || inputs.repo || github.repository }}
     steps:
       - id: ziel
         name: PR-Ziel validieren
         uses: actions/github-script@v7
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           script: |
-            if (!['pull_request_target', 'workflow_dispatch'].includes(context.eventName) || context.ref !== 'refs/heads/main' || context.payload.repository?.default_branch !== 'main') throw new Error('Workflow muss von main stammen');
+            if (!['pull_request_target', 'workflow_dispatch', 'repository_dispatch'].includes(context.eventName) || context.ref !== 'refs/heads/main' || context.payload.repository?.default_branch !== 'main') throw new Error('Workflow muss von main stammen');
             if (!/^[1-9][0-9]*$/.test(process.env.PR || '')) throw new Error('Ungültige PR-Nummer');
-            const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: Number(process.env.PR)});
-            const repo = `${context.repo.owner}/${context.repo.repo}`.toLowerCase();
+            const eigen = `${context.repo.owner}/${context.repo.repo}`;
+            const zielRepo = process.env.GH_REPO || eigen;
+            // Produkt-Repos des Owners (SIN-939); der Diff fremder Repos wird nur gelesen, nie ausgecheckt.
+            if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(zielRepo) || ![eigen, `${context.repo.owner}/Content-Agent-Lernapp`].some(r => r.toLowerCase() === zielRepo.toLowerCase())) throw new Error('Repository nicht freigegeben');
+            const fremd = zielRepo.toLowerCase() !== eigen.toLowerCase();
+            if (fremd && context.eventName === 'pull_request_target') throw new Error('PR-Ereignis nur aus diesem Repository');
+            const [zielOwner, zielName] = zielRepo.split('/');
+            const {data: pr} = await github.rest.pulls.get({owner: zielOwner, repo: zielName, pull_number: Number(process.env.PR)});
+            const repo = zielRepo.toLowerCase();
             if (pr.state !== 'open' || pr.head.repo?.full_name.toLowerCase() !== repo || pr.base.repo?.full_name.toLowerCase() !== repo) throw new Error('Nur offene PRs aus demselben Repository');
             if (!/^(claude|codex)\//.test(pr.head.ref)) throw new Error('Kein unterstützter Worker-Branch');
             if (context.eventName !== 'workflow_dispatch' && pr.draft) throw new Error('Draft wird nicht geprüft');
@@ -50,6 +68,7 @@ jobs:
             const {data: branch} = await github.rest.repos.getBranch({...context.repo, branch: 'main'});
             if (!branch.protected) throw new Error('main ist nicht geschützt');
             if (branch.commit.sha !== context.sha) throw new Error('Workflow muss den aktuellen geschützten main-Commit verwenden');
+            if (fremd && !(await github.rest.repos.getBranch({owner: zielOwner, repo: zielName, branch: 'main'})).data.protected) throw new Error('main des Ziel-Repos ist nicht geschützt');
             // PR-Metadaten können noch den früheren main-Stand nennen; sie bestimmen nie den ausführbaren Prüfer.
             for (const [name, sha] of [['basis', branch.commit.sha], ['head', pr.head.sha], ['pr_basis', pr.base.sha]]) {
               if (!/^[a-f0-9]{40}$/i.test(sha)) throw new Error('Ungültige Commit-SHA');
@@ -81,15 +100,16 @@ jobs:
       - name: PR-Objekte nur zum Lesen laden
         env:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
-          BASE_SHA: ${{ steps.ziel.outputs.basis }}
+          # Eigenes Repo: Diff gegen den geschützten main (SIN-880); Produkt-Repo (SIN-939): gegen die PR-Basis des Produkts.
+          BASE_SHA: ${{ env.GH_REPO == github.repository && steps.ziel.outputs.basis || steps.ziel.outputs.pr_basis }}
           HEAD_SHA: ${{ steps.ziel.outputs.head }}
-        run: git -c credential.helper='!gh auth git-credential' fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+        run: git -c credential.helper='!gh auth git-credential' fetch --no-tags "https://github.com/$GH_REPO" "$BASE_SHA" "$HEAD_SHA"
       - id: lauf
         run: |
           node --import tsx scripts/pruefer/pruefer.ts "$PR" "$BASE_SHA" "$HEAD_SHA"
         env:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
-          BASE_SHA: ${{ steps.ziel.outputs.basis }}
+          BASE_SHA: ${{ env.GH_REPO == github.repository && steps.ziel.outputs.basis || steps.ziel.outputs.pr_basis }}
           HEAD_SHA: ${{ steps.ziel.outputs.head }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.pruefen && '1' || '' }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
@@ -110,22 +130,22 @@ jobs:
           HEAD_SHA: ${{ steps.ziel.outputs.head }}
           PR_BASE_SHA: ${{ steps.ziel.outputs.pr_basis }}
         run: |
-          AKTUELL=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq '[.head.sha, .base.sha, .base.ref, .head.repo.full_name, .base.repo.full_name, .state] | join(" ")')
+          AKTUELL=$(gh api "repos/$GH_REPO/pulls/$PR" --jq '[.head.sha, .base.sha, .base.ref, .head.repo.full_name, .base.repo.full_name, .state] | join(" ")')
           MAIN=$(gh api "repos/${{ github.repository }}/branches/main" --jq '[.commit.sha, .protected] | join(" ")')
-          if [ "$AKTUELL" != "$HEAD_SHA $PR_BASE_SHA main ${{ github.repository }} ${{ github.repository }} open" ] || [ "$MAIN" != "$BASE_SHA true" ]; then
+          if [ "$AKTUELL" != "$HEAD_SHA $PR_BASE_SHA main $GH_REPO $GH_REPO open" ] || [ "$MAIN" != "$BASE_SHA true" ]; then
             echo 'Prüfergebnis veraltet: Head oder Basis geändert'
             exit 1
           fi
-          ALT=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --paginate --jq '.[] | select((.user.login == "${{ github.repository_owner }}" or .user.login == "github-actions[bot]") and ((.body // "") | startswith("<!-- pruefer-zweites-modell -->\n"))) | .id' | tail -n 1)
+          ALT=$(gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --jq '.[] | select((.user.login == "${{ github.repository_owner }}" or .user.login == "github-actions[bot]") and ((.body // "") | startswith("<!-- pruefer-zweites-modell -->\n"))) | .id' | tail -n 1)
           if [ -n "$ALT" ]; then
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$ALT" -F body=@pruefer-kommentar.md
+            gh api -X PATCH "repos/$GH_REPO/issues/comments/$ALT" -F body=@pruefer-kommentar.md
           else
             gh pr comment "$PR" --body-file pruefer-kommentar.md
           fi
           # SIN-909: risk:high nur bei echtem Risiko, mit Marker pruefer:hoch (nur wenn kein von Hand gesetztes risk:high da ist);
           # sonst pruefer:offen. Bestanden entfernt nur pruefer:offen, nie risk:high (das senkt allein das Gate).
-          if [ "${{ github.event_name }}" = "pull_request_target" -o "${{ inputs.pruefen }}" = "true" ]; then
-            LABELS=$(gh api "repos/${{ github.repository }}/issues/$PR/labels" --jq '.[].name') \
+          if [ "${{ github.event_name }}" = "pull_request_target" -o "${{ github.event_name }}" = "repository_dispatch" -o "${{ inputs.pruefen }}" = "true" ]; then
+            LABELS=$(gh api "repos/$GH_REPO/issues/$PR/labels" --jq '.[].name') \
               node --import tsx scripts/pruefer/labels.ts | while read -r AKTION LABEL; do
                 if [ "$AKTION" = add ]; then
                   gh label create "$LABEL" --color 6e7681 --description "Prüfer (SIN-909)" 2>/dev/null || true

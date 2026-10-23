@@ -149,6 +149,7 @@ test("SIN-880: echter Veröffentlichungs-Guard sperrt geänderten Head, Ziel, Sn
   const cwd = mkdtempSync(join(tmpdir(), "pruefer-publish-"));
   const block = workflow.split('          AKTUELL=$(gh api')[1].split('          ALT=')[0];
   const guard = ('AKTUELL=$(gh api' + block).replaceAll('${{ github.repository }}', repo.full_name);
+  assert.doesNotMatch(guard, /github\.repository\b(?!_owner)/);
   try {
     writeFileSync(join(cwd, "gh"), '#!/bin/sh\ncase "$*" in *branches/main*) printf "%s" "$FIXTURE_MAIN";; *) printf "%s" "$FIXTURE_PR";; esac\n', { mode: 0o755 });
     const head = "a".repeat(40), base = "b".repeat(40), snapshot = "c".repeat(40);
@@ -166,7 +167,7 @@ test("SIN-880: echter Veröffentlichungs-Guard sperrt geänderten Head, Ziel, Sn
     ] as const) {
       const r = spawnSync("bash", ["-e", "-c", guard], { cwd, encoding: "utf8", env: {
         ...process.env, PATH: `${cwd}:${process.env.PATH}`, PR: "308", BASE_SHA: base, HEAD_SHA: head,
-        PR_BASE_SHA: snapshot, FIXTURE_PR: pr, FIXTURE_MAIN: main,
+        GH_REPO: repo.full_name, PR_BASE_SHA: snapshot, FIXTURE_PR: pr, FIXTURE_MAIN: main,
       } });
       assert.equal(r.status, ok ? 0 : 1, `${pr} / ${main}: ${r.stderr}`);
     }
@@ -176,7 +177,7 @@ test("SIN-880: echter Veröffentlichungs-Guard sperrt geänderten Head, Ziel, Sn
 test("Auto-Merge bricht den PR-Prüfer nicht ab, repair kennt dispatchte Prüfer-Läufe", () => {
   const automerge = readFileSync(".github/workflows/automerge.yml", "utf8");
   const repair = readFileSync(".github/workflows/repair.yml", "utf8");
-  assert.match(workflow, /\nrun-name: pruefer PR \$\{\{ github\.event\.pull_request\.number \|\| inputs\.pr \}\}\n/);
+  assert.match(workflow, /\nrun-name: pruefer\$\{\{ .*\}\} PR \$\{\{ github\.event\.pull_request\.number \|\| github\.event\.client_payload\.pr \|\| inputs\.pr \}\}\n/);
   assert.match(automerge, /prueferLaeuftSchon = context\.eventName === "pull_request_target" && \["opened", "reopened", "synchronize", "ready_for_review"\]/);
   assert.match(automerge, /!angefordert && context\.eventName !== "issue_comment" && !prueferLaeuftSchon/);
   assert.match(repair, /\["pull_request_target","workflow_dispatch"\]/);
