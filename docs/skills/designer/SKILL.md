@@ -19,7 +19,7 @@ Meldet der Hausmeister (SIN-551) Screens ohne Figma-Frame oder mit Altfarben, ar
 
 - Immer: Vorher/Nachher je berührter Route, Handy und Desktop, aus Playwright gegen Fixture-Daten (nie echte Nutzerdaten).
 - Clip nur, wenn eine Interaktion geändert wird oder mehr als eine Route in einem Ablauf (`clipSinnvoll`): 10–20 s, roher Mitschnitt.
-- Ereignis in `loop_events`: `payload.art = "nachweis"`, `issue`, `routen[{route, vorher{handy,desktop}, nachher{handy,desktop}}]`, `clip`, `dateien[{datei, was}]`, `diff`. Bilder und Clip als https-Adresse aus Supabase Storage `nachweise/<ISSUE-ID>/`.
+- Ereignis in `loop_events`: `payload.art = "nachweis"`, `issue`, `routen[{route, vorher{handy,desktop}, nachher{handy,desktop}}]`, `clip`, `planungsbild` (Soll aus Figma, SIN-943), `dateien[{datei, was}]`, `diff`. Bilder und Clip als https-Adresse aus Supabase Storage `nachweise/<ISSUE-ID>/`.
 - Anzeige: `/aufgabe/<ISSUE-ID>`, Abschnitt „Was sich geändert hat“.
 
 ## Abnahme nach dem Bauen (SIN-580)

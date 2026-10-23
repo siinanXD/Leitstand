@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { brauchtNachweis, clipSinnvoll, parseNachweis, routeVonDatei, sollIstMarkdown } from "./nachweis";
+import { brauchtNachweis, clipSinnvoll, parseNachweis, routeVonDatei } from "./nachweis";
 
 test("Nachweis nur für Frontend-Dateien", () => {
   assert.equal(brauchtNachweis(["docs/x.md", "scripts/a.ts"]), false);
@@ -44,9 +44,8 @@ test("Nachweis lesen: jüngster, nur https, nur diese Aufgabe, nur Art nachweis"
   assert.deepEqual(n?.dateien, [{ datei: "src/app/page.tsx", was: "Karte" }]);
   assert.equal(parseNachweis([zeile(1, { clip: "http://unsicher/c.webm" })], "SIN-561")?.clip, null);
   assert.equal(parseNachweis("nix", "SIN-561"), null);
-  // SIN-943: Planungsbild steht neben dem Vorschaubild; nur https.
-  const mit = parseNachweis([zeile(1, { planungsbild: "https://x.supabase.co/p.png" })], "SIN-561")!;
-  assert.match(sollIstMarkdown(mit) ?? "", /p\.png\) \| !\[Vorschaubild\]\(https:\/\/x\.supabase\.co\/b\.png\)/);
-  assert.equal(sollIstMarkdown(parseNachweis([zeile(1, { planungsbild: "http://x/p.png" })], "SIN-561")!), null);
+  // SIN-943: Planungsbild (Soll) wird gelesen; nur https.
+  assert.equal(parseNachweis([zeile(1, { planungsbild: "https://x.supabase.co/p.png" })], "SIN-561")?.planungsbild, "https://x.supabase.co/p.png");
+  assert.equal(parseNachweis([zeile(1, { planungsbild: "http://x/p.png" })], "SIN-561")?.planungsbild, null);
   assert.equal(parseNachweis([], "SIN-561"), null);
 });

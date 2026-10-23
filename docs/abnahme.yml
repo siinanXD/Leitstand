@@ -16,6 +16,12 @@
   art: datei
   pfad: src/lib/vorarbeiter/planungsbild.ts
   enthaelt: legeMitPlanungsbild
+- id: leitstand-nachweis-planungsbild
+  produkt: leitstand
+  titel: Die Aufgabenseite zeigt das Planungsbild (Soll) im Nachweis (SIN-943)
+  art: datei
+  pfad: src/app/aufgabe/[id]/page.tsx
+  enthaelt: nachweis.planungsbild
 - id: leitstand-planer-kennung
   produkt: leitstand
   titel: Der Planer gleicht Fertig-Listen-Punkte an einer festen Kennung ab, nicht am Titel (SIN-890)

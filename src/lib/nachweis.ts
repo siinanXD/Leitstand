@@ -20,13 +20,6 @@ export type Ansicht = { handy: string | null; desktop: string | null };
 export type NachweisRoute = { route: string; vorher: Ansicht; nachher: Ansicht };
 export type Nachweis = { zeitpunkt: string; routen: NachweisRoute[]; clip: string | null; planungsbild: string | null; dateien: { datei: string; was: string | null }[]; diff: string | null };
 
-/** Soll (Planungsbild aus Figma, SIN-943) neben Ist (Vorschaubild) als Markdown-Tabelle für den PR; ohne Planungsbild oder Vorschaubild `null`. */
-export function sollIstMarkdown(n: Nachweis): string | null {
-  const ist = n.routen.map((r) => r.nachher.desktop).find((u) => u);
-  if (!n.planungsbild || !ist) return null;
-  return `| Soll (Planung) | Ist (Vorschau) |\n| --- | --- |\n| ![Planungsbild](${n.planungsbild}) | ![Vorschaubild](${ist}) |`;
-}
-
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
 const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
 const https = (v: unknown): string | null => {
