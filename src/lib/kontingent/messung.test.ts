@@ -25,7 +25,7 @@ test("Vercel: Zählung summiert mehrere Projekte (Fixture mit 2 Projekten)", () 
   assert.deepEqual(parseQuotas([q])[0], q);
 });
 
-test("API-Guthaben gerechnet = Einzahlung − Verbrauch; ohne Admin-Key nicht messbar, kein Wert", () => {
+test("Test: API-Guthaben `gerechnet` = Einzahlung − Verbrauch; fehlender Admin-Key → Zeile „nicht messbar: Admin-Key fehlt“, kein Wert.",() => {
   const g = apiGuthaben("OpenAI", 50, 12.5, true, jetzt);
   assert.ok(g.art === "wert" && g.wert === 37.5 && g.gesamt === 50 && g.quelle === "gerechnet");
   const leer = apiGuthaben("OpenAI", 50, 80, true, jetzt);
@@ -45,7 +45,7 @@ test("nicht messbar wird gelesen, ohne dass parseGuthaben einen Wert erfindet", 
   assert.deepEqual(parseNichtMessbar(JSON.stringify([n])), [{ dienst: "OpenAI", grund: "Admin-Key fehlt" }]);
 });
 
-test("Abo-Zeilen tragen quelle schaetzung und werden als Schätzung beschriftet", () => {
+test("Test: Abo-Zeilen tragen `quelle: schaetzung` und werden auf /kosten als Schätzung beschriftet.",() => {
   const q: Quota = { name: "ChatGPT-Abo", used: 40, limit: 100, schaetzung: true, quelle: "schaetzung" };
   assert.equal(q.quelle, "schaetzung");
   assert.equal(q.schaetzung, true);

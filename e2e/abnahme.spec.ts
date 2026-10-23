@@ -106,6 +106,11 @@ for (const [groesse, viewport] of GROESSEN) {
       expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze()).violations).toEqual([]);
     });
 
+    test("Test: axe ohne Fehler auf `/kosten`.", async ({ page }) => {
+      await oeffne(page, "/kosten");
+      expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+    });
+
     test("Aufgabe: Weg zurück zum Start, Details eingeklappt und Kennung erst danach sichtbar", async ({ page }) => {
       await oeffne(page, "/aufgabe/SIN-456");
       await expect(page.getByText("SIN-456", { exact: true })).toBeHidden();

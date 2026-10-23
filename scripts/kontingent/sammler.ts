@@ -98,7 +98,7 @@ async function main() {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt");
   // Ohne Messwert bleibt die Zeile unberührt; neue Werte werden nach Name in die bestehenden quotas gemischt.
   // Die alten, je Projekt gezählten Konto-Zeilen der Zeile `leitstand` fallen weg (zeigten ein falsches Tageslimit).
-  await schreibe("leitstand", team ? [team] : [], guthaben, ["Deploys pro Tag", "Deploys pro Tag (alle Produkte)"]);
+  await schreibe("leitstand", team ? [team] : [], guthaben, team ? ["Deploys pro Tag", "Deploys pro Tag (alle Produkte)"] : []);
   for (const [id, quotas] of Object.entries(je)) if (id !== "leitstand" && quotas.length) await schreibe(id, quotas, []);
 }
 
