@@ -28,6 +28,18 @@
   art: datei
   pfad: src/lib/agent-testnutzer/sitzung.ts
   enthaelt: baueStorageState
+- id: leitstand-testnutzer-routen
+  produkt: leitstand
+  titel: Die Routenliste des Testnutzers liegt im Repo (SIN-1031)
+  art: datei
+  pfad: e2e/routes.ts
+  enthaelt: ROUTEN
+- id: leitstand-testnutzer-abdeckung
+  produkt: leitstand
+  titel: Der Abdeckungstest verlangt jede page.tsx in e2e/routes.ts (SIN-1031)
+  art: datei
+  pfad: src/lib/testnutzer/routen.test.ts
+  enthaelt: jede page.tsx unter src/app
 - id: leitstand-aufbauphase-integration
   produkt: leitstand
   titel: Gate-Simulation prüft Altfristen, high, Draft, Stopplabel und rote Checks; kein Live-Nachweis (SIN-855)
