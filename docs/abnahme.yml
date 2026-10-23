@@ -1040,3 +1040,10 @@
   art: datei
   pfad: .github/workflows/pruefer.yml
   enthaelt: rerun-failed-jobs
+
+# SIN-1013
+- id: leitstand-entscheidungen-seite
+  produkt: leitstand
+  titel: Die Seite /entscheidungen antwortet (SIN-1013)
+  art: http
+  url: ${LEITSTAND_URL}/entscheidungen
