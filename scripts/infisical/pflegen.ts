@@ -64,7 +64,7 @@ async function abgleichLinear(soll: { titel: string; beschreibung: string }[]) {
   if (fertig) for (const i of d.issues.nodes.filter((x) => zu.has(x.title))) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: i.id, s: fertig.id });
 }
 
-async function ereignis(status: "ok" | "failed", grund: string) {
+async function ereignis(status: "ok" | "fehler", grund: string) {
   if (DRY || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return;
   const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null;
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
@@ -126,6 +126,6 @@ async function main() {
 
 main().catch(async (e) => {
   console.error(e instanceof Error ? e.message : e);
-  await ereignis("failed", e instanceof Error ? e.message.slice(0, 200) : "Fehler").catch(() => undefined);
+  await ereignis("fehler", e instanceof Error ? e.message.slice(0, 200) : "Fehler").catch(() => undefined);
   process.exit(1);
 });
