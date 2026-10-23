@@ -13,6 +13,7 @@
  * Ohne Schlüssel oder Preis bleibt es bei der Messung und der Lauf grün.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { frageStrukturiert, schemaVorschlag } from "../../src/lib/strukturiert/strukturiert";
 import { aufrufKosten, SPUR_C_MODELL } from "../../src/lib/vorarbeiter/vorarbeiter";
 import { DECKEL_EUR, ereignisZeile, kachelPayload, kalenderwoche, leseVorschlag, messe, schlechtester, urteil, vorschlagsPrompt, zeileEinfuegen, zeileEntfernen, type Ereignis, type Nachmessung, type Pr, type Vorschlag, type Woche } from "../../src/lib/lernen/schleife";
 
@@ -63,19 +64,11 @@ async function vorschlagen(ziel: NonNullable<ReturnType<typeof schlechtester>>, 
   }
   const werte = vorwoche?.produkte.find((p) => p.produkt === ziel.produkt)?.werte ?? null;
   const rote = await roteLaeufe(repos[0]).catch(() => []);
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: SPUR_C_MODELL, max_tokens: 500, messages: [{ role: "user", content: vorschlagsPrompt(ziel, werte, lesen("docs/autonomy/LEHREN.md"), rote, verworfen) }] }),
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!res.ok) throw new Error(`Modell: ${res.status}`);
-  const a = (await res.json()) as { content?: { text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
-  const eur = aufrufKosten(a.usage?.input_tokens ?? 0, a.usage?.output_tokens ?? 0, preis, kurs);
+  const schema = schemaVorschlag(JSON.parse(lesen("docs/schemas/lernen.json")));
+  const a = await frageStrukturiert<unknown>({ key: env.ANTHROPIC_API_KEY, modell: SPUR_C_MODELL, maxTokens: 500, prompt: vorschlagsPrompt(ziel, werte, lesen("docs/autonomy/LEHREN.md"), rote, verworfen), schema });
+  const eur = aufrufKosten(a.ein, a.aus, preis, kurs);
   if (eur > DECKEL_EUR) console.warn(`Warnung: ${eur} € über dem Deckel von ${DECKEL_EUR} €.`);
-  const t = a.content?.[0]?.text ?? "";
-  // shortcut: erstes JSON-Objekt der Antwort, bei Mischtext auf strukturierte Ausgabe umstellen.
-  const v = leseVorschlag(JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)), ziel, verworfen, eur);
+  const v = leseVorschlag(a.wert, ziel, verworfen, eur);
   if (!v) console.warn("Antwort ungültig oder schon verworfen, kein Vorschlag diese Woche.");
   return v;
 }

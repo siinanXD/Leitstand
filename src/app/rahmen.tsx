@@ -14,6 +14,7 @@ import { ladeChef, ladeQuelle, type Laden, type Lesequelle } from "@/lib/supabas
 import type { Quelle } from "@/lib/uebersicht";
 import { datenStand, veraltet } from "@/lib/veraltet";
 import { zeitInWorten } from "@/lib/zeit";
+import { ChatBubble } from "./chat-bubble";
 import { Kopf } from "./kopf";
 
 export const uhrzeit = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
@@ -162,6 +163,7 @@ export function Rahmen({ aktiv, children }: { aktiv: string; children: (quelle: 
         </p>
       )}
       {children(quelleOk, geladen.jetzt, { wartende, fehler: freigaben.fehler, freigeben: freigaben.freigeben }, pause, geladen.laden.zustand, geladen.chef, stand)}
+      <ChatBubble />
     </>
   );
 }
