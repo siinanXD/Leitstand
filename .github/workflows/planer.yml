@@ -47,5 +47,8 @@ jobs:
           VORARBEITER_PREIS_EIN_USD: ${{ vars.VORARBEITER_PREIS_EIN_USD }}
           VORARBEITER_PREIS_AUS_USD: ${{ vars.VORARBEITER_PREIS_AUS_USD }}
           KOSTEN_USD_EUR: ${{ vars.KOSTEN_USD_EUR }}
+          ERGEBNIS_DATEI: /tmp/planer-ergebnis.json
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: npx tsx scripts/vorarbeiter/vorarbeiter.ts
+      - name: Ergebnis gegen Schema prüfen (SIN-1045)
+        run: npx tsx scripts/autonomy/schema.ts planer /tmp/planer-ergebnis.json

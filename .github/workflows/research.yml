@@ -1,0 +1,35 @@
+name: research
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Linear-Kennung, z. B. SIN-826"
+        required: true
+      frage:
+        description: "Suchwort"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Research läuft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ERGEBNIS_DATEI: /tmp/research-ergebnis.json
+          ISSUE: ${{ inputs.issue }}
+          FRAGE: ${{ inputs.frage }}
+        run: npx tsx scripts/autonomy/research.ts "$ISSUE" "$FRAGE"
+      - name: Ergebnis gegen Schema prüfen (SIN-1045)
+        run: npx tsx scripts/autonomy/schema.ts research /tmp/research-ergebnis.json
