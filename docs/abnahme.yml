@@ -1055,3 +1055,11 @@
   art: datei
   pfad: supabase/migrations/leitstand/20261023160000_chat.sql
   enthaelt: chat_aktionen
+
+# SIN-865
+- id: chat-sofort-weg
+  produkt: leitstand
+  titel: Der Sofort-Weg der Chatbubble beantwortet Statusfragen aus Snapshot und Aufgaben ohne Modell (SIN-865)
+  art: datei
+  pfad: src/lib/chat/sofort.ts
+  enthaelt: sofortAntwort

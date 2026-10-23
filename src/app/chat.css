@@ -1,0 +1,60 @@
+/* Chatbubble (SIN-865): nur Tokens, 1-px-Linien, keine Schatten. Unten rechts, auf dem Handy über die volle Breite. */
+.chat {
+  position: fixed;
+  right: var(--space-16);
+  bottom: var(--space-16);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-8);
+  max-width: calc(100vw - 2 * var(--space-16));
+}
+
+.chat-fenster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: min(380px, calc(100vw - 2 * var(--space-16)));
+  max-height: 70vh;
+  padding: var(--space-12);
+  background: var(--color-bg-surface);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+}
+
+.chat-faden {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.chat-leer,
+.chat-wer {
+  color: var(--color-text-secondary);
+}
+
+.chat-nachricht {
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-bg-raised);
+  border-radius: var(--radius-tool);
+  white-space: pre-line;
+}
+
+.chat-nachricht.sinan {
+  align-self: flex-end;
+  background: var(--color-bg-base);
+  border: var(--bento-line);
+}
+
+.chat-form {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.chat-form input {
+  min-height: var(--touch-min);
+}

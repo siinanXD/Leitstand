@@ -143,3 +143,28 @@ test("Aufgabe · Ablauf mit 6 Ereignissen hat keine axe-Fehler", async ({ page }
   await expect(page.getByRole("list", { name: "Werkzeuge Anwalt" })).toBeVisible();
   expect((await axe(page)).violations).toEqual([]);
 });
+
+test("Test: axe-Prüfung der Bubble ist grün (geschlossen und offen, Handy)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const jetzt = Date.now();
+  const sitzung = {
+    access_token: "test",
+    refresh_token: "test",
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: Math.floor(jetzt / 1000) + 3600,
+    user: { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", email: "test@example.org", app_metadata: {}, user_metadata: {}, created_at: new Date(jetzt).toISOString() },
+  };
+  await page.addInitScript(([schluessel, wert]) => localStorage.setItem(schluessel, wert), [SPEICHER, JSON.stringify(sitzung)]);
+  await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: [] }));
+  await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "beispiel", stage: "work", status: "running", title: "Beispiel-Aufgabe" }] }));
+  await page.route(`${SUPABASE}/rest/v1/ceo_entscheidungen**`, (route) => route.fulfill({ json: [] }));
+  await page.route(`${SUPABASE}/rest/v1/chat_nachrichten**`, (route) => route.fulfill({ json: [{ id: "n1", rolle: "sinan", text: "Wie steht SIN-1?" }, { id: "n2", rolle: "leitstand", text: "SIN-1: nicht bekannt." }] }));
+  await page.goto("/details");
+  const knopf = page.getByRole("button", { name: "Chat", exact: true });
+  await expect(knopf).toBeVisible();
+  expect((await axe(page)).violations).toEqual([]);
+  await knopf.click();
+  await expect(page.getByText("SIN-1: nicht bekannt.")).toBeVisible();
+  expect((await axe(page)).violations).toEqual([]);
+});
