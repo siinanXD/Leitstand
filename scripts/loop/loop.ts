@@ -23,6 +23,7 @@ import { haelt, SCHRITT as VERSION_SCHRITT, staende } from "../../src/lib/vision
 import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { starteLaeufe } from "../../src/lib/loop/lauf";
 import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
+import { prueferLaufziel } from "../../src/lib/loop/pruefer-lauf";
 import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
@@ -693,11 +694,14 @@ async function gemergt(repo: string, pr: number, projekt?: string) {
 }
 
 async function reparaturLauf() {
-  const pr = Number(arg("pr"));
+  // SIN-1009: Prüfer-Läufe von Produkt-Repos nennen Repo und PR im Laufnamen (`--titel`); Rundenzählung, Labels und Kommentar laufen dort.
+  const ziel = arg("titel") ? prueferLaufziel(arg("titel") as string) : { repo, pr: Number(arg("pr")) };
+  if (!ziel) return console.log(`Laufname "${arg("titel")}" nennt kein freigegebenes Repo oder keinen PR.`);
+  const { repo: zielRepo, pr } = ziel;
   const lauf = arg("lauf") ?? "";
   // SIN-925: `--quelle pruefer` = Prüfer-Fund statt rotem build; nur mit `pruefer:offen`, nie bei echtem Risiko.
   const pruefer = arg("quelle") === "pruefer";
-  const p = await gh<{ title: string; head: { ref: string; sha?: string }; labels: { name: string }[]; state: string }>(`/repos/${repo}/pulls/${pr}`);
+  const p = await gh<{ title: string; head: { ref: string; sha?: string }; labels: { name: string }[]; state: string }>(`/repos/${zielRepo}/pulls/${pr}`);
   if (p.state !== "open" || !istWorkerBranch(p.head.ref)) return console.log(`PR #${pr}: nicht offen oder kein Worker-Branch.`);
   if (pruefer && arg("sha") && p.head.sha !== arg("sha")) return console.log(`PR #${pr}: Prüfer-Lauf gehört zu einem älteren Head.`);
   const was = pruefer ? "Der Prüfer hat offene Funde" : "Der Check build ist rot";
@@ -718,8 +722,8 @@ async function reparaturLauf() {
   if ("stopp" in schritt) {
     if (p.labels.some((l) => l.name === "needs-human")) return console.log(`PR #${pr}: wartet schon auf Sinan.`);
     if (DRY) return console.log(`[trocken] Stopp für #${pr}`);
-    await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
-    await gh(`/repos/${repo}/issues/${pr}/comments`, { method: "POST", body: { body: `${was} auch nach ${MAX_REPARATUR} Reparaturrunden (issueweit gezählt, ${lauf}). Stopp, Sinan entscheidet.` } });
+    await gh(`/repos/${zielRepo}/issues/${pr}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
+    await gh(`/repos/${zielRepo}/issues/${pr}/comments`, { method: "POST", body: { body: `${was} auch nach ${MAX_REPARATUR} Reparaturrunden (issueweit gezählt, ${lauf}). Stopp, Sinan entscheidet.` } });
     if (id) {
       const issue = await issueNachKennung(id);
       if (issue) {
@@ -729,7 +733,7 @@ async function reparaturLauf() {
     }
     await ereignis("repair", "fehler", { issue: id ?? undefined, pr, grund: fehlergrund(`Test rot: ${pruefer ? "Prüfer-Funde" : "build"} nach ${MAX_REPARATUR} Reparaturrunden noch offen (${lauf})`) });
     // SIN-832: Stopp ist ein belegtes Ende des Workers; Claim lösen, Zähler bleibt, needs-human hält das Issue an.
-    if (id) await gibFrei(id, `https://github.com/${repo}/pull/${pr}`);
+    if (id) await gibFrei(id, `https://github.com/${zielRepo}/pull/${pr}`);
     return;
   }
   if (DRY) return console.log(`[trocken] Runde ${schritt.runde} für #${pr}`);
@@ -738,8 +742,8 @@ async function reparaturLauf() {
     await ereignis("repair", "uebersprungen", { issue: id ?? undefined, pr, grund: "reservierung_verloren: Reparaturzähler hat sich parallel geändert, keine Runde" });
     return;
   }
-  await gh(`/repos/${repo}/issues/${pr}/labels`, { method: "POST", body: { labels: [`repair:${schritt.runde}`] } });
-  await gh(`/repos/${repo}/issues/${pr}/comments`, {
+  await gh(`/repos/${zielRepo}/issues/${pr}/labels`, { method: "POST", body: { labels: [`repair:${schritt.runde}`] } });
+  await gh(`/repos/${zielRepo}/issues/${pr}/comments`, {
     method: "POST",
     body: {
       body: `@${p.head.ref.startsWith("codex/") ? "codex" : "claude"} ${was} (${lauf}). ${pruefer ? "Funde im Prüfer-Kommentar des PR lesen" : "Ursache im Log suchen"}, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${schritt.runde} von ${MAX_REPARATUR}.`,

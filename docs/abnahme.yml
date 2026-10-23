@@ -996,3 +996,11 @@
   art: datei
   pfad: src/lib/gedaechtnis/vault.ts
   enthaelt: Andere Agenten (Worker, Codex, Prüfer) öffnen hier keine PRs
+
+# SIN-1009
+- id: leitstand-pruefer-lauf-repo
+  produkt: leitstand
+  titel: Die Prüfer-Reparatur liest Repo und PR aus dem Laufnamen, auch für Lern-App-PRs (SIN-1009)
+  art: datei
+  pfad: src/lib/loop/pruefer-lauf.ts
+  enthaelt: prueferLaufziel

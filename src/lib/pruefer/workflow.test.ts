@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { prueferLaufziel } from "../loop/pruefer-lauf";
 
 const workflow = readFileSync(".github/workflows/pruefer.yml", "utf8");
 const script = workflow.match(/          script: \|\n((?:            .*\n)+)/)![1].split("\n").map((s) => s.slice(12)).join("\n");
@@ -181,9 +182,8 @@ test("Auto-Merge bricht den PR-Prüfer nicht ab, repair kennt dispatchte Prüfer
   assert.match(automerge, /prueferLaeuftSchon = context\.eventName === "pull_request_target" && \["opened", "reopened", "synchronize", "ready_for_review"\]/);
   assert.match(automerge, /!angefordert && context\.eventName !== "issue_comment" && !prueferLaeuftSchon/);
   assert.match(repair, /\["pull_request_target","workflow_dispatch"\]/);
-  const sed = repair.match(/sed -nE '([^']+)'/)![1];
-  const nummer = (titel: string) => execFileSync("sed", ["-nE", sed], { input: titel, encoding: "utf8" }).trim();
-  assert.equal(nummer("pruefer PR 356"), "356");
-  assert.equal(nummer("pruefer PR 356; rm -rf /"), "");
-  assert.equal(nummer("build"), "");
+  // SIN-1009: Repo und PR aus dem Laufnamen liest loop.ts (prueferLaufziel, getestet in pruefer-lauf.test.ts).
+  assert.match(repair, /loop\.ts reparatur --titel "\$TITEL"/);
+  assert.equal(prueferLaufziel("pruefer PR 356")?.pr, 356);
+  assert.equal(prueferLaufziel("pruefer PR 356; rm -rf /"), null);
 });
