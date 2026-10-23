@@ -3,7 +3,7 @@
 
 import type { Treffer } from "../autonomy/research";
 
-export const LABEL_ENTSCHEIDUNG ="entscheidung";
+export const LABEL_ENTSCHEIDUNG = "entscheidung";
 export const ARTEN = ["design", "infrastruktur", "kosten", "zugang", "produkt"] as const;
 export type Art = (typeof ARTEN)[number];
 export const MARKER_ANTWORT = "<!-- entscheidung-antwort -->";
