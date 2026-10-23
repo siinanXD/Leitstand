@@ -27,6 +27,7 @@
     { "schritt": "planer", "takt": "ereignis", "grenze_h": 6, "alias": ["vorarbeiter", "plan"] },
     { "schritt": "pr-text", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "pruefer", "takt": "ereignis", "grenze_h": 24, "alias": ["pr-gate"] },
+    { "schritt": "research", "takt": "aus", "grenze_h": 0, "alias": [] },
     { "schritt": "push-ausloeser", "takt": "15min", "grenze_h": 1, "alias": [] },
     { "schritt": "repair", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "revert-guard", "takt": "ereignis", "grenze_h": 24, "alias": [] },

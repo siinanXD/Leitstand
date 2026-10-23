@@ -55,7 +55,7 @@ test("CEO-Skript schreibt im Trockenlauf ein Ergebnis, das schema.ts annimmt", (
 });
 
 test("Workflows prüfen das Ergebnis nach dem Lauf mit schema.ts (Verstoß → rot)", () => {
-  for (const [wf, rolle] of [["ceo", "ceo"], ["planer", "planer"]]) {
+  for (const [wf, rolle] of [["ceo", "ceo"], ["planer", "planer"], ["research", "research"]]) {
     const yml = readFileSync(`.github/workflows/${wf}.yml`, "utf8");
     assert.match(yml, new RegExp(`ERGEBNIS_DATEI: /tmp/${rolle}-ergebnis\\.json`));
     assert.match(yml, new RegExp(`run: npx tsx scripts/autonomy/schema\\.ts ${rolle} /tmp/${rolle}-ergebnis\\.json`));
