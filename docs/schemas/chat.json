@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Antwort der Chatbubble",
+  "type": "object",
+  "properties": {
+    "absicht": { "type": "string", "enum": ["frage", "status", "update", "planung", "bauauftrag", "unklar"] },
+    "bezug": {
+      "type": "object",
+      "properties": {
+        "projekt": { "type": "string", "minLength": 1 },
+        "issue": { "type": "string", "pattern": "^SIN-[0-9]+$" },
+        "repo": { "type": "string", "minLength": 1 },
+        "pr": { "type": "integer", "minimum": 1 }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "aktion": { "type": "string", "enum": ["antworten", "kommentar", "issue_anlegen", "plan_vorschlagen", "rueckfrage", "bau_vorschlagen"] },
+    "antwort": { "type": "string", "minLength": 1 },
+    "sicherheit": { "type": "number", "minimum": 0, "maximum": 1 },
+    "kosten": {
+      "type": "object",
+      "properties": {
+        "quelle": { "type": "string", "enum": ["abo", "api"] },
+        "tokens_ein": { "type": "integer", "minimum": 0 },
+        "tokens_aus": { "type": "integer", "minimum": 0 },
+        "kosten_eur": { "type": "number", "minimum": 0 }
+      },
+      "required": ["quelle", "tokens_ein", "tokens_aus", "kosten_eur"],
+      "additionalProperties": false
+    },
+    "dauer_ms": { "type": "integer", "minimum": 0 },
+    "quellen": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "zeitpunkt": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$" }
+  },
+  "required": ["absicht", "bezug", "aktion", "antwort", "sicherheit", "kosten", "dauer_ms", "quellen", "zeitpunkt"],
+  "additionalProperties": false
+}

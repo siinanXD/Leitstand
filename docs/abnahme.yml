@@ -1047,3 +1047,11 @@
   titel: Die Seite /entscheidungen antwortet (SIN-1013)
   art: http
   url: ${LEITSTAND_URL}/entscheidungen
+
+# SIN-864
+- id: chat-tabellen
+  produkt: leitstand
+  titel: Die Migration legt chat_nachrichten und chat_aktionen an (SIN-864)
+  art: datei
+  pfad: supabase/migrations/leitstand/20261023160000_chat.sql
+  enthaelt: chat_aktionen

@@ -11,7 +11,7 @@ const ROLLEN = ["ceo", "visionaer", "planer", "research", "bauen", "pruefen", "c
 
 test("docs/schemas hat 11 Rollen-Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
   // `lernen` (SIN-576) ist das Schema der Wochenmessung, keine Rolle; es wird in schleife.test.ts geprüft.
-  const schemas = readdirSync("docs/schemas").filter((f) => f.endsWith(".json") && f !== "lernen.json").map((f) => f.slice(0, -5)).sort();
+  const schemas = readdirSync("docs/schemas").filter((f) => f.endsWith(".json") && f !== "lernen.json" && f !== "chat.json").map((f) => f.slice(0, -5)).sort();
   assert.deepEqual(schemas, [...ROLLEN].sort());
   for (const r of ROLLEN) assert.deepEqual(pruefeSchema(lies(`docs/schemas/fixtures/${r}.json`), lies<Schema>(`docs/schemas/${r}.json`)), [], r);
 });
