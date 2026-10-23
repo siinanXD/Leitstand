@@ -1155,3 +1155,10 @@
   art: datei
   pfad: e2e/abnahme.spec.ts
   enthaelt: "Kosten: Produktfilter wählt ein Produkt, axe ohne Fehler"
+
+- id: leitstand-kontingente-vercel
+  produkt: leitstand
+  titel: Der Dispatcher kennt die Kontingent-Sperre vercel-deploy (SIN-1046)
+  art: datei
+  pfad: docs/autonomy/kontingente.json
+  enthaelt: vercel-deploy

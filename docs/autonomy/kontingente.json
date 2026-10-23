@@ -1,0 +1,12 @@
+{
+  "stand": "2026-10-23",
+  "quelle": "SIN-1046",
+  "hinweis": "Kontingente, deren Erschöpfung der Dispatcher erkennt (src/lib/loop/kontingente.ts). Ist eins gesperrt, startet er nur Issues, die es nicht brauchen; ein Issue ohne worker-pfade gilt als „braucht alles“.",
+  "kontingente": {
+    "vercel-deploy": {
+      "erkennung": { "kontext": "vercel", "text": "rate limited|resource is limited" },
+      "sperre_stunden": 24,
+      "betrifft_pfade": ["src/app", "src/components", "public", "*.css", "next.config.*", "package.json", "package-lock.json"]
+    }
+  }
+}

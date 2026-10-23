@@ -24,7 +24,8 @@ import { fehlergrund } from "../../src/lib/loop/fehlergrund";
 import { starteLaeufe } from "../../src/lib/loop/lauf";
 import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
 import { prueferLaufziel } from "../../src/lib/loop/pruefer-lauf";
-import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { aktiveSperren, ohneGesperrte, type CommitStatus } from "../../src/lib/loop/kontingente";
+import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, startbare, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { baueBlock, istEchteEntscheidung, LABEL_ENTSCHEIDUNG, leseBlock } from "../../src/lib/entscheidung/entscheidung";
 import { GITHUB_URL, githubTreffer } from "../../src/lib/autonomy/research";
@@ -493,6 +494,13 @@ async function konfliktAnstoss(repo: string, prs: { number: number; head: { ref:
   }
 }
 
+/** SIN-1046: Commit-Status von main und den jüngsten offenen PRs; Lesefehler zählen als „keine Sperre“, der Dispatcher läuft weiter. */
+async function commitStatus(repo: string, shas: string[]): Promise<CommitStatus[]> {
+  const refs = ["main", ...shas];
+  const teile = await Promise.all(refs.map((ref) => gh<CommitStatus[]>(`/repos/${repo}/commits/${ref}/statuses?per_page=30`).catch((e: Error) => (console.log(`::warning::Commit-Status ${ref}: ${e.message}`), []))));
+  return teile.flat();
+}
+
 async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   const repo = ziel.repo;
   const projekt = ziel.id;
@@ -516,7 +524,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     issues = issues.filter((i) => !fertig.some((f) => f.identifier === i.identifier));
   }
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
-  let prs = await gh<{ number: number; title: string; head: { ref: string }; labels: { name: string }[]; created_at: string }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
+  let prs = await gh<{ number: number; title: string; head: { ref: string; sha: string }; labels: { name: string }[]; created_at: string }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
   if (parallelRepo(repo)) {
     for (let page = 2; prs.length === (page - 1) * 100; page++) {
       const weitere = await gh<typeof prs>(`/repos/${repo}/pulls?state=open&per_page=100&page=${page}`);
@@ -587,7 +595,18 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     console.log(`Platz von ${h.identifier} freigegeben: kein offener PR, seit ${h.startedAt ?? "?"} In Progress.`);
     await ereignis("platz", "ok", { projekt, issue: h.identifier, grund: `haenger: ohne PR länger als ${PLATZ_MINUTEN} Min` });
   }
-  const auswahl = (liste: LinearIssue[]) => {
+  // SIN-1046: Ist ein Kontingent leer (Vercel-Tageslimit), starten nur Issues, die es nicht brauchen.
+  const sperren = aktiveSperren(await commitStatus(repo, prs.slice(0, 5).map((p) => p.head.sha)), new Date());
+  for (const s of sperren) console.log(`Kontingent ${s.id} gesperrt bis ${s.bis.toISOString()}`);
+  const gesperrtGrund = new Map<string, string>();
+  const kontingentFrei = (liste: LinearIssue[]) => {
+    if (!sperren.length) return liste;
+    const { uebersprungen } = ohneGesperrte(startbare(liste, gespiegelt), sperren);
+    for (const u of uebersprungen) gesperrtGrund.set(u.issue.identifier, u.grund);
+    return liste.filter((i) => !uebersprungen.some((u) => u.issue.identifier === i.identifier));
+  };
+  const auswahl = (alle: LinearIssue[]) => {
+    const liste = kontingentFrei(alle);
     if (!parallelRepo(repo)) return waehle(liste, gespiegelt, max, belegung, rest);
     const kandidaten = waehle(liste, gespiegelt, liste.length, belegung, rest);
     const aktiv = [...new Map([...laufende(liste, belegung), ...claimsMitPlatz(claims, belegung)].map(i => [i.identifier, i])).values()];
@@ -608,6 +627,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
       wahl = auswahl([...issues.filter((i) => i.id !== naechstes.id), befoerdert]);
     }
   }
+  for (const [issue, grund] of gesperrtGrund) await ereignis("dispatch", "uebersprungen", { projekt, issue, grund });
   if (!wahl.length) {
     const grund = parallelRepo(repo) && waehle(issues, gespiegelt, max, belegung, rest).length
       ? grundLeitstand(issues)
