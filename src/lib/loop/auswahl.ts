@@ -214,7 +214,7 @@ export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max:
  * Text des GitHub-Issues, das den Worker (claude.yml) startet (SIN-911): GitHub ist öffentlich, deshalb nur Titel,
  * Linear-Link und Fertig-Haken. Den vollen Auftrag holt der Worker über die Linear-API.
  */
-export function issueText(i: LinearIssue, hinweise = ""): { title: string; body: string } {
+export function issueText(i: LinearIssue, hinweise = "", eigenes = true): { title: string; body: string } {
   const kurz = i.identifier.toLowerCase();
   const haken = leseHaken(i.description);
   return {
@@ -223,7 +223,10 @@ export function issueText(i: LinearIssue, hinweise = ""): { title: string; body:
       marker(i.identifier),
       `Linear: ${i.url}`,
       "",
-      `Der volle Auftrag steht nur in Linear. Lies ihn zuerst mit: npx tsx scripts/loop/auftrag.ts ${i.identifier}`,
+      // SIN-1005: Produkt-Repos haben kein auftrag.ts; dort steht der Auftrag im ersten Kommentar dieses Issues.
+      eigenes
+        ? `Der volle Auftrag steht nur in Linear. Lies ihn zuerst mit: npx tsx scripts/loop/auftrag.ts ${i.identifier}`
+        : "Der volle Auftrag steht im ersten Kommentar dieses Issues (Umsetzung und Fertig-Haken).",
       "",
       "## Fertig, wenn",
       ...(haken.length ? haken.map((h) => `- [${h.erledigt ? "x" : " "}] ${h.text}`) : ["(keine Haken)"]),

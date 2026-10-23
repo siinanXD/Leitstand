@@ -1,4 +1,7 @@
 // SIN-945: reine Formatierung des Linear-Auftrags für den Worker (Skript: scripts/loop/auftrag.ts).
+import { leseHaken } from "./haken";
+import { pruefePrText } from "../pr-text/pr-text";
+
 export type Auftrag = {
   identifier: string; title: string; url: string; description: string | null; state: { name: string };
   labels: { nodes: { name: string }[] };
@@ -45,4 +48,24 @@ export function formatiere(i: Auftrag, ereignisse: Ereignis[] = []): string {
     "",
     (i.description ?? "(keine Beschreibung)").replace(/\\([\[\]])/g, "$1"),
   ].join("\n");
+}
+
+/**
+ * SIN-1005: Auftrag für Produkt-Repos ohne auftrag.ts, als erster Kommentar im öffentlichen GitHub-Issue.
+ * Umsetzung = Beschreibung vor den Fertig-Haken, dazu die Haken. Treffer der Verbotsliste (Kosten, Personen) sperren den Text.
+ */
+export function auftragsKommentar(beschreibung: string | null | undefined): { text: string | null; gesperrt: string[] } {
+  const zeilen = String(beschreibung ?? "").replace(/\\([\[\]])/g, "$1").split("\n");
+  const ende = zeilen.findIndex((z) => /^#{1,4}\s*Fertig/i.test(z) || /^\s*[-*]\s+\[[ xX]\]\s/.test(z));
+  const umsetzung = zeilen.slice(0, ende < 0 ? zeilen.length : ende).join("\n").trim();
+  const haken = leseHaken(beschreibung);
+  const text = [
+    "## Umsetzung",
+    umsetzung || "(keine Beschreibung)",
+    "",
+    "## Fertig, wenn",
+    ...(haken.length ? haken.map((h) => `- [${h.erledigt ? "x" : " "}] ${h.text}`) : ["(keine Haken)"]),
+  ].join("\n");
+  const treffer = pruefePrText(text);
+  return treffer.length ? { text: null, gesperrt: treffer } : { text, gesperrt: [] };
 }

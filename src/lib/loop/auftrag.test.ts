@@ -1,8 +1,25 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { formatiere, leseEreignisse } from "./auftrag";
+import { auftragsKommentar, formatiere, leseEreignisse } from "./auftrag";
 import { issueText } from "./auswahl";
+
+const linearIssue = { id: "x", identifier: "SIN-1005", title: "T", description: null, priority: 3, url: "https://linear.app/x/issue/SIN-1005", createdAt: "2026-10-01T00:00:00Z", labels: ["claude"], stateType: "unstarted", blockiertVon: [] };
+
+test("issueText für ein Produkt-Repo nennt auftrag.ts nicht, für den Leitstand weiter", () => {
+  assert.doesNotMatch(issueText(linearIssue, "", false).body, /auftrag\.ts/);
+  assert.match(issueText(linearIssue, "", false).body, /ersten Kommentar/);
+  assert.match(issueText(linearIssue).body, /scripts\/loop\/auftrag\.ts SIN-1005/);
+});
+
+test("Auftrags-Kommentar enthält Umsetzung und Haken; Kosten oder Personen sperren ihn", () => {
+  const ok = auftragsKommentar("Baue X in src/x.ts.\n\n## Fertig, wenn\n- [ ] Test A\n- [x] Test B");
+  assert.deepEqual(ok.gesperrt, []);
+  assert.match(ok.text ?? "", /## Umsetzung\nBaue X in src\/x\.ts\./);
+  assert.match(ok.text ?? "", /- \[ \] Test A\n- \[x\] Test B/);
+  assert.deepEqual(auftragsKommentar("Guthaben 12,40 €\n- [ ] A").gesperrt, ["Geldbetrag (€)"]);
+  assert.deepEqual(auftragsKommentar("Sinan: mach es billig\n- [ ] A").gesperrt, ["Sinan-Zitat"]);
+});
 
 const auftrag = {
   identifier: "SIN-576", title: "Schleife", url: "https://linear.app/x/issue/SIN-576", description: "Text mit \\[nach Aktivierung\\] Haken",

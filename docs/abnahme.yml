@@ -806,6 +806,14 @@
   pfad: .github/workflows/claude.yml
   enthaelt: Bash(npx tsx scripts/loop/auftrag.ts:*)
 
+# SIN-1005: Auftrag für Produkt-Repos als Kommentar
+- id: auftrag-produkt-repo
+  produkt: leitstand
+  titel: Der Dispatcher postet den Auftrags-Kommentar in Produkt-Repos vor dem Label (SIN-1005)
+  art: datei
+  pfad: scripts/loop/loop.ts
+  enthaelt: auftragsKommentar(i.description)
+
 # SIN-929: Kriterien-Check beim Anlegen
 - id: kriterien-check
   produkt: leitstand
