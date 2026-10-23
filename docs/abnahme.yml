@@ -1055,3 +1055,11 @@
   art: datei
   pfad: supabase/migrations/leitstand/20261023160000_chat.sql
   enthaelt: chat_aktionen
+
+# SIN-1028
+- id: leitstand-konflikt-anstoss
+  produkt: leitstand
+  titel: Der Loop bittet bei Merge-Konflikt auf einem claude/-PR höchstens zweimal um Auflösung (SIN-1028)
+  art: datei
+  pfad: src/lib/loop/konflikt.ts
+  enthaelt: MAX_KONFLIKT
