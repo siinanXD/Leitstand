@@ -1024,3 +1024,11 @@
   art: http
   url: https://api.github.com/repos/siinanXD/stromlauf-ai
   enthaelt: '"industrial-automation"'
+
+# SIN-1014
+- id: leitstand-entscheidung-eingang
+  produkt: leitstand
+  titel: Agenten fragen echte Entscheidungen über das Label entscheidung mit Block, Routinefehler bleiben needs-human (SIN-1014)
+  art: datei
+  pfad: src/lib/entscheidung/entscheidung.ts
+  enthaelt: istEchteEntscheidung

@@ -1,6 +1,8 @@
 // Entscheidungs-Eingang (SIN-1012): Block im Linear-Issue lesen, Antwort als Kommentar zurückschreiben.
 // Rein; das Linear-Netz kommt als `EntscheidungsNetz` herein (Umsetzung in ./netz.ts).
 
+import type { Treffer } from "../autonomy/research";
+
 export const LABEL_ENTSCHEIDUNG = "entscheidung";
 export const ARTEN = ["design", "infrastruktur", "kosten", "zugang", "produkt"] as const;
 export type Art = (typeof ARTEN)[number];
@@ -87,3 +89,34 @@ export const entscheidungZeile = (kennung: string, ergebnis: Ergebnis) => ({
   pr: null,
   ...(ergebnis.ok ? {} : { grund: ergebnis.grund }),
 });
+
+// SIN-1014: Agenten fragen über `entscheidung` statt `needs-human`; Routinefehler bleiben bei `needs-human`.
+const STICHWORTE: [Art, RegExp][] = [
+  ["zugang", /neues?\s+(secret|konto|token|api[- ]?key)|secret fehlt|zugang/i],
+  ["kosten", /kosten|bezahl|\babo\b|guthaben/i],
+  ["design", /neue\s+(komponente|farbe)|neues?\s+token/i],
+  ["infrastruktur", /framework-?wechsel|(datenbank|db)-?wechsel/i],
+  ["produkt", /umfang/i],
+];
+
+/** Art der echten Entscheidung aus dem Grund; Routinefehler (Test rot, Reparaturrunden, Prüfer-Fund) ergeben null. */
+export function istEchteEntscheidung(grund: string): Art | null {
+  return STICHWORTE.find(([, re]) => re.test(grund))?.[0] ?? null;
+}
+
+export const MAX_RECHERCHE = 5;
+const HALB_JAHR_MS = 183 * 24 * 3600 * 1000;
+
+/** Regeln aus AGENTS.md: MIT/Apache, letzter Commit < 6 Monate, > 500 Sterne. */
+export const erfuelltRegeln = (t: Treffer, jetzt: Date): boolean =>
+  /^(MIT|Apache-2\.0)$/i.test(t.lizenz) && t.sterne > 500 && !!t.letzterCommit && jetzt.getTime() - Date.parse(t.letzterCommit) < HALB_JAHR_MS;
+
+/** Baut `<!-- entscheidung {…} -->` für die Issue-Beschreibung; höchstens 5 Treffer, die Empfehlung nennt den ersten, der die Regeln erfüllt. */
+export function baueBlock(e: { frage: string; art: Art; optionen: Option[]; empfehlung: string; recherche: Treffer[] }, jetzt = new Date()): string {
+  const treffer = e.recherche.slice(0, MAX_RECHERCHE);
+  const passend = treffer.find((t) => erfuelltRegeln(t, jetzt));
+  const empfehlung = passend ? `${e.empfehlung} Treffer ${passend.name} erfüllt die Regeln (${passend.lizenz}, ${passend.sterne} Sterne, letzter Commit ${passend.letzterCommit}).`.trim() : e.empfehlung;
+  const recherche = treffer.map((t) => `${t.name} ${t.url} · ${t.lizenz} · ${t.sterne} Sterne · letzter Commit ${t.letzterCommit ?? "unbekannt"}`);
+  const block: Block = { frage: e.frage, art: e.art, optionen: e.optionen, empfehlung, recherche };
+  return `<!-- entscheidung ${JSON.stringify(block).replace(/-->/g, "--\\u003e")} -->`;
+}
