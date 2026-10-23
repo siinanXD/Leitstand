@@ -1012,3 +1012,9 @@
   art: datei
   pfad: src/app/api/entscheidungen/route.ts
   enthaelt: beantworte
+- id: leitstand-sammlung-rueckt-nicht-nach
+  produkt: leitstand
+  titel: Ideen-Sammlungen (Label sammlung) rücken nie automatisch auf Todo (SIN-1025)
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: '"kriterien-unklar", "sammlung"'

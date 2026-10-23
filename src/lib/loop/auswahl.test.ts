@@ -336,3 +336,8 @@ test("Dispatcher startet kein Issue mit Label entscheidung (SIN-1012)", () => {
   assert.deepEqual(codexStarts([issue({ identifier: "SIN-3", labels: ["codex", "entscheidung"] })]), []);
   assert.equal(nachruecken([issue({ identifier: "SIN-4", stateType: "backlog", labels: ["entscheidung"] })], new Set(), 2), null);
 });
+
+test("Test: Ideen-Sammlung (Label sammlung) rückt nie automatisch nach", () => {
+  assert.equal(nachruecken([issue({ identifier: "SIN-5", stateType: "backlog", priority: 1, labels: ["idee", "sammlung"] })], new Set(), 2), null);
+  assert.equal(nachruecken([issue({ identifier: "SIN-6", stateType: "backlog", labels: ["idee"] })], new Set(), 2)?.identifier, "SIN-6");
+});
