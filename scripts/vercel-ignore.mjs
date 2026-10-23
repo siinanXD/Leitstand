@@ -17,9 +17,10 @@ export function sollBauen({ branch, env, dateien }) {
 
 function geaenderteDateien() {
   try {
-    // Basis: zuletzt gebauter Stand dieses Branches (Vercel setzt VERCEL_GIT_PREVIOUS_SHA), sonst der Vorgänger-Commit.
-    // Ist die Basis im flachen Klon nicht vorhanden, schlägt git fehl -> null -> bauen.
-    const basis = process.env.VERCEL_GIT_PREVIOUS_SHA || "HEAD^";
+    // Basis: zuletzt gebauter Stand dieses Branches (Vercel setzt VERCEL_GIT_PREVIOUS_SHA). Fehlt sie (erster Push
+    // eines Branches, frühere Commits ungeprüft) oder ist sie im flachen Klon nicht vorhanden -> null -> bauen.
+    const basis = process.env.VERCEL_GIT_PREVIOUS_SHA;
+    if (!basis) return null;
     const out = execFileSync("git", ["diff", "--name-only", basis, "HEAD"], { encoding: "utf8" });
     return out.split("\n").filter(Boolean);
   } catch {

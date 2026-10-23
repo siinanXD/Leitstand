@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -26,4 +27,11 @@ test("nicht lesbarer Diff baut", () => {
 
 test("vercel.json nutzt das Skript", () => {
   assert.match(JSON.parse(readFileSync("vercel.json", "utf8")).ignoreCommand, /vercel-ignore\.mjs/);
+});
+
+test("Erster Push eines Branches (ohne VERCEL_GIT_PREVIOUS_SHA) baut die Vorschau", () => {
+  const env: NodeJS.ProcessEnv = { ...process.env, VERCEL_GIT_COMMIT_REF: "claude/x", VERCEL_ENV: "preview" };
+  delete env.VERCEL_GIT_PREVIOUS_SHA;
+  const lauf = spawnSync(process.execPath, ["scripts/vercel-ignore.mjs"], { env, encoding: "utf8" });
+  assert.equal(lauf.status, 1);
 });
