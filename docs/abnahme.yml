@@ -1032,3 +1032,11 @@
   art: datei
   pfad: src/lib/entscheidung/entscheidung.ts
   enthaelt: istEchteEntscheidung
+
+# SIN-1027
+- id: leitstand-pruefer-regate
+  produkt: leitstand
+  titel: Der Prüfer startet nach „bestanden“ den fehlgeschlagenen pr-gate-Lauf des Produkt-Repos neu (SIN-1027)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: rerun-failed-jobs
