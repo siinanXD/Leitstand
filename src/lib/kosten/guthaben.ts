@@ -46,6 +46,24 @@ export function parseGuthaben(raw: unknown): Guthaben[] {
   });
 }
 
+/** Einträge `art: "nicht-messbar"` aus `guthaben` (SIN-1047): Dienst ohne Wert, mit Grund. */
+export function parseNichtMessbar(raw: unknown): { dienst: string; grund: string }[] {
+  let v = raw;
+  if (typeof v === "string") {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return [];
+    }
+  }
+  return (Array.isArray(v) ? v : []).flatMap((x) => {
+    const e = obj(x);
+    const dienst = text(e?.dienst);
+    const grund = text(e?.grund);
+    return e?.art === "nicht-messbar" && dienst && grund ? [{ dienst, grund }] : [];
+  });
+}
+
 /** Anteil, der noch übrig ist (0 bis 1). */
 export const restAnteil = (g: Guthaben): number => Math.min(1, Math.max(0, g.wert / g.gesamt));
 

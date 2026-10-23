@@ -1,5 +1,5 @@
 import type { Aufgabe } from "./aufgaben";
-import { parseGuthaben, type Guthaben } from "./kosten/guthaben";
+import { parseGuthaben, parseNichtMessbar, type Guthaben } from "./kosten/guthaben";
 import { parsePlan, type Plan } from "./vorarbeiter/vorarbeiter";
 import { parseOffenePrs, type OffenerPr } from "./wartende-prs";
 
@@ -35,6 +35,8 @@ export type SnapshotRow = {
   progress?: Teilstand | null;
   /** Optional (SIN-555): Guthaben je Dienst aus `loop_snapshot.guthaben`. */
   guthaben?: Guthaben[];
+  /** Optional (SIN-1047): Dienste ohne Messung, mit Grund (z. B. Admin-Key fehlt). */
+  nichtMessbar?: { dienst: string; grund: string }[];
   /** Optional (SIN-572): Schlange als Zusammenfassung, wo kein Issue pro Zeile steht (Leitstand). */
   queue?: Queue | null;
   /** Optional (SIN-553): Plan des Vorarbeiters aus `loop_snapshot.plan`. */
@@ -48,7 +50,8 @@ export type Teilstand = { fertig: number; gesamt: number; neueIdeen: number };
 export type Quelle = { events: LoopEvent[]; snapshot: SnapshotRow[];
   /** Linear-Aufgaben mit Titel und Stand (leitstand_aufgaben); fehlt die Tabelle, bleibt es leer. */
   aufgaben?: Aufgabe[] };
-export type Quota = { name: string; used: number; limit: number; schaetzung: boolean };
+/** `quelle`: woher der Wert stammt (SIN-1047); `key`: stabile Kennung für Proben. */
+export type Quota = { name: string; used: number; limit: number; schaetzung: boolean; key?: string; quelle?: "team" | "api" | "gerechnet" | "schaetzung" };
 
 const str = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -83,7 +86,9 @@ export function parseQuotas(raw: unknown): Quota[] {
     const e = obj(x);
     const used = Array.isArray(x) ? num(x[0]) : num(e?.used ?? e?.value);
     const limit = Array.isArray(x) ? num(x[1]) : num(e?.limit ?? e?.max);
-    return name && used !== null && limit !== null && limit > 0 ? [{ name, used, limit, schaetzung: /claude/i.test(name) }] : [];
+    const quelle = (["team", "api", "gerechnet", "schaetzung"] as const).find((q) => q === e?.quelle);
+    const key = str(e?.key);
+    return name && used !== null && limit !== null && limit > 0 ? [{ name, used, limit, schaetzung: /claude/i.test(name) || quelle === "schaetzung", ...(key ? { key } : {}), ...(quelle ? { quelle } : {}) }] : [];
   });
 }
 
@@ -160,6 +165,7 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         progress: parseFortschritt(o.progress) ?? parseFortschritt({ done: num(o.fertig_v1), total: num(o.gesamt_v1), ideas: num(o.ideen_offen) ?? 0 }),
         queue: parseQueue(o.queue),
         guthaben: parseGuthaben(o.guthaben),
+        nichtMessbar: parseNichtMessbar(o.guthaben),
         plan: parsePlan(o.plan),
         modelle: o.modelle ?? null,
       },

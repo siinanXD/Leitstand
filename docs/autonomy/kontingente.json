@@ -8,5 +8,9 @@
       "sperre_stunden": 24,
       "betrifft_pfade": ["src/app", "src/components", "public", "*.css", "next.config.*", "package.json", "package-lock.json"]
     }
+  },
+  "api_guthaben": {
+    "hinweis": "Eingetragene Einzahlung je API-Dienst (SIN-1047), ohne Geheimnisse. Guthaben = Einzahlung − Verbrauch (gerechnet). 0 = noch nicht eingetragen, dann zeigt der Sammler kein Guthaben.",
+    "openai": { "einzahlung": 0, "link": "https://platform.openai.com/settings/organization/billing/overview" }
   }
 }

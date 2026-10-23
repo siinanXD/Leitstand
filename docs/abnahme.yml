@@ -1190,3 +1190,8 @@
   art: datei
   pfad: docs/autonomy/kontingente.json
   enthaelt: wieder_da
+- id: leitstand-kontingent-vercel-team
+  produkt: leitstand
+  titel: Das Vercel-Tageslimit wird über das ganze Team gezählt, Quelle Team (SIN-1047)
+  art: db
+  rest: loop_snapshot?project=eq.leitstand&quotas=cs.%5B%7B%22key%22%3A%22vercel_deployments_tag%22%2C%22quelle%22%3A%22team%22%7D%5D&select=project

@@ -5,6 +5,7 @@ import { useSitzung } from "@/lib/sitzung";
 import { useKosten } from "@/lib/kosten-client";
 import { einzigartig, GUTHABEN_UNTER, KONTINGENT_UEBER, restAnteil, type Guthaben } from "@/lib/kosten/guthaben";
 import { kontingente } from "@/lib/uebersicht";
+import { nichtMessbarText, quotaText } from "@/lib/kontingent/messung";
 import { nurProjekt } from "@/lib/projekte";
 import { ProjektFilter, Rahmen, projekteIn } from "../rahmen";
 import { ZustandSymbol, type ZustandArt } from "../zustand-symbol";
@@ -55,7 +56,8 @@ export default function Kosten() {
         const snapshot = nurProjekt(quelle.snapshot, filter);
         const abo = kontingente(snapshot).filter((q) => q.schaetzung);
         const guthaben = einzigartig(snapshot.flatMap((s) => s.guthaben ?? []));
-        const frei = kontingente(snapshot).filter((q) => !q.schaetzung);
+        const nichtMessbar = snapshot.flatMap((s) => s.nichtMessbar ?? []);
+        const frei =kontingente(snapshot).filter((q) => !q.schaetzung);
         const wochenAnteil = kosten && kosten.woche !== null ? kosten.woche / kosten.wochenDeckel : null;
         const zustand: ZustandArt = kosten?.ampel === "rot" || (wochenAnteil ?? 0) >= 0.9 ? "kaputt" : kosten?.ampel === "gelb" ? "wartet" : "laeuft";
         return (
@@ -89,10 +91,15 @@ export default function Kosten() {
               <h2 id="dienste" className="karte-titel">
                 Was noch übrig ist
               </h2>
-              {guthaben.length + frei.length + abo.length === 0 ? (
+              {guthaben.length + frei.length + abo.length + nichtMessbar.length === 0 ? (
                 <p className="leer">Keine Daten</p>
               ) : (
                 <ul className="fortschritt">
+                  {nichtMessbar.map((n) => (
+                    <li key={n.dienst} className="dienst-schmal">
+                      <span className="zeile">{nichtMessbarText(n)}</span>
+                    </li>
+                  ))}
                   {guthaben.map((g) => (
                     <li key={g.dienst} className="dienst-schmal">
                       <span className="zeile">
@@ -114,9 +121,7 @@ export default function Kosten() {
                     <li key={q.name} className="dienst-schmal">
                       <span className="zeile">
                         <span>{q.name}</span>
-                        <span>
-                          {q.used.toLocaleString("de-DE")} von {q.limit.toLocaleString("de-DE")} {einheit(q.name) ? `${einheit(q.name)} ` : ""}benutzt
-                        </span>
+                        <span>{q.quelle === "team" ? quotaText(q) : `${q.used.toLocaleString("de-DE")} von ${q.limit.toLocaleString("de-DE")} ${einheit(q.name) ? `${einheit(q.name)} ` : ""}benutzt`}</span>
                       </span>
                       <Balken anteil={q.used / q.limit} name={`${q.name}: benutzt`} rot={q.used / q.limit > KONTINGENT_UEBER} />
                     </li>
@@ -125,7 +130,7 @@ export default function Kosten() {
                     <li key={q.name} className="dienst-schmal">
                       <span className="zeile">
                         <span>{q.name}</span>
-                        <span>etwa {Math.round((q.used / q.limit) * 100)} % benutzt (Schätzung)</span>
+                        <span>{quotaText(q)}</span>
                       </span>
                       <Balken anteil={q.used / q.limit} name={`${q.name}: benutzt (Schätzung)`} rot={q.used / q.limit > KONTINGENT_UEBER} />
                     </li>
