@@ -164,13 +164,6 @@ function Inhalt({ issue, quelle, jetzt }: { issue: string; quelle: Quelle; jetzt
         {nachweis && (
           <div className="nachweis" aria-label="Was sich geändert hat">
             {nachweis.diff && <p>{nachweis.diff}</p>}
-            {nachweis.planungsbild && (
-              <figure>
-                <figcaption className="mono-label">Soll (Planungsbild aus Figma)</figcaption>
-                {/* eslint-disable-next-line @next/next/no-img-element -- siehe Bilder() unten */}
-                <img src={nachweis.planungsbild} alt="Soll: Planungsbild aus Figma" loading="lazy" />
-              </figure>
-            )}
             <ul className="nachweis-routen" aria-label="Routen">
               {nachweis.routen.map((r) => (
                 <li key={r.route}>
