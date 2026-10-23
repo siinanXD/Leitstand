@@ -7,9 +7,9 @@ import { pruefeSchema, type Schema } from "./schema";
 
 const lies = <T>(pfad: string) => JSON.parse(readFileSync(pfad, "utf8")) as T;
 const register = () => lies<Register>("docs/autonomy/agents.json");
-const ROLLEN = ["ceo", "visionaer", "planer", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis"];
+const ROLLEN = ["ceo", "visionaer", "planer", "research", "bauen", "pruefen", "content", "marketing", "hausmeister", "anwalt", "gedaechtnis", "architekt"];
 
-test("docs/schemas hat 11 Rollen-Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
+test("docs/schemas hat 12 Rollen-Schemas, jedes mit Fixture, alle Fixtures gültig", () => {
   // `lernen` (SIN-576) ist das Schema der Wochenmessung, keine Rolle; es wird in schleife.test.ts geprüft.
   const schemas = readdirSync("docs/schemas").filter((f) => f.endsWith(".json") && f !== "lernen.json" && f !== "chat.json").map((f) => f.slice(0, -5)).sort();
   assert.deepEqual(schemas, [...ROLLEN].sort());
@@ -35,7 +35,7 @@ test("Prüfer meldet fehlende, falsche und fremde Felder", () => {
   assert.match(pruefeSchema({ ...ok, issue: "543" }, s).join(), /issue: passt nicht/);
 });
 
-test("agents.json: 13 Rollen mit Skill-Datei, Auslöser, Werkzeugen und Schema; Verweise stimmen", () => {
+test("agents.json: 14 Rollen mit Skill-Datei, Auslöser, Werkzeugen und Schema; Verweise stimmen", () => {
   const r = register();
   assert.deepEqual(r.rollen.map((x) => x.id), ROLLEN);
   assert.equal(r.spuren.length, 3);

@@ -8,6 +8,7 @@
     "richter": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Read", "Grep"], "schritte": ["richter", "wirkung"] },
     "planer": { "modell": "claude-haiku-5-5", "kontextfenster": 200000, "werkzeuge": ["Linear", "Supabase"], "schritte": ["planer", "vorarbeiter"] },
     "visionaer": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Read", "Write", "gh api"], "schritte": ["visionaer"] },
+    "architekt": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Read", "Write", "gh api"], "schritte": ["architekt"] },
     "diagnose": { "modell": "claude-sonnet-5-5", "kontextfenster": 200000, "werkzeuge": ["Read", "gh api"], "schritte": ["diagnose"] },
     "marketing": { "modell": "claude-haiku-5-5", "kontextfenster": 200000, "werkzeuge": ["Supabase"], "schritte": ["marketing"] }
   }

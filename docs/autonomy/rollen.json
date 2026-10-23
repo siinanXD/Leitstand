@@ -6,6 +6,7 @@
     { "schritt": "abnahme", "takt": "stuendlich", "grenze_h": 3, "alias": [] },
     { "schritt": "agent-testnutzer", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "anwalt","takt": "monatlich", "grenze_h": 792, "alias": [] },
+    { "schritt": "architekt", "takt": "woechentlich", "grenze_h": 192, "alias": [] },
     { "schritt": "automerge", "takt": "ereignis", "grenze_h": 24, "alias": ["merge"] },
     { "schritt": "belege", "takt": "ereignis", "grenze_h": 24, "alias": [] },
     { "schritt": "build", "takt": "ereignis", "grenze_h": 24, "alias": [] },
