@@ -9,4 +9,3 @@ Routen, die ohne Design-Issue aus vorhandenen Komponenten und Tokens entstanden 
 | Kacheln „Was zählt (8 Wochen)“ ganz oben auf / (aus vorhandenen Klassen, Säulen als SVG mit Tokens) | 2026-10-15 | SIN-630 |
 | /wochen-check „Wochen-Check“ (Menüpunkt unter „Mehr“, Checkliste aus vorhandenen Klassen) | 2026-10-15 | SIN-631 |
 | /entscheidungen „Entscheidungen“ (Karten wie /freigabe) und Karte „Entscheidungen: n“ in „Braucht dich“ auf / | 2026-10-23 | SIN-1013 |
-| Chatbubble „Chat“ unten rechts auf jeder Seite mit Fadenansicht (Handy und Desktop), aus vorhandenen Klassen (`knopf`, Karte) und Tokens; Figma-Entwurf fehlt, weil kein Figma-Zugang im Lauf war | 2026-10-23 | SIN-865 |

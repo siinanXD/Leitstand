@@ -1057,6 +1057,12 @@
   enthaelt: chat_aktionen
 
 # SIN-865
+- id: chat-figma-entwurf
+  produkt: leitstand
+  titel: Figma-Entwurf der Chatbubble ist in docs/design verlinkt (SIN-865)
+  art: datei
+  pfad: docs/design/SIN-865-chatbubble.md
+  enthaelt: "124:165"
 - id: chat-sofort-weg
   produkt: leitstand
   titel: Der Sofort-Weg der Chatbubble beantwortet Statusfragen aus Snapshot und Aufgaben ohne Modell (SIN-865)
