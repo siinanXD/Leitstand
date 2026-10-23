@@ -226,3 +226,24 @@
   font-size: 13px;
   line-height: 18px;
 }
+
+.freigabe .grund > ul[aria-label^="Recherche"] a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+}
+
+.freigabe .formular {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.freigabe .formular input {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-12);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  border: var(--bento-line);
+  border-radius: var(--radius-tool);
+  font: inherit;
+}
