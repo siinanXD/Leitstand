@@ -9,22 +9,21 @@
  * shortcut: gemessen werden Vercel-Deployments des Teams und das OpenAI-Guthaben; Anthropic (Individual-Konto, keine Admin-API), Supabase und GitHub-Rate-Limit folgen in eigenen Issues.
  */
 import { readFileSync } from "node:fs";
-import { apiGuthaben, vercelTeam, type GuthabenZeile } from "../../src/lib/kontingent/messung";
-import { langfuseLuecken, mischeQuotas, pruefeRegister, type Produkt } from "../../src/lib/kontingent/produkte";
+import { apiGuthaben, vercelTeam, VERCEL_LIMIT_TAG, type Deployment, type GuthabenZeile } from "../../src/lib/kontingent/messung";
+import { langfuseLuecken, mischeQuotas, pruefeRegister, sammle, type Messwert, type Produkt } from "../../src/lib/kontingent/produkte";
 import type { Quota } from "../../src/lib/uebersicht";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
 
 /** Alle Deployments der letzten 24 h über alle Projekte des Teams, seitenweise (SIN-1047). */
-async function vercelTeamDeployments(): Promise<Quota | null> {
+async function vercelTeamDeployments(): Promise<Deployment[] | null> {
   if (!env.VERCEL_TOKEN) {
     console.log("::warning::VERCEL_TOKEN fehlt, Deployments werden nicht gemessen.");
     return null;
   }
-  const jetzt = new Date();
-  const seit = jetzt.getTime() - 24 * 3_600_000;
-  const alle: { uid: string; projectId?: string; created?: number }[] = [];
+  const seit = Date.now() - 24 * 3_600_000;
+  const alle: Deployment[] = [];
   let bis: number | null = null;
   for (let seite = 0; seite < 10; seite++) {
     const team = env.VERCEL_TEAM_ID ? `&teamId=${encodeURIComponent(env.VERCEL_TEAM_ID)}` : "";
@@ -35,30 +34,44 @@ async function vercelTeamDeployments(): Promise<Quota | null> {
     bis = j.pagination?.next ?? null;
     if (!bis) break;
   }
-  return vercelTeam(alle, jetzt);
+  return alle;
 }
 
-/** OpenAI-Kosten der letzten 31 Tage in $ (Costs-Endpunkt, nur lesend). Ohne Key oder bei Fehler: null. */
-async function openaiVerbrauch(): Promise<number | null> {
+/** OpenAI-Kosten in $ seit `seit` (Datum der Einzahlung; Costs-Endpunkt, nur lesend), seitenweise. Ohne Key oder bei Fehler: null. */
+async function openaiVerbrauch(seit: string): Promise<number | null> {
   if (!env.OPENAI_ADMIN_KEY) return null;
-  const res = await fetch(`https://api.openai.com/v1/organization/costs?start_time=${Math.floor(Date.now() / 1000) - 31 * 86400}&bucket_width=1d&limit=31`, { headers: { Authorization: `Bearer ${env.OPENAI_ADMIN_KEY}` } });
-  if (!res.ok) {
-    console.log(`::warning::OpenAI Costs: HTTP ${res.status}`);
-    return null;
+  const start = Math.floor(Date.parse(seit) / 1000);
+  if (!Number.isFinite(start)) return null;
+  let summe = 0;
+  let seite: string | null = null;
+  for (let i = 0; i < 20; i++) {
+    const res = await fetch(`https://api.openai.com/v1/organization/costs?start_time=${start}&bucket_width=1d&limit=180${seite ? `&page=${encodeURIComponent(seite)}` : ""}`, { headers: { Authorization: `Bearer ${env.OPENAI_ADMIN_KEY}` } });
+    if (!res.ok) {
+      console.log(`::warning::OpenAI Costs: HTTP ${res.status}`);
+      return null;
+    }
+    const j = (await res.json()) as { data?: { results?: { amount?: { value?: number } }[] }[]; has_more?: boolean; next_page?: string | null };
+    summe += (j.data ?? []).flatMap((b) => b.results ?? []).reduce((x, r) => x + (r.amount?.value ?? 0), 0);
+    seite = j.has_more ? (j.next_page ?? null) : null;
+    if (!seite) return summe;
   }
-  const j = (await res.json()) as { data?: { results?: { amount?: { value?: number } }[] }[] };
-  return (j.data ?? []).flatMap((b) => b.results ?? []).reduce((s, r) => s + (r.amount?.value ?? 0), 0);
+  return null;
 }
 
-async function schreibe(project: string, neu: Quota[], guthaben: GuthabenZeile[]) {
+async function schreibe(project: string, neu: Quota[], guthaben: GuthabenZeile[], veraltet: string[] = []) {
   const kopf = { apikey: env.SUPABASE_SERVICE_ROLE_KEY!, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` };
-  const alt = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_snapshot?project=eq.${encodeURIComponent(project)}&select=quotas`, { headers: kopf });
+  const alt = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_snapshot?project=eq.${encodeURIComponent(project)}&select=quotas,guthaben`, { headers: kopf });
   if (!alt.ok) throw new Error(`loop_snapshot ${project} lesen: ${alt.status}`);
-  const quotas = mischeQuotas(((await alt.json()) as { quotas?: unknown }[])[0]?.quotas, neu);
+  const zeile = ((await alt.json()) as { quotas?: unknown; guthaben?: unknown }[])[0];
+  const quotas = mischeQuotas(zeile?.quotas, neu).filter((q) => !veraltet.includes((q as { name?: string })?.name ?? ""));
+  // Guthaben anderer Dienste bleiben erhalten; ein Eintrag desselben Dienstes wird ersetzt.
+  const vorher = typeof zeile?.guthaben === "string" ? JSON.parse(zeile.guthaben) : zeile?.guthaben;
+  const dienste = new Set(guthaben.map((g) => g.dienst));
+  const gemischt = [...(Array.isArray(vorher) ? vorher : []).filter((g) => !dienste.has((g as { dienst?: string })?.dienst ?? "")), ...guthaben];
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_snapshot?on_conflict=project`, {
     method: "POST",
     headers: { ...kopf, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
-    body: JSON.stringify({ project, quotas, ...(guthaben.length ? { guthaben } : {}) }),
+    body: JSON.stringify({ project, quotas, ...(guthaben.length ? { guthaben: gemischt } : {}) }),
   });
   if (!res.ok) throw new Error(`loop_snapshot ${project}: ${res.status} ${await res.text()}`);
 }
@@ -68,15 +81,25 @@ async function main() {
   const fehler = pruefeRegister(produkte);
   if (fehler.length) throw new Error(`Register fehlerhaft: ${fehler.join("; ")}`);
   for (const l of langfuseLuecken(produkte)) console.log(`::warning::${l}`);
-  const team = await vercelTeamDeployments().catch((e) => (console.log(`::warning::${(e as Error).message}`), null));
-  const openai = (JSON.parse(readFileSync("docs/autonomy/kontingente.json", "utf8")) as { api_guthaben?: { openai?: { einzahlung?: number; link?: string } } }).api_guthaben?.openai;
+  const jetzt = new Date();
+  const deployments = await vercelTeamDeployments().catch((e) => (console.log(`::warning::${(e as Error).message}`), null));
+  const team = deployments ? vercelTeam(deployments, jetzt) : null;
+  // Je Produkt bleibt die Anzeige aus SIN-1049: Deployments des eigenen Vercel-Projekts (ID oder Name); das Limit gilt fürs Team.
+  const werte: Messwert[] = deployments
+    ? produkte.filter((p) => p.vercel.projekt).map((p) => ({ produkt: p.id, name: "Deploys pro Tag", used: vercelTeam(deployments.filter((d) => d.projectId === p.vercel.projekt || d.name === p.vercel.projekt), jetzt).used, limit: VERCEL_LIMIT_TAG }))
+    : [];
+  const je = sammle(produkte, werte).je_produkt;
+  const openai = (JSON.parse(readFileSync("docs/autonomy/kontingente.json", "utf8")) as { api_guthaben?: { openai?: { einzahlung?: number; seit?: string; link?: string } } }).api_guthaben?.openai;
   const einzahlung = openai?.einzahlung ?? 0;
-  const guthaben = einzahlung > 0 ? [apiGuthaben("OpenAI", einzahlung, await openaiVerbrauch(), !!env.OPENAI_ADMIN_KEY, new Date(), openai?.link ?? null)] : [];
-  console.log(JSON.stringify({ team, guthaben }, null, 2));
+  const verbrauch = einzahlung > 0 && openai?.seit ? await openaiVerbrauch(openai.seit) : null;
+  const guthaben = [apiGuthaben("OpenAI", einzahlung, verbrauch, !!env.OPENAI_ADMIN_KEY, jetzt, openai?.link ?? null)];
+  console.log(JSON.stringify({ team, je_produkt: je, guthaben }, null, 2));
   if (DRY) return;
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt");
   // Ohne Messwert bleibt die Zeile unberührt; neue Werte werden nach Name in die bestehenden quotas gemischt.
-  if (team || guthaben.length) await schreibe("leitstand", team ? [team] : [], guthaben);
+  // Die alten, je Projekt gezählten Konto-Zeilen der Zeile `leitstand` fallen weg (zeigten ein falsches Tageslimit).
+  await schreibe("leitstand", team ? [team] : [], guthaben, ["Deploys pro Tag", "Deploys pro Tag (alle Produkte)"]);
+  for (const [id, quotas] of Object.entries(je)) if (id !== "leitstand" && quotas.length) await schreibe(id, quotas, []);
 }
 
 main().catch((e) => {

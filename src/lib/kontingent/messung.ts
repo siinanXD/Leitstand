@@ -7,7 +7,7 @@ export const VERCEL_KEY = "vercel_deployments_tag";
 export const VERCEL_LIMIT_TAG = 100;
 const TAG = 24 * 3_600_000;
 
-type Deployment = { uid: string; projectId?: string; created?: number };
+export type Deployment = { uid: string; name?: string; projectId?: string; created?: number };
 
 /** Deployments der letzten 24 h über alle Projekte des Teams; jede `uid` zählt einmal. */
 export function vercelTeam(deployments: Deployment[], jetzt: Date): Quota {
@@ -15,19 +15,18 @@ export function vercelTeam(deployments: Deployment[], jetzt: Date): Quota {
   return { key: VERCEL_KEY, name: "Vercel: Deployments pro Tag (Team)", used: ids.size, limit: VERCEL_LIMIT_TAG, schaetzung: false, quelle: "team" };
 }
 
-/** Abo ohne Verbrauchs-API (Claude Max, ChatGPT): immer Schätzung, nie als Messwert ausgegeben. */
-export const aboQuota = (name: string, used: number, limit: number): Quota => ({ name, used, limit, schaetzung: true, quelle: "schaetzung" });
-
 export type NichtMessbar = { dienst: string; grund: string };
 export type GuthabenZeile = ({ art: "wert" } & Guthaben) | ({ art: "nicht-messbar" } & NichtMessbar);
 
 /**
- * API-Guthaben = eingetragene Einzahlung − Verbrauch (`gerechnet`). Ohne Verbrauch kein Wert:
- * fehlt der Admin-Key, steht „nicht messbar: Admin-Key fehlt“, sonst „nicht messbar: Verbrauch unbekannt“.
+ * API-Guthaben = eingetragene Einzahlung − Verbrauch seit der Einzahlung (`gerechnet`). Ohne Admin-Key, Einzahlung
+ * oder Verbrauch kein Wert, sondern „nicht messbar“ mit Grund. Einheit wie vom Dienst abgerechnet (OpenAI: USD).
  */
-export function apiGuthaben(dienst: string, einzahlung: number, verbrauch: number | null, adminKeyDa: boolean, jetzt: Date, link: string | null = null): GuthabenZeile {
-  if (verbrauch === null) return { art: "nicht-messbar", dienst, grund: adminKeyDa ? "Verbrauch unbekannt" : "Admin-Key fehlt" };
-  return { art: "wert", dienst, wert: Math.max(0, einzahlung - verbrauch), gesamt: einzahlung, einheit: "€", quelle: "gerechnet", aktualisiert: jetzt.toISOString(), link };
+export function apiGuthaben(dienst: string, einzahlung: number, verbrauch: number | null, adminKeyDa: boolean, jetzt: Date, link: string | null = null, einheit = "$"): GuthabenZeile {
+  if (!adminKeyDa) return { art: "nicht-messbar", dienst, grund: "Admin-Key fehlt" };
+  if (einzahlung <= 0) return { art: "nicht-messbar", dienst, grund: "Einzahlung nicht eingetragen" };
+  if (verbrauch === null) return { art: "nicht-messbar", dienst, grund: "Verbrauch unbekannt" };
+  return { art: "wert", dienst, wert: Math.max(0, einzahlung - verbrauch), gesamt: einzahlung, einheit, quelle: "gerechnet", aktualisiert: jetzt.toISOString(), link };
 }
 
 export const nichtMessbarText = (n: NichtMessbar) => `${n.dienst}: nicht messbar: ${n.grund}`;

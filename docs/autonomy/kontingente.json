@@ -10,7 +10,7 @@
     }
   },
   "api_guthaben": {
-    "hinweis": "Eingetragene Einzahlung je API-Dienst (SIN-1047), ohne Geheimnisse. Guthaben = Einzahlung − Verbrauch (gerechnet). 0 = noch nicht eingetragen, dann zeigt der Sammler kein Guthaben.",
-    "openai": { "einzahlung": 0, "link": "https://platform.openai.com/settings/organization/billing/overview" }
+    "hinweis": "Eingetragene Einzahlung je API-Dienst (SIN-1047), ohne Geheimnisse. Guthaben = Einzahlung − Verbrauch seit `seit` (Datum der Einzahlung, USD, gerechnet). 0 = noch nicht eingetragen, dann steht „nicht messbar“.",
+    "openai": { "einzahlung": 0, "seit": "2026-01-01", "link": "https://platform.openai.com/settings/organization/billing/overview" }
   }
 }

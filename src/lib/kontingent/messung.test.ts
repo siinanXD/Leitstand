@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { aboQuota, apiGuthaben, nichtMessbarText, quotaText, vercelTeam, VERCEL_KEY } from "./messung";
-import { parseQuotas } from "../uebersicht";
+import { apiGuthaben, nichtMessbarText, quotaText, vercelTeam, VERCEL_KEY } from "./messung";
+import { parseQuotas, type Quota } from "../uebersicht";
 import { parseGuthaben, parseNichtMessbar } from "../kosten/guthaben";
 
 const jetzt = new Date("2026-10-23T12:00:00Z");
@@ -34,6 +34,9 @@ test("API-Guthaben gerechnet = Einzahlung − Verbrauch; ohne Admin-Key nicht me
   assert.equal(n.art, "nicht-messbar");
   assert.ok(!("wert" in n));
   assert.equal(n.art === "nicht-messbar" && nichtMessbarText(n), "OpenAI: nicht messbar: Admin-Key fehlt");
+  assert.ok(g.art === "wert" && g.einheit === "$");
+  const ohne = apiGuthaben("OpenAI", 0, 5, true, jetzt);
+  assert.ok(ohne.art === "nicht-messbar" && ohne.grund === "Einzahlung nicht eingetragen");
 });
 
 test("nicht messbar wird gelesen, ohne dass parseGuthaben einen Wert erfindet", () => {
@@ -43,7 +46,7 @@ test("nicht messbar wird gelesen, ohne dass parseGuthaben einen Wert erfindet", 
 });
 
 test("Abo-Zeilen tragen quelle schaetzung und werden als Schätzung beschriftet", () => {
-  const q = aboQuota("ChatGPT-Abo", 40, 100);
+  const q: Quota = { name: "ChatGPT-Abo", used: 40, limit: 100, schaetzung: true, quelle: "schaetzung" };
   assert.equal(q.quelle, "schaetzung");
   assert.equal(q.schaetzung, true);
   assert.match(quotaText(q), /\(Schätzung\)/);

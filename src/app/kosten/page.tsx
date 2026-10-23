@@ -57,7 +57,7 @@ export default function Kosten() {
         const abo = kontingente(snapshot).filter((q) => q.schaetzung);
         const guthaben = einzigartig(snapshot.flatMap((s) => s.guthaben ?? []));
         const nichtMessbar = snapshot.flatMap((s) => s.nichtMessbar ?? []);
-        const frei =kontingente(snapshot).filter((q) => !q.schaetzung);
+        const frei = kontingente(snapshot).filter((q) => !q.schaetzung);
         const wochenAnteil = kosten && kosten.woche !== null ? kosten.woche / kosten.wochenDeckel : null;
         const zustand: ZustandArt = kosten?.ampel === "rot" || (wochenAnteil ?? 0) >= 0.9 ? "kaputt" : kosten?.ampel === "gelb" ? "wartet" : "laeuft";
         return (
