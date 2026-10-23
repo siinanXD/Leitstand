@@ -15,11 +15,13 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { alarmeAus } from "../../src/lib/abnahme/abnahme";
-import { abbruchAus, berlinZeit, brauchtDichAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, produktFertigAus, rollenStillstandAus, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
+import { abbruchAus, berlinZeit, brauchtDichAus, entscheidungenAus, fertigAus, FERTIG_FENSTER_NACHT_MS, menschlich, planerOhneTodosAus, plane, produktFertigAus, rollenStillstandAus, stillstandAus, type GemergterPr, type Schlange, type Wartendes, type WorkerLauf } from "../../src/lib/push/ausloeser";
 import { REPOS, type RepoName } from "../../src/lib/freigabe";
 import { projektAusLinear, statusAusLinear } from "../../src/lib/aufgaben";
 import { leseHaken } from "../../src/lib/loop/haken";
 import { OHNE_TODOS_SCHRITT } from "../../src/lib/vorarbeiter/vorarbeiter";
+import { offeneEntscheidungen } from "../../src/lib/entscheidung/entscheidung";
+import { entscheidungsNetz } from "../../src/lib/entscheidung/netz";
 import { sendeAnAlle } from "../../src/lib/push/push";
 import { supabaseSpeicher, vapidSender } from "../../src/lib/push/server";
 import { projektInfo } from "../../src/lib/projekte";
@@ -198,9 +200,12 @@ async function main() {
     };
   });
 
+  // Offene Entscheidungen aus Linear; ohne LINEAR_API_KEY oder bei Fehler entfallen sie mit Warnung.
+  const entscheidungen = env.LINEAR_API_KEY ? await offeneEntscheidungen(entscheidungsNetz(env.LINEAR_API_KEY)).catch((e) => (console.log(`::warning::Entscheidungen: ${e instanceof Error ? e.message : e}`), [])) : [];
   const [prs, laeufe] = await Promise.all([prLage(jetzt), workerLaeufe(jetzt)]);
   const ereignisse = [
     ...brauchtDichAus(wartend, jetzt.getTime()),
+    ...entscheidungenAus(entscheidungen, jetzt.getTime()),
     ...offene(q.events).map((m) => ({ id: `alarm:migration:${m.datei}`, art: "alarm" as const, projekt: "Leitstand", kennung: "Datenbank", titel: `${m.datei}: ${m.grund}`, zeit: m.zeit })),
     ...alarmeAus(q.events, jetzt.getTime()),
     ...pausenAlarme(q.events as unknown as RollenEreignis[], jetzt.getTime()),
