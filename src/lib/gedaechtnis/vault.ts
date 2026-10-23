@@ -122,6 +122,8 @@ ${PFLICHT.map((k) => `\`${k}\``).join(", ")}. \`beschreibung\` ist eine Zeile un
 
 Der Gedächtnis-Agent (Leitstand, \`scripts/gedaechtnis/schreiben.ts\`) schreibt Übersicht, Produkte, Tage, Entscheidungen, Gespräche, index und log. Links nach Bedeutung: Wiki-Links zwischen Produkt, Entscheidung, Idee und Tag.
 
+Nur dieser Agent schreibt, direkt auf \`main\`. Andere Agenten (Worker, Codex, Prüfer) öffnen hier keine PRs: Das Repo hat kein Gate und keinen Auto-Merge, ihre PRs blieben liegen. Sie melden über ihren PR und Linear; der Gedächtnis-Agent übernimmt es beim nächsten Lauf.
+
 ## Verboten
 
 Keine Geheimnisse, keine Personendaten, keine Rohdaten. Ein Treffer der Geheimnis-Prüfung stoppt das Schreiben.
