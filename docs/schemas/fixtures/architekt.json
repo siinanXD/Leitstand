@@ -1,0 +1,16 @@
+{
+  "rolle": "architekt",
+  "issue": "SIN-1034",
+  "zeitpunkt": "2026-10-23T09:00:00Z",
+  "status": "fertig",
+  "zusammenfassung": "Zwei Seiten bewertet, eine zum Zusammenlegen vorgeschlagen.",
+  "naechster_schritt": "Bau-Issue für die Zusammenlegung anlegen.",
+  "kosten_eur": 0,
+  "quellen": ["e2e/routes.ts", "docs/FERTIG.md"],
+  "produkt": "leitstand",
+  "analytics": true,
+  "urteile": [
+    { "pfad": "/kosten", "urteil": "behalten", "grund": "Die Seite wird aufgerufen.", "beleg": "14 Aufrufe in 30 Tagen" },
+    { "pfad": "/wochen-check", "urteil": "zusammenlegen", "grund": "Wenig genutzt, passt zu /auswertung.", "beleg": "2 Aufrufe in 30 Tagen", "mit": "/auswertung" }
+  ]
+}

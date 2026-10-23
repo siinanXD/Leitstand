@@ -19,6 +19,10 @@ Entscheidung und Vorher/Nachher der Workflow-Läufe: `docs/decisions/SIN-636-ein
 - Brauchen Frontend und Backend denselben Vertrag, kommt zuerst das `schnittstelle`-Issue (Typen, Mock); die anderen hängen per Blocker daran.
 - Gemeinsame Dateien nicht anfassen: Proben in `docs/abnahme/<SIN-xxx>.yml`, Lehren in `docs/lehren/<SIN-xxx>.md`. README und AGENTS ändert nur ein eigenes `infra`-Issue.
 
+## Ort und Muster (SIN-1034)
+
+- Jedes Issue für ein neues Feature oder eine neue Seite enthält einen Abschnitt „Ort und Muster“: Route, vorhandene Komponente und 1 bis 3 recherchierte Quellen (Research-Skill, Links mit Datum). Ohne Quellen legst du das Issue nicht an. Grundlage ist das Urteil des Architekten (`docs/skills/architekt/SKILL.md`).
+
 ## Echte Entscheidung (SIN-1014)
 
 - Echte Entscheidung (Design, Infrastruktur, Kosten, Zugang, Produkt, Umfang) → Label `entscheidung` mit Block (Frage, 2–3 Optionen, Empfehlung, Recherche vorher), nie Frage im PR-Text. Routinefehler bleiben `needs-human`. Siehe `src/lib/entscheidung/entscheidung.ts`.

@@ -263,6 +263,14 @@
   rest: loop_events?agent=eq.content&step=neq.ROLLE_PAUSE&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 2880
+- id: leitstand-rolle-architekt
+  produkt: leitstand
+  titel: Architekt hat in den letzten 8 Tagen ein Ereignis geschrieben (wöchentlich, SIN-1034)
+  art: db
+  rest: loop_events?step=eq.architekt&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 11520
+  rolle: architekt
 - id: leitstand-rolle-hausmeister
   produkt: leitstand
   titel: Hausmeister hat einen erfolgreichen Lauf (wöchentlich, schreibt keine loop_events)
@@ -1103,3 +1111,18 @@
   art: datei
   pfad: src/lib/strukturiert/strukturiert.ts
   enthaelt: frageStrukturiert
+
+# SIN-1034
+- id: leitstand-architekt-skill
+  produkt: leitstand
+  titel: Der Architekt bewertet Seiten nach Skill und Schema, bei neuen Features verlangt der Planer Ort und Muster (SIN-1034)
+  art: datei
+  pfad: docs/skills/architekt/SKILL.md
+  enthaelt: Ort und Muster
+  rolle: architekt
+- id: leitstand-architekt-schema
+  produkt: leitstand
+  titel: Das Schema für das Seiten-Urteil des Architekten liegt im Repo (SIN-1034)
+  art: datei
+  pfad: docs/schemas/architekt.json
+  enthaelt: zusammenlegen

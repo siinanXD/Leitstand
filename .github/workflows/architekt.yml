@@ -1,0 +1,66 @@
+# SIN-1034: Architekt bewertet wöchentlich die Seiten je Produkt (Parameter produkt, SIN-577).
+# Claude schreibt die Ausgabe nach architekt-ergebnis.json, das Skript prüft sie und schreibt loop_events Schritt `architekt`.
+# Trockenlauf (DRY_RUN=1, auch automatisch bei Pull Requests): nur Urteile ins Log, kein Schreibzugriff, kein Modell (SIN-574).
+name: architekt
+on:
+  schedule:
+    - cron: "30 5 * * 1" # montags 07:30 Berlin (Sommerzeit)
+  pull_request:
+    paths:
+      - "scripts/architekt/**"
+      - "src/lib/architekt/**"
+      - ".github/workflows/architekt.yml"
+  workflow_dispatch:
+    inputs:
+      produkt:
+        description: "Produkt-Kennung, z. B. leitstand"
+        default: leitstand
+      dry_run:
+        description: "Nur ins Log schreiben"
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: architekt-${{ inputs.produkt || 'leitstand' }}
+  cancel-in-progress: false
+jobs:
+  architekt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PRODUKT: ${{ inputs.produkt || 'leitstand' }}
+      DRY: ${{ (github.event_name == 'pull_request' || inputs.dry_run) && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - id: modell
+        if: ${{ env.DRY == '' }}
+        name: Modell aus docs/autonomy/modelle.json
+        run: echo "name=$(jq -r '.rollen.architekt.modell' docs/autonomy/modelle.json)" >> "$GITHUB_OUTPUT"
+      - name: Architekt bewertet die Seiten
+        if: ${{ env.DRY == '' }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+          prompt: |
+            Lies docs/skills/architekt/SKILL.md und führe sie aus für das Produkt ${{ env.PRODUKT }}.
+            Schreibe die Ausgabe nach architekt-ergebnis.json im Repo-Wurzelverzeichnis (issue: SIN-1034). Sonst nichts ändern.
+          claude_args: |
+            --model ${{ steps.modell.outputs.name }}
+            --max-turns 30
+            --allowedTools "Read,Write"
+      - name: Urteile prüfen und protokollieren
+        run: npx tsx scripts/architekt/architekt.ts "$PRODUKT" ${{ env.DRY == '' && 'architekt-ergebnis.json' || '' }}
+        env:
+          DRY_RUN: ${{ env.DRY }}
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID || vars.POSTHOG_PROJECT_ID }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST || vars.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

@@ -15,6 +15,7 @@ flowchart LR
   hausmeister["Hausmeister"]
   anwalt["Anwalt"]
   gedaechtnis["Gedächtnis"]
+  architekt["Architekt"]
   ceo --> research
   ceo --> visionaer
   planer --> bauen
@@ -22,6 +23,7 @@ flowchart LR
   bauen --> research
   content --> pruefen
   marketing --> anwalt
+  architekt --> research
 ```
 
 Bau-Spuren: Spur A · Claude Max, Spur B · Claude Max, Spur C · API mit Haiku.
@@ -39,3 +41,4 @@ Bau-Spuren: Spur A · Claude Max, Spur B · Claude Max, Spur C · API mit Haiku.
 | Hausmeister | alle 20 Merges (merges_seit_hausmeister) | montags 07:00 | Bash, knip |
 | Anwalt | PR ändert Migrationen, Tracking, Prompts mit Nutzerdaten, Rechtstexte oder Werbemittel | monatlich AVV-Abgleich | GitHub |
 | Gedächtnis | nach jedem Merge | täglich 05:50 | GitHub |
+| Architekt | wöchentlich | montags 05:30 | PostHog, Linear, Supabase, Gedächtnis |

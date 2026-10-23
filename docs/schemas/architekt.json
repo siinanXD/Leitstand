@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ergebnis der Rolle architekt",
+  "type": "object",
+  "properties": {
+    "rolle": { "type": "string", "enum": ["architekt"] },
+    "issue": { "type": "string", "pattern": "^SIN-[0-9]+$" },
+    "zeitpunkt": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$" },
+    "status": { "type": "string", "enum": ["fertig", "blockiert", "braucht_sinan"] },
+    "zusammenfassung": { "type": "string", "minLength": 1 },
+    "naechster_schritt": { "type": "string", "minLength": 1 },
+    "kosten_eur": { "type": "number", "minimum": 0 },
+    "quellen": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "produkt": { "type": "string", "minLength": 1 },
+    "analytics": { "type": "boolean" },
+    "urteile": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pfad": { "type": "string", "pattern": "^/" },
+          "urteil": { "type": "string", "enum": ["behalten", "zusammenlegen", "entfernen", "neu", "keine_daten"] },
+          "grund": { "type": "string", "minLength": 1 },
+          "beleg": { "type": "string", "minLength": 1 },
+          "mit": { "type": "string" }
+        },
+        "required": ["pfad", "urteil", "grund", "beleg"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["rolle", "issue", "zeitpunkt", "status", "zusammenfassung", "naechster_schritt", "kosten_eur", "quellen", "produkt", "analytics", "urteile"],
+  "additionalProperties": false
+}
