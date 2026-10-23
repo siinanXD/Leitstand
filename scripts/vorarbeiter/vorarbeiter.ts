@@ -1,4 +1,5 @@
 import { artLabel } from "../../src/lib/loop/lauf";
+import { AntwortFehler, frageStrukturiert, SCHEMA_DATEIEN } from "../../src/lib/strukturiert/strukturiert";
 import { ladeProjektIssues } from "../../src/lib/loop/projekt-issues";
 /**
  * Planer (SIN-636; der Pfad stammt vom Vorarbeiter, SIN-553, der im Planer aufgegangen ist). Aufruf aus planer.yml (.github/workflows/planer.yml):
@@ -84,27 +85,23 @@ async function baueSpurC(i: LinearIssue, team: string, plan: Plan): Promise<stri
   const pr = prFuerC(i);
   if (await gh(`/git/ref/heads/${pr.branch}`)) return `Spur C: ${i.identifier} hat schon einen Branch, übersprungen.`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: SPUR_C_MODELL, max_tokens: 4000, messages: [{ role: "user", content: promptC(i) }] }),
-    signal: AbortSignal.timeout(120_000),
-  });
-  if (!res.ok) throw new Error(`Modell: ${res.status}`);
-  const antwort = (await res.json()) as { content?: { text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
-  // Kosten zuerst ins Ledger: der Aufruf ist bezahlt, auch wenn die Antwort danach nicht taugt.
-  const eur = aufrufKosten(antwort.usage?.input_tokens ?? 0, antwort.usage?.output_tokens ?? 0, preis, kurs);
-  await supabase("pipeline_run_costs", "POST", ledgerZeile(eur));
-
-  const text = antwort.content?.[0]?.text ?? "";
-  // shortcut: erstes JSON-Objekt der Antwort, bei Mischtext ausbauen auf strukturierte Ausgabe.
+  // Kosten zuerst ins Ledger (beiVerbrauch): der Aufruf ist bezahlt, auch wenn die Antwort danach nicht taugt.
+  let eur = 0;
   let dateien;
   try {
-    dateien = leseDateien(JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)), pfade(i.description));
-  } catch {
-    dateien = null;
+    const antwort = await frageStrukturiert<unknown>({
+      key: env.ANTHROPIC_API_KEY, modell: SPUR_C_MODELL, maxTokens: 4000, prompt: promptC(i), schema: SCHEMA_DATEIEN,
+      beiVerbrauch: async (ein, aus) => {
+        eur = aufrufKosten(ein, aus, preis, kurs);
+        await supabase("pipeline_run_costs", "POST", ledgerZeile(eur));
+      },
+    });
+    dateien = leseDateien(antwort.wert, pfade(i.description));
+  } catch (e) {
+    if (!(e instanceof AntwortFehler)) throw e; // Netz, Schlüssel, Ledger: Lauf soll rot werden
+    return `Spur C: Antwort für ${i.identifier} unbrauchbar, nichts geschrieben (${eur} € im Ledger): ${e instanceof Error ? e.message : e}`;
   }
-  if (!dateien) return `Spur C: Antwort für ${i.identifier} unbrauchbar, nichts geschrieben (${eur} € im Ledger).`;
+  if (!dateien) return `Spur C: Antwort für ${i.identifier} unbrauchbar (Pfad nicht erlaubt), nichts geschrieben (${eur} € im Ledger).`;
 
   const main = await gh<{ object: { sha: string } }>("/git/ref/heads/main");
   await gh("/git/refs", { method: "POST", body: { ref: `refs/heads/${pr.branch}`, sha: main!.object.sha } });

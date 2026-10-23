@@ -1081,3 +1081,11 @@
   art: datei
   pfad: src/lib/loop/konflikt.ts
   enthaelt: MAX_KONFLIKT
+
+# SIN-1035
+- id: leitstand-strukturierte-ausgabe
+  produkt: leitstand
+  titel: Vorarbeiter, Lernen und Marketing fragen das Modell mit Schema und prüfen die Antwort, kein Ausschneiden aus Freitext (SIN-1035)
+  art: datei
+  pfad: src/lib/strukturiert/strukturiert.ts
+  enthaelt: frageStrukturiert

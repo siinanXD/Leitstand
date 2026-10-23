@@ -13,6 +13,7 @@
 import { readFileSync } from "node:fs";
 import { pruefeWerbemittel } from "../../src/lib/anwalt/anwalt";
 import { modellFuer } from "../../src/lib/kennzahlen/modelle";
+import { frageStrukturiert, SCHEMA_MARKETING } from "../../src/lib/strukturiert/strukturiert";
 import { ereignisZeile, leseAusgaben, promptFuer, werbemittelZeilen, type Eingabe } from "../../src/lib/marketing/marketing";
 
 const env = process.env;
@@ -20,17 +21,7 @@ const DRY = env.DRY_RUN === "1" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_RO
 const MODELL = env.MARKETING_MODELL ?? modellFuer("marketing");
 
 async function modell(prompt: string): Promise<unknown> {
-  if (!env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY fehlt");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: MODELL, max_tokens: 4000, messages: [{ role: "user", content: prompt }] }),
-    signal: AbortSignal.timeout(120_000),
-  });
-  if (!res.ok) throw new Error(`Modell: ${res.status}`);
-  const antwort = ((await res.json()) as { content?: { text?: string }[] }).content?.[0]?.text ?? "";
-  // shortcut: erstes JSON-Objekt der Antwort, bei Mischtext ausbauen auf strukturierte Ausgabe.
-  return JSON.parse(antwort.slice(antwort.indexOf("{"), antwort.lastIndexOf("}") + 1));
+  return (await frageStrukturiert<unknown>({ key: env.ANTHROPIC_API_KEY, modell: MODELL, maxTokens: 4000, prompt, schema: SCHEMA_MARKETING })).wert;
 }
 
 async function supabase(tabelle: string, zeilen: unknown): Promise<void> {
