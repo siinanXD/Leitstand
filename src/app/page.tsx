@@ -14,7 +14,6 @@ import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
 import { ChefZeile } from "./chef-karte";
 import { fertigZeile, WieWeit } from "./fortschritt-balken";
 import { DurchstichKachel } from "./durchstich-kachel";
-import { E2eKachel } from "./e2e-kachel";
 import { KennzahlenKachel } from "./kennzahlen-kachel";
 import { MitMehr } from "./mit-mehr";
 import { Rahmen, uhrzeit, type Wartende } from "./rahmen";
@@ -160,7 +159,6 @@ function Start({ quelle, jetzt, wartend, laden, pausiert, angemeldet, chef, stan
   return (
     <main className="einfach bunt">
       <DurchstichKachel angemeldet={angemeldet} jetzt={jetzt} />
-      <E2eKachel angemeldet={angemeldet} />
       <KennzahlenKachel angemeldet={angemeldet} jetzt={jetzt} />
       <section className="einfach-lage" aria-labelledby="lage">
         {pausiert && (

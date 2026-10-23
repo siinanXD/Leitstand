@@ -12,6 +12,7 @@ import { ProjektFilter, Rahmen, projekteIn, type Wartende } from "../rahmen";
 import { GedaechtnisKachel } from "../gedaechtnis-kachel";
 import { GelerntKachel } from "../gelernt-kachel";
 import { FehlergruendeKachel } from "../fehlergruende-kachel";
+import { E2eKachel } from "../e2e-kachel";
 import { WerbungKachel } from "../werbung-kachel";
 import "../freigabe.css";
 import "../uebersicht.css";
@@ -217,6 +218,7 @@ export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; p
         <GedaechtnisKachel angemeldet />
         <GelerntKachel angemeldet />
         <FehlergruendeKachel angemeldet />
+        <E2eKachel angemeldet />
       </div>
     </main>
   );
