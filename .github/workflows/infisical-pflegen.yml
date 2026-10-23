@@ -1,0 +1,52 @@
+name: infisical-pflegen
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  push:
+    branches: [main]
+    paths:
+      - docs/autonomy/produkte.json
+      - .env.example
+  pull_request:
+    paths:
+      - scripts/infisical/**
+      - src/lib/infisical/**
+      - docs/autonomy/produkte.json
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur anzeigen, nichts anlegen"
+        type: boolean
+        default: true
+
+concurrency:
+  group: infisical-pflegen
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  pflegen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Infisical abgleichen und pflegen
+        env:
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          INFISICAL_SCHREIB_IDENTITY_ID: ${{ vars.INFISICAL_SCHREIB_IDENTITY_ID }}
+          INFISICAL_PROJEKT_ID: ${{ vars.INFISICAL_PROJEKT_ID }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Pull Requests und Handlauf ohne Haken: nur anzeigen (Trockenlauf in CI, SIN-574).
+          DRY_RUN: ${{ (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)) && '1' || '0' }}
+        run: npx tsx scripts/infisical/pflegen.ts

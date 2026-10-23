@@ -20,7 +20,7 @@ test("Register enthält nur Namen, keine schlüsselähnlichen Werte", () => {
 });
 
 test("Prüfung erkennt Wert statt Name und doppelte Kennung", () => {
-  const p = { ...register[0], secrets: ["sk-lf-abc"], langfuse: { projekt: "x".repeat(40), getrennt: true } };
+  const p = { ...register[0], secrets: [{ ...register[0].secrets[0], name: "sk-lf-abc" }], langfuse: { projekt: "x".repeat(40), getrennt: true } };
   assert.equal(pruefeRegister([p, p]).length, 5);
 });
 
