@@ -42,6 +42,15 @@ test("Test: Probe einer pausierten Rolle wird übersprungen", () => {
   assert.equal(rolleAus("bauen"), false, "unbekannte Rolle gilt als aktiv");
 });
 
+test("Echte docs/abnahme.yml: keine Rollen-Probe für pausierte Rollen oder Rollen ohne Workflow (SIN-941)", () => {
+  const proben = parseProben(readFileSync("docs/abnahme.yml", "utf8"));
+  const rollenProben = proben.map((p) => /^leitstand-rolle-(.+)$/.exec(p.id)?.[1]).filter((r): r is string => !!r);
+  for (const r of rollenProben) assert.equal(rolleAus(r), false, `Probe für pausierte Rolle: ${r}`);
+  for (const r of ["research", "botadvisor", "bauen", "trend", "visionaer", "marketing"]) assert.ok(!rollenProben.includes(r), `Probe für ${r} vorhanden`);
+  // Proben mit rolle:-Feld einer pausierten Rolle werden übersprungen, die echte Datei bleibt dabei vollständig aktiv.
+  assert.equal(aktiveProben(proben, (r) => rolleAus(r)).length, proben.length);
+});
+
 test("Test: Planer hängt nicht an abnahme (SIN-941)", () => {
   const yml = readFileSync(".github/workflows/planer.yml", "utf8");
   assert.match(yml, /workflows: \[loop-merge\]/);
