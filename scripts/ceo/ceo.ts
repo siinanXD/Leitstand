@@ -13,6 +13,7 @@
  * DRY_RUN=1 oder fehlende Supabase-Variablen: nur Ausgabe im Log, nichts geschrieben.
  */
 import { AUSLOESER, bezugVon, ereignisZeile, entscheide, FERTIG_SCHRITT, fertigMeldung, entscheidungsZeile, gedaechtnisZeile, ohneDaten, startbar, type Ausloeser, type Entscheidung, type ProduktLage } from "../../src/lib/ceo/ceo";
+import { rolleAus } from "../../src/lib/autonomy/rollen";
 import { REPOS } from "../../src/lib/freigabe";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { parseEvents, parseSnapshot, type LoopEvent, type SnapshotRow } from "../../src/lib/uebersicht";
@@ -60,6 +61,8 @@ const projektName = (id: string | null) => (id ? (PROJEKTE.find((x) => x.id === 
 
 /** `fertig` (SIN-573): Dispatcher des Produkts stoppen (VERSION `pause`) und den Visionär starten (visionaer.yml). Baut erst weiter, wenn Sinan „go“ gibt. */
 async function visionaerRufen(produkt: string) {
+  // SIN-941: Pausierte Rolle (`takt: aus` in rollen.json, Fokus SIN-627) wird nicht gestartet und der Dispatcher nicht gestoppt.
+  if (rolleAus("visionaer")) return console.log(`${produkt}: fertig, Visionär pausiert (rollen.json), nicht gerufen`);
   console.log(`${DRY ? "[trocken] " : ""}${produkt}: fertig, Dispatcher stoppen und Visionär rufen`);
   if (DRY) return;
   await supabase("loop_events", standZeile(produkt, "pause", ""));

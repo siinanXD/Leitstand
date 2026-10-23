@@ -13,7 +13,8 @@
  * DRY_RUN=1: nur Ausgabe im Log, nichts in loop_events. ABNAHME_DATEI: andere Proben-Datei.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { bewerteText, bewerteZeilen, einsetzen, ereignisZeile, parseProben, type Ergebnis, type Probe } from "../../src/lib/abnahme/abnahme";
+import { rolleAus } from "../../src/lib/autonomy/rollen";
+import { aktiveProben, bewerteText, bewerteZeilen, einsetzen, ereignisZeile, parseProben, type Ergebnis, type Probe } from "../../src/lib/abnahme/abnahme";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -52,7 +53,7 @@ async function main() {
   const basis = env.ABNAHME_DATEI ?? "docs/abnahme.yml";
   const ordner = env.ABNAHME_DATEI ? null : "docs/abnahme";
   const dateien = [basis, ...(ordner && existsSync(ordner) ? readdirSync(ordner).filter((f) => f.endsWith(".yml")).sort().map((f) => `${ordner}/${f}`) : [])];
-  const proben = parseProben(dateien.map((f) => readFileSync(f, "utf8")).join("\n"));
+  const proben = aktiveProben(parseProben(dateien.map((f) => readFileSync(f, "utf8")).join("\n")), rolleAus);
   const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null;
   const zeilen = [];
   for (const p of proben) {

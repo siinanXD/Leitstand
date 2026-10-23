@@ -1,12 +1,12 @@
 name: planer
 
-# SIN-636: ein Planer statt CEO + Vorarbeiter + Planer. Ereignisgesteuert (Merge, Fertig-Liste geändert, Abnahme-Lauf, Rest-Schlange) plus täglich 06:00 (04:00 UTC).
+# SIN-636: ein Planer statt CEO + Vorarbeiter + Planer. Ereignisgesteuert (Merge, Fertig-Liste geändert) plus täglich 06:00 (04:00 UTC).
 # Legt Issues an (Dubletten-Prüfung gegen alle Linear-Titel), plant Reihenfolge und Spuren. Der CEO entscheidet nur weiterbauen | warten | fertig.
 on:
   schedule:
     - cron: "0 4 * * *" # vor dem CEO (04:10 UTC)
   workflow_run:
-    workflows: [loop-merge, abnahme]
+    workflows: [loop-merge]
     types: [completed]
   push:
     branches: [main]

@@ -42,3 +42,6 @@ export function pruefeRollen(events: readonly RollenLauf[], jetzt: number, rolle
     return [{ rolle: r.schritt, urteil, alterH }];
   });
 }
+
+/** Rolle in `rollen.json` pausiert (`takt: aus`, SIN-941): kein Start, keine Probe. Unbekannte Rollen gelten als aktiv. */
+export const rolleAus = (schritt: string, rollen: readonly Rolle[] = ROLLEN): boolean => rollen.find((r) => r.schritt === schritt)?.takt === "aus";

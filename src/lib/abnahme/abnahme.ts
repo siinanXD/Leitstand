@@ -35,6 +35,9 @@ export function parseProben(text: string): Probe[] {
   });
 }
 
+/** SIN-941: Eine Probe mit `rolle: <schritt>` wird übersprungen (nicht rot, kein Ereignis), solange die Rolle in rollen.json `takt: aus` hat. */
+export const aktiveProben = (proben: readonly Probe[], aus: (rolle: string) => boolean): Probe[] => proben.filter((p) => !(p.rolle && aus(p.rolle)));
+
 /** Ersetzt `${NAME}` aus der Umgebung; fehlt ein Wert, ist die Probe nicht prüfbar (Fehler, nie grün). */
 export function einsetzen(text: string, env: Readonly<Record<string, string | undefined>>): string {
   return text.replace(/\$\{([A-Z0-9_]+)\}/g, (_, name: string) => {
