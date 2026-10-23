@@ -17,8 +17,10 @@ export function sollBauen({ branch, env, dateien }) {
 
 function geaenderteDateien() {
   try {
-    // shortcut: nur der letzte Commit (Vercel klont flach); frühere Commits des Branches wurden bei ihrem Push gebaut.
-    const out = execFileSync("git", ["diff", "--name-only", "HEAD^", "HEAD"], { encoding: "utf8" });
+    // Basis: zuletzt gebauter Stand dieses Branches (Vercel setzt VERCEL_GIT_PREVIOUS_SHA), sonst der Vorgänger-Commit.
+    // Ist die Basis im flachen Klon nicht vorhanden, schlägt git fehl -> null -> bauen.
+    const basis = process.env.VERCEL_GIT_PREVIOUS_SHA || "HEAD^";
+    const out = execFileSync("git", ["diff", "--name-only", basis, "HEAD"], { encoding: "utf8" });
     return out.split("\n").filter(Boolean);
   } catch {
     return null;
