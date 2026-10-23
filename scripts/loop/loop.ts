@@ -25,7 +25,7 @@ import { starteLaeufe } from "../../src/lib/loop/lauf";
 import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
 import { prueferLaufziel } from "../../src/lib/loop/pruefer-lauf";
 import { aktiveSperren, ohneGesperrte, type CommitStatus } from "../../src/lib/loop/kontingente";
-import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, startbare, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRolle, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, startbare, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { baueBlock, istEchteEntscheidung, LABEL_ENTSCHEIDUNG, leseBlock } from "../../src/lib/entscheidung/entscheidung";
 import { GITHUB_URL, githubTreffer } from "../../src/lib/autonomy/research";
@@ -41,6 +41,8 @@ import { konfliktGrund, ladePrSchutz, maxParallel, parallelAuswahl, parallelRepo
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
 const repo = env.GITHUB_REPOSITORY ?? "siinanXD/leitstand";
+// Null means the project-wide occupancy could not be read: no new Codex assignment.
+let codexBestand: LinearIssue[] | null = null;
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -230,10 +232,10 @@ async function codexNutzer(): Promise<string> {
 
 /**
  * Codex-Spur (SIN-936): Issues mit Label `codex` bekommen Codex als Delegate statt eines Claude-Laufs (kein GitHub-Spiegel, kein Platz).
- * Ohne Branch `codex/` nach CODEX_MINUTEN nimmt der Dispatcher das Delegate zurück und gibt das Issue an Claude (Label, Todo, Kommentar).
+ * Ein Timeout erlaubt ohne bestätigtes Agentenende keine Übergabe an einen zweiten Worker (SIN-1052).
  * Gibt die Issues so zurück, wie sie danach in Linear stehen, damit die Claude-Auswahl sie richtig sieht.
  */
-async function codexSpur(repo: string, issues: LinearIssue[], nodes: ProjektKnoten[], prs: { title: string; head: { ref: string } }[], projekt: string): Promise<LinearIssue[]> {
+async function codexSpur(repo: string, issues: LinearIssue[], nodes: ProjektKnoten[], prs: { title: string; head: { ref: string } }[], projekt: string, gespiegelt: Set<string>): Promise<LinearIssue[]> {
   const jetzt = new Date();
   const neu = new Map(issues.map((i) => [i.identifier, i]));
   const refs = issues.some((i) => i.delegate) ? await gh<{ ref: string }[]>(`/repos/${repo}/git/matching-refs/heads/codex/`) : [];
@@ -256,24 +258,58 @@ async function codexSpur(repo: string, issues: LinearIssue[], nodes: ProjektKnot
       await ereignis("dispatch", "fehler", { projekt, issue: i.identifier, grund: fehlergrund(`codex_rueckfall: ${(e as Error).message}`) });
     }
   }
-  const start = codexStarts([...neu.values()]);
-  const codexId = start.length && !DRY ? await codexNutzer().catch(async (e: Error) => (await ereignis("dispatch", "fehler", { projekt, grund: fehlergrund(`codex_nutzer: ${e.message}`) }), null)) : null;
+  async function anClaude(i: LinearIssue, grund: string) {
+    if (i.delegate || i.stateType !== "unstarted") return;
+    if (DRY) { console.log(`[trocken] ${i.identifier}: ${grund}`); return; }
+    const team = nodes.find(n => n.id === i.id)!.team.id;
+    const l = await linear<{ team: { labels: { nodes: { id: string; name: string }[] } } }>(`query($t: String!) { team(id: $t) { labels(first: 250) { nodes { id name } } } }`, { t: team });
+    const id = (name: string) => l.team.labels.nodes.find(x => x.name.toLowerCase() === name)?.id;
+    const claude = id(LABEL), codex = id(LABEL_CODEX);
+    if (!claude || !codex) throw new Error("Claude-/Codex-Label fehlt");
+    const d = await linear<{ issueUpdate: { success: boolean } }>(`mutation($id: String!, $a: [String!], $r: [String!]) { issueUpdate(id: $id, input: { addedLabelIds: $a, removedLabelIds: $r }) { success } }`, { id: i.id, a: [claude], r: [codex] });
+    if (!d.issueUpdate.success) throw new Error("Claude-Übergabe nicht bestätigt");
+    neu.set(i.identifier, { ...i, labels: [...i.labels.filter(x => x.toLowerCase() !== LABEL_CODEX), LABEL] });
+    await kommentar(i.id, grund);
+  }
+  // Alte allgemeine Codex-Aufträge gehen ungestartet an den Hauptworker. Gesperrte/übergebene Aufträge bleiben unberührt.
+  for (const i of issues.filter(i => i.stateType === "unstarted" && !i.delegate && i.labels.some(l => l.toLowerCase() === LABEL_CODEX)
+    && !codexRolle(i.description) && !i.labels.some(l => ["needs-human", "sinan", "entscheidung", "kriterien-unklar", "design", "lauf"].includes(l.toLowerCase())))) {
+    await anClaude(i, "Kein expliziter Codex-Rollenauftrag: allgemeine Umsetzung geht an Claude (SIN-1052).");
+  }
+  const start = codexStarts([...neu.values()].filter(i => !gespiegelt.has(i.identifier) && !pruefe.some(p => p.titel.includes(i.identifier) || p.branch.toLowerCase().includes(i.identifier.toLowerCase()))), codexBestand);
+  let codexId: string | null = null;
+  if (start.length && !DRY) {
+    try { codexId = await codexNutzer(); }
+    catch (e) {
+      // Nur der belegte Fall „App fehlt“ ist ein sicherer Rückfall vor dem Start. Netz-/Lesefehler bleiben unbekannt.
+      if ((e as Error).message.startsWith("Linear-Nutzer")) {
+        for (const i of start) await anClaude(i, "Codex-App vor der Übergabe nicht verfügbar: Claude übernimmt (SIN-1052).");
+      }
+      await ereignis("dispatch", "fehler", { projekt, grund: fehlergrund(`codex_nutzer: ${(e as Error).message}`) });
+    }
+  }
   for (const i of start) {
-    if (DRY) { console.log(`[trocken] würde an Codex geben: ${i.identifier}`); continue; }
+    if (DRY) { console.log(`[trocken] würde an Codex geben: ${i.identifier} (${codexRolle(i.description)})`); continue; }
     if (!codexId) break;
-    const team = nodes.find((n) => n.id === i.id)!.team.id;
-    let delegiert = false;
+    const team = nodes.find(n => n.id === i.id)!.team.id;
+    // Vor dem Start belegen, auch wenn danach die Startbestätigung verloren geht.
+    codexBestand?.push({ ...i, delegate: CODEX_NAME });
     try {
-      await linear(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { delegateId: $d }) { success } }`, { id: i.id, d: codexId });
-      delegiert = true;
+      const rolle = codexRolle(i.description)!;
+      const beschreibung = `${(i.description ?? "").split("\n\n## Codex-Rollenauftrag")[0]}\n\n## Codex-Rollenauftrag\nRolle: ${rolle}. Produktcode und Workflow-Konfiguration nur lesen. ${rolle === "review" ? "Prüfe unabhängig und liefere einen Bericht mit Datei, Zeile und Beleg." : rolle === "planer" ? "Liefere einen abgegrenzten Plan mit Abhängigkeiten, Schreibpfaden und prüfbaren Kriterien; keine Implementierung." : "Erstelle nur den abgegrenzten Content-Entwurf mit Quellen; keine Veröffentlichung und keine Änderung an App oder Infrastruktur."} Ergebnis als Dokument-PR mit Linear-Kennung zurückgeben; bestehende Gates und Freigaben gelten weiter. Keine weiteren Agenten starten.`;
+      const vorbereitet = await linear<{ issueUpdate: { success: boolean } }>(`mutation($id: String!, $beschreibung: String!) { issueUpdate(id: $id, input: { description: $beschreibung }) { success } }`, { id: i.id, beschreibung });
+      if (!vorbereitet.issueUpdate.success) throw new Error("Codex-Rollenauftrag nicht gespeichert");
+      const delegiert = await linear<{ issueUpdate: { success: boolean } }>(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { delegateId: $d }) { success } }`, { id: i.id, d: codexId });
+      if (!delegiert.issueUpdate.success) throw new Error("Codex-Delegation nicht bestätigt");
+      // Sofort lokal sperren; auch ein Fehler beim folgenden Status-/Kommentar-Schritt darf keinen Claude-Start freigeben.
+      neu.set(i.identifier, { ...i, delegate: CODEX_NAME, stateType: "started", startedAt: jetzt.toISOString(), description: beschreibung });
       await setzeStatus(i.id, team, "In Progress");
-      await kommentar(i.id, `An Codex übergeben (Delegate, SIN-936). Ohne Commit auf einem Branch codex/ nach ${CODEX_MINUTEN} Minuten geht das Issue an Claude.`);
-      await ereignis("dispatch", "ok", { projekt, issue: i.identifier, grund: "codex_zugewiesen" });
-      neu.set(i.identifier, { ...i, delegate: CODEX_NAME, stateType: "started", startedAt: jetzt.toISOString() });
+      await kommentar(i.id, `An Codex übergeben, Rolle ${rolle} (SIN-1052). Ein fehlender Branch allein löst keine zweite Umsetzung aus.`);
+      await ereignis("dispatch", "ok", { projekt, issue: i.identifier, grund: `codex_zugewiesen: ${rolle}` });
     } catch (e) {
-      // Halb übergeben (Delegate gesetzt, Status nicht) hinge dauerhaft: codexStarts und der Rückfall übersehen „Todo mit Delegate“. Delegate zurücknehmen.
-      if (delegiert) await linear(`mutation($id: String!) { issueUpdate(id: $id, input: { delegateId: null }) { success } }`, { id: i.id }).catch(() => undefined);
-      await ereignis("dispatch", "fehler", { projekt, issue: i.identifier, grund: fehlergrund(`codex_zuweisung: ${(e as Error).message}`) });
+      // Unklarer Start bleibt gesperrt; Delegate entfernen beendet keine Agentensitzung nachweisbar.
+      neu.set(i.identifier, { ...i, delegate: CODEX_NAME });
+      await ereignis("dispatch", "fehler", { projekt, issue: i.identifier, grund: fehlergrund(`codex_zuweisung_unklar: ${(e as Error).message}`) });
     }
   }
   return issues.map((i) => neu.get(i.identifier)!);
@@ -341,16 +377,22 @@ async function dispatch() {
   if (claudePause) {
     console.log(`Nicht gestartet. ${pauseSatz(claudePause, new Date())}`);
     await ereignis("dispatch", "uebersprungen", { grund: `claude_pause: ${pauseSatz(claudePause, new Date())}` });
-    return;
   }
   // SIN-633: Unter dem Puffer pausiert der Loop, bei knappem Rest laufen nur Stufe 1–2.
   const rest = await ladeClaudeRest();
   if (rest !== null && knappSatz(rest)) console.log(knappSatz(rest));
   // SIN-763: je Produkt mit Repo und Linear-Projekt; ein Fehler in einem Repo stoppt die anderen nicht. Platz (max) gilt je Repo.
   let fehler = false;
+  try {
+    codexBestand = [];
+    for (const ziel of loopZiele()) codexBestand.push(...(await projektIssues(ziel.linearProjekt)).map(ausLinear));
+  } catch (e) {
+    codexBestand = null;
+    await ereignis("dispatch", "fehler", { grund: fehlergrund(`codex_bestand_unbekannt: ${(e as Error).message}`) });
+  }
   for (const ziel of loopZiele()) {
     try {
-      await dispatchZiel(ziel, rest);
+      await dispatchZiel(ziel, rest, !!claudePause);
     } catch (e) {
       fehler = true;
       console.error(`::error::${ziel.id}: ${(e as Error).message}`);
@@ -501,7 +543,7 @@ async function commitStatus(repo: string, shas: string[]): Promise<CommitStatus[
   return teile.flat();
 }
 
-async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
+async function dispatchZiel(ziel: LoopZiel, rest: number | null, claudeGesperrt = false) {
   const repo = ziel.repo;
   const projekt = ziel.id;
   await ereignis("dispatch", "start", { projekt });
@@ -531,8 +573,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
       prs = [...prs, ...weitere];
     }
   }
-  await konfliktAnstoss(repo, prs).catch((e: Error) => console.error(`::warning::Konflikt-Anstoß: ${e.message}`));
-  issues = await codexSpur(repo, issues, nodes, prs, projekt);
+  if (!claudeGesperrt) await konfliktAnstoss(repo, prs).catch((e: Error) => console.error(`::warning::Konflikt-Anstoß: ${e.message}`));
   // Neueste zuerst: der jüngste gemergte PR eines Issues entscheidet, ob es nur auf Folge-Haken wartet (SIN-781).
   const zuletzt = await gh<{ title: string; body: string | null; merged_at: string | null }[]>(`/repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=30`);
   const belegung: Belegung = {
@@ -591,6 +632,8 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     if (gesperrt.size) console.log(`Ohne Startplatz (Claim oder Reparaturgrenze): ${[...gesperrt].join(", ")}`);
     issues = issues.filter((i) => i.stateType !== "unstarted" || !gesperrt.has(i.identifier));
   }
+  issues = await codexSpur(repo, issues, nodes, prs, projekt, gespiegelt);
+  if (claudeGesperrt) return;
   for (const h of freigegebene(issues, belegung).filter(i => !claims.some(c => c.identifier === i.identifier))) {
     console.log(`Platz von ${h.identifier} freigegeben: kein offener PR, seit ${h.startedAt ?? "?"} In Progress.`);
     await ereignis("platz", "ok", { projekt, issue: h.identifier, grund: `haenger: ohne PR länger als ${PLATZ_MINUTEN} Min` });

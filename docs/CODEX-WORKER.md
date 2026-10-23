@@ -14,7 +14,17 @@ Beispiel: `docs(worker): Übergabeprotokoll [codex-worker] (SIN-832)`.
 
 Der Auslöser ist außerhalb der GitHub-Actions-Workflows eingerichtet. Er startet eine Worker-Sitzung mit den verbundenen GitHub-/Linear-Zugängen. Seine Konfiguration allein belegt keinen erfolgreichen Arbeitslauf. Es gibt keine zugesicherte Startzeit; ein fehlender Claim bleibt als offener Übergabestatus sichtbar.
 
-**Linear-Zuweisung (SIN-936):** Der Dispatcher gibt Issues mit Label `codex` als Delegate an Codex (Codex for Linear), ohne GitHub-Spiegel und ohne Claude-Platz. Meldet Codex nach 60 Minuten keinen Branch `codex/`, nimmt er das Delegate zurück, tauscht das Label gegen `claude`, setzt „Todo“ und kommentiert den Grund. Voraussetzung: Codex for Linear im Workspace installiert. Dieser Weg ersetzt den Draft-PR-Auslöser (SIN-832).
+**Aktuelle Rollenverteilung (SIN-1052):** Claude ist der Hauptworker für Entwicklung und Reparatur. Codex bekommt Label `codex` und genau einen expliziten Marker in der Linear-Beschreibung:
+
+- `<!-- codex-rolle: review -->`: unabhängiger Bericht mit Datei, Zeile und Beleg; Produktcode nur lesen.
+- `<!-- codex-rolle: planer -->`: Plan mit Abhängigkeiten, Schreibpfaden und überprüfbaren Kriterien; keine Umsetzung.
+- `<!-- codex-rolle: content -->`: abgegrenzter Entwurf mit Quellen; keine Veröffentlichung, keine App-/Infra-Änderungen.
+
+Der Dispatcher ergänzt den Rollenauftrag vor dem Setzen des Delegates. Das Ergebnis kommt als Dokument-PR mit Linear-Kennung zurück und durchläuft die bestehenden Gates. Ein laufender Claude-PR wird nicht zusätzlich an Codex gegeben. Höchstens ein Codex-Auftrag läuft gleichzeitig über den vom Dispatcher gesteuerten Projektbestand; auch Todo mit Delegate blockiert den Platz. Unbekannter Bestand erlaubt keinen neuen Start. Das ist keine Abfrage des verbleibenden Abo-Kontingents.
+
+Allgemeine noch ungestartete `codex`-Issues ohne gültigen Rollenmarker gehen an Claude. Fehlt die Codex-App nachweislich vor der Delegation, übernimmt Claude ebenfalls. Ein Netz-/Lesefehler, verlorenes Start-ACK oder ein fehlender Branch nach 60 Minuten ist kein nachgewiesenes Agentenende: kein automatischer Workerwechsel, kein Entfernen des Delegates auf Verdacht. Die vorhandene Timeout-Policy braucht jetzt einen bestätigten Endnachweis; der aktuelle Startadapter liefert ihn noch nicht. Die Live-Abnahme einschließlich Kontoverknüpfung und kontrollierter Wiederaufnahme bleibt in SIN-1052 offen.
+
+**Zugänge:** Dieser Delegate-Weg benötigt keinen neuen Modell-API-Key. Die tatsächliche ChatGPT-Kontoverknüpfung und Abo-Nutzung müssen in Codex/Linear und am echten Auftrag bestätigt werden. Der separate API-Prüfer benutzt weiterhin OpenAI und seinen bestehenden Anthropic-Rückfall; native Codex-Reviews ersetzen dessen headgebundenen Beleg nicht automatisch.
 
 Im Draft-PR-Weg werden direkte Linear-Ereignisse nicht unterstützt. Das bloße Setzen eines Labels, eine Titeländerung an einem bestehenden PR oder ein Kommentar startet diesen Übergabeweg nicht. Die produktive Planer-/Dispatcher-Auswahl bleibt unverändert: Der Pilot verteilt noch nicht automatisch Aufgaben zwischen Claude und Codex.
 

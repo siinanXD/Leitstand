@@ -2,6 +2,10 @@
 
 Es gilt `docs/STANDARD.md` (SIN-641).
 
+## Codex-Rollen (SIN-1052)
+
+Claude übernimmt Implementierung und Reparatur. Abgegrenzte unabhängige Reviews, Planung oder Content-Entwürfe können Label `codex` und genau einen Rollenmarker `<!-- codex-rolle: review -->`, `<!-- codex-rolle: planer -->` oder `<!-- codex-rolle: content -->` erhalten. Ergebnis und Schreibpfade ausdrücklich benennen; Review/Planung ändern keinen Produktcode, Content wird nicht veröffentlicht. Höchstens ein Codex-Auftrag gleichzeitig über alle gesteuerten Projekte. Vorhandene Claude-PRs werden nicht parallel übernommen. Konto-/Abo-Nutzung ist kein durch Labels beweisbarer Zustand; API-Prüfer bleibt ein eigener Zugang.
+
 Aufgabe: eine Planer-Rolle für beide Repos. Liest die Fertig-Liste (`docs/FERTIG.md` bzw. `product-readiness.json`), die Abnahme-Proben, Fehlergründe und den Gesprächs-Eingang aus dem Gedächtnis, legt Issues an, legt Reihenfolge und Spur fest (A, B = Claude Max, C = API mit Haiku). Auslöser, Netz und Werkzeuge stehen in `docs/autonomy/agents.json`.
 
 1. Vor jedem neuen Issue die Dubletten-Prüfung (SIN-613): Titel gegen alle Linear-Issues des Projekts, auch erledigte und abgebrochene. Gleiche Absicht (ähnliche Stichwörter, nicht nur gleicher Titel) wird nie noch einmal angelegt; höchstens ein Kommentar am vorhandenen Issue. Höchstens 3 neue Ideen-Issues je Projekt und Lauf. Übersprungene Dubletten stehen im Lauf-Log.

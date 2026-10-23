@@ -285,11 +285,11 @@ test("SIN-918: gemergter „Part of“-PR zählt; nur Live-Haken offen → kein 
 });
 
 test("Test: Issue mit Label codex geht an Codex und belegt keinen Claude-Platz (SIN-936)", () => {
-  const codex = issue({ identifier: "SIN-936", labels: ["codex"] });
-  const beide = issue({ identifier: "SIN-937", labels: ["claude", "codex"] });
+  const codex = issue({ identifier: "SIN-936", labels: ["codex"], description: "<!-- codex-rolle: review -->" });
+  const beide = issue({ identifier: "SIN-937", labels: ["claude", "codex"], description: "<!-- codex-rolle: content -->" });
   const claude = issue({ identifier: "SIN-938" });
   const liste = [codex, beide, claude];
-  assert.deepEqual(codexStarts(liste).map((i) => i.identifier), ["SIN-936", "SIN-937"]);
+  assert.deepEqual(codexStarts(liste).map((i) => i.identifier), ["SIN-936"]);
   assert.deepEqual(waehle(liste, new Set(), 5).map((i) => i.identifier), ["SIN-938"]);
   const laeuft = [codex, beide].map((i) => ({ ...i, stateType: "started", delegate: "Codex" }));
   assert.equal(laufende(laeuft).length, 0);
@@ -299,16 +299,33 @@ test("Test: Issue mit Label codex geht an Codex und belegt keinen Claude-Platz (
   assert.equal(ausLinear({ id: "a", identifier: "SIN-1", title: "t", url: "u", createdAt: "x", state: { type: "started" }, delegate: { name: "Codex" } }).delegate, "Codex");
 });
 
-test("Test: Codex ohne Commit nach 60 Minuten fällt an Claude zurück (SIN-936)", () => {
+test("Codex ohne Commit fällt erst nach bestätigtem Agentenende an Claude zurück", () => {
   const start = "2026-10-22T10:00:00Z";
   const bei = issue({ identifier: "SIN-936", labels: ["codex"], stateType: "started", delegate: "Codex", startedAt: start });
   const nach = (min: number) => new Date(Date.parse(start) + min * 60_000);
   assert.equal(codexRueckfall([bei], [], nach(59)).length, 0);
-  assert.deepEqual(codexRueckfall([bei], [], nach(60)).map((i) => i.identifier), ["SIN-936"]);
+  assert.deepEqual(codexRueckfall([bei], [], nach(60)), []);
   assert.equal(codexRueckfall([bei], [{ titel: "", branch: "codex/sin-936" }], nach(90)).length, 0);
   assert.equal(codexRueckfall([bei], [{ titel: "feat: x (SIN-936)", branch: "codex/auftrag" }], nach(90)).length, 0);
-  assert.equal(codexRueckfall([bei], [{ titel: "", branch: "claude/sin-936" }], nach(90)).length, 1);
+  assert.equal(codexRueckfall([bei], [{ titel: "", branch: "claude/sin-936" }], nach(90)).length, 0);
   assert.equal(codexRueckfall([{ ...bei, delegate: null }], [], nach(90)).length, 0);
+});
+
+test("Codex startet nur explizite Rollen, höchstens einen Auftrag und keinen neben einem globalen Delegate", () => {
+  const rollen = ["review", "planer", "content"].map((r, n) => issue({ identifier: `SIN-${n + 1}`, labels: ["codex"], description: `<!-- codex-rolle: ${r} -->`, priority: n + 1 }));
+  for (const i of rollen) assert.deepEqual(codexStarts([i]), [i]);
+  assert.deepEqual(codexStarts(rollen).map(i => i.identifier), ["SIN-1"]);
+  assert.deepEqual(codexStarts([issue({ identifier: "SIN-9", labels: ["codex"] })]), []);
+  assert.deepEqual(codexStarts([issue({ identifier: "SIN-9", labels: ["codex"], description: "<!-- codex-rolle: bauen -->" })]), []);
+  assert.deepEqual(codexStarts([issue({ identifier: "SIN-9", labels: ["codex"], description: "<!-- codex-rolle: review -->\n<!-- codex-rolle: content -->" })]), []);
+  for (const stateType of ["started", "unstarted"]) {
+    assert.deepEqual(codexStarts(rollen, [issue({ identifier: "SIN-999", stateType, delegate: "Codex" })]), []);
+  }
+  assert.deepEqual(codexStarts(rollen, null), []);
+  assert.deepEqual(codexStarts(rollen, [issue({ identifier: "SIN-9", stateType: "completed", delegate: "Codex" })]).map(i => i.identifier), ["SIN-1"]);
+  for (const label of ["needs-human", "entscheidung", "kriterien-unklar", "sinan", "design", "lauf"]) {
+    assert.deepEqual(codexStarts([{ ...rollen[0], labels: ["codex", label] }]), []);
+  }
 });
 
 const produktIssue: LinearIssue = { id: "x", identifier: "SIN-1005", title: "T", description: null, priority: 3, url: "https://linear.app/x/issue/SIN-1005", createdAt: "2026-10-01T00:00:00Z", labels: ["claude"], stateType: "unstarted", blockiertVon: [] };

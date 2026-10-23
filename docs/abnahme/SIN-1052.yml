@@ -1,0 +1,12 @@
+- id: codex-rollen-auswahl
+  produkt: leitstand
+  titel: Explizite Codex-Rollen und globaler Einzelplatz sind installiert; Live-Nachweis separat
+  art: datei
+  pfad: src/lib/loop/auswahl.ts
+  enthaelt: 'codexRolle(i.description)'
+- id: codex-rollen-regression
+  produkt: leitstand
+  titel: Dispatcher-Gegenproben für Rollen, unbekannten Bestand und verlorene Startbestätigung vorhanden
+  art: datei
+  pfad: src/lib/loop/codex-cli.test.ts
+  enthaelt: 'unclear start never releases a possibly running worker'

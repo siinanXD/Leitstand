@@ -119,6 +119,8 @@ Gilt für Worker und Planer, Wortlaut in `docs/skills/bauen/SKILL.md` und `docs/
 
 ### Übergabe an Codex (SIN-832)
 
+SIN-1052: Claude bleibt Hauptworker. Neue Codex-Aufträge brauchen Label `codex` und genau einen Marker `<!-- codex-rolle: review -->`, `planer` oder `content`; höchstens ein Auftrag im gesteuerten Projektbestand. Review/Planung lesen Produktcode nur, Content bleibt Entwurf. Ein Timeout ohne bestätigtes Agentenende erlaubt keinen zweiten Worker. Details: `docs/CODEX-WORKER.md`.
+
 Risikoarme Aufgaben können bestehende Agenten über einen Draft-PR gemäß [docs/CODEX-WORKER.md](docs/CODEX-WORKER.md) an den ereignisgesteuerten Codex-Worker übergeben. Ein Issue hat genau einen Implementierer: nach der Übergabe baut Claude nicht parallel daran weiter. Der andere Worker darf unabhängig prüfen. Dieser Weg erweitert keine Rechte und ändert weder Dispatcher noch Freigabegrenzen.
 
 - Ein PR pro Linear-Issue. Titel als Conventional Commit mit Linear-ID, z. B. `feat(uebersicht): Projekt-Karten (SIN-304)`.
