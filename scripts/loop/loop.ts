@@ -28,9 +28,10 @@ import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER
 import { loopZiele, type LoopZiel } from "../../src/lib/projekte";
 import { kriterienPlan, LABEL_UNKLAR, UNKLAR_KOMMENTAR } from "../../src/lib/vorarbeiter/kriterien";
 import { planeFallback, reserviere, type Ereignis, type ProviderStand } from "../../src/lib/loop/fallback";
-import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, workerJeClaim, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
+import { beendeterLaufOhnePr, MAX_OHNE_DIFF, OHNE_DIFF_SCHRITT, ohneDiffGrund, zaehleOhneDiff, type WorkerLauf } from "../../src/lib/loop/ohne-pr";
+import { auftragAus, blockiert, claimAbgelaufen, supabaseReservierung, workerJeClaim, type Reservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
 
-import { konfliktGrund, ladePrSchutz, maxParallel, parallelAuswahl, schuetztNoch } from "../../src/lib/loop/parallel";
+import { konfliktGrund, ladePrSchutz, maxParallel, parallelAuswahl, parallelRepo, schuetztNoch } from "../../src/lib/loop/parallel";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -420,6 +421,54 @@ async function laufAktiv(repo: string, runId: string): Promise<boolean | null> {
   }
 }
 
+/** Frühere Ereignisse `worker` und `merge` eines Issues (neueste zuerst) für die Zählung ohne Diff; bei Lesefehler wirft es (dann kein Eingriff). */
+async function ohneDiffBisher(projekt: string, issue: string): Promise<number> {
+  const key = env.SUPABASE_SERVICE_ROLE_KEY!;
+  const q = new URLSearchParams({ project: `eq.${projekt}`, issue: `eq.${issue}`, step: `in.(${OHNE_DIFF_SCHRITT},merge)`, select: "step,grund", order: "created_at.desc", limit: "20" });
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?${q}`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`loop_events: HTTP ${res.status}`);
+  return zaehleOhneDiff((await res.json()) as { step: string; grund: string | null }[]);
+}
+
+/**
+ * SIN-937: Claims, deren claude.yml-Lauf ohne PR endete. Je Treffer: Claim frei (Beleg = Lauf-URL), Lauf zählen, Linear zurück auf Todo,
+ * Spiegel schließen; beim zweiten Lauf ohne Diff zusätzlich `needs-human`. Fehler einzelner Issues stoppen die anderen nicht.
+ */
+async function laeufeOhnePr(
+  repo: string, projekt: string, claims: Reservierung[], issues: LinearIssue[], nodes: ProjektKnoten[], speicher: ReservierungsSpeicher,
+  offen: { title: string }[], zuletzt: { title: string; merged_at: string | null }[],
+): Promise<{ id: string; stopp: boolean }[]> {
+  const kandidaten = claims.filter((r) => r.provider === "claude" && issues.some((i) => i.identifier === r.issue));
+  if (!kandidaten.length) return [];
+  const laeufe = await gh<{ workflow_runs: { id: number; display_title: string; status: string; conclusion: string | null; run_started_at: string | null; created_at: string; html_url: string }[] }>(`/repos/${repo}/actions/workflows/claude.yml/runs?per_page=50`)
+    .then((d) => d.workflow_runs.map((l): WorkerLauf => ({ id: l.id, titel: l.display_title, status: l.status, conclusion: l.conclusion, gestartet: l.run_started_at ?? l.created_at, url: l.html_url })), (e: Error) => (console.log(`::warning::claude.yml-Läufe nicht lesbar: ${e.message}`), [] as WorkerLauf[]));
+  const prs = [...offen.map((p) => ({ titel: p.title, offen: true, gemergtAm: null })), ...zuletzt.map((p) => ({ titel: p.title, offen: false, gemergtAm: p.merged_at }))];
+  const fertig: { id: string; stopp: boolean }[] = [];
+  for (const r of kandidaten) {
+    const lauf = beendeterLaufOhnePr(r, laeufe, prs);
+    if (!lauf) continue;
+    try {
+      const n = (await ohneDiffBisher(projekt, r.issue)) + 1;
+      // Zuerst freigeben: gelingt das nicht (Stand geändert, Beleg ungültig), bleibt alles wie es war und der nächste Dispatch versucht es erneut.
+      if (!(await speicher.freigeben(r, lauf.url))) continue;
+      const stopp = n >= MAX_OHNE_DIFF;
+      const i = issues.find((x) => x.identifier === r.issue)!;
+      const team = nodes.find((x) => x.id === i.id)!.team.id;
+      await ereignis("worker", "uebersprungen", { projekt, issue: r.issue, grund: ohneDiffGrund(lauf, n) });
+      await setzeStatus(i.id, team, "Todo");
+      if (stopp) await labelSetzen(i.id, team, "needs-human");
+      await kommentar(i.id, `Loop: Worker-Lauf ${lauf.url} endete ohne PR (Lauf ${n} von ${MAX_OHNE_DIFF} ohne Diff, SIN-937). ${stopp ? "Kein weiterer Start, Sinan entscheidet. Danach needs-human entfernen." : "Der Claim ist frei, das Issue startet noch einmal."}`);
+      const spiegel = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
+      for (const nr of offeneSpiegel(spiegel, r.issue)) await gh(`/repos/${repo}/issues/${nr}`, { method: "PATCH", body: { state: "closed" } });
+      console.log(`${r.issue}: Worker-Lauf ${lauf.id} ohne PR, Claim frei (${n}/${MAX_OHNE_DIFF})${stopp ? ", needs-human" : ""}`);
+      fertig.push({ id: r.issue, stopp });
+    } catch (e) {
+      await ereignis("dispatch", "fehler", { projekt, issue: r.issue, grund: fehlergrund(`worker_ohne_pr: ${(e as Error).message}`) });
+    }
+  }
+  return fertig;
+}
+
 async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   const repo = ziel.repo;
   const projekt = ziel.id;
@@ -444,7 +493,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
   }
   const ghIssues = await gh<GithubIssue[]>(`/repos/${repo}/issues?labels=claude&state=open&per_page=100`);
   let prs = await gh<{ number: number; title: string; head: { ref: string }; labels: { name: string }[]; created_at: string }[]>(`/repos/${repo}/pulls?state=open&per_page=100`);
-  if (repo.toLowerCase() === "siinanxd/leitstand") {
+  if (parallelRepo(repo)) {
     for (let page = 2; prs.length === (page - 1) * 100; page++) {
       const weitere = await gh<typeof prs>(`/repos/${repo}/pulls?state=open&per_page=100&page=${page}`);
       prs = [...prs, ...weitere];
@@ -461,14 +510,14 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     gemergt: gemergteIds(zuletzt),
   };
   const max = maxParallel(repo, env.LOOP_MAX_PARALLEL, env.LEITSTAND_MAX_PARALLEL);
-  const schutz = repo.toLowerCase() === "siinanxd/leitstand"
+  const schutz = parallelRepo(repo)
     ? await ladePrSchutz(prs.filter(p => schuetztNoch({ labels: p.labels.map(l => l.name), createdAt: p.created_at }, new Date())), (pr, page) => gh(`/repos/${repo}/pulls/${pr}/files?per_page=100&page=${page}`)) : [];
   let claims: LinearIssue[] = [];
   const gespiegelt = gespiegelteIds(ghIssues);
   // SIN-832: Issues mit aktivem Claim oder ausgeschöpften Reparaturen belegen keinen Startplatz (sonst steht die Schlange).
   if (!DRY) {
     const speicher = reservierungen();
-    const ids = issues.filter(i => repo.toLowerCase() === "siinanxd/leitstand" || i.stateType === "unstarted").map(i => i.identifier);
+    const ids = issues.filter(i => parallelRepo(repo) || i.stateType === "unstarted").map(i => i.identifier);
     if (!speicher) {
       await ereignis("dispatch", "uebersprungen", { projekt, grund: "reservierung_fehlt: SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt, kein Start ohne dauerhafte Sperre (SIN-832)" });
       return;
@@ -483,6 +532,13 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     // SIN-896: Zombie-Claims (kein Worker-Lauf, kein offener PR, älter als 90 Min) belegen keinen Platz.
     const beleg = laufUrl();
     const mitPr = new Set(prs.map(p => p.title.match(/SIN-\d+/)?.[0]).filter((x): x is string => !!x));
+    // SIN-937: Worker-Lauf beendet, kein PR → Claim sofort frei, Lauf zählen, nach zwei Läufen needs-human.
+    for (const { id, stopp } of await laeufeOhnePr(repo, projekt, staende.filter(x => x.claim), issues, nodes, speicher, prs, zuletzt)) {
+      gespiegelt.delete(id);
+      const stand = staende.find(x => x.issue === id);
+      if (stand) stand.claim = null;
+      issues = issues.map(i => i.identifier === id ? { ...i, stateType: "unstarted", labels: stopp ? [...i.labels, "needs-human"] : i.labels } : i);
+    }
     const worker = await workerJeClaim(staende, id => laufAktiv(repo, id));
     for (const r of staende.filter(x => claimAbgelaufen(x, { offenerPr: mitPr.has(x.issue), workerLaeuft: worker.get(x.issue) ?? null, jetzt: new Date() }))) {
       console.log(`Claim von ${r.issue} abgelaufen (seit ${r.seit}, kein Worker, kein PR) → freigeben`);
@@ -507,7 +563,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     await ereignis("platz", "ok", { projekt, issue: h.identifier, grund: `haenger: ohne PR länger als ${PLATZ_MINUTEN} Min` });
   }
   const auswahl = (liste: LinearIssue[]) => {
-    if (repo.toLowerCase() !== "siinanxd/leitstand") return waehle(liste, gespiegelt, max, belegung, rest);
+    if (!parallelRepo(repo)) return waehle(liste, gespiegelt, max, belegung, rest);
     const kandidaten = waehle(liste, gespiegelt, liste.length, belegung, rest);
     const aktiv = [...new Map([...laufende(liste, belegung), ...claimsMitPlatz(claims, belegung)].map(i => [i.identifier, i])).values()];
     return parallelAuswahl(kandidaten, aktiv, max, schutz);
@@ -528,7 +584,7 @@ async function dispatchZiel(ziel: LoopZiel, rest: number | null) {
     }
   }
   if (!wahl.length) {
-    const grund = repo.toLowerCase() === "siinanxd/leitstand" && waehle(issues, gespiegelt, max, belegung, rest).length
+    const grund = parallelRepo(repo) && waehle(issues, gespiegelt, max, belegung, rest).length
       ? grundLeitstand(issues)
       : grundNichtsStartbar(issues, gespiegelt, max, belegung);
     console.log(`Nichts zu starten. ${grund}`);

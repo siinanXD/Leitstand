@@ -20,7 +20,7 @@ export const LINK_ARTEN = ["app", "vorschau", "github", "linear", "vercel", "sup
 export type LinkArt = (typeof LINK_ARTEN)[number];
 
 export const PROJEKTE: Projekt[] = [
-  { id: "lernapp", name: "Lern-App", farbe: "var(--color-projekt-lernapp)", repo: "siinanXD/Content-Agent-Lernapp" },
+  { id: "lernapp", name: "Lern-App", farbe: "var(--color-projekt-lernapp)", repo: "siinanXD/Content-Agent-Lernapp", linearProjekt: "Content-Agent-Lernapp", bauphase: true },
   { id: "leitstand", name: "Leitstand", farbe: "var(--color-projekt-leitstand)", repo: "siinanXD/Leitstand", linearProjekt: "Leitstand", bauphase: true, links: { figma: "https://www.figma.com/design/7Ti9iVUjUjw3rh9WYhSu9K" } },
   // shortcut: neutrale Farbe, eigene Projektfarbe braucht ein Design-Issue; ausbauen, sobald es ein Token gibt
   { id: "sjcode-website", name: "SJCODE Website", farbe: "var(--color-border-subtle)", repo: "siinanXD/SJCODE-website", linearProjekt: "SJCODE Website", bauphase: true, links: { app: "https://sjcode.de" } },

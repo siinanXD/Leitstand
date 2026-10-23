@@ -221,7 +221,7 @@ test("gemergteFuerLaufende: nur laufende Issues mit gemergtem PR (SIN-763)", () 
 test("loopZiele: nur Produkte mit Repo, Linear-Projekt und Bauphase (SIN-763)", () => {
   const ids = loopZiele().map((z) => z.id);
   assert.ok(ids.includes("leitstand") && ids.includes("sjcode-website"));
-  assert.ok(!ids.includes("lernapp") && !ids.includes("beleg"));
+  assert.ok(ids.includes("lernapp") && !ids.includes("beleg"));
 });
 
 test("SIN-846: nur offene Belege-Haken: kein Bau-Worker, kein Platz", () => {

@@ -29,11 +29,14 @@ export function schuetztNoch(pr: { labels: string[]; createdAt: string }, jetzt:
   return !wartet || jetzt.getTime() - Date.parse(pr.createdAt) < WARTE_SCHUTZ_STUNDEN * 3_600_000;
 }
 
-/** SIN-856: nur Leitstand auf zwei erhöhen; alte Produktlimits bleiben unverändert. */
-export function maxParallel(repo: string, produkt?: string, leitstand?: string): number {
-  const eigenes = repo.toLowerCase() === "siinanxd/leitstand";
-  const n = Number(eigenes ? leitstand || "2" : produkt || "1");
-  return Number.isSafeInteger(n) && n > 0 ? eigenes ? Math.min(2, n) : n : 1;
+/** SIN-937: Produkte mit zwei parallelen Workern und Pfad-Abgleich (Leitstand, Lern-App). Alle anderen bleiben bei einem Platz. */
+export const parallelRepo = (repo: string) => ["siinanxd/leitstand", "siinanxd/content-agent-lernapp"].includes(repo.toLowerCase());
+
+/** SIN-856/SIN-937: Leitstand und Lern-App bis zwei (Wert `parallel`, Deckel 2); alte Produktlimits bleiben unverändert. */
+export function maxParallel(repo: string, produkt?: string, parallel?: string): number {
+  const zwei = parallelRepo(repo);
+  const n = Number(zwei ? parallel || "2" : produkt || "1");
+  return Number.isSafeInteger(n) && n > 0 ? zwei ? Math.min(2, n) : n : 1;
 }
 
 /** SIN-919: Steuerung im Sinne von AGENTS.md (Gate, Dispatcher, Loop). Ein pauschales `.github`/`.github/workflows` bleibt Steuerung. */
