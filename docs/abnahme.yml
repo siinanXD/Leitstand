@@ -1186,7 +1186,7 @@
   rolle: infisical-pflegen
 - id: leitstand-vercel-sperre-wieder-da
   produkt: leitstand
-  titel: Ein fertiger Vercel-Deploy hebt die Kontingent-Sperre vorzeitig auf (SIN-1046)
+  titel: Ein fertiger Vercel-Deploy hebt die Kontingent-Sperre vorzeitig auf (SIN-1056)
   art: datei
   pfad: docs/autonomy/kontingente.json
   enthaelt: wieder_da

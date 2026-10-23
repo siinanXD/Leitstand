@@ -15,12 +15,17 @@ test("Sperre läuft nach 24 h ab", () => {
   assert.equal(aktiveSperren(statuses, new Date("2026-10-24T08:00:00Z")).length, 0);
 });
 
-test("späterer fertiger Deploy hebt die Sperre auf, ein früherer nicht", () => {
+test("späterer fertiger Deploy hebt die Sperre auf, ein früherer nicht (SIN-1056)", () => {
   const jetzt = new Date("2026-10-23T12:00:00Z");
   const spaeter = { context: "Vercel", description: "Deployment has completed", created_at: "2026-10-23T11:00:00Z" };
   const frueher = { ...spaeter, created_at: "2026-10-22T07:00:00Z" };
   assert.deepEqual(aktiveSperren([...statuses, spaeter], jetzt), []);
   assert.equal(aktiveSperren([...statuses, frueher], jetzt).length, 1);
+});
+
+test("übersprungener Build hebt die Sperre nicht auf (SIN-1056)", () => {
+  const ignoriert = { context: "Vercel", description: "Canceled by Ignored Build Step", created_at: "2026-10-23T11:00:00Z" };
+  assert.equal(aktiveSperren([...statuses, ignoriert], new Date("2026-10-23T12:00:00Z")).length, 1);
 });
 
 test("ohne Treffer im Status keine Sperre", () => {

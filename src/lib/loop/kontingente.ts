@@ -25,7 +25,7 @@ function trifft(muster: string, pfad: string): boolean {
 
 /**
  * Gesperrte Kontingente: jüngster Status mit Kontext und Text der Erkennung + Sperrdauer liegt noch in der Zukunft.
- * Ein späterer Status mit `wieder_da` (z. B. ein fertiger Deploy) hebt die Sperre auf: Vercels „retry in 24 hours“ ist ein Höchstwert.
+ * Ein späterer Status mit `wieder_da` (z. B. ein fertiger Deploy) hebt die Sperre auf: Vercels „retry in 24 hours“ ist ein Höchstwert (SIN-1056).
  */
 export function aktiveSperren(statuses: CommitStatus[], jetzt: Date): Sperre[] {
   return Object.entries(KONTINGENTE).flatMap(([id, k]) => {
