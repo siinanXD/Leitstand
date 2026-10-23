@@ -1018,3 +1018,9 @@
   art: datei
   pfad: src/lib/loop/auswahl.ts
   enthaelt: '"kriterien-unklar", "sammlung"'
+- id: vitrine-stromlauf-topics
+  produkt: leitstand
+  titel: stromlauf-ai trägt Beschreibung und Topics aus docs/vitrine.json (SIN-739)
+  art: http
+  url: https://api.github.com/repos/siinanXD/stromlauf-ai
+  enthaelt: '"industrial-automation"'
