@@ -941,3 +941,11 @@
   art: datei
   pfad: src/lib/pruefer/workflow.test.ts
   enthaelt: '"codex/sin-827"'
+
+# Leitstand-Dispatcher bedient die Lern-App (SIN-937)
+- id: leitstand-dispatcher-lernapp
+  produkt: leitstand
+  titel: Der Leitstand-Dispatcher baut für die Lern-App und zählt Worker-Läufe ohne PR (SIN-937)
+  art: datei
+  pfad: src/lib/loop/ohne-pr.ts
+  enthaelt: beendeterLaufOhnePr

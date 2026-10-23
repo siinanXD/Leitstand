@@ -17,6 +17,9 @@ test("SIN-856: nur Leitstand bekommt zwei Plätze, bestehende Produktlimits blei
   assert.equal(maxParallel("siinanXD/stromlauf-ai", "1", "2"), 1);
   assert.equal(maxParallel("siinanXD/stromlauf-ai", "3"), 3);
   assert.equal(maxParallel("siinanXD/Leitstand", undefined, "kaputt"), 1);
+  // SIN-937: Lern-App wie Leitstand
+  assert.equal(maxParallel("siinanXD/Content-Agent-Lernapp", "1"), 2);
+  assert.equal(maxParallel("siinanXD/Content-Agent-Lernapp", "1", "1"), 1);
 });
 
 test("SIN-856: getrennte Pfade parallel, gemeinsame Datei/Verzeichnis wartet", () => {

@@ -40,7 +40,7 @@ test("abhaengigkeiten: Zyklus bricht nicht, ohne Daten leer", () => {
 });
 
 test("platzReihenfolge: Bauphase vor Priorität, unbekannte zuletzt", () => {
-  assert.deepEqual(platzReihenfolge(["lernapp", "zzz", "beleg", "leitstand"]), ["leitstand", "beleg", "lernapp", "zzz"]);
+  assert.deepEqual(platzReihenfolge(["lernapp", "zzz", "beleg", "leitstand"]), ["lernapp", "leitstand", "beleg", "zzz"]);
   assert.match(DISPATCHER_REGEL, /Bauphase/);
 });
 
