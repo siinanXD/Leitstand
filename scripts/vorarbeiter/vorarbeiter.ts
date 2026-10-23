@@ -21,6 +21,7 @@ import { kennungMarker, leseKennungen, pruefeDubletten } from "../../src/lib/ceo
 import { ausLinear, PROJEKT, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { PROJEKTE } from "../../src/lib/projekte";
 import { parseSnapshot } from "../../src/lib/uebersicht";
+import { istFrontendTitel, legeMitPlanungsbild } from "../../src/lib/vorarbeiter/planungsbild";
 import { ANSTOSS_FENSTER_MS, ANSTOSS_SCHRITT, anstossEntscheidung, anstossZeile, aufrufKosten, ereignisZeile, ledgerZeile, leseDateien, OHNE_TODOS_SCHRITT, pfade, plane, prFuerC, promptC, restDeckel, SPUR_C_MODELL, type Plan } from "../../src/lib/vorarbeiter/vorarbeiter";
 
 const env = process.env;
@@ -125,6 +126,18 @@ async function baueSpurC(i: LinearIssue, team: string, plan: Plan): Promise<stri
 const MEILENSTEIN = "v1 Grundgerüst";
 const LERNAPP_REPO = PROJEKTE.find((x) => x.id === "lernapp")?.repo;
 
+/** PNG als Linear-Anhang: Datei hochladen (fileUpload), dann an das Issue hängen. */
+async function haengeBildAn(issueId: string, png: Uint8Array, dateiname: string) {
+  const u = await linear<{ fileUpload: { uploadFile: { uploadUrl: string; assetUrl: string; headers: { key: string; value: string }[] } } }>(
+    `mutation($n: String!, $s: Int!) { fileUpload(contentType: "image/png", filename: $n, size: $s) { uploadFile { uploadUrl assetUrl headers { key value } } } }`,
+    { n: dateiname, s: png.length },
+  );
+  const { uploadUrl, assetUrl, headers } = u.fileUpload.uploadFile;
+  const res = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=31536000", ...Object.fromEntries(headers.map((h) => [h.key, h.value])) }, body: png as BodyInit });
+  if (!res.ok) throw new Error(`Bild-Upload: ${res.status}`);
+  await linear(`mutation($i: String!, $t: String!, $u: String!) { attachmentCreate(input: { issueId: $i, title: $t, url: $u }) { success } }`, { i: issueId, t: `Planungsbild ${dateiname}`, u: assetUrl });
+}
+
 /** Leitstand: bis zu n Issues aus den offenen Punkten in docs/FERTIG.md (Backlog, Label claude, Meilenstein „v1 Grundgerüst“); der Dispatcher rückt nach.
  *  Dubletten-Prüfung (SIN-613) auf gleiche Absicht gegen alle Titel des Projekts, auch erledigte, höchstens 3 neue je Lauf, sonst käme ein gebauter, noch offener Punkt zurück.
  *  shortcut: nur die jüngsten 250 Issues werden verglichen, bei mehr Issues im Projekt seitenweise lesen. */
@@ -150,7 +163,18 @@ async function legeLeitstandIssuesAn(n: number) {
   for (const title of titel) {
     // Genau ein Art-Label (SIN-887); fehlt `lauf`/`sinan` in Linear, bleibt es bei `claude`.
     const labelId = label(artLabel(title)) ?? label("claude");
-    await linear(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, priority: 2, description: `Offener Punkt aus docs/FERTIG.md (angelegt vom Planer, SIN-636).\n\n${kennungMarker(title)}\n\n## Fertig-Kriterien\n- [ ] Der Punkt ist live und in docs/abnahme.yml mit einer grünen Probe belegt.`, labelIds: [labelId], stateId } });
+    const frontend = istFrontendTitel(title) ? label("frontend") : undefined;
+    const beschreibung = `Offener Punkt aus docs/FERTIG.md (angelegt vom Planer, SIN-636).\n\n${kennungMarker(title)}\n\n## Fertig-Kriterien\n- [ ] Der Punkt ist live und in docs/abnahme.yml mit einer grünen Probe belegt.`;
+    // Frontend: Figma-Frame als Anhang (SIN-943); ohne Token oder Frame steht „Figma nicht verfügbar“ im Issue.
+    await legeMitPlanungsbild({ titel: title, beschreibung, labels: frontend ? ["frontend"] : [] }, {
+      env,
+      fetch,
+      legeAn: async (text) => {
+        const r = await linear<{ issueCreate: { issue: { id: string } } }>(`mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success issue { id } } }`, { i: { teamId, projectId: projekt.id, projectMilestoneId: meilensteinId, title, priority: 2, description: text, labelIds: [labelId, frontend].filter(Boolean), stateId } });
+        return r.issueCreate.issue.id;
+      },
+      haengeAn: haengeBildAn,
+    });
     console.log(`leitstand: Issue angelegt (${artLabel(title)}): ${title}`);
   }
 }
