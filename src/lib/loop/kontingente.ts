@@ -8,7 +8,7 @@ import type { LinearIssue } from "./auswahl";
 import { schreibPfade } from "./parallel";
 
 export type CommitStatus = { context: string; description: string | null; created_at: string };
-type Eintrag = { erkennung: { kontext: string; text: string }; sperre_stunden: number; betrifft_pfade: string[] };
+type Eintrag = { erkennung: { kontext: string; text: string; wieder_da?: string }; sperre_stunden: number; betrifft_pfade: string[] };
 
 export const KONTINGENTE: Record<string, Eintrag> = kontingente.kontingente;
 
@@ -23,7 +23,10 @@ function trifft(muster: string, pfad: string): boolean {
   return re.test(pfad.split("/").pop() ?? pfad);
 }
 
-/** Gesperrte Kontingente: jüngster Status mit Kontext und Text der Erkennung + Sperrdauer liegt noch in der Zukunft. */
+/**
+ * Gesperrte Kontingente: jüngster Status mit Kontext und Text der Erkennung + Sperrdauer liegt noch in der Zukunft.
+ * Ein späterer Status mit `wieder_da` (z. B. ein fertiger Deploy) hebt die Sperre auf: Vercels „retry in 24 hours“ ist ein Höchstwert.
+ */
 export function aktiveSperren(statuses: CommitStatus[], jetzt: Date): Sperre[] {
   return Object.entries(KONTINGENTE).flatMap(([id, k]) => {
     const text = new RegExp(k.erkennung.text, "i");
@@ -32,7 +35,10 @@ export function aktiveSperren(statuses: CommitStatus[], jetzt: Date): Sperre[] {
       .map((s) => Date.parse(s.created_at))
       .filter(Number.isFinite);
     if (!zeiten.length) return [];
-    const bis = new Date(Math.max(...zeiten) + k.sperre_stunden * 3_600_000);
+    const zuletzt = Math.max(...zeiten);
+    const wieder = k.erkennung.wieder_da ? new RegExp(k.erkennung.wieder_da, "i") : null;
+    if (wieder && statuses.some((s) => s.context.toLowerCase().includes(k.erkennung.kontext) && wieder.test(s.description ?? "") && Date.parse(s.created_at) > zuletzt)) return [];
+    const bis = new Date(zuletzt + k.sperre_stunden * 3_600_000);
     return bis > jetzt ? [{ id, bis }] : [];
   });
 }
