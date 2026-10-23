@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { OffeneEntscheidung } from "@/lib/entscheidung/entscheidung";
 import { ohneKennungen } from "@/lib/zeit";
+import { rechercheLink } from "./link";
 import { Rahmen } from "../rahmen";
 import { entscheidungsAnfrage, useOffeneEntscheidungen } from "./offene";
 import "../freigabe.css";
@@ -61,13 +62,20 @@ function Karte({ eintrag, erledigt }: { eintrag: OffeneEntscheidung; erledigt: (
       </ul>
       {block.recherche.length > 0 && (
         <ul aria-label={`Recherche für ${identifier}`}>
-          {block.recherche.map((r) => (
-            <li key={r}>
-              <a href={r} target="_blank" rel="noreferrer">
-                {r}
-              </a>
-            </li>
-          ))}
+          {block.recherche.map((r) => {
+            const link = rechercheLink(r);
+            return (
+              <li key={r}>
+                {link ? (
+                  <a href={link} target="_blank" rel="noreferrer">
+                    {r}
+                  </a>
+                ) : (
+                  r
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       <form
