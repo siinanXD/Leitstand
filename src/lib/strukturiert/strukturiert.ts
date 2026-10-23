@@ -42,10 +42,10 @@ export async function frageStrukturiert<T>(p: Parameter): Promise<Antwort<T>> {
   });
   if (!res.ok) throw new Error(`Modell: ${res.status}`);
   const j = (await res.json()) as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
-  if (j.stop_reason === "max_tokens") throw new Error(`Modell: Tokenbudget (${p.maxTokens}) ausgeschöpft, Antwort abgeschnitten`);
-  if (j.stop_reason === "refusal") throw new Error("Modell: Antwort abgelehnt (refusal)");
   const [ein, aus] = [j.usage?.input_tokens ?? 0, j.usage?.output_tokens ?? 0];
   await p.beiVerbrauch?.(ein, aus); // bezahlt ist der Aufruf auch, wenn die Antwort danach nicht taugt
+  if (j.stop_reason === "max_tokens") throw new Error(`Modell: Tokenbudget (${p.maxTokens}) ausgeschöpft, Antwort abgeschnitten`);
+  if (j.stop_reason === "refusal") throw new Error("Modell: Antwort abgelehnt (refusal)");
   const text = (j.content ?? []).filter((c) => c.type === "text").map((c) => c.text ?? "").join("");
   return { wert: leseStrukturiert<T>(text, p.schema), ein, aus };
 }

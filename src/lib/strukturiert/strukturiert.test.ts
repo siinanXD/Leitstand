@@ -49,6 +49,11 @@ test("frageStrukturiert sendet das Schema ohne lokale Grenzen und meldet abgesch
   assert.deepEqual(await frageStrukturiert({ ...p, abruf: abruf("end_turn") }), { wert: dateien, ein: 3, aus: 4 });
   assert.equal(body!.output_config.format.schema.properties.dateien.minItems, undefined);
   await assert.rejects(frageStrukturiert({ ...p, abruf: abruf("max_tokens") }), /abgeschnitten/);
+  for (const stop of ["max_tokens", "refusal"]) {
+    const gebucht: number[][] = [];
+    await assert.rejects(frageStrukturiert({ ...p, abruf: abruf(stop), beiVerbrauch: (e, a) => void gebucht.push([e, a]) }));
+    assert.deepEqual(gebucht, [[3, 4]], `${stop}: Verbrauch wird trotzdem gebucht`);
+  }
   await assert.rejects(frageStrukturiert({ ...p, key: undefined }), /API_KEY fehlt/);
 });
 
