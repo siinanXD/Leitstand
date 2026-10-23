@@ -58,7 +58,8 @@ async function main() {
   console.log(JSON.stringify(s, null, 2));
   if (DRY) return;
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt");
-  for (const [id, quotas] of Object.entries(s.je_produkt)) await schreibe(id, id === "leitstand" ? [...quotas, ...s.konto] : quotas);
+  // Ohne Messwert bleiben bestehende quotas (z. B. aus status.mjs) unberührt.
+  for (const [id, quotas] of Object.entries(s.je_produkt)) if (quotas.length || (id === "leitstand" && s.konto.length)) await schreibe(id, id === "leitstand" ? [...quotas, ...s.konto] : quotas);
 }
 
 main().catch((e) => {

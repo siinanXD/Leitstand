@@ -1148,3 +1148,10 @@
   art: db
   rest: loop_snapshot?project=eq.stromlauf-ai&select=quotas
   nicht_leer: quotas
+
+- id: kosten-produktfilter
+  produkt: leitstand
+  titel: Die Seite Kosten bietet den Produktfilter an; axe prüft sie in e2e/abnahme.spec.ts (SIN-1049)
+  art: datei
+  pfad: src/app/kosten/page.tsx
+  enthaelt: <ProjektFilter
