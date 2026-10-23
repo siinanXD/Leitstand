@@ -3,6 +3,7 @@
 import { agentKarte, bahnen, type AgentKarte } from "@/lib/agenten";
 import { useRollen } from "@/lib/aktionen-client";
 import { letzterLauf, ROLLEN, type Takt } from "@/lib/autonomy/rollen";
+import { leseMessungen, MODELLE } from "@/lib/kennzahlen/modelle";
 import { useSitzung } from "@/lib/sitzung";
 import { ohneKennungen, zeitInWorten } from "@/lib/zeit";
 import { MitMehr } from "../mit-mehr";
@@ -36,6 +37,34 @@ function Takte({ events, jetzt }: { events: readonly { step: string | null; agen
               <strong>{r.schritt}</strong>
               <span>Takt: {TAKT[r.takt]}</span>
               <span>{zuletzt === null ? "Noch kein Lauf" : `Letzter Lauf ${zeitInWorten(new Date(zuletzt).toISOString(), jetzt) ?? "früher"}`}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Modell je Rolle (SIN-942) aus docs/autonomy/modelle.json und die letzte Wochenmessung aus loop_snapshot.modelle; ohne Messung steht das da, nicht eine Zahl. */
+function Modelle({ snapshot }: { snapshot: readonly { modelle?: unknown }[] }) {
+  const { stand, messungen } = leseMessungen(snapshot.map((s) => s.modelle).find((m) => m != null));
+  return (
+    <section aria-labelledby="team-modelle">
+      <h2 id="team-modelle" className="karte-titel">
+        Modell je Rolle
+      </h2>
+      <ul className="noten">
+        {Object.entries(MODELLE).map(([rolle, r]) => {
+          const m = messungen.find((x) => x.rolle === rolle && x.modell === r.modell);
+          return (
+            <li key={rolle}>
+              <strong>{rolle}</strong>
+              <span className="mono">{r.modell}</span>
+              <span>
+                {m === undefined
+                  ? "Noch keine Messung"
+                  : `Woche ab ${stand ?? "?"}: ${m.issues} Issues, Durchstich ${m.durchstichQuote === null ? "unbekannt" : `${Math.round(m.durchstichQuote * 100)} %`}, ${m.prueferRunden ?? "–"} Prüfer-Runden, ${m.kostenJeIssue === null ? "Kosten unbekannt" : `${euro(m.kostenJeIssue)} je Issue`}, ${m.dauerJeIssueMin === null ? "Dauer unbekannt" : `${Math.round(m.dauerJeIssueMin)} min`}`}
+              </span>
             </li>
           );
         })}
@@ -119,6 +148,7 @@ export default function Team() {
               </section>
             )}
             <Takte events={quelle.events} jetzt={jetzt} />
+            <Modelle snapshot={quelle.snapshot} />
             <Noten jetzt={jetzt} />
           </main>
         );

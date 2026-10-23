@@ -62,6 +62,17 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: npx tsx scripts/kennzahlen/woche.ts
+      # SIN-942: Messung je Rolle und Modell (Wochenfenster, Upsert, idempotent). Ein Fehler hier stoppt den Wächter nicht.
+      - name: Modell-Messung berechnen
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL || vars.LANGFUSE_BASE_URL }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: npx tsx scripts/kennzahlen/modelle.ts
       # SIN-967: GitHub lässt geplante Läufe oft aus (abnahme.yml lief 41-mal in 7 Tagen statt stündlich).
       # Der Wächter läuft per externem Takt alle 15 Min und stößt die Abnahme an, wenn ihr letzter Lauf älter als 55 Min ist.
       - name: Abnahme anstoßen, wenn der Stundenlauf ausfiel

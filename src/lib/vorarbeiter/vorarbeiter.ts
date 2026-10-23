@@ -1,5 +1,6 @@
 // Vorarbeiter-Agent (SIN-553): reine Planung der Reihenfolge und der Spuren. Kein Netz, kein KI-Aufruf.
 // `scripts/vorarbeiter/vorarbeiter.ts` holt die Linear-Issues, schreibt den Plan und baut Spur C. Der CEO entscheidet was, der Vorarbeiter wann und womit.
+import { modellFuer } from "../kennzahlen/modelle";
 import { NIE_AUTOMATISCH, type LinearIssue } from "../loop/auswahl";
 
 export const SPUREN = ["A", "B", "C"] as const;
@@ -7,7 +8,7 @@ export type SpurId = (typeof SPUREN)[number];
 /** A und B laufen auf dem Claude-Max-Konto, C per API mit Haiku. */
 export const SPUR_NAMEN: Record<SpurId, string> = { A: "Spur A · Claude Max", B: "Spur B · Claude Max", C: "Spur C · API mit Haiku" };
 export const SPUR_C_DECKEL_EUR = 2;
-export const SPUR_C_MODELL = "claude-haiku-5-5";
+export const SPUR_C_MODELL = modellFuer("planer");
 /** Freigabe des CEOs für Loop-Infrastruktur (Label am Linear-Issue). */
 export const CEO_FREIGABE = "ceo-freigabe";
 

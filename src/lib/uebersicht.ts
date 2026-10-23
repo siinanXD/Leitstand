@@ -39,6 +39,8 @@ export type SnapshotRow = {
   queue?: Queue | null;
   /** Optional (SIN-553): Plan des Vorarbeiters aus `loop_snapshot.plan`. */
   plan?: Plan | null;
+  /** Optional (SIN-942): Wochenmessung je Rolle und Modell aus `loop_snapshot.modelle`, ungeprüft; lesen mit leseMessungen. */
+  modelle?: unknown;
 };
 export type Queue = { todo: number; startable: number; in_progress: number };
 export type Teilstand = { fertig: number; gesamt: number; neueIdeen: number };
@@ -159,6 +161,7 @@ export function parseSnapshot(raw: unknown): SnapshotRow[] {
         queue: parseQueue(o.queue),
         guthaben: parseGuthaben(o.guthaben),
         plan: parsePlan(o.plan),
+        modelle: o.modelle ?? null,
       },
     ];
   });
