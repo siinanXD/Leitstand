@@ -1223,6 +1223,12 @@
   rest: loop_events?step=eq.lernen&status=eq.ok&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 11520
+- id: leitstand-sauberkeits-tor
+  produkt: leitstand
+  titel: ESLint begrenzt Funktionslänge für geänderte Dateien (SIN-1063)
+  art: datei
+  pfad: eslint.config.mjs
+  enthaelt: max-lines-per-function
 - id: leitstand-e2e-strecke-snapshot
   produkt: leitstand
   titel: loop_snapshot trägt das Feld e2e (Kennzahlen der E2E-Strecke, SIN-1073)

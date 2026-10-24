@@ -13,3 +13,9 @@ test("findeMuster findet verbotene Muster", () => {
 test("findeMuster lässt sauberen Text durch", () => {
   assert.deepEqual(findeMuster("## Heute in einem Satz\n3 Aufgaben offen."), []);
 });
+
+test("findeMuster meldet Namenskürzel, nicht sprechende Namen", () => {
+  assert.equal(findeMuster("const tmp = 1;")[0].id, "kuerzel-name");
+  assert.equal(findeMuster("let data2 = lade();")[0].id, "kuerzel-name");
+  assert.deepEqual(findeMuster("const projekte = ladeProjekte();"), []);
+});
