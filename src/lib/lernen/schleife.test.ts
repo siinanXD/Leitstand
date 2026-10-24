@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { test } from "node:test";
 import { pruefeSchema, type Schema } from "../autonomy/schema";
 import { ereignisZeile, kachelPayload, kalenderwoche, leseKachel, leseKosten, STANDARD_KURS, STANDARD_PREIS, STATUS, leseVorschlag, messe, schlechtester, urteil, vorschlagsPrompt, zeileEinfuegen, zeileEntfernen, type Pr, type Woche, type Werte } from "./schleife";
@@ -125,4 +127,14 @@ test("leseKosten: fehlende oder ungültige Werte fallen auf die Standardpreise, 
   assert.deepEqual(leseKosten({}), { preis: STANDARD_PREIS, kurs: STANDARD_KURS });
   assert.deepEqual(leseKosten({ VORARBEITER_PREIS_EIN_USD: "x", VORARBEITER_PREIS_AUS_USD: "0", KOSTEN_USD_EUR: "" }), { preis: STANDARD_PREIS, kurs: STANDARD_KURS });
   assert.deepEqual(leseKosten({ VORARBEITER_PREIS_EIN_USD: "2", KOSTEN_USD_EUR: "0,9" }), { preis: { einProMio: 2, ausProMio: STANDARD_PREIS.ausProMio }, kurs: 0.9 });
+});
+
+test("woche.ts: Trockenlauf (DRY_RUN=1) läuft ohne Netz grün", () => {
+  const lauf = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), resolve("scripts/lernen/woche.ts")], {
+    encoding: "utf8",
+    timeout: 60000,
+    env: { ...process.env, DRY_RUN: "1", LERNEN_REPOS: "", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "", GH_TOKEN: "", ANTHROPIC_API_KEY: "" },
+  });
+  assert.equal(lauf.status, 0, lauf.stderr);
+  assert.match(lauf.stdout, /"schema": "lernen\/1"/);
 });
