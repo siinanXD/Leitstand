@@ -160,4 +160,26 @@ export const wertName = (w: Wert): string => NAME[w];
 /** Anteile als Prozent, sonst Zahl. */
 export const wertText = (w: Wert, x: number): string => (w.endsWith("_anteil") || w === "richter_quote" ? `${Math.round(x * 100)} %` : String(x).replace(".", ","));
 
-export const ereignisZeile = (ok: boolean, payload: unknown) => ({ project: "leitstand", step: SCHRITT, status: ok ? "ok" : "fehler", issue: null, pr: null, payload });
+/** Erlaubte Werte von `loop_events.status` (Check `loop_events_status_check`). */
+export const STATUS = ["start", "ok", "fehler", "uebersprungen", "needs_human"] as const;
+export type Status = (typeof STATUS)[number];
+
+/** Zeile für `loop_events`; `grund` ist außer bei `start` und `ok` Pflicht (SIN-617). */
+export const ereignisZeile = (status: Status, o: { grund?: string; payload?: unknown; runId?: string | null; runUrl?: string | null } = {}) => {
+  if (!STATUS.includes(status)) throw new Error(`Ungültiger Status ${status}`);
+  const grund = o.grund?.slice(0, 500) ?? (status === "start" || status === "ok" ? null : "unbekannt");
+  return { project: "leitstand", agent: "lernen", step: SCHRITT, status, issue: null, pr: null, run_id: o.runId ?? null, run_url: o.runUrl ?? null, grund, payload: o.payload ?? null };
+};
+
+/** Standardpreise (USD je Million Token, Haiku) und Kurs, wenn die Umgebung nichts liefert. shortcut: fester Kurs, bei größerer Abweichung KOSTEN_USD_EUR setzen. */
+export const STANDARD_PREIS = { einProMio: 1, ausProMio: 5 };
+export const STANDARD_KURS = 0.92;
+
+/** Preise und Kurs aus der Umgebung; fehlende oder ungültige Werte fallen einzeln auf den Standard zurück. */
+export function leseKosten(env: Record<string, string | undefined>): { preis: { einProMio: number; ausProMio: number }; kurs: number } {
+  const zahl = (v: string | undefined, standard: number) => {
+    const n = Number((v ?? "").replace(",", "."));
+    return n > 0 ? n : standard;
+  };
+  return { preis: { einProMio: zahl(env.VORARBEITER_PREIS_EIN_USD, STANDARD_PREIS.einProMio), ausProMio: zahl(env.VORARBEITER_PREIS_AUS_USD, STANDARD_PREIS.ausProMio) }, kurs: zahl(env.KOSTEN_USD_EUR, STANDARD_KURS) };
+}
