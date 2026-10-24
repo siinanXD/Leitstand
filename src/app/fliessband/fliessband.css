@@ -1,0 +1,455 @@
+/* Fließband-Startseite (SIN-815). Figma M1 98:2 (Handy, 390 breit) und D1 99:45 (Desktop, 1440 breit). Nur Tokens. */
+.fliessband {
+  --fb-rot-weich: color-mix(in srgb, var(--color-status-error) 12%, var(--color-bg-surface));
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: var(--space-24) var(--space-16) calc(var(--space-48) * 2);
+  display: grid;
+  gap: var(--space-16);
+}
+
+.fb-kopf h1 {
+  margin: var(--space-4) 0 0;
+  font-size: 32px;
+  line-height: 36px;
+  font-weight: 700;
+}
+.fb-datum {
+  margin: 0;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--color-accent-strong);
+}
+
+.fb-nur-desktop {
+  display: none;
+}
+
+.fb-leer {
+  margin: 0;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--color-text-secondary);
+}
+.fb-leer.ok {
+  color: var(--color-status-ok);
+}
+
+/* Braucht dich */
+.fb-braucht {
+  background: var(--color-bunt-sonne);
+  border: 1px solid var(--color-status-warn);
+  border-radius: 16px;
+  padding: var(--space-12) var(--space-12) var(--space-12);
+  display: grid;
+  gap: var(--space-8);
+}
+.fb-braucht-kopf {
+  margin: 0;
+  padding: 2px var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 700;
+}
+.fb-zahl {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 13px;
+  background: var(--color-accent-strong);
+  color: var(--color-bunt-auf-akzent);
+}
+.fb-braucht-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-8);
+}
+.fb-braucht-punkt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  background: var(--color-bg-surface);
+  border-radius: 10px;
+  padding: var(--space-8) var(--space-8) var(--space-8) var(--space-12);
+  font-size: 14px;
+  line-height: 17px;
+  font-weight: 600;
+}
+.fb-los {
+  min-width: 52px;
+  border-radius: 14px;
+  background: var(--color-accent-strong);
+  color: var(--color-bunt-auf-akzent);
+}
+
+/* Legende und Punkte */
+.fb-band {
+  display: grid;
+  gap: var(--space-8);
+}
+.fb-band h2 {
+  margin: var(--space-8) 0 0;
+  font-size: 18px;
+  line-height: 22px;
+  font-weight: 700;
+}
+.fb-legende {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--color-text-secondary);
+}
+.fb-legende li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.fb-punkt {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.fb-punkt.gruen {
+  background: var(--color-status-ok);
+}
+.fb-punkt.gelb {
+  background: var(--color-status-warn);
+}
+.fb-punkt.rot {
+  background: var(--color-status-error);
+}
+.fb-punkt.blau {
+  background: var(--color-status-info);
+}
+
+/* Handy: Bahnen */
+.fb-bahnen {
+  display: grid;
+  gap: var(--space-12);
+}
+.fb-bahn {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 16px;
+  padding: var(--space-12) 10px;
+  display: grid;
+  gap: var(--space-8);
+}
+.fb-bahn-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+}
+.fb-bahn-kopf h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.fb-pille {
+  border-radius: 11px;
+  padding: var(--space-4) 9px;
+  font-size: 12px;
+  line-height: 14px;
+  background: var(--color-bunt-pfirsich);
+  color: var(--color-accent-strong);
+  white-space: nowrap;
+}
+.fb-pille.fertig {
+  background: var(--color-bunt-gruen);
+  color: var(--color-status-ok);
+}
+.fb-pille.station {
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+.fb-stationen {
+  list-style: none;
+  margin: var(--space-8) var(--space-8) 0;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+.fb-stationen::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 5px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.fb-punkt.gross {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-text-secondary);
+}
+.fb-punkt.gross.gruen,
+.fb-punkt.gross.gelb,
+.fb-punkt.gross.rot,
+.fb-punkt.gross.blau {
+  border-color: transparent;
+}
+.fb-punkt.gross.gruen {
+  background: var(--color-status-ok);
+}
+.fb-punkt.gross.gelb {
+  background: var(--color-status-warn);
+}
+.fb-punkt.gross.rot {
+  background: var(--color-status-error);
+}
+.fb-punkt.gross.blau {
+  background: var(--color-status-info);
+}
+.fb-anzahl {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.fb-karten {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-8);
+}
+.fb-karte {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  min-height: var(--touch-min);
+  border-radius: 8px;
+  border-left: 3px solid;
+  padding: var(--space-4) 10px var(--space-4) 11px;
+}
+.fb-karte-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.fb-karte {
+  text-decoration: none;
+  color: var(--color-text-primary);
+}
+.fb-karte-titel {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.fb-karte:hover .fb-karte-titel,
+.fb-karte:focus-visible .fb-karte-titel {
+  text-decoration: underline;
+}
+.fb-karte-zeile {
+  font-size: 12px;
+  line-height: 14px;
+}
+
+/* Farben der Karten und Kacheln (Figma: weicher Grund, kräftiger Rand und Text) */
+.fb-karte.gruen,
+.fb-kachel.gruen {
+  background: var(--color-bunt-gruen);
+  border-color: var(--color-status-ok);
+}
+.fb-karte.gelb,
+.fb-kachel.gelb {
+  background: var(--color-bunt-sonne);
+  border-color: var(--color-status-warn);
+}
+.fb-karte.rot,
+.fb-kachel.rot {
+  background: var(--fb-rot-weich);
+  border-color: var(--color-status-error);
+}
+.fb-karte.blau,
+.fb-kachel.blau {
+  background: var(--color-bunt-blau);
+  border-color: var(--color-status-info);
+}
+.fb-karte.gruen .fb-karte-zeile,
+.fb-kachel.gruen .fb-kachel-id {
+  color: var(--color-status-ok);
+}
+.fb-karte.gelb .fb-karte-zeile,
+.fb-kachel.gelb .fb-kachel-id {
+  color: var(--color-status-warn);
+}
+.fb-karte.rot .fb-karte-zeile,
+.fb-kachel.rot .fb-kachel-id {
+  color: var(--color-status-error);
+}
+.fb-karte.blau .fb-karte-zeile,
+.fb-kachel.blau .fb-kachel-id {
+  color: var(--color-status-info);
+}
+
+/* Desktop (D1) */
+@media (min-width: 900px) {
+  .fliessband {
+    padding: 36px 40px var(--space-48);
+    gap: var(--space-24);
+  }
+  .fb-nur-handy {
+    display: none;
+  }
+  .fb-nur-desktop {
+    display: revert;
+  }
+  .fb-kopf h1 {
+    font-size: 26px;
+    line-height: 32px;
+  }
+  .fb-datum {
+    color: var(--color-text-secondary);
+  }
+  .fb-braucht {
+    grid-template-columns: 180px 1fr;
+    align-items: center;
+    padding: var(--space-16) var(--space-16) var(--space-16) var(--space-24);
+  }
+  .fb-braucht-punkt {
+    background: transparent;
+    font-weight: 400;
+    font-size: 14px;
+    padding: 0;
+  }
+  .fb-tabelle {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 var(--space-12);
+    table-layout: fixed;
+  }
+  .fb-tabelle thead th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    padding: 0 var(--space-4);
+  }
+  .fb-tabelle thead th:first-child {
+    width: 162px;
+  }
+  .fb-tabelle tbody th,
+  .fb-tabelle tbody td {
+    background: var(--color-bg-surface);
+    border-top: 1px solid var(--color-border-subtle);
+    border-bottom: 1px solid var(--color-border-subtle);
+    vertical-align: top;
+    padding: var(--space-12) var(--space-4);
+  }
+  .fb-tabelle tbody th {
+    text-align: left;
+    border-left: 1px solid var(--color-border-subtle);
+    border-radius: 12px 0 0 12px;
+    padding-left: var(--space-16);
+    display: table-cell;
+  }
+  .fb-tabelle tbody td {
+    border-left: 1px solid var(--color-border-subtle);
+  }
+  .fb-tabelle tbody td:last-child {
+    border-right: 1px solid var(--color-border-subtle);
+    border-radius: 0 12px 12px 0;
+  }
+  .fb-produkt {
+    display: block;
+    font-size: 15px;
+    line-height: 18px;
+    font-weight: 700;
+    margin-bottom: var(--space-8);
+  }
+  .fb-tabelle tbody th .fb-pille {
+    display: inline-block;
+  }
+  .fb-kachel {
+    display: grid;
+    gap: 2px;
+    border-radius: 6px;
+    border-left: 3px solid;
+    padding: var(--space-8) var(--space-8);
+    margin-bottom: var(--space-8);
+    text-decoration: none;
+    color: var(--color-text-primary);
+    min-height: var(--touch-min);
+  }
+  .fb-kachel:hover .fb-kachel-titel,
+  .fb-kachel:focus-visible .fb-kachel-titel {
+    text-decoration: underline;
+  }
+  .fb-kachel-id {
+    font-size: 11px;
+    line-height: 13px;
+    font-weight: 600;
+  }
+  .fb-kachel-titel {
+    font-size: 12px;
+    line-height: 14px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .fb-kachel-grund {
+    font-size: 11px;
+    line-height: 13px;
+    color: var(--color-text-secondary);
+  }
+  .fb-zeitleiste {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 12px;
+    padding: var(--space-16);
+  }
+  .fb-zeitleiste h2 {
+    margin: 0 0 var(--space-12);
+    font-size: 14px;
+    line-height: 17px;
+    font-weight: 700;
+  }
+  .fb-zeitleiste ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12) var(--space-24);
+    font-size: 13px;
+  }
+  .fb-zeitleiste li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fliessband * {
+    transition: none;
+  }
+}
