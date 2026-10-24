@@ -11,6 +11,7 @@ export const MUSTER: Muster[] = [
   { id: "kuerzel-name", regex: /\b(?:const|let|var|function)\s+(?:tmp|temp|foo|bar|baz|data\d|res\d|val\d)\b/, grund: "Namenskürzel statt sprechendem Namen" },
 ];
 
+/** Liefert Kennung und Grund aller verbotenen Muster, die im Text vorkommen. */
 export function findeMuster(text: string): { id: string; grund: string }[] {
   return MUSTER.filter((m) => m.regex.test(text)).map(({ id, grund }) => ({ id, grund }));
 }
