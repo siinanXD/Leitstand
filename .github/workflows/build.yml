@@ -44,6 +44,8 @@ jobs:
         run: DRY_RUN=1 PROBE_BERICHT=/tmp/leitstand-parallel-probe.json node scripts/loop/parallel-probe.mjs
       - name: Abnahme-Proben (Trockenlauf)
         run: DRY_RUN=1 npx tsx scripts/abnahme/abnahme.ts
+      - name: Score (Trockenlauf)
+        run: DRY_RUN=1 npx tsx scripts/score/score.ts
       - name: Bestandsabgleich (Trockenlauf)
         run: DRY_RUN=1 npx tsx scripts/bestand/probe.ts
       - run: npx playwright install --with-deps chromium

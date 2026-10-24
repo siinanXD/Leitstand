@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Score je Agent-Lauf (SIN-1059)",
+  "description": "Ein Eintrag in loop_events (step score, status ok). loop_events hat keine payload-Spalte (SIN-848): der Score steht als `score: <JSON>` in `grund`. Werte sind gemessen oder null (unbekannt), nie geschätzt; nullbare Felder (issue, pr, kosten_eur, build_erster_lauf_gruen, dateien_ausserhalb_scope, minuten_bis_gruen, regression_24h, quelle) haben hier kein `type`, weil der Schema-Prüfer keine Typlisten kennt. `quelle` ist bei PR-Läufen null, bei Rollen ohne PR der Zeitpunkt des Lauf-Ereignisses (Schlüssel gegen Doppelzeilen).",
+  "type": "object",
+  "properties": {
+    "produkt": { "type": "string", "minLength": 1 },
+    "issue": {},
+    "pr": {},
+    "rolle": { "type": "string", "minLength": 1 },
+    "quelle": {},
+    "bereiche": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "direkt": { "type": "boolean" },
+    "reparatur_runden": { "type": "integer", "minimum": 0 },
+    "pruefer_runden": { "type": "integer", "minimum": 0 },
+    "minuten": {},
+    "kosten_eur": {},
+    "fehler": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bereich": {},
+          "art": { "type": "string", "enum": ["unklar"] },
+          "ursache": { "type": "string", "minLength": 1 },
+          "datei": {}
+        },
+        "required": ["bereich", "art", "ursache", "datei"],
+        "additionalProperties": false
+      }
+    },
+    "build_erster_lauf_gruen": {},
+    "eingriffe_sinan": { "type": "integer", "minimum": 0 },
+    "dateien_ausserhalb_scope": {},
+    "minuten_bis_gruen": {},
+    "regression_24h": {}
+  },
+  "required": ["produkt", "issue", "pr", "rolle", "quelle", "bereiche", "direkt", "reparatur_runden", "pruefer_runden", "minuten", "kosten_eur", "fehler", "build_erster_lauf_gruen", "eingriffe_sinan", "dateien_ausserhalb_scope", "minuten_bis_gruen", "regression_24h"],
+  "additionalProperties": false
+}
