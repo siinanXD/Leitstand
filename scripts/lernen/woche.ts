@@ -10,12 +10,13 @@
  *
  * Env: GH_TOKEN, ANTHROPIC_API_KEY, VORARBEITER_PREIS_EIN_USD, VORARBEITER_PREIS_AUS_USD, KOSTEN_USD_EUR, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (optional),
  * LERNEN_REPOS (Standard „siinanXD/Leitstand,siinanXD/Content-Agent-Lernapp“). DRY_RUN=1: nur Log, keine Datei, kein Ereignis.
- * Ohne Schlüssel oder Preis bleibt es bei der Messung und der Lauf grün.
+ * Ohne Schlüssel bleibt es bei der Messung und der Lauf grün; fehlende Preise oder Kurs ersetzen die Standardwerte aus schleife.ts.
+ * Ereignisse in loop_events: start, dann ok (Grund nennt „kein Vorschlag“), uebersprungen (Woche schon gemessen), needs_human (Modellaufruf scheitert) oder fehler.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { frageStrukturiert, schemaVorschlag } from "../../src/lib/strukturiert/strukturiert";
 import { aufrufKosten, SPUR_C_MODELL } from "../../src/lib/vorarbeiter/vorarbeiter";
-import { DECKEL_EUR, ereignisZeile, kachelPayload, kalenderwoche, leseVorschlag, messe, schlechtester, urteil, vorschlagsPrompt, zeileEinfuegen, zeileEntfernen, type Ereignis, type Nachmessung, type Pr, type Vorschlag, type Woche } from "../../src/lib/lernen/schleife";
+import { DECKEL_EUR, ereignisZeile, kachelPayload, kalenderwoche, leseKosten, leseVorschlag, messe, schlechtester, urteil, vorschlagsPrompt, zeileEinfuegen, zeileEntfernen, type Ereignis, type Nachmessung, type Status, type Pr, type Vorschlag, type Woche } from "../../src/lib/lernen/schleife";
 
 const env = process.env;
 const DRY = env.DRY_RUN === "1";
@@ -55,11 +56,14 @@ async function roteLaeufe(repo: string): Promise<string[]> {
   return k.filter((c) => /Der Check build ist rot/.test(c.body)).slice(-10).map((c) => c.body.replace(/\s+/g, " ").slice(0, 200));
 }
 
+let keinVorschlag = "";
+let modellFehler = "";
+
 async function vorschlagen(ziel: NonNullable<ReturnType<typeof schlechtester>>, vorwoche: Woche | null, verworfen: string[]): Promise<Vorschlag | null> {
-  const preis = { einProMio: Number(env.VORARBEITER_PREIS_EIN_USD), ausProMio: Number(env.VORARBEITER_PREIS_AUS_USD) };
-  const kurs = Number((env.KOSTEN_USD_EUR ?? "").replace(",", "."));
-  if (!env.ANTHROPIC_API_KEY || !(preis.einProMio > 0) || !(preis.ausProMio > 0) || !(kurs > 0)) {
-    console.warn("Kein Vorschlag: ANTHROPIC_API_KEY, Preise oder KOSTEN_USD_EUR fehlen.");
+  const { preis, kurs } = leseKosten(env);
+  if (!env.ANTHROPIC_API_KEY) {
+    keinVorschlag = "ANTHROPIC_API_KEY fehlt";
+    console.warn(`Kein Vorschlag: ${keinVorschlag}.`);
     return null;
   }
   const werte = vorwoche?.produkte.find((p) => p.produkt === ziel.produkt)?.werte ?? null;
@@ -73,12 +77,25 @@ async function vorschlagen(ziel: NonNullable<ReturnType<typeof schlechtester>>, 
   return v;
 }
 
+const laufUrl = () => (env.GITHUB_RUN_ID && env.GITHUB_REPOSITORY ? `${env.GITHUB_SERVER_URL ?? "https://github.com"}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null);
+
+async function ereignis(status: Status, o: { grund?: string; payload?: unknown } = {}) {
+  if (DRY || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return console.warn("Ereignis nicht geschrieben (trocken oder Supabase-Variablen fehlen)");
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, { method: "POST", headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(ereignisZeile(status, { ...o, runId: env.GITHUB_RUN_ID ?? null, runUrl: laufUrl() })), signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`Supabase loop_events: ${res.status} ${(await res.text()).slice(0, 200)}`);
+}
+
 function schreiben(pfad: string, inhalt: string) {
   if (DRY) return console.log(`[trocken] ${pfad}`);
   writeFileSync(pfad, inhalt);
 }
 
 async function main() {
+  await ereignis("start");
+  if (!DRY && existsSync(`${ORDNER}/woche-${kw}.json`)) {
+    console.log(`Woche ${kw} ist schon gemessen.`);
+    return ereignis("uebersprungen", { grund: `Woche ${kw} schon gemessen` });
+  }
   const produkte: Woche["produkte"] = [];
   for (const repo of repos) {
     const liste = await prs(repo);
@@ -113,7 +130,7 @@ async function main() {
   else {
     // Zeilen der VERWORFEN.md: `- KW · produkt · wert: a → b · Regelzeile (datei)`
     const verworfen = lesen(`${ORDNER}/VERWORFEN.md`).split("\n").filter((l) => l.startsWith("- ")).map((l) => l.split(" · ").slice(3).join(" · ").replace(/ \([^)]*\)$/, ""));
-    vorschlag = await vorschlagen(ziel, vorwoche, verworfen).catch((e: Error) => (console.warn(`Warnung: kein Vorschlag (${e.message})`), null));
+    vorschlag = await vorschlagen(ziel, vorwoche, verworfen).catch((e: Error) => (console.warn(`Warnung: kein Vorschlag (${e.message})`), (modellFehler = e.message), null));
     if (vorschlag) schreiben(vorschlag.datei, zeileEinfuegen(lesen(vorschlag.datei), vorschlag.zeile));
   }
 
@@ -122,12 +139,13 @@ async function main() {
   schreiben(`${ORDNER}/woche-${kw}.json`, `${JSON.stringify(woche, null, 2)}\n`);
   console.log(DRY ? JSON.stringify(woche, null, 2) : `Woche ${kw}: ${produkte.map((p) => `${p.produkt} ${p.prs} PRs`).join(", ")}, Vorschlag: ${vorschlag ? vorschlag.zeile : "keiner"}.`);
 
-  if (DRY || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return console.warn("Ereignis nicht geschrieben (trocken oder Supabase-Variablen fehlen)");
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, { method: "POST", headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(ereignisZeile(true, kachelPayload(woche))) });
-  if (!res.ok) throw new Error(`Supabase loop_events: ${res.status}`);
+  if (modellFehler) return ereignis("needs_human", { grund: `Vorschlag scheitert: ${modellFehler}`, payload: kachelPayload(woche) });
+  await ereignis("ok", { grund: vorschlag ? undefined : `kein Vorschlag: ${keinVorschlag || "kein Ziel oder Revert"}`, payload: kachelPayload(woche) });
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
+main().catch(async (err) => {
+  const text = err instanceof Error ? err.message : String(err);
+  console.error(text);
+  await ereignis("fehler", { grund: text }).catch((e: Error) => console.warn(e.message));
   process.exit(1);
 });

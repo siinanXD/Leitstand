@@ -1215,3 +1215,11 @@
   rest: loop_events?project=eq.leitstand&step=eq.score&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 1440
+
+- id: leitstand-lernen-woche-ok
+  produkt: leitstand
+  titel: Die wöchentliche Lern-Schleife hat in den letzten 8 Tagen mit Status ok gelaufen (SIN-1058)
+  art: db
+  rest: loop_events?step=eq.lernen&status=eq.ok&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 11520
