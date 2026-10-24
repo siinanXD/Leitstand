@@ -13,6 +13,8 @@ import { GedaechtnisKachel } from "../gedaechtnis-kachel";
 import { GelerntKachel } from "../gelernt-kachel";
 import { FehlergruendeKachel } from "../fehlergruende-kachel";
 import { WerbungKachel } from "../werbung-kachel";
+import { DurchstichKachel } from "../durchstich-kachel";
+import { KennzahlenKachel } from "../kennzahlen-kachel";
 import "../freigabe.css";
 import "../uebersicht.css";
 import "../projekte/projekte.css";
@@ -213,6 +215,9 @@ export function Bento({ quelle, jetzt, pause }: { quelle: Quelle; jetzt: Date; p
         </section>
       </div>
       <div className="einfach bunt" style={{ gridColumn: "1 / -1", padding: 0 }}>
+        {/* Von der alten Startseite hierher (SIN-815). */}
+        <DurchstichKachel angemeldet jetzt={jetzt} />
+        <KennzahlenKachel angemeldet jetzt={jetzt} />
         <WerbungKachel angemeldet />
         <GedaechtnisKachel angemeldet />
         <GelerntKachel angemeldet />

@@ -1190,3 +1190,10 @@
   art: datei
   pfad: docs/autonomy/kontingente.json
   enthaelt: wieder_da
+- id: leitstand-fliessband-start
+  produkt: leitstand
+  titel: Die Startseite ist das Fließband mit „Braucht dich“ (SIN-815)
+  art: github
+  repo: siinanXD/Leitstand
+  pfad: src/app/fliessband/start.tsx
+  enthaelt: Braucht dich
