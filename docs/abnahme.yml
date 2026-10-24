@@ -1195,3 +1195,16 @@
   titel: Das Vercel-Tageslimit wird über das ganze Team gezählt, Quelle Team (SIN-1047)
   art: db
   rest: loop_snapshot?project=eq.leitstand&quotas=cs.%5B%7B%22key%22%3A%22vercel_deployments_tag%22%2C%22quelle%22%3A%22team%22%7D%5D&select=project
+- id: leitstand-fliessband-start
+  produkt: leitstand
+  titel: Die Startseite ist das Fließband mit „Braucht dich“ (SIN-815)
+  art: github
+  repo: siinanXD/Leitstand
+  pfad: src/app/fliessband/start.tsx
+  enthaelt: Braucht dich
+- id: leitstand-pruefer-produkt-pr-ohne-main-sperre
+  produkt: leitstand
+  titel: Der Prüfer verwirft Produkt-PRs nicht mehr, wenn sich der Leitstand-main bewegt (SIN-1071)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: nur der PR zählt
