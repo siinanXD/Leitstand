@@ -35,5 +35,11 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Linear auf Done
         run: npx tsx scripts/loop/loop.ts gemergt --pr ${{ github.event.pull_request.number }}
+      # SIN-1059: Score je Lauf für Leitstand, Lern-App und Stromlauf AI; ein Fehler hier darf den Loop nicht aufhalten.
+      - name: Score schreiben
+        continue-on-error: true
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: npx tsx scripts/score/score.ts
       - name: Nächstes Issue starten
         run: npx tsx scripts/loop/loop.ts dispatch

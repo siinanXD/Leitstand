@@ -1208,3 +1208,10 @@
   art: datei
   pfad: .github/workflows/pruefer.yml
   enthaelt: nur der PR zählt
+- id: leitstand-score-je-lauf
+  produkt: leitstand
+  titel: Nach Merges schreibt der Loop einen Score je Lauf in loop_events, jüngster höchstens 24 Stunden alt (SIN-1059)
+  art: db
+  rest: loop_events?project=eq.leitstand&step=eq.score&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 1440
