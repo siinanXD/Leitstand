@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // Sechsjährigen-Test (SIN-578): auf den sechs Menü-Seiten keine Zahl ohne Wort, keine Kennungen, keine Zeitstempel, keine Tabelle.
+// Ausnahme Start (SIN-815): das Fließband aus Figma zeigt Kennungen, Uhrzeiten und am Desktop eine Tabelle.
 // Supabase wird wie in e2e/startseite.spec.ts gemockt (Build mit NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321).
 const SUPABASE = "http://127.0.0.1:54321";
 const SPEICHER = "sb-127-auth-token";
@@ -80,9 +81,12 @@ for (const [seite, pfad] of SEITEN) {
       await expect(page.getByText("Daten werden geladen")).toHaveCount(0);
       // SIN-659: „Stand: hh:mm“ und „seit hh:mm Uhr“ (Warnung) sind gewollt; jede andere Uhrzeit bleibt verboten.
       const text = (await page.locator("body").innerText()).replace(/(Stand: |seit )\d{1,2}:\d{2}/gi, "$1");
-      for (const [name, muster] of VERBOTEN) expect(text.match(muster)?.[0] ?? null, `${name} auf ${pfad}`).toBeNull();
-      await expect(page.locator("table")).toHaveCount(0);
-      await expect(page.locator("details.aufklapp")).toHaveCount(pfad === "/" ? 3 : 0);
+      // SIN-815: Start ist das Fließband nach Figma M1/D1; es zeigt bewusst SIN-Nummern, Datum mit Uhrzeit und am Desktop eine Tabelle.
+      const fliessband = pfad === "/";
+      const erlaubt = fliessband ? ["Linear-Kennung", "Uhrzeit", "Ziffernfolge ohne Einheit oder Wort"] : [];
+      for (const [name, muster] of VERBOTEN) if (!erlaubt.includes(name)) expect(text.match(muster)?.[0] ?? null, `${name} auf ${pfad}`).toBeNull();
+      if (!fliessband) await expect(page.locator("table")).toHaveCount(0);
+      await expect(page.locator("details.aufklapp")).toHaveCount(0);
       // Sinan 13.10.: auf dem Handy nichts, das seitlich scrollt (Seite und einzelne Bereiche).
       const breit = await page.evaluate(() => {
         const w = document.documentElement.clientWidth;

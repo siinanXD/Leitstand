@@ -55,6 +55,18 @@ async function anmelden(page: Page) {
     }),
   );
   await page.route(`${SUPABASE}/rest/v1/ceo_entscheidungen**`, (route) => route.fulfill({ json: [] }));
+  // Startseite = Fließband (SIN-815): Daten-Route im Browser abfangen.
+  const karte = (issue: string, station: string, farbe: string, grund: string | null) => ({ issue, titel: `Beispiel ${issue}`, produkt: "leitstand", station, farbe, grund, seit: vor(90), haken: null, links: { linear: "https://linear.app", pr: null, run: null } });
+  await page.route("**/api/fliessband", (route) =>
+    route.fulfill({
+      json: {
+        erzeugt: new Date(jetzt).toISOString(),
+        produkte: [{ id: "leitstand", karten: [karte("SIN-456", "baut", "gruen", null), karte("SIN-13", "pruefung", "rot", "Eine Prüfung ist rot.")] }, { id: "lernapp", karten: [] }],
+        brauchtDich: [{ text: "SIN-12 Richter wird besser", url: "https://linear.app" }],
+        brauchtDichText: null,
+      },
+    }),
+  );
 }
 
 async function oeffne(page: Page, pfad: string) {
@@ -79,21 +91,12 @@ for (const [groesse, viewport] of GROESSEN) {
       }
     });
 
-    test("Karten: Antippen klappt genau eine auf, Pfeil dreht, Inhalt sichtbar", async ({ page }) => {
+    test("Fließband: Karte führt zur Aufgabe, Stations-Pille sichtbar (SIN-815)", async ({ page }) => {
       await oeffne(page, "/");
-      const karten = page.locator("details.aufklapp");
-      const pfeil = (i: number) => karten.nth(i).locator("summary").evaluate((el) => getComputedStyle(el, "::after").content);
-      await expect(karten).toHaveCount(3);
-      expect(await pfeil(0)).toContain("▾");
-      for (const i of [0, 1, 2]) {
-        await karten.nth(i).locator("summary").click();
-        await expect(page.locator("details.aufklapp[open]")).toHaveCount(1);
-        await expect(karten.nth(i)).toHaveAttribute("open", "");
-        await expect(karten.nth(i).locator(".aufklapp-inhalt")).toBeVisible();
-        expect(await pfeil(i)).toContain("▴");
-      }
-      await karten.nth(2).locator("summary").click();
-      await expect(page.locator("details.aufklapp[open]")).toHaveCount(0);
+      const link = page.getByRole("link", { name: /Beispiel SIN-456/ }).filter({ visible: true }).first();
+      await expect(link).toBeVisible();
+      await link.click();
+      await expect(page).toHaveURL(/\/aufgabe\/SIN-456$/);
     });
 
     test("Kosten: Produktfilter wählt ein Produkt, axe ohne Fehler (SIN-1049)", async ({ page }) => {
@@ -120,7 +123,7 @@ for (const [groesse, viewport] of GROESSEN) {
       await expect(page).toHaveURL(/\/$/);
     });
 
-    test("Tastatur: Tab erreicht Reiter der Reihe nach, Fokus sichtbar, Enter und Leertaste öffnen Karten", async ({ page }) => {
+    test("Tastatur: Tab erreicht Reiter der Reihe nach, Fokus sichtbar, Enter öffnet eine Karte", async ({ page }) => {
       await oeffne(page, "/");
       const reihenfolge: string[] = [];
       for (let i = 0; i < 40 && reihenfolge.filter((t) => REITER.some(([n]) => n === t)).length < REITER.length; i++) {
@@ -142,14 +145,10 @@ for (const [groesse, viewport] of GROESSEN) {
       const reiterNamen = reihenfolge.filter((t) => REITER.some(([n]) => n === t));
       expect(reiterNamen).toEqual(REITER.map(([n]) => n));
 
-      const karten = page.locator("details.aufklapp");
-      await karten.nth(0).locator("summary").focus();
+      // Fließband (SIN-815): eine Karte ist ein Link, Enter öffnet die Aufgabe.
+      await page.getByRole("link", { name: /Beispiel SIN-456/ }).filter({ visible: true }).first().focus();
       await page.keyboard.press("Enter");
-      await expect(karten.nth(0)).toHaveAttribute("open", "");
-      await karten.nth(1).locator("summary").focus();
-      await page.keyboard.press("Space");
-      await expect(karten.nth(1)).toHaveAttribute("open", "");
-      await expect(page.locator("details.aufklapp[open]")).toHaveCount(1);
+      await expect(page).toHaveURL(/\/aufgabe\/SIN-456$/);
     });
 
     test("Ziele: jedes klickbare Element ist mindestens 44×44 px groß", async ({ page }) => {
@@ -276,7 +275,7 @@ test.describe("Skalierbarkeit", () => {
 test("Bewegung: mit prefers-reduced-motion läuft keine Animation (Puls steht)", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await oeffne(page, "/");
-  await expect(page.locator(".zustand-symbol").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Braucht dich/ })).toBeVisible();
   const laufend = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && a.effect?.getTiming().iterations === Infinity).length);
   expect(laufend).toBe(0);
 });
