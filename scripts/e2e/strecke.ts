@@ -36,7 +36,7 @@ async function linear(): Promise<Knoten[]> {
 async function ereignisse(): Promise<Ereignis[]> {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt");
   const ab = new Date(Date.now() - 8 * 86_400_000).toISOString();
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?project=eq.leitstand&created_at=gte.${ab}&select=created_at,step,status,issue,pr&limit=5000`, {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?project=eq.leitstand&created_at=gte.${ab}&select=created_at,step,status,issue,pr&order=created_at.desc&limit=5000`, {
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
   });
   if (!res.ok) throw new Error(`loop_events lesen: ${res.status}`);
@@ -63,8 +63,8 @@ async function main() {
   const ev = await ereignisse();
   const issues: IssueEingabe[] = [];
   for (const k of await linear()) {
-    // shortcut: History auf 20 Einträge begrenzt, bei längerem Verlauf fehlt „Todo“ und das Issue hängt bei todo; dann Fenster oder Limit prüfen.
-    const todo = k.history.nodes.filter((h) => h.toState?.name === "Todo").map((h) => h.createdAt).sort()[0] ?? null;
+    // shortcut: History auf 20 Einträge begrenzt; fehlt dort „Todo“ (direkt in Todo angelegt oder langer Verlauf), gilt createdAt als früheste Grenze.
+    const todo = k.history.nodes.filter((h) => h.toState?.name === "Todo").map((h) => h.createdAt).sort()[0] ?? k.createdAt;
     issues.push({ kennung: k.identifier, todoAm: todo, doneAm: k.completedAt, ereignisse: ev, pr: await pr(k.attachments.nodes.map((a) => a.url)) });
   }
   const r = kennzahlen(issues, new Date());
@@ -77,11 +77,12 @@ async function main() {
   });
   if (!res.ok) throw new Error(`loop_snapshot schreiben: ${res.status} ${await res.text()}`);
   // Schritt e2e-strecke in loop_events, damit die Rolle im Leitstand geprüft wird.
-  await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
+  const ereignis = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events`, {
     method: "POST",
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY!, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ project: "leitstand", step: "e2e-strecke", status: "ok", grund: `${r.vollstaendig}/${r.issues} Issues auf der ganzen Strecke` }),
   });
+  if (!ereignis.ok) throw new Error(`loop_events schreiben: ${ereignis.status} ${await ereignis.text()}`);
 }
 
 main().catch((e) => {

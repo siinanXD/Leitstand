@@ -3,6 +3,11 @@ name: e2e-strecke
 on:
   schedule:
     - cron: "35 * * * *"
+  pull_request:
+    paths:
+      - "scripts/e2e/strecke.ts"
+      - "src/lib/e2e/**"
+      - ".github/workflows/e2e-strecke.yml"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -27,7 +32,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npx tsx scripts/e2e/strecke.ts
         env:
-          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          DRY_RUN: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)) && '0' || '1' }}
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
