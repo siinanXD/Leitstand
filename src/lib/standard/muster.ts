@@ -8,6 +8,7 @@ export const MUSTER: Muster[] = [
   { id: "emoji-ueberschrift", regex: /^#{1,6}\s*\p{Extended_Pictographic}/mu, grund: "Emoji in Überschrift" },
   { id: "lila-verlauf", regex: /(linear|radial)-gradient\([^)]*(purple|violet|indigo)/i, grund: "Lila-Verlauf" },
   { id: "shadcn-standard", regex: /ui\.shadcn\.com|shadcn\/ui default/i, grund: "Standard-shadcn-Look" },
+  { id: "kuerzel-name", regex: /\b(?:const|let|var|function)\s+(?:tmp|temp|foo|bar|baz|data\d|res\d|val\d)\b/, grund: "Namenskürzel statt sprechendem Namen" },
 ];
 
 export function findeMuster(text: string): { id: string; grund: string }[] {
