@@ -1197,3 +1197,9 @@
   repo: siinanXD/Leitstand
   pfad: src/app/fliessband/start.tsx
   enthaelt: Braucht dich
+- id: leitstand-pruefer-produkt-pr-ohne-main-sperre
+  produkt: leitstand
+  titel: Der Prüfer verwirft Produkt-PRs nicht mehr, wenn sich der Leitstand-main bewegt (SIN-1071)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: nur der PR zählt

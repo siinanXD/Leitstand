@@ -132,7 +132,8 @@ jobs:
         run: |
           AKTUELL=$(gh api "repos/$GH_REPO/pulls/$PR" --jq '[.head.sha, .base.sha, .base.ref, .head.repo.full_name, .base.repo.full_name, .state] | join(" ")')
           MAIN=$(gh api "repos/${{ github.repository }}/branches/main" --jq '[.commit.sha, .protected] | join(" ")')
-          if [ "$AKTUELL" != "$HEAD_SHA $PR_BASE_SHA main $GH_REPO $GH_REPO open" ] || [ "$MAIN" != "$BASE_SHA true" ]; then
+          # Produkt-Repos: nur der PR zählt. Der Leitstand-main darf sich während des Laufs bewegen, sonst bleibt der Produkt-PR ohne Beleg hängen (SIN-1071).
+          if [ "$AKTUELL" != "$HEAD_SHA $PR_BASE_SHA main $GH_REPO $GH_REPO open" ] || { [ "$GH_REPO" = "${{ github.repository }}" ] && [ "$MAIN" != "$BASE_SHA true" ]; }; then
             echo 'Prüfergebnis veraltet: Head oder Basis geändert'
             exit 1
           fi
