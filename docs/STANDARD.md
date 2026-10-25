@@ -6,6 +6,8 @@ Pflicht für Worker, Prüfer und Testnutzer. Gilt in Leitstand und Lern-App (gle
 
 - Ponytail-Regeln (`docs/skills/ponytail/SKILL.md`), keine toten Pfade, keine Doppel-Logik.
 - Jede Funktion hat einen Test und eine Abnahme-Probe (`docs/abnahme.yml`).
+- Namen (SIN-1063): Funktionen als Verb (`lade…`, `pruefe…`, `baue…`), Daten als Hauptwort, Deutsch wie der Code drumherum, keine Kürzel wie `tmp`, `data2`, `foo`.
+- Sauberkeits-Tor im `build` (nur geänderte Dateien): `complexity` ≤ 15, `max-lines-per-function` ≤ 60, `max-lines` ≤ 400, exportierte Funktion in `src/lib` mit Doku-Satz davor; neuer ungenutzter Export oder neue ungenutzte Datei macht `knip-neu` rot (Altfunde bleiben Warnung).
 
 ## Oberfläche
 
@@ -39,6 +41,7 @@ Maschinell gesucht von Prüfer und Testnutzer (`src/lib/standard/muster.ts`):
 | `emoji-ueberschrift` | Emoji am Anfang einer Überschrift |
 | `lila-verlauf` | Lila/violette/indigo Verläufe |
 | `shadcn-standard` | Standard-shadcn-Look ohne eigenes Theme |
+| `kuerzel-name` | Namenskürzel wie `tmp`, `foo`, `data2` für Variablen und Funktionen |
 | – | Generische Hero-Texte (beurteilt das Prüfer-Modell, nicht per Regex) |
 
 Treffer stehen als Fund im PR-Kommentar. Abnahme: 0 Treffer in veröffentlichten Seiten und Inhalten.

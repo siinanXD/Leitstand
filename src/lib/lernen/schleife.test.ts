@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { test } from "node:test";
 import { pruefeSchema, type Schema } from "../autonomy/schema";
-import { kachelPayload, kalenderwoche, leseKachel, leseVorschlag, messe, schlechtester, urteil, vorschlagsPrompt, zeileEinfuegen, zeileEntfernen, type Pr, type Woche, type Werte } from "./schleife";
+import { ereignisZeile, kachelPayload, kalenderwoche, leseKachel, leseKosten, STANDARD_KURS, STANDARD_PREIS, STATUS, leseVorschlag, messe, schlechtester, urteil, vorschlagsPrompt, zeileEinfuegen, zeileEntfernen, type Pr, type Woche, type Werte } from "./schleife";
 
 const pr = (titel: string, labels: string[] = []): Pr => ({ titel, labels, gemergt: "2026-10-12T10:00:00Z" });
 const leer: Werte = { merges_pro_tag: 1, reparatur_anteil: null, loop_anteil: null, freigaben: 0, leerlauf_stunden: null, kosten_usd_je_pr: null, richter_quote: null, fertig_anteil: null };
@@ -104,4 +106,35 @@ test("docs/schemas/lernen.json: eine Woche ist gültig, fremde Felder und falsch
   assert.match(pruefeSchema({ ...woche, extra: 1 }, s).join(), /extra: unbekanntes Feld/);
   assert.match(pruefeSchema({ ...woche, kw: "42" }, s).join(), /kw: passt nicht/);
   assert.match(pruefeSchema({ ...woche, nachmessung: { ...woche.nachmessung, ergebnis: "super" } }, s).join(), /ergebnis: nicht erlaubt/);
+});
+
+test("ereignisZeile: jeder Pfad schreibt nur Status aus start|ok|fehler|uebersprungen|needs_human", () => {
+  const erlaubt = ["start", "ok", "fehler", "uebersprungen", "needs_human"];
+  assert.deepEqual([...STATUS], erlaubt);
+  for (const s of STATUS) {
+    const mitGrund = s !== "start" && s !== "ok";
+    const z = ereignisZeile(s, { grund: mitGrund ? "Ursache" : undefined, payload: { kw: "2026-W44" } });
+    assert.ok(erlaubt.includes(z.status));
+    assert.equal(z.agent, "lernen");
+    assert.equal(z.step, "lernen");
+    if (mitGrund) assert.equal(z.grund, "Ursache");
+  }
+  assert.equal(ereignisZeile("fehler").grund, "unbekannt");
+  assert.throws(() => ereignisZeile("kaputt" as never));
+});
+
+test("leseKosten: fehlende oder ungültige Werte fallen auf die Standardpreise, gesetzte gelten", () => {
+  assert.deepEqual(leseKosten({}), { preis: STANDARD_PREIS, kurs: STANDARD_KURS });
+  assert.deepEqual(leseKosten({ VORARBEITER_PREIS_EIN_USD: "x", VORARBEITER_PREIS_AUS_USD: "0", KOSTEN_USD_EUR: "" }), { preis: STANDARD_PREIS, kurs: STANDARD_KURS });
+  assert.deepEqual(leseKosten({ VORARBEITER_PREIS_EIN_USD: "2", KOSTEN_USD_EUR: "0,9" }), { preis: { einProMio: 2, ausProMio: STANDARD_PREIS.ausProMio }, kurs: 0.9 });
+});
+
+test("woche.ts: Trockenlauf (DRY_RUN=1) läuft ohne Netz grün", () => {
+  const lauf = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), resolve("scripts/lernen/woche.ts")], {
+    encoding: "utf8",
+    timeout: 60000,
+    env: { ...process.env, DRY_RUN: "1", LERNEN_REPOS: "", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "", GH_TOKEN: "", ANTHROPIC_API_KEY: "" },
+  });
+  assert.equal(lauf.status, 0, lauf.stderr);
+  assert.match(lauf.stdout, /"schema": "lernen\/1"/);
 });

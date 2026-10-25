@@ -24,6 +24,12 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
+      # SIN-1063: Sauberkeits-Tor nur für neuen Code (eslint-neu, knip-neu); Altlasten bleiben Warnung.
+      - name: Sauberkeit (nur PR)
+        if: github.event_name == 'pull_request'
+        env:
+          BASIS: origin/${{ github.base_ref }}
+        run: npx tsx scripts/sauberkeit/pruefen.ts "$BASIS"
       # SIN-905: im PR nur die Tests der geänderten Dateien (und ihrer Importeure), auf main die volle Reihe.
       - name: Tests (PR betroffene, main alle)
         env:
@@ -44,6 +50,8 @@ jobs:
         run: DRY_RUN=1 PROBE_BERICHT=/tmp/leitstand-parallel-probe.json node scripts/loop/parallel-probe.mjs
       - name: Abnahme-Proben (Trockenlauf)
         run: DRY_RUN=1 npx tsx scripts/abnahme/abnahme.ts
+      - name: Score (Trockenlauf)
+        run: DRY_RUN=1 npx tsx scripts/score/score.ts
       - name: Bestandsabgleich (Trockenlauf)
         run: DRY_RUN=1 npx tsx scripts/bestand/probe.ts
       - run: npx playwright install --with-deps chromium

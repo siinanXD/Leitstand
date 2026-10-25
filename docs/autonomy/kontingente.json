@@ -1,12 +1,16 @@
 {
   "stand": "2026-10-23",
   "quelle": "SIN-1046",
-  "hinweis": "Kontingente, deren Erschöpfung der Dispatcher erkennt (src/lib/loop/kontingente.ts). Ist eins gesperrt, startet er nur Issues, die es nicht brauchen; ein Issue ohne worker-pfade gilt als „braucht alles“.",
+  "hinweis": "Kontingente, deren Erschöpfung der Dispatcher erkennt (src/lib/loop/kontingente.ts). Ist eins gesperrt, startet er nur Issues, die es nicht brauchen; ein Issue ohne worker-pfade gilt als „braucht alles“. Ein späterer Status mit `wieder_da` hebt die Sperre vorzeitig auf.",
   "kontingente": {
     "vercel-deploy": {
-      "erkennung": { "kontext": "vercel", "text": "rate limited|resource is limited" },
+      "erkennung": { "kontext": "vercel", "text": "rate limited|resource is limited", "wieder_da": "deployment has completed" },
       "sperre_stunden": 24,
       "betrifft_pfade": ["src/app", "src/components", "public", "*.css", "next.config.*", "package.json", "package-lock.json"]
     }
+  },
+  "api_guthaben": {
+    "hinweis": "Eingetragene Einzahlung je API-Dienst (SIN-1047), ohne Geheimnisse. Guthaben = Einzahlung − Verbrauch seit `seit` (Datum der Einzahlung, USD, gerechnet). 0 = noch nicht eingetragen, dann steht „nicht messbar“.",
+    "openai": { "einzahlung": 0, "seit": "2026-01-01", "link": "https://platform.openai.com/settings/organization/billing/overview" }
   }
 }

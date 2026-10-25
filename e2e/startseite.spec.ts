@@ -82,29 +82,99 @@ test("Übersicht mit Beispiel-Daten hat keine axe-Fehler", async ({ page }) => {
   expect((await axe(page)).violations).toEqual([]);
 });
 
-test("Start bei 390×844: drei Karten, eingeklappt keine Scrollhöhe über 844 px, nur eine Karte offen", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+// Fließband-Startseite (SIN-815): /api/fliessband wird im Browser abgefangen, Supabase wie oben gemockt.
+const ANMELDUNG = (jetzt: number) => ({
+  access_token: "test",
+  refresh_token: "test",
+  token_type: "bearer",
+  expires_in: 3600,
+  expires_at: Math.floor(jetzt / 1000) + 3600,
+  user: { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", email: "test@example.org", app_metadata: {}, user_metadata: {}, created_at: new Date(jetzt).toISOString() },
+});
+const fbKarte = (issue: string, produkt: string, station: string, farbe: string, grund: string | null, jetzt: number) => ({
+  issue, titel: `Beispiel ${issue}`, produkt, station, farbe, grund, seit: new Date(jetzt - 7_200_000).toISOString(), haken: null,
+  links: { linear: `https://linear.app/x/${issue}`, pr: null, run: null },
+});
+const fbDaten = (jetzt: number, brauchtDich: { text: string; url: string }[]) => ({
+  erzeugt: new Date(jetzt).toISOString(),
+  produkte: [
+    { id: "lernapp", karten: [fbKarte("SIN-11", "lernapp", "baut", "blau", "Repariert sich: SIN-12 läuft.", jetzt), fbKarte("SIN-13", "lernapp", "pruefung", "rot", "Bewertungen fehlen", jetzt), fbKarte("SIN-14", "lernapp", "fertig", "gruen", null, jetzt)] },
+    { id: "sjcode-website", karten: [] },
+    { id: "stromlauf-ai", karten: [fbKarte("SIN-15", "stromlauf-ai", "geplant", "gelb", "Blockiert durch SIN-16.", jetzt)] },
+    { id: "leitstand", karten: [] },
+  ],
+  brauchtDich,
+  brauchtDichText: brauchtDich.length ? null : "Nichts – alles läuft",
+});
+async function fliessbandSeite(page: Page, brauchtDich: { text: string; url: string }[]) {
   const jetzt = Date.now();
-  const sitzung = {
-    access_token: "test",
-    refresh_token: "test",
-    token_type: "bearer",
-    expires_in: 3600,
-    expires_at: Math.floor(jetzt / 1000) + 3600,
-    user: { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", email: "test@example.org", app_metadata: {}, user_metadata: {}, created_at: new Date(jetzt).toISOString() },
-  };
-  await page.addInitScript(([schluessel, wert]) => localStorage.setItem(schluessel, wert), [SPEICHER, JSON.stringify(sitzung)]);
-  await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) => route.fulfill({ json: [{ id: "1", created_at: new Date(jetzt - 600_000).toISOString(), project: "beispiel", step: "pr", status: "ok", issue: "SIN-1", pr: 1 }] }));
-  await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "beispiel", stage: "work", status: "running", title: "Beispiel-Aufgabe" }] }));
+  await page.addInitScript(([schluessel, wert]) => localStorage.setItem(schluessel, wert), [SPEICHER, JSON.stringify(ANMELDUNG(jetzt))]);
+  await page.route(`${SUPABASE}/rest/v1/loop_events**`, (route) =>
+    route.fulfill({ json: [{ id: "1", created_at: new Date(jetzt - 600_000).toISOString(), project: "lernapp", step: "merge", status: "ok", issue: "SIN-14", pr: 14 }] }),
+  );
+  await page.route(`${SUPABASE}/rest/v1/loop_snapshot**`, (route) => route.fulfill({ json: [{ project: "lernapp", stage: "work", status: "running", title: "Beispiel", progress: { done: 4, total: 7, ideas: 0 } }] }));
   await page.route(`${SUPABASE}/rest/v1/ceo_entscheidungen**`, (route) => route.fulfill({ json: [] }));
+  let anfragen = 0;
+  await page.route("**/api/fliessband", (route) => {
+    anfragen += 1;
+    return route.fulfill({ json: fbDaten(jetzt, brauchtDich) });
+  });
+  return () => anfragen;
+}
+
+test("Test: Startseite zeigt oben „Braucht dich“ mit höchstens 3 Punkten und Los-Link, ohne Punkte den Text „Nichts – alles läuft“", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const punkte = [1, 2, 3].map((n) => ({ text: `Freigabe ${n}`, url: `https://github.com/x/pull/${n}` }));
+  await fliessbandSeite(page, punkte);
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.locator("details.aufklapp")).toHaveCount(3);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(844);
+  await expect(page.getByRole("heading", { name: /Braucht dich/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Los:/ })).toHaveCount(3);
+  await expect(page.getByRole("link", { name: "Los: Freigabe 1" })).toHaveAttribute("href", "https://github.com/x/pull/1");
+  // Handy-Bahn: 8 Stationen, Karte mit SIN-Nummer, Grund, „seit …“ und Stations-Pille.
+  await expect(page.getByRole("list", { name: "Stationen Lern-App" }).getByRole("listitem")).toHaveCount(8);
+  const karte13 = page.getByRole("link", { name: /^SIN-13 · Beispiel SIN-13/ }).filter({ visible: true });
+  await expect(karte13).toBeVisible();
+  await expect(karte13).toContainText("Prüfung");
+  await expect(page.getByText("Bewertungen fehlen · seit 2 Stunden")).toBeVisible();
+  await expect(page.getByText("Fertig-Liste 4/7").first()).toBeVisible();
   expect((await axe(page)).violations).toEqual([]);
-  await page.locator("details.aufklapp summary").nth(0).click();
-  await page.locator("details.aufklapp summary").nth(1).click();
-  await expect(page.locator("details.aufklapp[open]")).toHaveCount(1);
+  await page.screenshot({ path: test.info().outputPath("start-handy.png"), fullPage: true });
+});
+
+test("Braucht dich ohne Punkte zeigt „Nichts – alles läuft“", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fliessbandSeite(page, []);
+  await page.goto("/");
+  await expect(page.getByText("Nichts – alles läuft")).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Los:/ })).toHaveCount(0);
+});
+
+test("Test: Desktop-Ansicht zeigt Produkte als Zeilen, 8 Stations-Spalten und Zeitleiste der letzten 12 h", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 954 });
+  await fliessbandSeite(page, [{ text: "Freigabe 1", url: "https://github.com/x/pull/1" }]);
+  await page.goto("/");
+  const tabelle = page.getByRole("table", { name: "Fließband: Produkte und Stationen" });
+  await expect(tabelle).toBeVisible();
+  await expect(tabelle.getByRole("columnheader")).toHaveCount(9);
+  await expect(tabelle.getByRole("rowheader")).toHaveCount(4);
+  await expect(tabelle.getByRole("rowheader", { name: /Lern-App/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Letzte 12 Stunden" })).toBeVisible();
+  await expect(page.getByText("Lern-App: Beispiel SIN-14 gemergt")).toBeVisible();
+  expect((await axe(page)).violations).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath("start-desktop.png"), fullPage: true });
+});
+
+test("Test: Startseite lädt /api/fliessband alle 60 s neu, ohne Seiten-Neuladen", async ({ page }) => {
+  await page.clock.install();
+  const anfragen = await fliessbandSeite(page, []);
+  await page.goto("/");
+  await expect(page.getByText("Nichts – alles läuft")).toBeVisible();
+  const vorher = anfragen();
+  await page.evaluate(() => ((window as unknown as { __fb: number }).__fb = 1));
+  await page.clock.runFor(60_000);
+  await expect.poll(anfragen).toBe(vorher + 1);
+  // Gleiche Seite: die Markierung im window ist noch da.
+  expect(await page.evaluate(() => (window as unknown as { __fb?: number }).__fb)).toBe(1);
 });
 
 test("Aufgabe · Ablauf mit 6 Ereignissen hat keine axe-Fehler", async ({ page }) => {

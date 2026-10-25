@@ -1162,3 +1162,75 @@
   art: datei
   pfad: docs/autonomy/kontingente.json
   enthaelt: vercel-deploy
+
+- id: leitstand-infisical-soll-liste
+  produkt: leitstand
+  titel: Das Register nennt Stromlauf AI samt Infisical-Ordner und Secret-Namen (SIN-1051)
+  art: datei
+  pfad: docs/autonomy/produkte.json
+  enthaelt: stromlauf-ai
+- id: leitstand-infisical-pflegen
+  produkt: leitstand
+  titel: Die tägliche Infisical-Pflege (nur Anlegen, nie Werte) läuft als Rolle infisical-pflegen (SIN-1051)
+  art: datei
+  pfad: scripts/infisical/pflegen.ts
+  enthaelt: legeAn
+  rolle: infisical-pflegen
+- id: leitstand-infisical-pflegen-lauf
+  produkt: leitstand
+  titel: Die Infisical-Pflege lief in den letzten 26 Stunden ohne Fehler (SIN-1051)
+  art: db
+  rest: loop_events?project=eq.leitstand&step=eq.infisical-pflegen&status=eq.ok&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 1560
+  rolle: infisical-pflegen
+- id: leitstand-vercel-sperre-wieder-da
+  produkt: leitstand
+  titel: Ein fertiger Vercel-Deploy hebt die Kontingent-Sperre vorzeitig auf (SIN-1056)
+  art: datei
+  pfad: docs/autonomy/kontingente.json
+  enthaelt: wieder_da
+- id: leitstand-kontingent-vercel-team
+  produkt: leitstand
+  titel: Das Vercel-Tageslimit wird über das ganze Team gezählt, Quelle Team (SIN-1047)
+  art: db
+  rest: loop_snapshot?project=eq.leitstand&quotas=cs.%5B%7B%22key%22%3A%22vercel_deployments_tag%22%2C%22quelle%22%3A%22team%22%7D%5D&select=project
+- id: leitstand-fliessband-start
+  produkt: leitstand
+  titel: Die Startseite ist das Fließband mit „Braucht dich“ (SIN-815)
+  art: github
+  repo: siinanXD/Leitstand
+  pfad: src/app/fliessband/start.tsx
+  enthaelt: Braucht dich
+- id: leitstand-pruefer-produkt-pr-ohne-main-sperre
+  produkt: leitstand
+  titel: Der Prüfer verwirft Produkt-PRs nicht mehr, wenn sich der Leitstand-main bewegt (SIN-1071)
+  art: datei
+  pfad: .github/workflows/pruefer.yml
+  enthaelt: nur der PR zählt
+- id: leitstand-score-je-lauf
+  produkt: leitstand
+  titel: Nach Merges schreibt der Loop einen Score je Lauf in loop_events, jüngster höchstens 24 Stunden alt (SIN-1059)
+  art: db
+  rest: loop_events?project=eq.leitstand&step=eq.score&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 1440
+
+- id: leitstand-lernen-woche-ok
+  produkt: leitstand
+  titel: Die wöchentliche Lern-Schleife hat in den letzten 8 Tagen mit Status ok gelaufen (SIN-1058)
+  art: db
+  rest: loop_events?step=eq.lernen&status=eq.ok&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 11520
+- id: leitstand-sauberkeits-tor
+  produkt: leitstand
+  titel: ESLint begrenzt Funktionslänge für geänderte Dateien (SIN-1063)
+  art: datei
+  pfad: eslint.config.mjs
+  enthaelt: max-lines-per-function
+- id: leitstand-e2e-strecke-snapshot
+  produkt: leitstand
+  titel: loop_snapshot trägt das Feld e2e (Kennzahlen der E2E-Strecke, SIN-1073)
+  art: db
+  rest: loop_snapshot?project=eq.leitstand&select=e2e
