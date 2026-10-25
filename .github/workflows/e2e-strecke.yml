@@ -3,11 +3,6 @@ name: e2e-strecke
 on:
   schedule:
     - cron: "35 * * * *"
-  pull_request:
-    paths:
-      - "scripts/e2e/strecke.ts"
-      - "src/lib/e2e/**"
-      - ".github/workflows/e2e-strecke.yml"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -21,15 +16,19 @@ permissions:
   contents: read
 jobs:
   e2e-strecke:
+    # PR-CI prüft synthetische Fixtures in build.yml; der Live-Collector bekommt nie PR-Code.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --no-audit --no-fund
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx tsx scripts/e2e/strecke.ts
         env:
           DRY_RUN: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)) && '0' || '1' }}
