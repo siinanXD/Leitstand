@@ -122,6 +122,10 @@ for (const [groesse, viewport] of GROESSEN) {
       await page.getByRole("main").getByRole("link", { name: "Start", exact: true }).click();
       await expect(page).toHaveURL(/\/$/);
     });
+  });
+
+  test.describe(`${groesse} (Bedienung)`, () => {
+    test.use({ viewport });
 
     test("Tastatur: Tab erreicht Reiter der Reihe nach, Fokus sichtbar, Enter öffnet eine Karte", async ({ page }) => {
       await oeffne(page, "/");
