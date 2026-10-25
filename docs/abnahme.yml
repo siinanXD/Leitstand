@@ -1234,3 +1234,8 @@
   titel: loop_snapshot trägt das Feld e2e (Kennzahlen der E2E-Strecke, SIN-1073)
   art: db
   rest: loop_snapshot?project=eq.leitstand&select=e2e
+- id: leitstand-datenbank-seite
+  produkt: leitstand
+  titel: Die Seite /datenbank antwortet (SIN-1037)
+  art: http
+  url: ${LEITSTAND_URL}/datenbank

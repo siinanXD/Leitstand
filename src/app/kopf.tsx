@@ -27,6 +27,7 @@ const TECHNIK = [
   { id: "abhaengigkeiten", href: "/abhaengigkeiten", name: "Was worauf wartet", hinweis: "Aufgaben, die erst nach anderen starten" },
   { id: "auswertung", href: "/auswertung", name: "Tagesbilanz", hinweis: "Was heute geschafft und repariert wurde" },
   { id: "abnahme", href: "/abnahme", name: "Läuft es wirklich?", hinweis: "Stündliche Proben: jede Funktion grün oder rot" },
+  { id: "datenbank", href: "/datenbank", name: "Datenbank", hinweis: "Tabellen, Spalten, Zugriffsschutz und Echtzeit" },
 ];
 
 export function Kopf({ stand, angemeldet, aktiv = "uebersicht", pause }: { stand?: boolean; angemeldet: boolean; aktiv?: string; pause?: Pause }) {
