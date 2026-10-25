@@ -17,3 +17,9 @@ Prüfung: Regressionen für Rollen, einen globalen Platz, gesperrte Aufgaben und
 Ein Wiederanlauf ersetzt nur den mit Start-/Endmarkern begrenzten eigenen Rollenblock. Historische unmarkierte Abschnitte und sämtliche Nachträge bleiben erhalten; Abschneiden ab einer Überschrift könnte neue Anforderungen löschen. PRs und Branches werden nach vollständiger Kennung zugeordnet, damit SIN-10 nicht SIN-1 sperrt. Beide Fehler wurden im echten Dispatcher mit geschlossenen Netz-Fixtures erst rot und nach Korrektur grün geprüft.
 
 Der bestehende native Codex-Review zu PR #454 belegt den GitHub-Reviewzugang, nicht den automatischen Linear-Workerabschluss. Einzelplatz- und Endzustandsgrenzen bleiben unabhängig davon erforderlich.
+
+## Strukturprüfung 25.10.2026
+
+Die geltende Sauberkeitsprüfung begrenzt auch geänderte Bestandsdateien. Der Dispatcher ist deshalb nach Netzadaptern, Linear-Zugriffen, Reservierungen, Codex-Routing, Dispatch und Abschluss/Reparatur aufgeteilt. Die CLI bleibt am bisherigen Pfad; Auswahlregeln, atomare Reservierung vor Start und dauerhafter Reparaturzähler bleiben erhalten. Ein unerreichbarer Timeout-Rückfall ohne bestätigten Session-Endzustand entfällt; daraus entsteht kein neuer Übergabeweg.
+
+Die Größen- und Komplexitätsgrenzen werden unverändert geprüft. Geschlossene Netz-Fixtures prüfen den echten CLI-Einstieg; sie sind kein Live-Nachweis einer Kontoverbindung. Eine grüne lokale Prüfung ersetzt weder aktuellen CI-Build noch erforderliche Kriterienbelege.

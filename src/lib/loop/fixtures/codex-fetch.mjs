@@ -8,16 +8,15 @@ const issues = [issue(1, fall === 'ohne-rolle' ? null : 'review'), issue(2, 'con
 if (fall === 'idempotent') issues[0].description += '\n\n## Codex-Rollenauftrag\nAlter Versuch';
 if (fall === 'nachtrag') issues[0].description += '\n\n## Codex-Rollenauftrag\nAlter Versuch\n\n## Nachtrag\nOwner-Zusatzbedingung muss erhalten bleiben';
 const anderer = { ...issue(9), delegate: { name: 'Codex' }, state: { type: 'started' }, startedAt: '2020-01-01' };
-globalThis.fetch = async (input, init = {}) => {
-  const u = new URL(String(input)), method = init.method ?? 'GET', body = init.body ? JSON.parse(init.body) : {};
-  if (u.hostname === 'api.linear.app') {
+function linearAntwort(body) {
+
     const q = body.query;
     if (q.includes('issues(first: 25')) {
       if (fall === 'unbekannt' && body.variables.p === 'Content-Agent-Lernapp') return json({ errors: [{ message: 'unavailable' }] }, 503);
       const nodes = body.variables.p === 'Leitstand' ? issues : body.variables.p === 'Content-Agent-Lernapp' && fall === 'belegt' ? [anderer] : [];
       return json({ data: { issues: { nodes, pageInfo: { hasNextPage: false, endCursor: null } } } });
     }
-    if (q.includes('users(first:')) return json({ data: { users: { nodes: fall === 'app-fehlt' ? [] : [{ id: 'codex', name: 'Codex' }] } } });
+    if (q.includes('users(first:')) return nutzerAntwort();
     if (q.includes('team(id:')) return json({ data: { team: { labels: { nodes: [{ id: 'claude', name: 'claude' }, { id: 'codex-label', name: 'codex' }] }, states: { nodes: [{ id: 'todo', name: 'Todo' }, { id: 'started', name: 'In Progress' }] } } } });
     if (q.includes('issueUpdate')) {
       mutations.push(body.variables);
@@ -37,26 +36,42 @@ globalThis.fetch = async (input, init = {}) => {
       return json({ data: { issueUpdate: { success: true } } });
     }
     if (q.includes('commentCreate')) { comments.push(body.variables); return json({ data: { commentCreate: { success: true } } }); }
-  }
-  if (u.hostname === 'fixture.invalid') {
+
+}
+
+function supabaseAntwort(u) {
+
     if (u.pathname.endsWith('/kontingent_pausen') && fall === 'claude-pause') return json([{ dienst: 'claude', bis: '2099-01-01T00:00:00Z', grund: 'fixture', repo: null, erstellt_at: '2026-01-01', geweckt_at: null }]);
     // Only the read-only occupancy succeeds; actual Claude reservations fail closed.
     if (u.pathname.endsWith('/leitstand_aufgaben')) return u.searchParams.get('issue')?.startsWith('in.') ? json(fall === 'claim' ? [{ issue: 'SIN-1', claim_revision: 1, claim_provider: 'claude', claim_id: 'external', claim_at: '2099-01-01', reparaturen: 0 }] : []) : json({}, 503);
     return json([]);
-  }
-  if (u.hostname === 'api.github.com') {
+
+}
+
+function githubAntwort(u) {
+
     if (u.pathname.startsWith('/repos/siinanXD/Content-Agent-Lernapp/') && (u.pathname.endsWith('/contents/.github/workflows/claude.yml') || u.pathname.endsWith('/actions/secrets/CLAUDE_CODE_OAUTH_TOKEN'))) return json({});
     if (u.pathname.includes('matching-refs')) return json([]);
     if (u.pathname.endsWith('/statuses')) return json([]);
-    if (u.pathname.endsWith('/pulls')) return json(['pr', 'pr-andere-kennung'].includes(fall) && u.searchParams.get('state') === 'open' ? [{ number: 99, title: `Review (${fall === 'pr' ? 'SIN-1' : 'SIN-10'})`, head: { ref: fall === 'pr' ? 'claude/sin-1' : 'codex/sin-10', sha: 'a'.repeat(40) }, labels: [], created_at: '2099-01-01' }] : []);
+    if (u.pathname.endsWith('/pulls')) return prAntwort(u);
     if (u.pathname.endsWith('/pulls/99/files')) return json([{ filename: 'docs/reviews/1.md' }]);
     if (u.pathname.endsWith('/issues')) return json(fall === 'spiegel' ? [{ number: 99, state: 'open', body: '<!-- linear:SIN-1 -->' }] : []);
     if (u.pathname.endsWith('/actions/workflows/claude.yml/runs')) return json({ workflow_runs: [] });
     if (!u.pathname.startsWith('/repos/siinanXD/Leitstand/')) return json({}, 404);
-  }
+
+}
+
+globalThis.fetch = async (input, init = {}) => {
+  const u = new URL(String(input)), method = init.method ?? 'GET', body = init.body ? JSON.parse(init.body) : {};
+  const antwort = u.hostname === 'api.linear.app' ? linearAntwort(body) : u.hostname === 'fixture.invalid' ? supabaseAntwort(u) : u.hostname === 'api.github.com' ? githubAntwort(u) : undefined;
+  if (antwort) return antwort;
   throw new Error(`Unexpected fixture request: ${method} ${u.hostname}${u.pathname}`);
 };
 process.on('exit', () => {
   console.log(`CODEX:${JSON.stringify({ delegates, mutations, comments })}`);
   if (['nachtrag', 'pr-andere-kennung'].includes(fall)) assert.deepEqual(delegates, ['SIN-1']);
 });
+
+function nutzerAntwort() { return json({ data: { users: { nodes: fall === 'app-fehlt' ? [] : [{ id: 'codex', name: 'Codex' }] } } }); }
+
+function prAntwort(u) { return json(['pr', 'pr-andere-kennung'].includes(fall) && u.searchParams.get('state') === 'open' ? [{ number: 99, title: `Review (${fall === 'pr' ? 'SIN-1' : 'SIN-10'})`, head: { ref: fall === 'pr' ? 'claude/sin-1' : 'codex/sin-10', sha: 'a'.repeat(40) }, labels: [], created_at: '2099-01-01' }] : []); }

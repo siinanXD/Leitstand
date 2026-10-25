@@ -38,3 +38,6 @@
 - Regressionen `nachtrag` und `pr-andere-kennung` am echten Dispatcher erst Exit 1, anschließend Exit 0. Alle 13 geschlossenen Dispatcher-Szenarien liefern erwartete Ergebnisse (unbekannter Bestand bewusst Exit 1).
 - Entscheidung: Nur klar begrenzten erzeugten Text ersetzen; unmarkierten historischen Text behalten. Vollständige Kennungen vergleichen.
 - Vollständige lokale Suite/Unterprozesse bleiben separat zu verifizieren; EPERM nicht als Produktfehler ausgeben.
+- Nach ausdrücklicher Wiederaufnahme durch den Nutzer: bestehende CLI in `netz`, `linear-netz`, `reservierung-netz`, `codex`, `dispatch` und `abschluss` aufgeteilt. Keine Lockerung der Sauberkeitsgrenzen oder Rücksetzung der Reparaturhistorie.
+- Strukturprüfung erst rot (bestehende und neue überlange/komplexe Funktionen), nach Aufteilung grün. Typecheck und gezielte strenge ESLint-Prüfung grün; Knip meldet keine neuen Loop-Modul-Funde.
+- Alle 13 Codex-Dispatcher-Fixtures separat über den echten CLI-Einstieg bestätigt. Lokale Node-Unterprozessproben bleiben eingeschränkt; Ergebnisse direkter Aufrufe getrennt dokumentieren.
