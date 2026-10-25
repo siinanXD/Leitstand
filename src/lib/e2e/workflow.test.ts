@@ -23,3 +23,10 @@ test("SIN-827: E2E-Secrets nur im Live-Job vom Hauptbranch, ohne Checkout-Creden
   assert.equal(job.steps.find((s) => s.uses?.startsWith("actions/checkout@"))?.with?.["persist-credentials"], false);
   assert.ok(job.steps.some((s) => s.run?.startsWith("npm ci --ignore-scripts")));
 });
+
+test("SIN-827: build führt die E2E-Workflow-Gegenprobe auch bei reinen YAML-Änderungen aus", () => {
+  const build = parse(readFileSync(new URL("../../../.github/workflows/build.yml", import.meta.url), "utf8")) as typeof definition;
+  const probe = build.jobs.build.steps.find((s) => s.run?.includes("src/lib/e2e/workflow.test.ts"));
+  assert.ok(probe, "Importbasierte Auswahl kennt keine YAML-Abhängigkeit: expliziter CI-Schritt nötig");
+  assert.ok(!("if" in probe), "Sicherheitsprobe darf nicht von betroffenen TS-Dateien abhängen");
+});
