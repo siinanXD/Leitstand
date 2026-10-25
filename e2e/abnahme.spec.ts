@@ -114,18 +114,6 @@ for (const [groesse, viewport] of GROESSEN) {
       expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     });
 
-    test("Test: axe ohne Fehler auf `/datenbank`, Tabelle ohne RLS ist rot markiert (SIN-1037)", async ({ page }) => {
-      const tabelle = (name: string, rls: boolean) => ({ name, rls, realtime: rls, policies: rls ? ["lesen"] : [], spalten: [{ name: "id", typ: "uuid", nullable: false, schluessel: true, verweis: null }] });
-      await page.route("**/api/datenbank", (route) => route.fulfill({ json: { tabellen: [tabelle("loop_events", true), tabelle("offen", false)] } }));
-      await oeffne(page, "/datenbank");
-      await expect(page.getByRole("heading", { level: 2, name: "offen" })).toBeVisible();
-      const offen = page.getByRole("region", { name: "offen" });
-      await expect(offen.getByText("RLS aus")).toBeVisible();
-      await expect(offen.locator(".signal.error")).toHaveCount(1);
-      await expect(page.getByRole("region", { name: "loop_events" }).locator(".signal.error")).toHaveCount(0);
-      expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze()).violations).toEqual([]);
-    });
-
     test("Aufgabe: Weg zurück zum Start, Details eingeklappt und Kennung erst danach sichtbar", async ({ page }) => {
       await oeffne(page, "/aufgabe/SIN-456");
       await expect(page.getByText("SIN-456", { exact: true })).toBeHidden();
@@ -189,6 +177,24 @@ for (const [groesse, viewport] of GROESSEN) {
         const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
         expect(r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`), `axe auf ${pfad}`).toEqual([]);
       }
+    });
+  });
+}
+
+for (const [groesse, viewport] of GROESSEN) {
+  test.describe(`Datenbank ${groesse}`, () => {
+    test.use({ viewport });
+
+    test("Test: axe ohne Fehler auf `/datenbank`, Handy und Desktop (SIN-1037)", async ({ page }) => {
+      const tabelle = (name: string, rls: boolean) => ({ name, rls, realtime: rls, policies: rls ? ["lesen"] : [], spalten: [{ name: "id", typ: "uuid", nullable: false, schluessel: true, verweis: null }] });
+      await page.route("**/api/datenbank", (route) => route.fulfill({ json: { tabellen: [tabelle("loop_events", true), tabelle("offen", false)] } }));
+      await oeffne(page, "/datenbank");
+      await expect(page.getByRole("heading", { level: 2, name: "offen" })).toBeVisible();
+      const offen = page.getByRole("region", { name: "offen" });
+      await expect(offen.getByText("RLS aus")).toBeVisible();
+      await expect(offen.locator(".signal.error")).toHaveCount(1);
+      await expect(page.getByRole("region", { name: "loop_events" }).locator(".signal.error")).toHaveCount(0);
+      expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     });
   });
 }

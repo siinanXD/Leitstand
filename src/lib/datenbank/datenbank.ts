@@ -1,6 +1,6 @@
 // Datenbankstruktur (SIN-1037). Rein: die Katalog-Abfrage `leitstand_schema()` liefert den Rohwert, hier wird das Modell daraus.
 
-export type Spalte = { name: string; typ: string; nullable: boolean; schluessel: boolean; verweis: string | null };
+type Spalte = { name: string; typ: string; nullable: boolean; schluessel: boolean; verweis: string | null };
 export type Tabelle = { name: string; rls: boolean; realtime: boolean; policies: string[]; spalten: Spalte[] };
 
 const liste = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => typeof x === "object" && x !== null) : []);
