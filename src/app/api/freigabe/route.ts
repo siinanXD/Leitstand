@@ -34,7 +34,7 @@ export async function GET(anfrage: Request) {
   }
 }
 
-/** Freigeben: Label oder Squash-Merge mit eigenem Token, danach Eintrag in loop_events. */
+/** Freigeben: Owner-Label mit eigenem Token, danach Eintrag in loop_events; der reguläre Mergeweg bleibt zuständig. */
 export async function POST(anfrage: Request) {
   const nein = await verweigert(anfrage);
   if (nein) return nein;
