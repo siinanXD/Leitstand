@@ -11,3 +11,9 @@ Abo-Sitzungen und direkte Modell-APIs sind getrennt. Dieser Patch verwendet kein
 Alternativen: Titelheuristik wäre kürzer, verteilt aber unbemerkt Code-Aufgaben. Ein zweiter CLI-/API-Worker würde neue Authentifizierung und Startlogik benötigen. Verwendet wird daher der vorhandene Delegate mit explizitem Rollenvertrag.
 
 Prüfung: Regressionen für Rollen, einen globalen Platz, gesperrte Aufgaben und Timeout ohne Übergabe. Live-Abnahme bleibt in SIN-1052 offen; keine simulierte Ausgabe wird als Abo- oder Kontonachweis gewertet. Quellen: [vorhandener Linear-Weg](../CODEX-WORKER.md), [Codex for Linear](https://learn.chatgpt.com/docs/third-party/linear), [Linear-Delegation](https://linear.app/docs/delegate-issues-to-agents).
+
+## Review-Korrekturen 25.10.2026
+
+Ein Wiederanlauf ersetzt nur den mit Start-/Endmarkern begrenzten eigenen Rollenblock. Historische unmarkierte Abschnitte und sämtliche Nachträge bleiben erhalten; Abschneiden ab einer Überschrift könnte neue Anforderungen löschen. PRs und Branches werden nach vollständiger Kennung zugeordnet, damit SIN-10 nicht SIN-1 sperrt. Beide Fehler wurden im echten Dispatcher mit geschlossenen Netz-Fixtures erst rot und nach Korrektur grün geprüft.
+
+Der bestehende native Codex-Review zu PR #454 belegt den GitHub-Reviewzugang, nicht den automatischen Linear-Workerabschluss. Einzelplatz- und Endzustandsgrenzen bleiben unabhängig davon erforderlich.

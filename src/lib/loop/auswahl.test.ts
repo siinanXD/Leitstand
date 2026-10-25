@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { auftragsKommentar, ausLinear, codexRueckfall, codexStarts, freigegebene, gemergteFuerLaufende, gemergteIds, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
+import { auftragsKommentar, ausLinear, codexAuftrag, codexRueckfall, codexStarts, freigegebene, gemergteFuerLaufende, gemergteIds, gespiegelteIds, grundNichtsStartbar, issueText, laufende, linearId, marker, nachruecken, offeneSpiegel, prGehoertZu, prueferReparatur, reparatur, istWorkerBranch, statusNachMerge, teilGemergte, waehle, wartetAufLiveBeleg, type LinearIssue } from "./auswahl";
 import { loopZiele } from "../projekte";
 
 const issue = (o: Partial<LinearIssue> & { identifier: string }): LinearIssue => ({
@@ -20,6 +20,25 @@ test("linearId findet die erste Kennung", () => {
   assert.equal(linearId("fix(uebersicht): Spalten (SIN-410)"), "SIN-410");
   assert.equal(linearId("ohne Kennung"), null);
   assert.equal(linearId(null), null);
+});
+
+test("Codex-Auftrag erneuert nur den eigenen Block und erhält jeden Nachtrag", () => {
+  const original = "Auftrag\n\n## Codex-Rollenauftrag\nAlter Versuch\n\n## Nachtrag\nWeitere Anforderung";
+  const vorbereitet = codexAuftrag(original, "review");
+  const erneut = codexAuftrag(`${vorbereitet}\n\nNach dem Agentenblock ergänzt`, "content");
+  assert.ok(erneut.startsWith(original));
+  assert.ok(erneut.includes("Nach dem Agentenblock ergänzt"));
+  assert.ok(erneut.includes("Rolle: content."));
+  assert.ok(!erneut.includes("Rolle: review."));
+  assert.equal(erneut.match(/<!-- codex-rollenauftrag:start -->/g)?.length, 1);
+  assert.equal(codexAuftrag(erneut, "content"), erneut);
+});
+
+test("PR-Zuordnung vergleicht vollständige Kennungen in Titel und Branch", () => {
+  const ziel = issue({ identifier: "SIN-1" });
+  assert.equal(prGehoertZu({ titel: "Review (SIN-10)", branch: "codex/sin-10" }, ziel), false);
+  assert.equal(prGehoertZu({ titel: "Review (SIN-1)", branch: "codex/bericht" }, ziel), true);
+  assert.equal(prGehoertZu({ titel: "Review", branch: "codex/sin-1_bericht" }, ziel), true);
 });
 
 test("gespiegelteIds liest nur die Markierung", () => {

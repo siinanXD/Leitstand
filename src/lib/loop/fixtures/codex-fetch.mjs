@@ -6,6 +6,7 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), { status
 const issue = (n, rolle = 'review') => ({ id: `SIN-${n}`, identifier: `SIN-${n}`, title: `Auftrag ${n}`, description: `- [ ] Test: Bericht vorhanden\n<!-- worker-pfade: ["docs/reviews/${n}.md"] -->${rolle ? `\n<!-- codex-rolle: ${rolle} -->` : ''}`, priority: n, url: `https://linear.app/test/issue/SIN-${n}`, createdAt: '2026-01-01', startedAt: null, delegate: null, labels: { nodes: [{ name: 'codex' }] }, state: { type: 'unstarted' }, team: { id: 'team' }, inverseRelations: { nodes: [] } });
 const issues = [issue(1, fall === 'ohne-rolle' ? null : 'review'), issue(2, 'content')];
 if (fall === 'idempotent') issues[0].description += '\n\n## Codex-Rollenauftrag\nAlter Versuch';
+if (fall === 'nachtrag') issues[0].description += '\n\n## Codex-Rollenauftrag\nAlter Versuch\n\n## Nachtrag\nOwner-Zusatzbedingung muss erhalten bleiben';
 const anderer = { ...issue(9), delegate: { name: 'Codex' }, state: { type: 'started' }, startedAt: '2020-01-01' };
 globalThis.fetch = async (input, init = {}) => {
   const u = new URL(String(input)), method = init.method ?? 'GET', body = init.body ? JSON.parse(init.body) : {};
@@ -21,7 +22,10 @@ globalThis.fetch = async (input, init = {}) => {
     if (q.includes('issueUpdate')) {
       mutations.push(body.variables);
       const i = issues.find(i => i.id === body.variables.id);
-      if (body.variables.beschreibung) i.description = body.variables.beschreibung;
+      if (body.variables.beschreibung) {
+        if (fall === 'nachtrag') assert.match(body.variables.beschreibung, /Owner-Zusatzbedingung muss erhalten bleiben/);
+        i.description = body.variables.beschreibung;
+      }
       if (body.variables.d === 'codex') {
         assert.match(i.description, /Codex-Rollenauftrag/);
         assert.equal(i.description.split('## Codex-Rollenauftrag').length, 2);
@@ -44,7 +48,7 @@ globalThis.fetch = async (input, init = {}) => {
     if (u.pathname.startsWith('/repos/siinanXD/Content-Agent-Lernapp/') && (u.pathname.endsWith('/contents/.github/workflows/claude.yml') || u.pathname.endsWith('/actions/secrets/CLAUDE_CODE_OAUTH_TOKEN'))) return json({});
     if (u.pathname.includes('matching-refs')) return json([]);
     if (u.pathname.endsWith('/statuses')) return json([]);
-    if (u.pathname.endsWith('/pulls')) return json(fall === 'pr' && u.searchParams.get('state') === 'open' ? [{ number: 99, title: 'Review (SIN-1)', head: { ref: 'claude/sin-1', sha: 'a'.repeat(40) }, labels: [], created_at: '2099-01-01' }] : []);
+    if (u.pathname.endsWith('/pulls')) return json(['pr', 'pr-andere-kennung'].includes(fall) && u.searchParams.get('state') === 'open' ? [{ number: 99, title: `Review (${fall === 'pr' ? 'SIN-1' : 'SIN-10'})`, head: { ref: fall === 'pr' ? 'claude/sin-1' : 'codex/sin-10', sha: 'a'.repeat(40) }, labels: [], created_at: '2099-01-01' }] : []);
     if (u.pathname.endsWith('/pulls/99/files')) return json([{ filename: 'docs/reviews/1.md' }]);
     if (u.pathname.endsWith('/issues')) return json(fall === 'spiegel' ? [{ number: 99, state: 'open', body: '<!-- linear:SIN-1 -->' }] : []);
     if (u.pathname.endsWith('/actions/workflows/claude.yml/runs')) return json({ workflow_runs: [] });
@@ -52,4 +56,7 @@ globalThis.fetch = async (input, init = {}) => {
   }
   throw new Error(`Unexpected fixture request: ${method} ${u.hostname}${u.pathname}`);
 };
-process.on('exit', () => console.log(`CODEX:${JSON.stringify({ delegates, mutations, comments })}`));
+process.on('exit', () => {
+  console.log(`CODEX:${JSON.stringify({ delegates, mutations, comments })}`);
+  if (['nachtrag', 'pr-andere-kennung'].includes(fall)) assert.deepEqual(delegates, ['SIN-1']);
+});

@@ -25,7 +25,7 @@ import { starteLaeufe } from "../../src/lib/loop/lauf";
 import { istLaufzustand, istWiederholung, type LetztesEreignis } from "../../src/lib/loop/wiederholung";
 import { prueferLaufziel } from "../../src/lib/loop/pruefer-lauf";
 import { aktiveSperren, ohneGesperrte, type CommitStatus } from "../../src/lib/loop/kontingente";
-import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexRolle, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prueferReparatur, reparatur, startbare, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
+import { auftragsKommentar, CODEX_MINUTEN, CODEX_NAME, codexAuftrag, codexRolle, codexRueckfall, codexStarts, LABEL_CODEX, ausLinear, claimsMitPlatz, laufende, MAX_REPARATUR, freigegebene, istWorkerBranch, gemergteFuerLaufende, gemergteIds, PLATZ_MINUTEN, gespiegelteIds, grundNichtsStartbar, statusNachMerge, issueText, LABEL, linearId, nachruecken, offeneSpiegel, prGehoertZu, prueferReparatur, reparatur, startbare, teilGemergte, waehle, type Belegung, type GithubIssue, type LinearIssue } from "../../src/lib/loop/auswahl";
 import { entscheide, istTeil, kommentarText, leseBelege, leseHaken, RUNDE_MARKER, setzeHaken, wiederaufnahme } from "../../src/lib/loop/haken";
 import { baueBlock, istEchteEntscheidung, LABEL_ENTSCHEIDUNG, leseBlock } from "../../src/lib/entscheidung/entscheidung";
 import { GITHUB_URL, githubTreffer } from "../../src/lib/autonomy/research";
@@ -276,7 +276,7 @@ async function codexSpur(repo: string, issues: LinearIssue[], nodes: ProjektKnot
     && !codexRolle(i.description) && !i.labels.some(l => ["needs-human", "sinan", "entscheidung", "kriterien-unklar", "design", "lauf"].includes(l.toLowerCase())))) {
     await anClaude(i, "Kein expliziter Codex-Rollenauftrag: allgemeine Umsetzung geht an Claude (SIN-1052).");
   }
-  const start = codexStarts([...neu.values()].filter(i => !gespiegelt.has(i.identifier) && !pruefe.some(p => p.titel.includes(i.identifier) || p.branch.toLowerCase().includes(i.identifier.toLowerCase()))), codexBestand);
+  const start = codexStarts([...neu.values()].filter(i => !gespiegelt.has(i.identifier) && !pruefe.some(p => prGehoertZu(p, i))), codexBestand);
   let codexId: string | null = null;
   if (start.length && !DRY) {
     try { codexId = await codexNutzer(); }
@@ -296,7 +296,7 @@ async function codexSpur(repo: string, issues: LinearIssue[], nodes: ProjektKnot
     codexBestand?.push({ ...i, delegate: CODEX_NAME });
     try {
       const rolle = codexRolle(i.description)!;
-      const beschreibung = `${(i.description ?? "").split("\n\n## Codex-Rollenauftrag")[0]}\n\n## Codex-Rollenauftrag\nRolle: ${rolle}. Produktcode und Workflow-Konfiguration nur lesen. ${rolle === "review" ? "Prüfe unabhängig und liefere einen Bericht mit Datei, Zeile und Beleg." : rolle === "planer" ? "Liefere einen abgegrenzten Plan mit Abhängigkeiten, Schreibpfaden und prüfbaren Kriterien; keine Implementierung." : "Erstelle nur den abgegrenzten Content-Entwurf mit Quellen; keine Veröffentlichung und keine Änderung an App oder Infrastruktur."} Ergebnis als Dokument-PR mit Linear-Kennung zurückgeben; bestehende Gates und Freigaben gelten weiter. Keine weiteren Agenten starten.`;
+      const beschreibung = codexAuftrag(i.description, rolle);
       const vorbereitet = await linear<{ issueUpdate: { success: boolean } }>(`mutation($id: String!, $beschreibung: String!) { issueUpdate(id: $id, input: { description: $beschreibung }) { success } }`, { id: i.id, beschreibung });
       if (!vorbereitet.issueUpdate.success) throw new Error("Codex-Rollenauftrag nicht gespeichert");
       const delegiert = await linear<{ issueUpdate: { success: boolean } }>(`mutation($id: String!, $d: String!) { issueUpdate(id: $id, input: { delegateId: $d }) { success } }`, { id: i.id, d: codexId });

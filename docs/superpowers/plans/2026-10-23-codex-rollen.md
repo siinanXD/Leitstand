@@ -31,3 +31,10 @@
 - Umsetzung ohne weitere Routinefreigabe gemäß AGENTS.md/SIN-840 und aktuellem Nutzerauftrag.
 - Git-Proxyausfall: aktueller Remote-Snapshot 11082718 über Connector geladen; Veröffentlichung über denselben Connector.
 - Live-Kontoverknüpfung und Agentenende nicht aus App-Präsenz oder Dateiproben ableiten.
+
+## Fortsetzung 25.10.2026
+- main f6a7658 lokal integriert, bestehender PR/Branch bleibt erhalten.
+- Unabhängiger Review: Nachträge hinter Rollenüberschrift gingen verloren; Kennungspräfixe blockierten fremde Issues.
+- Regressionen `nachtrag` und `pr-andere-kennung` am echten Dispatcher erst Exit 1, anschließend Exit 0. Alle 13 geschlossenen Dispatcher-Szenarien liefern erwartete Ergebnisse (unbekannter Bestand bewusst Exit 1).
+- Entscheidung: Nur klar begrenzten erzeugten Text ersetzen; unmarkierten historischen Text behalten. Vollständige Kennungen vergleichen.
+- Vollständige lokale Suite/Unterprozesse bleiben separat zu verifizieren; EPERM nicht als Produktfehler ausgeben.

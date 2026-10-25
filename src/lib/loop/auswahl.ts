@@ -116,6 +116,14 @@ export function codexRolle(beschreibung: string | null): "review" | "planer" | "
   return marker.length === 1 && (rolle === "review" || rolle === "planer" || rolle === "content") ? rolle : null;
 }
 
+/** Ersetzt nur den begrenzten Agentenblock; ältere Rollenabschnitte und Nutzer-Nachträge bleiben erhalten. */
+export function codexAuftrag(beschreibung: string | null, rolle: "review" | "planer" | "content"): string {
+  const text = (beschreibung ?? "").replace(/<!-- codex-rollenauftrag:start -->[\s\S]*?<!-- codex-rollenauftrag:ende -->/g, "").trimEnd();
+  const titel = /^## Codex-Rollenauftrag\s*$/m.test(text) ? "### Aktueller Rollenauftrag" : "## Codex-Rollenauftrag";
+  const ziel = rolle === "review" ? "Prüfe unabhängig und liefere einen Bericht mit Datei, Zeile und Beleg." : rolle === "planer" ? "Liefere einen abgegrenzten Plan mit Abhängigkeiten, Schreibpfaden und prüfbaren Kriterien; keine Implementierung." : "Erstelle nur den abgegrenzten Content-Entwurf mit Quellen; keine Veröffentlichung und keine Änderung an App oder Infrastruktur.";
+  return `${text}\n\n<!-- codex-rollenauftrag:start -->\n${titel}\nRolle: ${rolle}. Produktcode und Workflow-Konfiguration nur lesen. ${ziel} Ergebnis als Dokument-PR mit Linear-Kennung zurückgeben; bestehende Gates und Freigaben gelten weiter. Keine weiteren Agenten starten.\n<!-- codex-rollenauftrag:ende -->`;
+}
+
 /** Linear-Priorität: 1 dringend … 4 niedrig, 0 = keine (zuletzt). */
 const rang = (p: number) => (p > 0 ? p : 5);
 
@@ -123,8 +131,9 @@ const rang = (p: number) => (p > 0 ? p : 5);
  * Welche Issues jetzt gestartet werden: Todo, Label `claude`, nicht blockiert, noch nicht gespiegelt.
  * Laufende (In Progress mit Label `claude`) zählen gegen `max`.
  */
-const prGehoertZu = (pr: OffenerPr, i: LinearIssue) =>
-  pr.titel.includes(i.identifier) || pr.branch.toLowerCase().includes(i.identifier.toLowerCase());
+/** Vollständige Issue-Kennung im PR oder Branch: SIN-10 gehört nicht zu SIN-1. */
+export const prGehoertZu = (pr: OffenerPr, i: LinearIssue) =>
+  new RegExp(`(?:^|[^a-z0-9])${i.identifier}(?![0-9])`, "i").test(`${pr.titel}\n${pr.branch}`);
 
 /**
  * Laufende Issues, die einen Platz belegen: „In Progress“ mit Label `claude`. Mit `belegung` zählt ein Hänger nicht
