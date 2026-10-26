@@ -37,7 +37,7 @@ concurrency:
   queue: max
 jobs:
   pruefen:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || ((startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'codex/')) && github.event.pull_request.head.repo.full_name == github.repository && ((github.event.action == 'edited' && github.event.changes.base) || (!github.event.pull_request.draft && github.event.action != 'edited'))))
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || ((startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'codex/') || contains(github.event.pull_request.title, 'SIN-')) && github.event.pull_request.head.repo.full_name == github.repository && ((github.event.action == 'edited' && github.event.changes.base) || (!github.event.pull_request.draft && github.event.action != 'edited'))))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -63,7 +63,7 @@ jobs:
             const {data: pr} = await github.rest.pulls.get({owner: zielOwner, repo: zielName, pull_number: Number(process.env.PR)});
             const repo = zielRepo.toLowerCase();
             if (pr.state !== 'open' || pr.head.repo?.full_name.toLowerCase() !== repo || pr.base.repo?.full_name.toLowerCase() !== repo) throw new Error('Nur offene PRs aus demselben Repository');
-            if (!/^(claude|codex)\//.test(pr.head.ref)) throw new Error('Kein unterstützter Worker-Branch');
+            if (!(/^(claude|codex)\//.test(pr.head.ref) || /\bSIN-\d+\b/i.test(pr.title))) throw new Error('Keine Linear-Zuordnung');
             if (context.eventName !== 'workflow_dispatch' && pr.draft) throw new Error('Draft wird nicht geprüft');
             const eventPr = context.payload?.pull_request;
             if (eventPr && (eventPr.head.sha !== pr.head.sha || eventPr.base.sha !== pr.base.sha)) throw new Error('PR-Ereignis veraltet: Head oder Basis hat sich geändert');
