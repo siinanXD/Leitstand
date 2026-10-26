@@ -182,7 +182,7 @@
   art: github
   repo: siinanXD/gedaechtnis
   pfad: Fehler/2026-10-20.md
-  enthaelt: Kein Diff
+  enthaelt: kein Diff
 
 # Lern-App
 - id: lernapp-snapshot
@@ -531,7 +531,7 @@
   art: github
   repo: siinanXD/gedaechtnis
   pfad: Entscheidungen/SIN-639.md
-  enthaelt: "datum: 2026-10-18"
+  enthaelt: "datum: 2026-10-15"
 - id: gedaechtnis-historie-status
   produkt: gedaechtnis
   titel: Historische Vault-Entscheidung behält ihren Status (SIN-615)
