@@ -191,6 +191,13 @@
   enthaelt: kein Diff
 
 # Lern-App
+- id: lernapp-dispatch-laeuft
+  produkt: lernapp
+  titel: Der Dispatcher startet für die Lern-App wieder Arbeit, letzter ok höchstens 48 Stunden alt (SIN-1090)
+  art: db
+  rest: loop_events?project=eq.lernapp&step=eq.dispatch&status=eq.ok&select=created_at&order=created_at.desc&limit=1
+  zeitfeld: created_at
+  max_alter_min: 2880
 - id: lernapp-snapshot
   produkt: lernapp
   titel: Lern-App-Snapshot ist frisch und die Schlange gefüllt

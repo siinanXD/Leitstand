@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { abgleichZeilen, konflikt, konfliktGrund, ladePrSchutz, maxParallel, parallelAuswahl, schreibPfade, schuetztNoch, vorschlagPfade } from "./parallel";
 import { pfadeFuer, planeVorhaben } from "./bereich";
-import { claimsMitPlatz, type LinearIssue } from "./auswahl";
+import { claimsMitPlatz, nachruecken, type LinearIssue } from "./auswahl";
 
 const issue = (id: string, paths?: string[]): LinearIssue => ({
   id, identifier: id, title: id, description: paths ? `<!-- worker-pfade: ${JSON.stringify(paths)} -->` : null,
@@ -178,4 +178,12 @@ test("SIN-918: Claim auf ein Issue, das nur noch auf den Live-Beleg wartet, sper
   assert.deepEqual(claimsMitPlatz([live], belegung), []);
   assert.deepEqual(claimsMitPlatz([live], { ...belegung, gemergt: [] }).map((i) => i.id), ["SIN-918"], "ohne gemergten PR: Claim hält den Platz");
   assert.deepEqual(parallelAuswahl([issue("SIN-919", ["src/lib/loop/parallel.ts"])], claimsMitPlatz([live], belegung), 2).map((i) => i.id), ["SIN-919"]);
+});
+
+test("SIN-1090: startbares Issue ohne Pfade blockiert das Nachrücken nicht, wenn es nicht starten kann", () => {
+  const ohne = issue("SIN-1087");
+  const backlog = { ...issue("SIN-20", ["docs/x.md"]), stateType: "backlog", labels: [] };
+  assert.equal(nachruecken([ohne, backlog], new Set(), 2)?.identifier, "SIN-20");
+  const mitPfaden = issue("SIN-21", ["docs/y.md"]);
+  assert.equal(nachruecken([mitPfaden, backlog], new Set(), 2), null, "Issue mit Pfaden bleibt startbar");
 });
