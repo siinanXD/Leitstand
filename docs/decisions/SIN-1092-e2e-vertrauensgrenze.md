@@ -1,6 +1,6 @@
-# SIN-827: E2E-Live-Collector nur vom Hauptbranch
+# SIN-1092: E2E-Live-Collector nur vom Hauptbranch
 
-Sicherheitsfix, siehe Linear SIN-827 und Audit SIN-1088.
+Sicherheitsfix, siehe Linear SIN-1092 (abgespalten aus SIN-827) und Audit SIN-1088.
 
 Der Live-Workflow behält Schedule und den manuellen Start, erlaubt aber nur main. PRs lösen ihn nicht mehr aus. Checkout-Credentials werden nicht gespeichert; npm-Lifecycle-Skripte laufen nicht. Die vorhandene build-CI prüft die synthetischen E2E-Tests ohne Produktionssecrets. Ein echter Collector-Trockenlauf mit Live-Daten bleibt nur vom Hauptbranch möglich und ersetzt keinen Fixtures-Test.
 
