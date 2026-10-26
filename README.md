@@ -12,7 +12,7 @@ Autonomous coding agents produce pull requests around the clock, but nobody can 
 
 ![Architecture: Linear to dispatcher to Claude worker to build gate to auto-merge, all writing to Supabase, read by the Next.js dashboard](docs/architecture.svg)
 
-The self-building loop is described in [`docs/decisions/SIN-413-loop.md`](docs/decisions/SIN-413-loop.md), the agent roles in [`docs/ABLAUF.md`](docs/ABLAUF.md). Actions such as approve, run the planner now, or emergency stop run server-side with their own token and are logged. Sign-in is restricted to the owner (magic link or 6-digit code, row-level security), so the deployed app has no public demo.
+The self-building loop is described in [`docs/decisions/SIN-413-loop.md`](docs/decisions/SIN-413-loop.md), the agent roles in [`docs/ABLAUF.md`](docs/ABLAUF.md). Actions such as approve, run the planner now, or emergency stop run server-side with their own token and are logged. Sign-in is restricted to the owner (magic link or 6-digit code, row-level security), so the deployed app at [leitstand-one.vercel.app](https://leitstand-one.vercel.app) has no public demo.
 
 ## Stack
 
@@ -40,7 +40,7 @@ npm run dev                  # http://localhost:43124
 
 1. A dashboard is only trustworthy if every number has a source row; refusing placeholder statistics shaped the whole data model.
 2. Unattended agents need hard gates: a required build check, a bounded number of repair rounds (3), and a human label for risky changes.
-3. "Merged" is not "done": an issue only closes when its acceptance probe is green, because code without a running workflow, migration or secret does nothing.
+3. "Merged" is not "done": an issue closes only when every acceptance criterion is backed by evidence, and an hourly probe checks that the merged work actually runs, because code without a running workflow, migration or secret does nothing.
 
 ## Further docs
 
