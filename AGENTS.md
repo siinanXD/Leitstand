@@ -132,6 +132,7 @@ Risikoarme Aufgaben können bestehende Agenten über einen Draft-PR gemäß [doc
 - `scripts/waechter/waechter.ts` (Netz) und `src/lib/waechter/` (rein, mit Tests): je Linear-Projekt „In Progress“ mit Projekt-Link „GitHub“ Schlange füllen, Hänger reparieren, Tages-Update; neue Projekte einrichten.
 - Workflow: `.github/workflows/waechter.yml` (stündlich, Minute 41, und von Hand). Trockenlauf: von Hand mit `dry_run` oder lokal `DRY_RUN=1`.
 - `AGENT_WORKFLOW_TOKEN` braucht Lese- und Kommentarrechte auf alle aktiven Repos.
+- Testnutzer-Regel (SIN-915): Hat ein Projekt einen Login, gehört ein Agent-Testnutzer zur Fertig-Liste v1. Login heißt: `signInWithOtp`, `signInWithPassword`, `auth.getUser` oder Route `/anmelden` bzw. `/login` im Repo. Fehlt der Marker (`src/lib/agent-testnutzer/` oder `docs/decisions/*agent-testnutzer*`), legt der Wächter genau ein Issue „Agent-Testnutzer einrichten“ nach Vorlage SIN-913 an. Logik in `src/lib/waechter/testnutzer.ts`.
 
 ## Schlank bauen: Ponytail (Sinan, 13.10.2026)
 
