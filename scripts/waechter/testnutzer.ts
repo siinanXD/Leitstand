@@ -24,7 +24,7 @@ export async function pruefeTestnutzerRegel(projekt: Projekt, teamId: string, re
   if (r.issue) {
     // Titel in jedem Status (auch erledigt oder abgebrochen), damit das Issue nie doppelt entsteht.
     const d = await linear<{ issues: { nodes: { title: string }[] } }>(
-      `query($p: ID!, $t: String!) { issues(first: 1, filter: { project: { id: { eq: $p } }, title: { eq: $t } }) { nodes { title } } }`,
+      `query($p: ID!, $t: String!) { issues(first: 1, includeArchived: true, filter: { project: { id: { eq: $p } }, title: { eq: $t } }) { nodes { title } } }`,
       { p: projekt.id, t: r.issue.titel },
     );
     r = pruefeTestnutzer(projekt.name, dateien, d.issues.nodes.map((n) => n.title));

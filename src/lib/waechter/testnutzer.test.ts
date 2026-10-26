@@ -17,6 +17,9 @@ test("Test: Erkennung „hat Login“ (Fixture mit und ohne Login)", () => {
   assert.equal(hatLogin([{ pfad: "x.ts", inhalt: "const { data } = await supabase.auth.getUser()" }]), true);
   // Ähnliche Namen zählen nicht.
   assert.equal(hatLogin([{ pfad: "src/app/loginhilfe/page.tsx" }, { pfad: "docs/login.md" }]), false);
+  // Codex-Fund: auch der Pages-Router zählt.
+  assert.equal(hatLogin([{ pfad: "src/pages/login.tsx" }]), true);
+  assert.equal(hatLogin([{ pfad: "pages/anmelden/index.tsx" }]), true);
 });
 
 test("Testnutzer-Marker: Ordner src/lib/agent-testnutzer oder Entscheidung in docs/decisions", () => {

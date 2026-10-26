@@ -1,6 +1,6 @@
 /**
  * Testnutzer-Regel (SIN-915): Projekte mit Login bekommen einen Agent-Testnutzer nach Vorlage SIN-913.
- * Rein, kein Netz. Das Skript scripts/waechter/waechter.ts liefert Dateipfade und Code-Treffer aus GitHub.
+ * Rein, kein Netz. Dateipfade und Code-Treffer liefert scripts/waechter/testnutzer.ts (ladeRepoDateien) aus GitHub.
  */
 
 export const TESTNUTZER_TITEL = "Agent-Testnutzer einrichten";
@@ -10,7 +10,8 @@ export const LOGIN_MUSTER = ["signInWithOtp", "signInWithPassword", "auth.getUse
 export type RepoDatei = { pfad: string; inhalt?: string };
 export type TestnutzerStatus = "kein Login" | "Testnutzer vorhanden" | "issue vorhanden" | "anlegen";
 
-const LOGIN_ROUTE = /(^|\/)app\/(?:\([^/]+\)\/)*(anmelden|login)\//;
+// App-Router (`app/(gruppe)/login/…`) und Pages-Router (`pages/login.tsx`, `pages/anmelden/index.tsx`).
+const LOGIN_ROUTE = /(^|\/)(app\/(?:\([^/]+\)\/)*(anmelden|login)\/|pages\/(anmelden|login)(\/index)?\.[jt]sx?$)/;
 
 /** Das Repo hat einen Login: Route `/anmelden` oder `/login` oder eins der LOGIN_MUSTER im Code. */
 export function hatLogin(dateien: RepoDatei[]): boolean {
