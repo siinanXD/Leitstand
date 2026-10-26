@@ -79,6 +79,11 @@
   rest: loop_events?project=eq.leitstand&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 180
+- id: leitstand-bilder
+  produkt: leitstand
+  titel: Die Seite /bilder antwortet (SIN-1038)
+  art: http
+  url: ${LEITSTAND_URL}/bilder
 - id: leitstand-health
   produkt: leitstand
   titel: Die Leitstand-App antwortet

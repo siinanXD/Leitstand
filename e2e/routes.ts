@@ -19,6 +19,7 @@ export const ROUTEN: readonly Route[] = [
   { datei: "aufgabe/[id]/page.tsx", pfad: "/aufgabe/SIN-1031" },
   { datei: "auswertung/page.tsx", pfad: "/auswertung" },
   { datei: "auth/callback/page.tsx", pfad: "/auth/callback", ausnahme: "Magic-Link-Rückkehr: ohne Code im Link gibt es nichts zu zeigen, und ein Besuch würde die Sitzung ändern." },
+  { datei: "bilder/page.tsx", pfad: "/bilder" },
   { datei: "datenbank/page.tsx", pfad: "/datenbank" },
   { datei: "details/page.tsx", pfad: "/details" },
   { datei: "einstellungen/page.tsx", pfad: "/einstellungen" },
