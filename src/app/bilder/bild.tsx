@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { browserClient } from "@/lib/browser-client";
 import type { Ansicht } from "@/lib/figma-ansichten/figma-ansichten";
+import { Rahmen } from "../rahmen";
 
 type Zustand = { art: "laedt" } | { art: "fehlt" } | { art: "ok"; url: string; stand: string };
 
@@ -50,5 +51,30 @@ export function Bild({ ansicht, link }: { ansicht: Ansicht; link: string }) {
         </a>
       </p>
     </li>
+  );
+}
+
+/** Rahmen braucht eine Funktion als children; die darf nur in einer Client-Komponente entstehen, nicht in der Server-Seite. */
+export function BilderSeite({ ansichten }: { ansichten: (Ansicht & { link: string })[] }) {
+  return (
+    <Rahmen aktiv="bilder">
+      {() => (
+        <main className="seite freigabe">
+          <header className="freigabe-kopf">
+            <p className="augenbraue">Figma</p>
+            <h1>Bilder</h1>
+          </header>
+          {ansichten.length === 0 ? (
+            <p className="leer">Keine Bilder eingetragen</p>
+          ) : (
+            <ul className="bereiche">
+              {ansichten.map((a) => (
+                <Bild key={`${a.datei}/${a.node}`} ansicht={a} link={a.link} />
+              ))}
+            </ul>
+          )}
+        </main>
+      )}
+    </Rahmen>
   );
 }
