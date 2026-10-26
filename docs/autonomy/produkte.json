@@ -43,7 +43,7 @@
       "infisicalOrdner": "/leitstand",
       "langfuse": { "projekt": null, "getrennt": null },
       "sentry": { "projekt": null },
-      "vercel": { "projekt": null },
+      "vercel": { "projekt": "leitstand" },
       "supabase": { "projekt": null },
       "secrets": [
         { "name": "NEXT_PUBLIC_SUPABASE_URL", "environment": "dev", "zweck": "Adresse der Supabase-Datenbank (Browser)", "wo_holen": "Supabase → Project Settings → API → Project URL" },
@@ -93,7 +93,7 @@
       "infisicalOrdner": "/stromlauf-ai",
       "langfuse": { "projekt": null, "getrennt": null },
       "sentry": { "projekt": null },
-      "vercel": { "projekt": null },
+      "vercel": { "projekt": "stromlauf-ai" },
       "supabase": { "projekt": null },
       "secrets": [
         { "name": "LANGFUSE_PUBLIC_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, öffentlicher Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },
