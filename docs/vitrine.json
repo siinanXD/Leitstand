@@ -1,14 +1,14 @@
 {
   "siinanXD/Leitstand": {
-    "description": "Leitstand für autonome Claude-Agenten: Dispatcher über Linear, Prüfer mit zweitem Modell, Reparatur-Schleife und stündliche Abnahme-Proben. Next.js 16, Supabase, GitHub Actions.",
-    "topics": ["ai-agents", "autonomous-agents", "agent-orchestration", "llm", "claude", "llm-evaluation", "nextjs", "supabase", "typescript", "github-actions"]
+    "description": "Control room for autonomous coding agents: Linear dispatcher, Claude worker, second-model reviewer, repair loop and hourly acceptance probes.",
+    "topics": ["ai-agents", "agent-orchestration", "claude", "llm", "nextjs", "supabase", "typescript", "github-actions"]
   },
   "siinanXD/Content-Agent-Lernapp": {
-    "description": "Lern-App für die Berufsausbildung: KI-Pipeline erzeugt Lerninhalte nur aus amtlichen Quellen, mit LLM-Richter und Qualitäts-Schwelle. Next.js, Supabase, Langfuse.",
-    "topics": ["llm", "rag", "llm-as-a-judge", "content-generation", "edtech", "langfuse", "nextjs", "supabase", "typescript", "accessibility"]
+    "description": "Learning app for vocational training that generates courses from official sources and publishes only what an LLM judge passes.",
+    "topics": ["llm", "llm-as-a-judge", "content-generation", "edtech", "langfuse", "nextjs", "supabase", "accessibility"]
   },
   "siinanXD/stromlauf-ai": {
-    "description": "KI-Assistent für die Instandhaltung: liest Stromlaufpläne, Klemmenpläne und SPS-Programme (STEP 7 AWL) und verfolgt Signalwege mit Belegen. FastAPI, LangGraph, pgvector, Next.js.",
-    "topics": ["rag", "langgraph", "llm", "document-ai", "ocr", "plc", "industrial-automation", "fastapi", "pgvector", "nextjs"]
+    "description": "Maintenance assistant that reads circuit diagrams, terminal plans and STEP 7 AWL programs and answers with cited sources.",
+    "topics": ["rag", "langgraph", "document-ai", "ocr", "plc", "industrial-automation", "fastapi", "pgvector"]
   }
 }

@@ -30,7 +30,7 @@ function wochenStart(jetzt: Date): string {
 async function main() {
   const jetzt = new Date();
   const ab = new Date(jetzt.getTime() - 7 * 86_400_000).toISOString();
-  const events = (await supabase(`loop_events?project=eq.leitstand&created_at=gte.${ab}&select=created_at,step,agent,status,issue,pr,cost&limit=5000`)) as MessEreignis[];
+  const events = (await supabase(`loop_events?project=eq.leitstand&created_at=gte.${ab}&select=created_at,step,agent,status,issue,pr,cost:cost_usd&limit=5000`)) as MessEreignis[];
   const zeile = ((await supabase("loop_snapshot?project=eq.leitstand&select=durchstich,mit_eingriff")) as { durchstich?: { liste?: string[] } | null; mit_eingriff?: { kennung: string }[] | null }[])[0];
   // shortcut: Durchstich kommt aus dem Tageswert (48 h) von durchstich.ts, nicht aus 7 Tagen; ausbauen, wenn die Quote je Woche schwankt.
   const messungen = messeRollen(events, { durchstich: zeile?.durchstich?.liste ?? [], mitEingriff: (zeile?.mit_eingriff ?? []).map((e) => e.kennung) });

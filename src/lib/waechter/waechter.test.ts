@@ -254,3 +254,8 @@ test("waechter.yml: Start per workflow_dispatch ohne Eingabe schreibt (dry_run-S
   const yml = readFileSync(new URL("../../../.github/workflows/waechter.yml", import.meta.url), "utf8");
   assert.equal(yml.match(/dry_run:[\s\S]*?default: (\w+)/)?.[1], "false");
 });
+
+test("leitstandSnapshot überschreibt keine Kontingente des Sammlers (SIN-1047)", () => {
+  const z = leitstandSnapshot([], [], "siinanXD/Leitstand", null, new Set());
+  assert.equal("quotas" in z, false, "quotas schreibt nur scripts/kontingent/sammler.ts");
+});

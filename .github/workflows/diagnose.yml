@@ -49,7 +49,7 @@ jobs:
       - id: diagnose-schema
         name: Ausgabeschema laden
         if: steps.ziel.outputs.ziel == 'ja'
-        run: echo "json=$(jq -c . docs/diagnose/schema.json)" >> "$GITHUB_OUTPUT"
+        run: echo "json=$(jq -c 'del(."$schema")' docs/diagnose/schema.json)" >> "$GITHUB_OUTPUT"
       - id: modell
         name: Modell aus docs/autonomy/modelle.json
         if: steps.ziel.outputs.ziel == 'ja'

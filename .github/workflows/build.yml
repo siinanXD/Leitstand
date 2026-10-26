@@ -43,6 +43,8 @@ jobs:
           else echo "$auswahl" | xargs node --import tsx --test; fi
       - name: SIN-854 - Gate und Reparatur-CLI gegen isolierte API-Fixtures abnehmen
         run: node --import tsx --test src/lib/loop/beleg-stand.test.ts src/lib/loop/merge-gate.test.ts src/lib/loop/repair-cli.test.ts
+      - name: E2E-Workflow-Vertrauensgrenze (auch bei reinen YAML-Änderungen)
+        run: node --import tsx --test src/lib/e2e/workflow.test.ts
       - name: Aufbauphase-Gate mit Altfristen und Schutzgrenzen simulieren (SIN-855)
         run: DRY_RUN=1 node scripts/loop/aufbauphase-probe.mjs
       - run: npm run build
@@ -52,6 +54,8 @@ jobs:
         run: DRY_RUN=1 npx tsx scripts/abnahme/abnahme.ts
       - name: Score (Trockenlauf)
         run: DRY_RUN=1 npx tsx scripts/score/score.ts
+      - name: Kontingent-Sammler (Trockenlauf)
+        run: DRY_RUN=1 npx tsx scripts/kontingent/sammler.ts
       - name: Bestandsabgleich (Trockenlauf)
         run: DRY_RUN=1 npx tsx scripts/bestand/probe.ts
       - run: npx playwright install --with-deps chromium

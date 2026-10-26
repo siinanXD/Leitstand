@@ -88,3 +88,7 @@ test("SIN-907: Agent liefert strukturiert, nur der Workflow schreibt das Ergebni
   assert.match(diagnoseWorkflow, /DIAGNOSE_ERGEBNIS: \$\{\{ steps\.diagnose\.outputs\.structured_output \}\}/);
   assert.match(diagnoseWorkflow, /printf '%s\\n' "\$DIAGNOSE_ERGEBNIS" > diagnose-ergebnis\.json/);
 });
+
+test("SIN-907: --json-schema bekommt das Schema ohne $schema (die CLI kennt Draft 2020-12 nicht)", () => {
+  assert.match(diagnoseWorkflow, /jq -c 'del\(\."\$schema"\)' docs\/diagnose\/schema\.json/);
+});

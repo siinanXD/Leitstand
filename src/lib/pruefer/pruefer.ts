@@ -62,6 +62,7 @@ export const ANWEISUNG = [
 /** Braucht der PR eine Abnahme-Probe? Reine Doku-PRs nicht. */
 export const brauchtProbe = (dateien: string[]) => dateien.some((d) => /^(src|scripts|supabase|\.github)\//.test(d));
 // SIN-921: Proben je Issue in docs/abnahme/<name>.yml (SIN-896) zählen wie docs/abnahme.yml.
+/** Datei-Liste enthält eine Abnahme-Probe, auch unter docs/abnahme/. */
 export const hatProbe = (dateien: string[]) => dateien.some((d) => d === PROBEN_DATEI || /^docs\/abnahme\/[^/]+\.ya?ml$/.test(d));
 
 /** USD für einen Aufruf. */
@@ -83,6 +84,7 @@ export function maxDiffZeichen(p: Preise, deckel = KOSTENDECKEL_USD): number {
 /** Schneidet den Diff ab; `gekuerzt` sagt, ob etwas fehlt. */
 export const begrenze = (diff: string, max: number) => (diff.length > max ? { text: diff.slice(0, max), gekuerzt: true } : { text: diff, gekuerzt: false });
 
+/** Nutzertext für das Modell: Issue, PR-Titel, Dateien und Diff. */
 export const eingabe = (a: { issue: string; titel: string; dateien: string[]; diff: string; gekuerzt: boolean }) =>
   `# Issue\n${a.issue}\n\n# PR-Titel\n${a.titel}\n\n# Geänderte Dateien\n${a.dateien.join("\n")}\n\n# Diff${a.gekuerzt ? " (gekürzt)" : ""}\n<diff>\n${a.diff}\n</diff>`;
 
@@ -182,6 +184,7 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, 
   return { ...modell, bestanden: (modell.bestanden || nurZurueckgestellt) && !funde.some((f) => f.schwere === "hoch"), funde, haken };
 }
 
+/** Mindestens ein Fund mit Schwere hoch. */
 export const hatHoch = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch");
 
 /** SIN-909: nur echte Risiken (Sicherheit, Datenverlust, Rechte) setzen risk:high; „Beleg fehlt“ und Co. setzen `pruefer:offen`. */
@@ -201,6 +204,7 @@ export function prueferLabels(a: { risiko: boolean; bestanden: boolean; labels: 
 }
 
 export type Reviewer = "codex" | "claude";
+/** Zeile im Kommentar, welche API geprüft hat. */
 export const reviewerZeile = (r: Reviewer) => (r === "codex" ? "Reviewer: OpenAI API" : "Reviewer: Anthropic API (Rückfall, OpenAI-API-Kontingent erschöpft)");
 
 /** Ist die Antwort des Dienstes „Kontingent leer“ (und kein Fehler im Code)? */
@@ -233,6 +237,7 @@ export async function pruefeMitRueckfall<T>(haupt: () => Promise<T>, rueckfall: 
   }
 }
 
+/** Prüfer-Kommentar am PR: Urteil, Funde, Gate-Hinweise, Reviewer, Modell und Kosten. */
 export function kommentar(e: Ergebnis, modell: string, usd: number | null, reviewer: Reviewer = "codex"): string {
   const zeilen = e.funde.map((f) => `- **${f.schwere}** \`${f.datei}${f.zeile ? `:${f.zeile}` : ""}\`: ${f.text.replace(/\s+/g, " ").trim()}`);
   return [

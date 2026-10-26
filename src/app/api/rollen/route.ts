@@ -15,7 +15,7 @@ async function lade(): Promise<RollenEreignis[] | null> {
   const ab = new Date(Date.now() - 2 * WOCHE_MS).toISOString();
   const filter = `or=(created_at.gte.${ab},step.eq.ROLLE_PAUSE)&agent=in.(${ROLLEN.map((r) => r.id).join(",")})`;
   try {
-    const res = await fetch(`${url}/rest/v1/loop_events?select=agent,step,status,created_at,wirkung,cost,grund&${filter}&order=created_at.desc&limit=2000`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" });
+    const res = await fetch(`${url}/rest/v1/loop_events?select=agent,step,status,created_at,wirkung,cost:cost_usd,grund&${filter}&order=created_at.desc&limit=2000`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" });
     return res.ok ? ((await res.json()) as RollenEreignis[]) : null;
   } catch {
     return null;

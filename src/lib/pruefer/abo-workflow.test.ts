@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-const workflow = readFileSync(".github/workflows/pruefer.yml", "utf8");
+const workflow = readFileSync(".github/workflows/pruefer.yml", "utf8").replace(/\r\n/g, "\n");
 test("Abo-only-Workflow reicht keine Modell-API-Zugangsdaten oder API-Modellkonfiguration weiter", () => {
   assert.doesNotMatch(workflow, /OPENAI_API_KEY|ANTHROPIC_API_KEY|PRUEFER_PREIS_|PRUEFER_CLAUDE_MODELL/);
 });

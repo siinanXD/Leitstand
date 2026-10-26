@@ -43,7 +43,7 @@
       "infisicalOrdner": "/leitstand",
       "langfuse": { "projekt": null, "getrennt": null },
       "sentry": { "projekt": null },
-      "vercel": { "projekt": null },
+      "vercel": { "projekt": "leitstand" },
       "supabase": { "projekt": null },
       "secrets": [
         { "name": "NEXT_PUBLIC_SUPABASE_URL", "environment": "dev", "zweck": "Adresse der Supabase-Datenbank (Browser)", "wo_holen": "Supabase → Project Settings → API → Project URL" },
@@ -84,7 +84,9 @@
         { "name": "LINEAR_API_KEY", "environment": "dev", "zweck": "Linear lesen und Aufgaben anlegen", "wo_holen": "Linear → Settings → API → Personal API keys" },
         { "name": "FIGMA_ACCESS_TOKEN", "environment": "dev", "zweck": "Figma lesen", "wo_holen": "Figma → Settings → Security → Personal access tokens" },
         { "name": "LEITSTAND_URL", "environment": "dev", "zweck": "Adresse des Leitstands", "wo_holen": "Vercel → Projekt → Domains" },
-        { "name": "VERCEL_TOKEN", "environment": "dev", "zweck": "Vercel-Deployments lesen", "wo_holen": "Vercel → Account Settings → Tokens" }
+        { "name": "VERCEL_TOKEN", "environment": "dev", "zweck": "Vercel-Deployments lesen", "wo_holen": "Vercel → Account Settings → Tokens" },
+        { "name": "VERCEL_TEAM_ID", "environment": "dev", "zweck": "Vercel-Team für das Tageslimit über alle Projekte (SIN-1047)", "wo_holen": "Vercel → Team Settings → General → Team ID" },
+        { "name": "OPENAI_ADMIN_KEY", "environment": "dev", "zweck": "OpenAI-Kosten lesen (Guthaben, nur lesen)", "wo_holen": "OpenAI → Settings → Organization → Admin keys" }
       ]
     },
     {
@@ -93,7 +95,7 @@
       "infisicalOrdner": "/stromlauf-ai",
       "langfuse": { "projekt": null, "getrennt": null },
       "sentry": { "projekt": null },
-      "vercel": { "projekt": null },
+      "vercel": { "projekt": "stromlauf-ai" },
       "supabase": { "projekt": null },
       "secrets": [
         { "name": "LANGFUSE_PUBLIC_KEY", "environment": "dev", "zweck": "Langfuse Kosten und Traces, öffentlicher Teil", "wo_holen": "Langfuse → Projekt → Settings → API Keys" },

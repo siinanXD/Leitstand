@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 // SIN-905: statische Abhängigkeiten der als Unterprozess ausgeführten CLIs, ohne Laufzeitausführung beim Import.
 import type {} from "../../../scripts/pruefer/pruefer";
 import type {} from "../../../scripts/pruefer/pruefer-nachlauf";
@@ -32,11 +33,18 @@ else if (route.includes('/issues/comments?since=')) out=[[request]];
 else throw new Error('Nicht erlaubte Fixture-Route');
 console.log(JSON.stringify(out));
 `;
-const preload = `global.fetch = async (url) => {
+const preload = `const cp = require('node:child_process');
+const original = cp.execFileSync;
+cp.execFileSync = (command, args, options) => command === 'gh'
+  ? original(process.execPath, [require('node:path').join(process.cwd(), 'gh'), ...args], options)
+  : original(command, args, options);
+require('node:module').syncBuiltinESMExports();
+global.fetch = async (url) => {
   if (url !== 'https://api.linear.app/graphql') throw new Error('Kein Modell-API-/Netzzugriff erlaubt');
   return Response.json({data:{issue:{identifier:'SIN-880',title:'Test',description:'- [ ] Test besteht'}}});
 };`;
 
+/** Erstellt ein isoliertes Git-Repository und die Offline-Antworten. */
 function bereiteFixtureVor() {
   const cwd = mkdtempSync(join(tmpdir(), "pruefer-abo-"));
   const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", timeout: 5000 }).trim();
@@ -50,12 +58,13 @@ function bereiteFixtureVor() {
   return { cwd, basis, head };
 }
 
+/** Führt die echte CLI mit lokalen GitHub- und Linear-Antworten aus. */
 function starteFixture(f: ReturnType<typeof bereiteFixtureVor>, mode: string, trocken = false, skript = "scripts/pruefer/pruefer.ts") {
   const file = join(f.cwd, "state.json");
   writeFileSync(file, JSON.stringify({ repo: "siinanXD/Leitstand", mode, starts: [], stand: { head: f.head, basis: f.basis, auftrag: kriterienHash("SIN-880\nTest\n- [ ] Test besteht") } }));
-  const run = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), "--require", join(f.cwd, "offline.cjs"), resolve(skript), "880", f.basis, f.head], {
+  const run = spawnSync(process.execPath, ["--import", pathToFileURL(resolve("node_modules/tsx/dist/loader.mjs")).href, "--require", join(f.cwd, "offline.cjs"), resolve(skript), "880", f.basis, f.head], {
     cwd: f.cwd, encoding: "utf8", timeout: 15000,
-    env: { ...process.env, PATH: `${f.cwd}:${process.env.PATH}`, ABO_FIXTURE: file, GH_REPO: "siinanXD/Leitstand", DRY_RUN: trocken ? "1" : "0", LINEAR_API_KEY: "fixture", OPENAI_API_KEY: "sk-verboten", ANTHROPIC_API_KEY: "sk-verboten", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "" },
+    env: { ...process.env, PATH: `${f.cwd}${delimiter}${process.env.PATH}`, ABO_FIXTURE: file, GH_REPO: "siinanXD/Leitstand", DRY_RUN: trocken ? "1" : "0", LINEAR_API_KEY: "fixture", OPENAI_API_KEY: "sk-verboten", ANTHROPIC_API_KEY: "sk-verboten", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "" },
   });
   return { run, state: JSON.parse(readFileSync(file, "utf8")) };
 }
