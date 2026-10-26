@@ -7,6 +7,7 @@ import { passend, stufe } from "../kontingent/prioritaet";
 import { nurBelege } from "../belege/belege";
 import { pruefePrText } from "../pr-text/pr-text";
 import { istTeil, leseHaken, type Entscheidung } from "./haken";
+import { schreibPfade } from "./parallel";
 
 export const PROJEKT ="Leitstand";
 export const LABEL = "claude";
@@ -204,11 +205,13 @@ export const NIE_AUTOMATISCH = ["design", "sinan", "needs-human", "entscheidung"
  */
 export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max: number, belegung?: Belegung): LinearIssue | null {
   if (laufende(issues, belegung).length >= max) return null;
-  if (issues.some((i) => startbar(i, gespiegelt))) return null;
+  // SIN-1090: Ein startbares Issue ohne `worker-pfade` läuft nur allein; konnte es nicht starten, sperrt es das Nachrücken nicht.
+  if (issues.some((i) => startbar(i, gespiegelt) && schreibPfade(i).length)) return null;
   const kandidaten = issues
     .filter((i) => i.stateType === "backlog" && !offenBlockiert(i))
     .filter((i) => !i.labels.some((l) => NIE_AUTOMATISCH.includes(l.toLowerCase())))
-    .sort((a, b) => rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt));
+    // SIN-1090: Issues mit worker-pfade zuerst; ohne Pfade laufen sie nur allein (Trend-Radar SIN-1087 rückte zweimal nach und hing).
+    .sort((a, b) => Number(!schreibPfade(a).length) - Number(!schreibPfade(b).length) || rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt));
   return kandidaten[0] ?? null;
 }
 

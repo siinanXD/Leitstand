@@ -197,7 +197,7 @@ test("nachruecken: wichtigstes Backlog-Issue ohne Design, Sinan-Aufgabe oder Blo
 
 test("nachruecken: nichts, solange ein Todo wartet oder kein Platz frei ist", () => {
   const backlog = issue({ identifier: "SIN-20", stateType: "backlog", labels: [] });
-  assert.equal(nachruecken([backlog, issue({ identifier: "SIN-21" })], new Set(), 1), null);
+  assert.equal(nachruecken([backlog, issue({ identifier: "SIN-21", description: "<!-- worker-pfade: [\"docs/a.md\"] -->" })], new Set(), 1), null);
   assert.equal(nachruecken([backlog, issue({ identifier: "SIN-22", stateType: "started" })], new Set(), 1), null);
   assert.equal(nachruecken([backlog], new Set(), 1)?.identifier, "SIN-20");
 });
