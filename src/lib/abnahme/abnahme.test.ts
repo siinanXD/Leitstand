@@ -120,3 +120,14 @@ test("bewerteText: JSON-Paar passt kompakt und eingerückt (SIN-967)", () => {
   assert.equal(bewerteText(p, '{\n  "conclusion": "success"\n}').ok, true);
   assert.equal(bewerteText(p, '{"conclusion":"failure","display_title":"success"}').ok, false);
 });
+
+
+test("SIN-1089: Dateiprobe verlangt Label und verwirft Merge-Aufrufe", () => {
+  const text = readFileSync("src/lib/freigabe.ts", "utf8");
+  const proben = parseProben(readFileSync("docs/abnahme/SIN-1089.yml", "utf8"));
+  for (const probe of proben) {
+    assert.equal(bewerteText(probe, text).ok, true);
+    assert.equal(bewerteText(probe, text.replace('await netz.label(repo, nr, "freigegeben")', "")).ok, false);
+    assert.equal(bewerteText(probe, text + probe.enthaelt_nicht).ok, false);
+  }
+});

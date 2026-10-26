@@ -1,6 +1,0 @@
-- id: freigabe-gemeinsamer-mergeweg
-  produkt: leitstand
-  titel: Freigabe nutzt den regulären Mergeweg; Live-Gegenprobe bleibt separat
-  art: datei
-  pfad: src/lib/freigabe.ts
-  enthaelt: 'return { ok: true, aktion: "label" }'

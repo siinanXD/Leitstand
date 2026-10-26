@@ -72,7 +72,9 @@ export function bewerteZeilen(probe: Probe, zeilen: unknown, jetzt: number): Erg
 /** JSON kommt je nach Abrufer kompakt oder eingerückt (`"a": "b"` vs. `"a":"b"`, SIN-967): Leerraum nach `":` zählt nicht. */
 const ohneJsonLeerraum = (t: string) => t.replace(/":\s+/g, '":');
 
+/** Bewertet erforderlichen und verbotenen Text in einer Abnahme-Probe. */
 export function bewerteText(probe: Probe, text: string): Ergebnis {
+  if (probe.enthaelt_nicht && text.includes(probe.enthaelt_nicht)) return { ok: false, grund: `Unerlaubter Text: ${probe.enthaelt_nicht}` };
   return !probe.enthaelt || ohneJsonLeerraum(text).includes(ohneJsonLeerraum(probe.enthaelt)) ? { ok: true, grund: "ok" } : { ok: false, grund: `„${probe.enthaelt}“ fehlt` };
 }
 
@@ -80,6 +82,7 @@ export function bewerteText(probe: Probe, text: string): Ergebnis {
 /** Erlaubte Werte laut Check `loop_events_status_check` (SIN-903: "failed" ließ jeden Insert scheitern). */
 export const LOOP_STATUS = ["start", "ok", "fehler", "uebersprungen"] as const;
 
+/** Erstellt die Ereigniszeile einer ausgef?hrten Probe. */
 export function ereignisZeile(p: Probe, e: Ergebnis, runId: string | null, runUrl: string | null) {
   return {
     project: p.produkt,
