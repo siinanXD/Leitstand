@@ -84,7 +84,9 @@
         { "name": "LINEAR_API_KEY", "environment": "dev", "zweck": "Linear lesen und Aufgaben anlegen", "wo_holen": "Linear → Settings → API → Personal API keys" },
         { "name": "FIGMA_ACCESS_TOKEN", "environment": "dev", "zweck": "Figma lesen", "wo_holen": "Figma → Settings → Security → Personal access tokens" },
         { "name": "LEITSTAND_URL", "environment": "dev", "zweck": "Adresse des Leitstands", "wo_holen": "Vercel → Projekt → Domains" },
-        { "name": "VERCEL_TOKEN", "environment": "dev", "zweck": "Vercel-Deployments lesen", "wo_holen": "Vercel → Account Settings → Tokens" }
+        { "name": "VERCEL_TOKEN", "environment": "dev", "zweck": "Vercel-Deployments lesen", "wo_holen": "Vercel → Account Settings → Tokens" },
+        { "name": "VERCEL_TEAM_ID", "environment": "dev", "zweck": "Vercel-Team für das Tageslimit über alle Projekte (SIN-1047)", "wo_holen": "Vercel → Team Settings → General → Team ID" },
+        { "name": "OPENAI_ADMIN_KEY", "environment": "dev", "zweck": "OpenAI-Kosten lesen (Guthaben, nur lesen)", "wo_holen": "OpenAI → Settings → Organization → Admin keys" }
       ]
     },
     {
