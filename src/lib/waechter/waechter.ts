@@ -319,7 +319,6 @@ export function leitstandSnapshot(issues: LinearIssue[], prs: PrInfo[], repo: st
     // Spalten wie beim Status-Lauf der Lern-App (loop_snapshot hat kein `progress`).
     fertig_v1: haken?.fertig ?? null,
     gesamt_v1: haken?.gesamt ?? null,
-    quotas: [],
     updated_at: new Date().toISOString(),
   };
 }
