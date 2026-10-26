@@ -238,8 +238,5 @@ test("Test: Claude-Rückfall fordert 16000 Ausgabe-Tokens an, OpenAI weiter 6000
   const { MAX_AUSGABE_TOKENS_RUECKFALL } = await import("./pruefer");
   assert.equal(MAX_AUSGABE_TOKENS, 6000);
   assert.equal(MAX_AUSGABE_TOKENS_RUECKFALL, 16000);
-  // Die CLI-Fixtures in cli.test.ts prüfen beide Werte im echten Request (max_completion_tokens bzw. max_tokens).
-  const cli = (await import("node:fs")).readFileSync(new URL("./cli.test.ts", import.meta.url), "utf8");
-  assert.match(cli, /body\.max_completion_tokens, 6000/);
-  assert.match(cli, /body\.max_tokens, 16000/);
+  // Historische Hilfen behalten ihre Budgets; die aktive native CLI wird separat ohne API-Aufruf geprüft.
 });
