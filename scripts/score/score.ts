@@ -84,27 +84,30 @@ async function prScore(repo: string, produkt: string, pr: GhPr, zeilen: Zeile[])
   });
 }
 
+/** Noch nicht bewertete Scores eines Produkts: Läufe ohne PR und gemergte PRs im Zeitfenster. */
+async function neueScores(p: (typeof produkte)[number]): Promise<Score[]> {
+  const zeilen = await sbLesen<Zeile>(`project=eq.${p.id}&created_at=gte.${ereignisSeit.toISOString()}&select=created_at,step,status,issue,pr,cost:cost_usd,grund&order=created_at&limit=2000`);
+  const bewertet = await sbLesen<{ grund: string | null }>(`project=eq.${p.id}&step=eq.score&select=grund&order=created_at.desc&limit=1000`);
+  const kandidaten: Score[] = [];
+  for (const l of zeilen) {
+    const s = Date.parse(l.created_at) >= seit.getTime() ? scoreAusLauf(p.id, l) : null;
+    if (s) kandidaten.push(s);
+  }
+  const prs = (await gh<GhPr[]>(`/repos/${p.repo}/pulls?state=closed&sort=updated&direction=desc&per_page=100`)).filter((x) => x.merged_at && Date.parse(x.merged_at) >= seit.getTime());
+  for (const pr of prs) {
+    try {
+      kandidaten.push(await prScore(p.repo, p.id, pr, zeilen));
+    } catch (e) {
+      console.warn(`::warning::${p.id} PR ${pr.number} ohne Score: ${(e as Error).message}`);
+    }
+  }
+  return kandidaten.filter((s) => !bereitsBewertet(bewertet, s));
+}
+
 async function main() {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return console.warn("::warning::Kein Score: SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt.");
   const neu: { projekt: string; score: Score }[] = [];
-  for (const p of produkte) {
-    const zeilen = await sbLesen<Zeile>(`project=eq.${p.id}&created_at=gte.${ereignisSeit.toISOString()}&select=created_at,step,status,issue,pr,cost:cost_usd,grund&order=created_at&limit=2000`);
-    const bewertet = await sbLesen<{ grund: string | null }>(`project=eq.${p.id}&step=eq.score&select=grund&order=created_at.desc&limit=1000`);
-    const kandidaten: Score[] = [];
-    for (const l of zeilen) {
-      const s = Date.parse(l.created_at) >= seit.getTime() ? scoreAusLauf(p.id, l) : null;
-      if (s) kandidaten.push(s);
-    }
-    const prs = (await gh<GhPr[]>(`/repos/${p.repo}/pulls?state=closed&sort=updated&direction=desc&per_page=100`)).filter((x) => x.merged_at && Date.parse(x.merged_at) >= seit.getTime());
-    for (const pr of prs) {
-      try {
-        kandidaten.push(await prScore(p.repo, p.id, pr, zeilen));
-      } catch (e) {
-        console.warn(`::warning::${p.id} PR ${pr.number} ohne Score: ${(e as Error).message}`);
-      }
-    }
-    for (const s of kandidaten) if (!bereitsBewertet(bewertet, s)) neu.push({ projekt: p.id, score: s });
-  }
+  for (const p of produkte) for (const score of await neueScores(p)) neu.push({ projekt: p.id, score });
   for (const { projekt, score } of neu) console.log(`${projekt} ${score.pr ? `PR ${score.pr}` : score.rolle}: direkt=${score.direkt}, Reparaturen=${score.reparatur_runden}, Prüfer=${score.pruefer_runden}, Eingriffe=${score.eingriffe_sinan}`);
   console.log(`${neu.length} neue Scores${DRY ? " (Trockenlauf, nichts geschrieben)" : ""}.`);
   if (DRY || !neu.length) return;

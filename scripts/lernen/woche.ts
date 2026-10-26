@@ -90,6 +90,40 @@ function schreiben(pfad: string, inhalt: string) {
   writeFileSync(pfad, inhalt);
 }
 
+/** Nachmessen: Vorschlag der Vorwoche gegen den Wert dieser Woche; verworfene Regeln werden zurückgenommen. */
+function nachmessen(produkte: Woche["produkte"], alt: Vorschlag | null | undefined): Nachmessung | null {
+  if (!alt) return null;
+  const nachher = produkte.find((p) => p.produkt === alt.produkt)?.werte[alt.wert] ?? null;
+  const ergebnis = urteil(alt.wert, alt.vorher, nachher);
+  const zeileMd = `- ${vorKw} · ${alt.produkt} · ${alt.wert}: ${alt.vorher} → ${nachher ?? "?"} · ${alt.zeile.slice(2)} (${alt.datei})\n`;
+  if (ergebnis === "behalten" && !DRY) appendFileSync(`${ORDNER}/BEHALTEN.md`, zeileMd);
+  if (ergebnis === "verworfen") {
+    if (!DRY) appendFileSync(`${ORDNER}/VERWORFEN.md`, zeileMd);
+    schreiben(alt.datei, zeileEntfernen(lesen(alt.datei), alt.zeile)); // Revert
+  }
+  console.log(`Nachmessung ${alt.wert}: ${alt.vorher} → ${nachher} = ${ergebnis}.`);
+  return { kw_vorschlag: vorKw, produkt: alt.produkt, wert: alt.wert, vorher: alt.vorher, nachher, ergebnis };
+}
+
+/** Höchstens eine Regeländerung je Woche: nach einem Revert gibt es keinen neuen Vorschlag; ein offener bleibt bis zum Urteil. */
+async function neuerVorschlag(produkte: Woche["produkte"], vorwoche: Woche | null, nachmessung: Nachmessung | null): Promise<Vorschlag | null> {
+  if (nachmessung?.ergebnis === "verworfen" || nachmessung?.ergebnis === "offen") {
+    console.log("Kein neuer Vorschlag: Revert oder offenes Urteil.");
+    // nicht messbar: die Änderung bleibt und wird nächste Woche erneut gemessen
+    return nachmessung.ergebnis === "offen" ? (vorwoche?.vorschlag ?? null) : null;
+  }
+  const ziel = schlechtester(produkte);
+  if (!ziel) {
+    console.log("Alle messbaren Werte am Ziel, kein Vorschlag.");
+    return null;
+  }
+  // Zeilen der VERWORFEN.md: `- KW · produkt · wert: a → b · Regelzeile (datei)`
+  const verworfen = lesen(`${ORDNER}/VERWORFEN.md`).split("\n").filter((l) => l.startsWith("- ")).map((l) => l.split(" · ").slice(3).join(" · ").replace(/ \([^)]*\)$/, ""));
+  const vorschlag = await vorschlagen(ziel, vorwoche, verworfen).catch((e: Error) => (console.warn(`Warnung: kein Vorschlag (${e.message})`), (modellFehler = e.message), null));
+  if (vorschlag) schreiben(vorschlag.datei, zeileEinfuegen(lesen(vorschlag.datei), vorschlag.zeile));
+  return vorschlag;
+}
+
 async function main() {
   await ereignis("start");
   if (!DRY && existsSync(`${ORDNER}/woche-${kw}.json`)) {
@@ -103,36 +137,10 @@ async function main() {
     produkte.push({ produkt: projekt, repo, prs: liste.length, werte: messe(liste, await ereignisse(projekt).catch(() => []), TAGE) });
   }
 
-  // Nachmessen: Vorschlag der Vorwoche gegen den Wert dieser Woche.
   const vorPfad = `${ORDNER}/woche-${vorKw}.json`;
   const vorwoche = existsSync(vorPfad) ? (JSON.parse(readFileSync(vorPfad, "utf8")) as Woche) : null;
-  let nachmessung: Nachmessung | null = null;
-  const alt = vorwoche?.vorschlag;
-  if (alt) {
-    const nachher = produkte.find((p) => p.produkt === alt.produkt)?.werte[alt.wert] ?? null;
-    const ergebnis = urteil(alt.wert, alt.vorher, nachher);
-    nachmessung = { kw_vorschlag: vorKw, produkt: alt.produkt, wert: alt.wert, vorher: alt.vorher, nachher, ergebnis };
-    const zeileMd = `- ${vorKw} · ${alt.produkt} · ${alt.wert}: ${alt.vorher} → ${nachher ?? "?"} · ${alt.zeile.slice(2)} (${alt.datei})\n`;
-    if (ergebnis === "behalten" && !DRY) appendFileSync(`${ORDNER}/BEHALTEN.md`, zeileMd);
-    if (ergebnis === "verworfen") {
-      if (!DRY) appendFileSync(`${ORDNER}/VERWORFEN.md`, zeileMd);
-      schreiben(alt.datei, zeileEntfernen(lesen(alt.datei), alt.zeile)); // Revert
-    }
-    console.log(`Nachmessung ${alt.wert}: ${alt.vorher} → ${nachher} = ${ergebnis}.`);
-  }
-
-  // Höchstens eine Regeländerung je Woche: nach einem Revert gibt es keinen neuen Vorschlag; ein offener bleibt bis zum Urteil.
-  let vorschlag: Vorschlag | null = null;
-  const ziel = schlechtester(produkte);
-  if (nachmessung?.ergebnis === "offen") vorschlag = alt ?? null; // nicht messbar: die Änderung bleibt und wird nächste Woche erneut gemessen
-  if (nachmessung?.ergebnis === "verworfen" || nachmessung?.ergebnis === "offen") console.log("Kein neuer Vorschlag: Revert oder offenes Urteil.");
-  else if (!ziel) console.log("Alle messbaren Werte am Ziel, kein Vorschlag.");
-  else {
-    // Zeilen der VERWORFEN.md: `- KW · produkt · wert: a → b · Regelzeile (datei)`
-    const verworfen = lesen(`${ORDNER}/VERWORFEN.md`).split("\n").filter((l) => l.startsWith("- ")).map((l) => l.split(" · ").slice(3).join(" · ").replace(/ \([^)]*\)$/, ""));
-    vorschlag = await vorschlagen(ziel, vorwoche, verworfen).catch((e: Error) => (console.warn(`Warnung: kein Vorschlag (${e.message})`), (modellFehler = e.message), null));
-    if (vorschlag) schreiben(vorschlag.datei, zeileEinfuegen(lesen(vorschlag.datei), vorschlag.zeile));
-  }
+  const nachmessung = nachmessen(produkte, vorwoche?.vorschlag);
+  const vorschlag = await neuerVorschlag(produkte, vorwoche, nachmessung);
 
   const woche: Woche = { schema: "lernen/1", kw, von: tag(seit), bis: tag(jetzt), erstellt: jetzt.toISOString(), produkte, vorschlag, nachmessung };
   if (!DRY) mkdirSync(ORDNER, { recursive: true });
