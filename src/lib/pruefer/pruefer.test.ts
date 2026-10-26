@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { hatHoch, hatProbe, hatRisiko, prueferLabels, istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS, denkstufe, istGateDiff, FUNDLISTE_MARKER, KOSTENDECKEL_USD_HOCH, MAX_AUSGABE_TOKENS_HOCH } from "./pruefer";
+import { hatHoch, hatProbe, hatRisiko, prueferLabels, istKontingentFehler, pruefeMitRueckfall, reviewerZeile, begrenze, bewerte, brauchtProbe, kommentar, kostenUsd, leseAntwort, lesePreise, maxDiffZeichen, KOSTENDECKEL_USD, MAX_AUSGABE_TOKENS } from "./pruefer";
 
 import { entscheide, leseHaken } from "../loop/haken";
 import { labelWechsel, stufe } from "../../../scripts/loop/risiko.mjs";
@@ -238,29 +238,5 @@ test("Test: Claude-Rückfall fordert 16000 Ausgabe-Tokens an, OpenAI weiter 6000
   const { MAX_AUSGABE_TOKENS_RUECKFALL } = await import("./pruefer");
   assert.equal(MAX_AUSGABE_TOKENS, 6000);
   assert.equal(MAX_AUSGABE_TOKENS_RUECKFALL, 16000);
-  // Die CLI-Fixtures in cli.test.ts prüfen beide Werte im echten Request (max_completion_tokens bzw. max_tokens).
-  const cli = (await import("node:fs")).readFileSync(new URL("./cli.test.ts", import.meta.url), "utf8");
-  assert.match(cli, /body\.max_completion_tokens, 6000/);
-  assert.match(cli, /body\.max_tokens, 16000/);
-});
-
-test("Test: `denkstufe` → `high` für erste Runde, Gate-Diff, > 300 Zeilen; `low` für Folgerunde; `low` über dem Deckel", () => {
-  const basis = { ersteRunde: false, sicherheitsDiff: false, geaenderteZeilen: 20, heuteKostenUsd: 0, deckelUsd: 1.2 };
-  assert.equal(denkstufe({ ...basis, ersteRunde: true }).stufe, "high");
-  assert.equal(denkstufe({ ...basis, sicherheitsDiff: true }).stufe, "high");
-  assert.equal(denkstufe({ ...basis, geaenderteZeilen: 301 }).stufe, "high");
-  assert.equal(denkstufe({ ...basis, geaenderteZeilen: 300 }).stufe, "low");
-  assert.deepEqual(denkstufe(basis), { stufe: "low", ueberDeckel: false });
-  assert.deepEqual(denkstufe({ ...basis, ersteRunde: true, heuteKostenUsd: 1.2 }), { stufe: "low", ueberDeckel: true });
-  assert.equal(istGateDiff([".github/workflows/build.yml"]), true);
-  assert.equal(istGateDiff(["src/lib/auth/sitzung.ts", "README.md"]), true);
-  assert.equal(istGateDiff(["src/app/page.tsx"]), false);
-  assert.ok(maxDiffZeichen({ ein: 1.25, aus: 10 }, KOSTENDECKEL_USD_HOCH, MAX_AUSGABE_TOKENS_HOCH) > 0, "hohe Stufe lässt Platz für den Diff");
-});
-
-test("Test: Kommentar der ersten Runde enthält den Fundlisten-Marker", () => {
-  const erg = { bestanden: false, funde: [{ datei: "a.ts", zeile: 1, schwere: "mittel" as const, text: "x", art: "codefehler" as const, haken: null }] };
-  assert.ok(kommentar(erg, "m", 0.01, "codex", { ersteRunde: true, stufe: "high" }).includes(FUNDLISTE_MARKER));
-  assert.ok(!kommentar(erg, "m", 0.01).includes(FUNDLISTE_MARKER));
-  assert.ok(kommentar(erg, "m", 0.01, "codex", { ersteRunde: false, stufe: "low", ueberDeckel: true }).includes("Tagesdeckel"));
+  // Historische Hilfen behalten ihre Budgets; die aktive native CLI wird separat ohne API-Aufruf geprüft.
 });

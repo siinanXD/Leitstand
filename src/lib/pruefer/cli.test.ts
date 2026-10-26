@@ -2,99 +2,110 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
+// SIN-905: statische Abhängigkeiten der als Unterprozess ausgeführten CLIs, ohne Laufzeitausführung beim Import.
+import type {} from "../../../scripts/pruefer/pruefer";
+import type {} from "../../../scripts/pruefer/pruefer-nachlauf";
+import { kriterienHash } from "../../../scripts/loop/beleg-stand.mjs";
 
-test("Echter CLI-Trockenlauf ohne Netz erzeugt keinen produktiven Review-Kommentar", () => {
-  const cwd = mkdtempSync(join(tmpdir(), "pruefer-cli-"));
-  const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+const ghFixture = `#!/usr/bin/env node
+const fs = require('node:fs');
+const s = JSON.parse(fs.readFileSync(process.env.ABO_FIXTURE, 'utf8'));
+const route = process.argv[3];
+const owner = {login:'siinanXD',type:'User'};
+const bot = {login:'chatgpt-codex-connector[bot]',type:'Bot'};
+const stamp = new Date(Date.now()-60000).toISOString();
+const request = {id:1,body:'<!-- codex-anforderung:v1 '+JSON.stringify(s.stand)+' -->',created_at:stamp,updated_at:stamp,user:owner};
+const code = {code_review:{commit_sha:s.stand.head,status:'completed',has_any_findings:s.mode==='funde',has_unresolved_findings:s.mode==='funde'}};
+const result = {bestanden:true,funde:[],haken:[{text:'Test besteht',belegt:true,beleg:'a.txt:1'}]};
+const review = {id:2,body:'<!-- codex-review-state:v1 '+JSON.stringify(code)+' -->\\n<!-- codex-kriterien:v1 '+JSON.stringify({...s.stand,ergebnis:result})+' -->',created_at:stamp,updated_at:new Date().toISOString(),user:bot};
+let out;
+if(s.mode==='fehler') throw new Error('Fixture-Transportfehler');
+if (process.argv.includes('POST')) {s.starts.push(JSON.parse(fs.readFileSync(0,'utf8')).body);fs.writeFileSync(process.env.ABO_FIXTURE,JSON.stringify(s));out={};}
+else if (route.includes('/pulls?')) out=[[{number:880,draft:false,labels:[],head:{sha:s.stand.head,ref:'codex/sin-880',repo:{full_name:s.repo}}}]];
+else if (route.endsWith('/pulls/880')) out={title:'Test (SIN-880)',body:'',state:'open',draft:false,head:{sha:s.stand.head,repo:{full_name:s.repo}},base:{sha:s.stand.basis,ref:'main',repo:{full_name:s.repo}}};
+else if (route.endsWith('/branches/main')) out={protected:true,commit:{sha:s.stand.basis}};
+else if (route.includes('/pulls/880/reviews')) out=[[]];
+else if (route.includes('/issues/880/comments')) out=[s.mode==='anfordern'?[]:s.mode==='warten'?[request]:[request,review]];
+else if (route.includes('/issues/comments?since=')) out=[[request]];
+else throw new Error('Nicht erlaubte Fixture-Route');
+console.log(JSON.stringify(out));
+`;
+const preload = `const cp = require('node:child_process');
+const original = cp.execFileSync;
+cp.execFileSync = (command, args, options) => command === 'gh'
+  ? original(process.execPath, [require('node:path').join(process.cwd(), 'gh'), ...args], options)
+  : original(command, args, options);
+require('node:module').syncBuiltinESMExports();
+global.fetch = async (url) => {
+  if (url !== 'https://api.linear.app/graphql') throw new Error('Kein Modell-API-/Netzzugriff erlaubt');
+  return Response.json({data:{issue:{identifier:'SIN-880',title:'Test',description:'- [ ] Test besteht'}}});
+};`;
+
+/** Erstellt ein isoliertes Git-Repository und die Offline-Antworten. */
+function bereiteFixtureVor() {
+  const cwd = mkdtempSync(join(tmpdir(), "pruefer-abo-"));
+  const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", timeout: 5000 }).trim();
+  git("init", "-q"); git("config", "user.email", "test@example.invalid"); git("config", "user.name", "test");
+  writeFileSync(join(cwd, "a.txt"), "basis\n"); git("add", "."); git("commit", "-qm", "basis");
+  const basis = git("rev-parse", "HEAD");
+  writeFileSync(join(cwd, "a.txt"), "head\n"); git("add", "."); git("commit", "-qm", "head");
+  const head = git("rev-parse", "HEAD");
+  writeFileSync(join(cwd, "gh"), ghFixture, { mode: 0o755 });
+  writeFileSync(join(cwd, "offline.cjs"), preload);
+  return { cwd, basis, head };
+}
+
+/** Führt die echte CLI mit lokalen GitHub- und Linear-Antworten aus. */
+function starteFixture(f: ReturnType<typeof bereiteFixtureVor>, mode: string, trocken = false, skript = "scripts/pruefer/pruefer.ts") {
+  const file = join(f.cwd, "state.json");
+  writeFileSync(file, JSON.stringify({ repo: "siinanXD/Leitstand", mode, starts: [], stand: { head: f.head, basis: f.basis, auftrag: kriterienHash("SIN-880\nTest\n- [ ] Test besteht") } }));
+  const run = spawnSync(process.execPath, ["--import", pathToFileURL(resolve("node_modules/tsx/dist/loader.mjs")).href, "--require", join(f.cwd, "offline.cjs"), resolve(skript), "880", f.basis, f.head], {
+    cwd: f.cwd, encoding: "utf8", timeout: 15000,
+    env: { ...process.env, PATH: `${f.cwd}${delimiter}${process.env.PATH}`, ABO_FIXTURE: file, GH_REPO: "siinanXD/Leitstand", DRY_RUN: trocken ? "1" : "0", LINEAR_API_KEY: "fixture", OPENAI_API_KEY: "sk-verboten", ANTHROPIC_API_KEY: "sk-verboten", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "" },
+  });
+  return { run, state: JSON.parse(readFileSync(file, "utf8")) };
+}
+
+test("Echte Abo-only-CLI: Anstoß, Warten, Kriterienbeleg, Codefund und Trockenlauf ohne Modell-API", () => {
+  const f = bereiteFixtureVor();
   try {
-    git("init", "-q"); git("config", "user.email", "test@example.invalid"); git("config", "user.name", "test");
-    writeFileSync(join(cwd, "a.txt"), "basis\n"); git("add", "."); git("commit", "-qm", "basis");
-    const basis = git("rev-parse", "HEAD");
-    writeFileSync(join(cwd, "a.txt"), "head\n"); git("add", "."); git("commit", "-qm", "head");
-    const head = git("rev-parse", "HEAD");
-    writeFileSync(join(cwd, "gh"), "#!/bin/sh\nprintf '%s' '{\"title\":\"Test\",\"body\":\"\"}'\n", { mode: 0o755 });
-    const preload = join(cwd, "offline.cjs");
-    writeFileSync(preload, "global.fetch = async () => { throw new Error('Netz im Trockenlauf verboten'); };\n");
-    const r = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), "--require", preload, resolve("scripts/pruefer/pruefer.ts"), "827", basis, head], {
-      cwd, encoding: "utf8", timeout: 15000,
-      env: { ...process.env, PATH: `${cwd}:${process.env.PATH}`, DRY_RUN: "1", PRUEFER_MODELL: "fixture", PRUEFER_PREIS_EIN: "1", PRUEFER_PREIS_AUS: "1", OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", GH_TOKEN: "", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "" },
-    });
-    assert.equal(r.status, 0, r.stderr);
-    assert.equal(existsSync(join(cwd, "pruefer-kommentar.md")), false);
-    assert.match(readFileSync(join(cwd, "pruefer-trockenlauf.md"), "utf8"), /Trockenlauf.*keine unabhängige Prüfung/);
-  } finally { rmSync(cwd, { recursive: true, force: true }); }
+    for (const mode of ["anfordern", "warten", "fertig", "funde", "trocken"]) {
+      for (const name of ["pruefer-kommentar.md", "pruefer-trockenlauf.md", "pruefer-status.txt", "pruefer-hoch.txt"]) rmSync(join(f.cwd, name), { force: true });
+      const { run, state } = starteFixture(f, mode, mode === "trocken");
+      assert.equal(run.status, mode === "funde" ? 1 : 0, `${mode}: ${run.stdout} ${run.stderr}`);
+      assert.equal(state.starts.length, mode === "anfordern" ? 1 : 0);
+      assert.doesNotMatch(run.stdout + run.stderr, /sk-verboten/);
+      const datei = join(f.cwd, mode === "trocken" ? "pruefer-trockenlauf.md" : "pruefer-kommentar.md");
+      const text = readFileSync(datei, "utf8");
+      assert.match(text, /Reviewer: Codex \(Abo\)/);
+      assert.equal(text.includes("<!-- pruefer-stand:"), mode === "fertig");
+      if (mode === "trocken") assert.equal(existsSync(join(f.cwd, "pruefer-kommentar.md")), false);
+    }
+  } finally { rmSync(f.cwd, { recursive: true, force: true }); }
 });
 
-test("SIN-880: echter CLI mit API-Fixtures prüft Budget, Rückfall, JSON und Ledger", () => {
-  const cwd = mkdtempSync(join(tmpdir(), "pruefer-api-"));
-  const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+
+test("Fehlgeschlagener neuer CLI-Lauf lässt keinen alten Freigabekommentar liegen", () => {
+  const f = bereiteFixtureVor();
   try {
-    git("init", "-q"); git("config", "user.email", "test@example.invalid"); git("config", "user.name", "test");
-    writeFileSync(join(cwd, "a.txt"), "basis\n"); git("add", "."); git("commit", "-qm", "basis");
-    const basis = git("rev-parse", "HEAD");
-    writeFileSync(join(cwd, "a.txt"), "head\n"); git("add", "."); git("commit", "-qm", "head");
-    const head = git("rev-parse", "HEAD");
-    writeFileSync(join(cwd, "gh"), "#!/bin/sh\nprintf '%s' '{\"title\":\"Test (SIN-880)\",\"body\":\"\"}'\n", { mode: 0o755 });
-    const preload = join(cwd, "api.cjs");
-    writeFileSync(preload, `
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-global.fetch = async (url, init) => {
-  const body = JSON.parse(init.body);
-  const mode = process.env.FIXTURE_MODE;
-  if (url.includes('linear.app')) return Response.json({data:{issue:{identifier:'SIN-880',title:'Test',description:'Dokumentation prüfen'}}});
-  if (url.includes('/rest/v1/loop_events')) {
-    fs.writeFileSync('ledger.json', JSON.stringify(body));
-    return Response.json({});
-  }
-  const review = {bestanden:true,funde:[],haken:[]};
-  if (url.includes('openai.com')) {
-    assert.equal(body.reasoning_effort, 'low');
-    assert.equal(body.max_completion_tokens, 6000);
-    if (mode.startsWith('fallback')) return new Response('insufficient_quota sk-fixture-openai', {status:429});
-    if (mode === 'http-json') return new Response('');
-    return Response.json({choices:[{finish_reason:mode==='length'?'length':'stop',message:{content:mode==='empty'?'':mode==='bad-json'?'{':JSON.stringify(review)}}]});
-  }
-  if (url.includes('anthropic.com')) {
-    assert.equal(body.tools, undefined);
-    assert.equal(body.tool_choice, undefined);
-    assert.equal(body.max_tokens, 16000, 'Claude-Rückfall braucht eigenes, größeres Antwortbudget (SIN-970)');
-    assert.equal(body.output_config.format.type, 'json_schema');
-    assert.deepEqual(body.output_config.format.schema.required, ['bestanden', 'funde', 'haken']);
-    if (mode === 'fallback-error') return new Response('invalid_request sk-fixture-anthropic', {status:400});
-    return Response.json({stop_reason:mode==='fallback-length'?'max_tokens':mode==='fallback-refusal'?'refusal':'end_turn',content:mode==='fallback-empty'?[]:[{type:'text',text:mode==='fallback-bad-json'?'{':JSON.stringify(review)}]});
-  }
-  throw new Error('Unerwartete URL');
-};
-`);
-    const cases = [
-      ["ok", 0, /Prüfer: bestanden/],
-      ["length", 2, /OpenAI: Tokenbudget/],
-      ["empty", 2, /Modellantwort leer/],
-      ["bad-json", 2, /Modellantwort enthält ungültiges JSON/],
-      ["http-json", 2, /OpenAI: HTTP-Antwort/],
-      ["fallback-error", 2, /OpenAI: HTTP 429.*Rückfall: Anthropic: HTTP 400/],
-      ["fallback-length", 2, /Anthropic: Tokenbudget/],
-      ["fallback-ok", 0, /Prüfer: bestanden/],
-      ["fallback-empty", 2, /Modellantwort leer/],
-      ["fallback-bad-json", 2, /ungültiges JSON/],
-      ["fallback-refusal", 2, /Anthropic: Review abgelehnt/],
-    ] as const;
-    for (const [mode, status, meldung] of cases) {
-      rmSync(join(cwd, "pruefer-kommentar.md"), { force: true });
-      const r = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), "--require", preload, resolve("scripts/pruefer/pruefer.ts"), "880", basis, head], {
-        cwd, encoding: "utf8", timeout: 15000,
-        env: { ...process.env, PATH: `${cwd}:${process.env.PATH}`, FIXTURE_MODE: mode, DRY_RUN: "0", PRUEFER_MODELL: "fixture", PRUEFER_PREIS_EIN: "0.10", PRUEFER_PREIS_AUS: "0.5", OPENAI_API_KEY: "sk-fixture-openai", ANTHROPIC_API_KEY: "sk-fixture-anthropic", LINEAR_API_KEY: "fixture", GH_TOKEN: "", SUPABASE_URL: "https://fixture.invalid", SUPABASE_SERVICE_ROLE_KEY: "fixture" },
-      });
-      assert.equal(r.status, status, `${mode}: ${r.stdout} ${r.stderr}`);
-      assert.match(r.stdout, meldung);
-      assert.doesNotMatch(r.stdout + r.stderr, /sk-fixture/);
-      const ledger = JSON.parse(readFileSync(join(cwd, "ledger.json"), "utf8"));
-      assert.equal(ledger.status, status === 0 ? "ok" : "fehler");
-      assert.equal(existsSync(join(cwd, "pruefer-kommentar.md")), status === 0);
-      if (status !== 0) assert.match(ledger.grund, meldung);
-    }
-  } finally { rmSync(cwd, { recursive: true, force: true }); }
+    assert.equal(starteFixture(f, "fertig").run.status, 0);
+    assert.equal(existsSync(join(f.cwd, "pruefer-kommentar.md")), true);
+    assert.equal(starteFixture(f, "fehler").run.status, 2);
+    assert.equal(existsSync(join(f.cwd, "pruefer-kommentar.md")), false);
+    assert.equal(existsSync(join(f.cwd, "pruefer-status.txt")), false);
+  } finally { rmSync(f.cwd, { recursive: true, force: true }); }
+});
+
+
+test("Echter Nachlauf-Trockenlauf liest neue native Antwort ohne produktiven Dispatch", () => {
+  const f = bereiteFixtureVor();
+  try {
+    const { run, state } = starteFixture(f, "fertig", true, "scripts/pruefer/pruefer-nachlauf.ts");
+    assert.equal(run.status, 0, run.stdout + run.stderr);
+    assert.match(run.stdout, /trocken.*vorhandene Prüfung/);
+    assert.equal(state.starts.length, 0);
+  } finally { rmSync(f.cwd, { recursive: true, force: true }); }
 });
