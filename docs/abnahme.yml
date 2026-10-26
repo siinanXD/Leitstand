@@ -445,6 +445,32 @@
   art: datei
   pfad: README.md
   enthaelt: docs/architecture.svg
+- id: leitstand-readme-vitrine
+  produkt: leitstand
+  titel: Das README hat den Vitrinen-Abschnitt „What I learned“ (SIN-752)
+  art: datei
+  pfad: README.md
+  enthaelt: "## What I learned"
+- id: leitstand-github-profil
+  produkt: leitstand
+  titel: docs/github-profil.md schlägt Beschreibung und Topics je Loop-Repo vor (SIN-752)
+  art: datei
+  pfad: docs/github-profil.md
+  enthaelt: siinanXD/stromlauf-ai
+- id: lernapp-readme-vitrine
+  produkt: lernapp
+  titel: Das Lern-App-README beginnt mit Pitch, Why und Architektur-Diagramm (SIN-752)
+  art: github
+  repo: siinanXD/Content-Agent-Lernapp
+  pfad: README.md
+  enthaelt: docs/architecture.svg
+- id: stromlauf-readme-vitrine
+  produkt: leitstand
+  titel: Das stromlauf-ai-README hat den englischen Vitrinen-Abschnitt (SIN-752)
+  art: github
+  repo: siinanXD/stromlauf-ai
+  pfad: README.md
+  enthaelt: "## What I learned"
 - id: dispatch-je-repo
   produkt: leitstand
   titel: Der Dispatcher baut je Produkt-Repo (linearProjekt in projekte.ts)
