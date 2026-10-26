@@ -158,7 +158,7 @@ export function kurzfassung(text: string | null): string | null {
 }
 
 /** Neu heißt: jünger als NEU_TAGE. */
-export const istNeu =(p: Projekt, jetzt: Date) => jetzt.getTime() - ms(p.createdAt) <= NEU_TAGE * 24 * STUNDE;
+const istNeu = (p: Projekt, jetzt: Date) => jetzt.getTime() - ms(p.createdAt) <= NEU_TAGE * 24 * STUNDE;
 
 /** Nur neue, nicht pausierte Projekte in Backlog, Planned oder In Progress. Vor dem Laden der Issues prüfen (spart Linear-Abfragen). */
 export const kommtAlsNeuInFrage = (p: Projekt, jetzt: Date) =>
