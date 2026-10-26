@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /** Register der Figma-Bilder im Leitstand (SIN-1038): `docs/figma-ansichten.json`. */
-export const ARTEN = ["diagramm", "contentplan", "entscheidung"] as const;
-export type Art = (typeof ARTEN)[number];
+const ARTEN = ["diagramm", "contentplan", "entscheidung"] as const;
+type Art = (typeof ARTEN)[number];
 export type Ansicht = { titel: string; datei: string; node: string; art: Art; produkt: string };
 
 const NODE = /^\d+:\d+$/;
@@ -28,6 +28,8 @@ export function pruefeRegister(roh: unknown): Ansicht[] {
   });
 }
 
+/** Liest und prüft das Register aus der JSON-Datei. */
 export const leseRegister = (pfad = join(process.cwd(), "docs/figma-ansichten.json")): Ansicht[] => pruefeRegister(JSON.parse(readFileSync(pfad, "utf8")));
 
+/** Baut den Figma-Link zum Frame aus Datei-Schlüssel und Node-ID. */
 export const figmaLink = (a: Pick<Ansicht, "datei" | "node">) => `https://www.figma.com/design/${a.datei}?node-id=${a.node.replace(":", "-")}`;
