@@ -11,9 +11,9 @@ test("SIN-615-Abnahme liest historische Merkmale und reparierten Produktlink aus
     assert.equal(p.repo, "siinanXD/gedaechtnis");
     assert.equal(p.pfad, "Entscheidungen/SIN-639.md");
   }
-  const notiz = "datum: 2026-10-18\nstatus: gilt\nEntscheidungsdatei: https://github.com/siinanXD/Leitstand/blob/main/docs/decisions/SIN-639-pruefer-zweites-modell.md\n[[Produkte/Leitstand]]";
+  const notiz = "datum: 2026-10-15\nstatus: gilt\nEntscheidungsdatei: https://github.com/siinanXD/Leitstand/blob/main/docs/decisions/SIN-639-pruefer-zweites-modell.md\n[[Produkte/Leitstand]]";
   assert.ok(proben.every(p => bewerteText(p, notiz).ok));
-  for (const entfernt of ["datum: 2026-10-18", "status: gilt", "Entscheidungsdatei:", "[[Produkte/Leitstand]]"]) {
+  for (const entfernt of ["datum: 2026-10-15", "status: gilt", "Entscheidungsdatei:", "[[Produkte/Leitstand]]"]) {
     assert.ok(proben.some(p => !bewerteText(p, notiz.replace(entfernt, "")).ok));
   }
   assert.ok(proben.some(p => !bewerteText(p, notiz.replace("Produkte/Leitstand", "Produkte/leitstand")).ok));
