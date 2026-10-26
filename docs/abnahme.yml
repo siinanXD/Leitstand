@@ -1265,11 +1265,3 @@
   titel: loop_snapshot trägt das Feld e2e (Kennzahlen der E2E-Strecke, SIN-1073)
   art: db
   rest: loop_snapshot?project=eq.leitstand&select=e2e
-
-# SIN-928: Prüfer wählt die Denkstufe je Runde (high nur erste Runde, Gate-Diff, > 300 Zeilen; Tagesdeckel)
-- id: pruefer-denkstufe
-  produkt: leitstand
-  titel: Der Prüfer setzt reasoning_effort aus der Denkstufe statt fest low (SIN-928)
-  art: datei
-  pfad: scripts/pruefer/pruefer.ts
-  enthaelt: "reasoning_effort: s.stufe"

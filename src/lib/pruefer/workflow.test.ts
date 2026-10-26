@@ -106,7 +106,7 @@ test("Erstinstallation stoppt vor dem Secret-Schritt, wenn die Basis noch den al
   const start = workflow.indexOf("run: test -f src/lib/pruefer/git.ts");
   assert.ok(start > 0);
   assert.ok(start < workflow.indexOf("- id: lauf"));
-  assert.ok(start < workflow.indexOf("OPENAI_API_KEY:"));
+  assert.ok(workflow.includes("test -f src/lib/pruefer/codex.ts"));
 });
 
 

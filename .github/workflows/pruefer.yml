@@ -1,4 +1,4 @@
-# Prüfer mit zweitem Modell (SIN-639, SIN-827): OpenAI API prüft Claude- und Codex-PRs.
+# Prüfer (SIN-1053): ausschließlich native Codex-Reviews, keine Modell-API oder API-Rückfälle.
 # Ergebnis als PR-Kommentar. Echte Risiken setzen risk:high + Marker pruefer:hoch, andere Funde pruefer:offen (SIN-909).
 # „Bestanden“ entfernt nur pruefer:offen; risk:high senkt allein das Gate (automerge.yml), und nur mit Marker. Kosten landen in loop_events.
 # Prüfer/Abhängigkeiten vom Basis-Commit; PR-Commits werden nur als Diff gelesen, nie ausgecheckt.
@@ -10,6 +10,8 @@ name: pruefer
 # SIN-939: Produkt-Läufe nennen das Repo, damit repair.yml sie nicht einem gleichnummerierten Leitstand-PR zuordnet.
 run-name: pruefer${{ (github.event.client_payload.repo || inputs.repo) && format(' {0}', github.event.client_payload.repo || inputs.repo) || '' }} PR ${{ github.event.pull_request.number || github.event.client_payload.pr || inputs.pr }}
 on:
+  schedule:
+    - cron: "*/15 * * * *"
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review, edited]
   repository_dispatch:
@@ -30,8 +32,9 @@ permissions:
   contents: read
   pull-requests: write
 concurrency:
-  group: pruefer-${{ github.event.client_payload.repo || inputs.repo || github.repository }}-${{ github.event.pull_request.number || github.event.client_payload.pr || inputs.pr }}
-  cancel-in-progress: true
+  group: pruefer-abo
+  cancel-in-progress: false
+  queue: max
 jobs:
   pruefen:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || ((startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'codex/')) && github.event.pull_request.head.repo.full_name == github.repository && ((github.event.action == 'edited' && github.event.changes.base) || (!github.event.pull_request.draft && github.event.action != 'edited'))))
@@ -96,7 +99,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Vertrauenswürdige Prüfer-Version vorhanden
         # Beim ersten Einführen fehlt der gehärtete Prüfer noch auf der Basis: stoppen, nie den alten CLI mit leerem Diff ausführen.
-        run: test -f src/lib/pruefer/git.ts
+        run: test -f src/lib/pruefer/git.ts && test -f src/lib/pruefer/codex.ts
       - name: PR-Objekte nur zum Lesen laden
         env:
           GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
@@ -113,13 +116,7 @@ jobs:
           HEAD_SHA: ${{ steps.ziel.outputs.head }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.pruefen && '1' || '' }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          PRUEFER_CLAUDE_MODELL: ${{ vars.PRUEFER_CLAUDE_MODELL }}
-          PRUEFER_MODELL: ${{ vars.PRUEFER_MODELL }}
-          PRUEFER_PREIS_EIN: ${{ vars.PRUEFER_PREIS_EIN }}
-          PRUEFER_PREIS_AUS: ${{ vars.PRUEFER_PREIS_AUS }}
-          PRUEFER_DECKEL_USD_TAG: ${{ vars.PRUEFER_DECKEL_USD_TAG }}
+          CODEX_PRUEFER_MAX_TAG: ${{ vars.CODEX_PRUEFER_MAX_TAG || '15' }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         continue-on-error: true
@@ -168,5 +165,23 @@ jobs:
           ID=$(gh api "repos/$GH_REPO/actions/runs?head_sha=$HEAD_SHA&per_page=100" --jq '.workflow_runs' | node --import tsx scripts/pruefer/regate.ts)
           if [ -n "$ID" ]; then gh api -X POST "repos/$GH_REPO/actions/runs/$ID/rerun-failed-jobs"; else echo 'Kein fehlgeschlagener pr-gate-Lauf'; fi
       - name: Rot, wenn nicht bestanden oder Lauf gescheitert
-        if: steps.lauf.outcome == 'failure'
+        if: steps.lauf.outcome == 'failure' && steps.lauf.outputs.wartend != 'true'
         run: exit 1
+  nachlauf:
+    if: github.event_name == 'schedule' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Neue native Antworten auswerten
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_WORKFLOW_TOKEN }}
+        run: node --import tsx scripts/pruefer/pruefer-nachlauf.ts

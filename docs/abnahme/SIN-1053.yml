@@ -1,0 +1,12 @@
+- id: pruefer-native-parser
+  produkt: leitstand
+  titel: Native Review- und Kriterienmarker werden getrennt und an den aktuellen Stand gebunden
+  art: datei
+  pfad: src/lib/pruefer/codex.ts
+  enthaelt: 'codex-review-state:v1'
+- id: pruefer-native-ablauf
+  produkt: leitstand
+  titel: Vorhandene native Antworten werden ohne Modellaufruf ausgewertet
+  art: datei
+  pfad: scripts/pruefer/pruefer.ts
+  enthaelt: 'pruefeCodexAbo'
