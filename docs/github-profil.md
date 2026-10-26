@@ -1,6 +1,6 @@
 # GitHub-Profil der Loop-Repos (SIN-752)
 
-Vorschlag je Repo: eine Beschreibung in einem Satz (Englisch, passend zum README) und 8 Topics. Gesetzt wird nichts von hier aus: Beschreibung und Topics der Repos setzt der Workflow `vitrine.yml` aus [`docs/vitrine.json`](vitrine.json) (dort derzeit deutsche Beschreibungen und je 10 Topics). Wer den Vorschlag übernehmen will, ändert `docs/vitrine.json`; der Workflow läuft nach dem Merge.
+Vorschlag je Repo: eine Beschreibung in einem Satz (Englisch, passend zum README) und 8 Topics. Übernommen in [`docs/vitrine.json`](vitrine.json) (Entscheidung Sinan 26.10.); der Workflow `vitrine.yml` setzt Beschreibung und Topics nach dem Merge.
 
 | Repo | Beschreibung (Vorschlag) | Topics (Vorschlag) |
 | --- | --- | --- |
