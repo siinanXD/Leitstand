@@ -44,7 +44,7 @@ async function prs(repo: string): Promise<Pr[]> {
 
 async function ereignisse(projekt: string): Promise<Ereignis[]> {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return [];
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?project=eq.${projekt}&created_at=gte.${seit.toISOString()}&select=cost`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } });
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/loop_events?project=eq.${projekt}&created_at=gte.${seit.toISOString()}&select=cost:cost_usd`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } });
   if (!res.ok) throw new Error(`loop_events: ${res.status}`);
   return (await res.json()) as Ereignis[];
 }

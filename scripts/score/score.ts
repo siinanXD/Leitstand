@@ -88,7 +88,7 @@ async function main() {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return console.warn("::warning::Kein Score: SUPABASE_URL oder SUPABASE_SERVICE_ROLE_KEY fehlt.");
   const neu: { projekt: string; score: Score }[] = [];
   for (const p of produkte) {
-    const zeilen = await sbLesen<Zeile>(`project=eq.${p.id}&created_at=gte.${ereignisSeit.toISOString()}&select=created_at,step,status,issue,pr,cost,grund&order=created_at&limit=2000`);
+    const zeilen = await sbLesen<Zeile>(`project=eq.${p.id}&created_at=gte.${ereignisSeit.toISOString()}&select=created_at,step,status,issue,pr,cost:cost_usd,grund&order=created_at&limit=2000`);
     const bewertet = await sbLesen<{ grund: string | null }>(`project=eq.${p.id}&step=eq.score&select=grund&order=created_at.desc&limit=1000`);
     const kandidaten: Score[] = [];
     for (const l of zeilen) {
