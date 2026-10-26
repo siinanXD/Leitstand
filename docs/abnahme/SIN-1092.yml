@@ -1,0 +1,6 @@
+- id: e2e-collector-vertrauensgrenze
+  produkt: leitstand
+  titel: E2E-Live-Collector verlangt main; negative Workflow-Proben separat in CI
+  art: datei
+  pfad: .github/workflows/e2e-strecke.yml
+  enthaelt: "if: github.ref == 'refs/heads/main'"
