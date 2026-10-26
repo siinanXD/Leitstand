@@ -17,7 +17,7 @@ async function ladeRepoDateien(repo: string): Promise<RepoDatei[]> {
   return dateien;
 }
 
-/** Hat das Projekt einen Login ohne Agent-Testnutzer, entsteht genau ein Backlog-Issue; der Planer zieht es nach. */
+/** Hat das Projekt einen Login ohne Agent-Testnutzer, entsteht genau ein Todo-Issue mit Label `claude` (Entscheidung Sinan 26.10.). */
 export async function pruefeTestnutzerRegel(projekt: Projekt, teamId: string, repo: string) {
   const dateien = await ladeRepoDateien(repo);
   let r = pruefeTestnutzer(projekt.name, dateien, []);
@@ -30,5 +30,5 @@ export async function pruefeTestnutzerRegel(projekt: Projekt, teamId: string, re
     r = pruefeTestnutzer(projekt.name, dateien, d.issues.nodes.map((n) => n.title));
   }
   log(projekt.name, `Testnutzer-Regel: ${r.status}`);
-  if (r.issue && !DRY) await neuesIssue(teamId, projekt.id, r.issue.titel, r.issue.beschreibung, [], "Backlog");
+  if (r.issue && !DRY) await neuesIssue(teamId, projekt.id, r.issue.titel, r.issue.beschreibung, ["claude"]);
 }
