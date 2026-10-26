@@ -451,12 +451,6 @@
   art: datei
   pfad: src/lib/projekte.ts
   enthaelt: linearProjekt
-- id: leitstand-haken-zaehler
-  produkt: leitstand
-  titel: Die Aufgaben-Karte zeigt „N von M Haken“ (SIN-754)
-  art: datei
-  pfad: src/app/page.tsx
-  enthaelt: Haken
 - id: leitstand-platz-part-of
   produkt: leitstand
   titel: Gemergter „Part of“-PR belegt keinen Dispatcher-Platz (SIN-781)

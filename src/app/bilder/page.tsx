@@ -1,32 +1,10 @@
 import { figmaLink, leseRegister } from "@/lib/figma-ansichten/figma-ansichten";
-import { Rahmen } from "../rahmen";
-import { Bild } from "./bild";
+import { BilderSeite } from "./bild";
 import "../freigabe.css";
 
 export const dynamic = "force-dynamic";
 
-/** Figma-Bilder (SIN-1038): je Registereintrag das aktuelle PNG, geladen über /api/figma-bild. */
+/** Figma-Bilder (SIN-1038): je Registereintrag das aktuelle PNG, geladen über /api/figma-bild. Register wird auf dem Server gelesen. */
 export default function Bilder() {
-  const ansichten = leseRegister();
-  return (
-    <Rahmen aktiv="bilder">
-      {() => (
-        <main className="seite freigabe">
-          <header className="freigabe-kopf">
-            <p className="augenbraue">Figma</p>
-            <h1>Bilder</h1>
-          </header>
-          {ansichten.length === 0 ? (
-            <p className="leer">Keine Bilder eingetragen</p>
-          ) : (
-            <ul className="bereiche">
-              {ansichten.map((a) => (
-                <Bild key={`${a.datei}/${a.node}`} ansicht={a} link={figmaLink(a)} />
-              ))}
-            </ul>
-          )}
-        </main>
-      )}
-    </Rahmen>
-  );
+  return <BilderSeite ansichten={leseRegister().map((a) => ({ ...a, link: figmaLink(a) }))} />;
 }
