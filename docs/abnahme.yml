@@ -28,6 +28,12 @@
   art: datei
   pfad: src/lib/agent-testnutzer/sitzung.ts
   enthaelt: baueStorageState
+- id: leitstand-testnutzer-regel
+  produkt: leitstand
+  titel: Die Testnutzer-Regel für Projekte mit Login steht in AGENTS.md (SIN-915)
+  art: datei
+  pfad: AGENTS.md
+  enthaelt: Testnutzer-Regel (SIN-915)
 - id: leitstand-testnutzer-routen
   produkt: leitstand
   titel: Die Routenliste des Testnutzers liegt im Repo (SIN-1031)
