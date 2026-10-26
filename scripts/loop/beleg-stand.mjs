@@ -13,7 +13,7 @@ export function kriterienHash(beschreibung) {
 
 /** Der GitHub-Spiegel ist Startkontext, nie die aktuelle Quelle für den Merge. */
 export async function ladeAuftrag(titel, token, holen = fetch) {
-  const id = /\bSIN-\d+\b/.exec(titel)?.[0];
+  const id = /\bSIN-\d+\b/i.exec(titel)?.[0]?.toUpperCase();
   if (!id || !token) throw new Error("Aktueller Linear-Auftrag fehlt: Kennung oder LINEAR_API_KEY fehlt");
   const res = await holen("https://api.linear.app/graphql", {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: token },
