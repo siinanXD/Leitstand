@@ -119,6 +119,7 @@ jobs:
           PRUEFER_MODELL: ${{ vars.PRUEFER_MODELL }}
           PRUEFER_PREIS_EIN: ${{ vars.PRUEFER_PREIS_EIN }}
           PRUEFER_PREIS_AUS: ${{ vars.PRUEFER_PREIS_AUS }}
+          PRUEFER_DECKEL_USD_TAG: ${{ vars.PRUEFER_DECKEL_USD_TAG }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         continue-on-error: true
