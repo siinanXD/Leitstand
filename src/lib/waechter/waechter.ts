@@ -72,7 +72,9 @@ export function repoAusLinks(links: { label: string; url: string }[]): string | 
   return null;
 }
 
+/** Pausiert heißt: Die Zusammenfassung enthält „pausiert“. */
 export const istPausiert = (p: Projekt) => /pausiert/i.test(p.zusammenfassung ?? "");
+/** Aktiv heißt: Linear-Status „In Progress“. */
 export const istAktiv = (p: Projekt) => p.statusTyp === "started";
 
 // SIN-941: Die Schlange füllt nur der Planer (Nachrücken, Planungs-Issues); der Wächter repariert Hänger und schreibt das Tages-Update.
@@ -136,7 +138,8 @@ export function erkennePrHaenger(prs: PrInfo[], jetzt: Date, issueweit: Map<stri
   return r;
 }
 
-export const reparaturText = (pr: PrInfo, runde: number) =>
+/** Bitte an `@claude`, einen roten `build` zu reparieren, mit Runde. */
+export const reparaturText =(pr: PrInfo, runde: number) =>
   `@claude Der Check build ist rot${pr.runUrl ? ` (${pr.runUrl})` : ""} und seit ${CI_WARTE_MINUTEN} Minuten kam kein Commit. Ursache im Log suchen, beheben, npm run typecheck, npm run lint und npm test lokal grün, dann auf diesen Branch pushen. Runde ${runde} von ${MAX_REPARATUR}.`;
 
 // ------------------------------------------------------------ Neue Projekte
@@ -154,7 +157,8 @@ export function kurzfassung(text: string | null): string | null {
   return satz.length <= 255 ? satz : `${satz.slice(0, 252).trimEnd()}…`;
 }
 
-export const istNeu = (p: Projekt, jetzt: Date) => jetzt.getTime() - ms(p.createdAt) <= NEU_TAGE * 24 * STUNDE;
+/** Neu heißt: jünger als NEU_TAGE. */
+export const istNeu =(p: Projekt, jetzt: Date) => jetzt.getTime() - ms(p.createdAt) <= NEU_TAGE * 24 * STUNDE;
 
 /** Nur neue, nicht pausierte Projekte in Backlog, Planned oder In Progress. Vor dem Laden der Issues prüfen (spart Linear-Abfragen). */
 export const kommtAlsNeuInFrage = (p: Projekt, jetzt: Date) =>
@@ -162,6 +166,7 @@ export const kommtAlsNeuInFrage = (p: Projekt, jetzt: Date) =>
 
 /** Ab wann erledigte Issues noch geladen werden: 48 h reichen für Tagesstand (24 h) und Hänger. */
 export const ERLEDIGT_SEIT_STUNDEN = 48;
+/** ISO-Zeitpunkt, ab dem erledigte Issues geladen werden. */
 export const erledigtSeit = (jetzt: Date) => new Date(jetzt.getTime() - ERLEDIGT_SEIT_STUNDEN * STUNDE).toISOString();
 
 export type EinrichtenPlan = {
@@ -205,6 +210,7 @@ export function einrichtenPlan(projekt: string): EinrichtenPlan {
       "6. Linear-Labels `claude`, `design`, `sinan`, `needs-human` im Team prüfen",
       "7. Supabase-Schema (`loop_events`, `loop_snapshot`) bei Bedarf",
       "8. Figma-Datei verknüpfen",
+      "9. Hat das Projekt einen Login: Agent-Testnutzer nach Vorlage SIN-913 (Regel SIN-915)",
       "",
       "Schritte, die nur Sinan kann, stehen als eigene `sinan`-Aufgaben im Projekt.",
     ].join("\n"),
@@ -227,6 +233,7 @@ export type Tagesstand = {
   haenger: string[];
 };
 
+/** Tagesstand eines Projekts: erledigt in 24 h, in Arbeit, wartet auf Sinan, Hänger. */
 export function tagesstand(issues: WaechterIssue[], haenger: HaengerAktion[], jetzt: Date): Tagesstand {
   const hIds = new Set(haenger.map((h) => h.issue.identifier));
   const eintrag = (i: LinearIssue) => `${i.identifier} ${i.title}`;
@@ -240,12 +247,14 @@ export function tagesstand(issues: WaechterIssue[], haenger: HaengerAktion[], je
   };
 }
 
+/** Linear-Gesundheit aus Hängern und offenen Sinan-Aufgaben. */
 export function gesundheit(s: Tagesstand): Gesundheit {
   if (s.haenger.length >= 2) return "offTrack";
   if (s.haenger.length === 1 || s.wartetAufSinan.length > 0) return "atRisk";
   return "onTrack";
 }
 
+/** Text des Tages-Updates als Markdown-Listen. */
 export function updateText(s: Tagesstand): string {
   const liste = (t: string[]) => (t.length ? t.map((x) => `- ${x}`).join("\n") : "- keine");
   return [
@@ -293,7 +302,8 @@ export function entscheidungenAusKommentaren(kommentare: string[]): Entscheidung
   return [...r.values()];
 }
 
-export const entscheidungsText = (e: Entscheidung) => `Entscheidung aus Linear (übernommen vom Wächter, SIN-651): ${e.antwort}`;
+/** PR-Kommentar mit der übernommenen Entscheidung. */
+export const entscheidungsText =(e: Entscheidung) => `Entscheidung aus Linear (übernommen vom Wächter, SIN-651): ${e.antwort}`;
 
 // ------------------------------------------------------------ Snapshot (SIN-572)
 
@@ -322,6 +332,7 @@ export function snapshotGrundOhneProjekt(namen: string[], ziel: { linearProjekt:
   return namen.includes(ziel.linearProjekt) ? null : `Linear-Projekt „${ziel.linearProjekt}“ nicht unter den ${namen.length} geladenen Projekten`;
 }
 
+/** Grund, warum der Snapshot für dieses Projekt ausfällt, sonst null. */
 export function snapshotUebersprungenGrund(p: Projekt, repo: string | null, ziel: { repo: string; linearProjekt: string }): string | null {
   if (p.name !== ziel.linearProjekt) return null;
   if (istPausiert(p)) return "Projekt pausiert (Zusammenfassung enthält „pausiert“)";
