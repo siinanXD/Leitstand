@@ -14,6 +14,24 @@ export const KOSTENDECKEL_USD = 0.1;
 export const MAX_AUSGABE_TOKENS = 6000;
 // SIN-970: Claude-Rückfall ohne Reasoning-Anteil, aber große PRs mit vielen Haken brauchen mehr als 6000 Antwort-Tokens.
 export const MAX_AUSGABE_TOKENS_RUECKFALL = 16000;
+// SIN-928: Stufe 2 (high) braucht mehr Reasoning-Tokens; eigener Deckel je Lauf, gesamt begrenzt durch den Tagesdeckel.
+export const MAX_AUSGABE_TOKENS_HOCH = 16000;
+export const KOSTENDECKEL_USD_HOCH = 0.3;
+export const DECKEL_USD_TAG = 1.2;
+export const FUNDLISTE_MARKER = "<!-- pruefer-fundliste -->";
+export type Denkstufe = "high" | "low";
+const GATE_PFADE = /^(\.github\/workflows\/|src\/middleware|src\/lib\/(auth|kopplung)\/|supabase\/migrations\/|scripts\/(pruefer|loop)\/)/;
+
+/** Gate-, Workflow-, Auth- oder Migrationsdatei im Diff. */
+export const istGateDiff = (dateien: string[]) => dateien.some((d) => GATE_PFADE.test(d));
+
+/** Stufen-Regel (SIN-927): `high` nur in der ersten Runde, bei Gate-Diffs oder mehr als 300 geänderten Zeilen; über dem Tagesdeckel immer `low`. */
+export function denkstufe(x: { ersteRunde: boolean; sicherheitsDiff: boolean; geaenderteZeilen: number; heuteKostenUsd: number; deckelUsd: number }): { stufe: Denkstufe; ueberDeckel: boolean } {
+  const gruendlich = x.ersteRunde || x.sicherheitsDiff || x.geaenderteZeilen > 300;
+  const ueberDeckel = gruendlich && x.heuteKostenUsd >= x.deckelUsd;
+  return { stufe: gruendlich && !ueberDeckel ? "high" : "low", ueberDeckel };
+}
+
 export const PROBEN_DATEI = "docs/abnahme.yml";
 const nachAktivierung = (text: string) => text.startsWith("[nach Aktivierung] ") || text.startsWith("\\[nach Aktivierung\\] ");
 const SCHWEREN: Schwere[] = ["hoch", "mittel", "niedrig"];
@@ -61,7 +79,7 @@ export const ANWEISUNG = [
 
 /** Braucht der PR eine Abnahme-Probe? Reine Doku-PRs nicht. */
 export const brauchtProbe = (dateien: string[]) => dateien.some((d) => /^(src|scripts|supabase|\.github)\//.test(d));
-// SIN-921: Proben je Issue in docs/abnahme/<name>.yml (SIN-896) zählen wie docs/abnahme.yml.
+/** Datei-Liste enthält eine Abnahme-Probe. SIN-921: Proben je Issue in docs/abnahme/<name>.yml (SIN-896) zählen wie docs/abnahme.yml. */
 export const hatProbe = (dateien: string[]) => dateien.some((d) => d === PROBEN_DATEI || /^docs\/abnahme\/[^/]+\.ya?ml$/.test(d));
 
 /** USD für einen Aufruf. */
@@ -75,14 +93,15 @@ export function lesePreise(ein: string | undefined, aus: string | undefined): Pr
 }
 
 /** Größter Diff in Zeichen, dessen Eingabe samt voller Ausgabe unter dem Deckel bleibt (grob 3 Zeichen je Token, 4000 Zeichen Vorgabetext). */
-export function maxDiffZeichen(p: Preise, deckel = KOSTENDECKEL_USD): number {
-  const frei = deckel - (MAX_AUSGABE_TOKENS * p.aus) / 1_000_000;
+export function maxDiffZeichen(p: Preise, deckel = KOSTENDECKEL_USD, ausgabe = MAX_AUSGABE_TOKENS): number {
+  const frei = deckel - (ausgabe * p.aus) / 1_000_000;
   return Math.max(0, Math.floor(((frei * 1_000_000) / p.ein) * 3) - 4000);
 }
 
 /** Schneidet den Diff ab; `gekuerzt` sagt, ob etwas fehlt. */
 export const begrenze = (diff: string, max: number) => (diff.length > max ? { text: diff.slice(0, max), gekuerzt: true } : { text: diff, gekuerzt: false });
 
+/** Nutzertext für das Modell: Issue, PR-Titel, Dateien und Diff. */
 export const eingabe = (a: { issue: string; titel: string; dateien: string[]; diff: string; gekuerzt: boolean }) =>
   `# Issue\n${a.issue}\n\n# PR-Titel\n${a.titel}\n\n# Geänderte Dateien\n${a.dateien.join("\n")}\n\n# Diff${a.gekuerzt ? " (gekürzt)" : ""}\n<diff>\n${a.diff}\n</diff>`;
 
@@ -182,6 +201,7 @@ export function bewerte(modell: Ergebnis, dateien: string[], gekuerzt: boolean, 
   return { ...modell, bestanden: (modell.bestanden || nurZurueckgestellt) && !funde.some((f) => f.schwere === "hoch"), funde, haken };
 }
 
+/** Mindestens ein Fund mit Schwere „hoch“. */
 export const hatHoch = (e: Ergebnis) => e.funde.some((f) => f.schwere === "hoch");
 
 /** SIN-909: nur echte Risiken (Sicherheit, Datenverlust, Rechte) setzen risk:high; „Beleg fehlt“ und Co. setzen `pruefer:offen`. */
@@ -201,6 +221,7 @@ export function prueferLabels(a: { risiko: boolean; bestanden: boolean; labels: 
 }
 
 export type Reviewer = "codex" | "claude";
+/** Zeile im Kommentar, welche API geprüft hat. */
 export const reviewerZeile = (r: Reviewer) => (r === "codex" ? "Reviewer: OpenAI API" : "Reviewer: Anthropic API (Rückfall, OpenAI-API-Kontingent erschöpft)");
 
 /** Ist die Antwort des Dienstes „Kontingent leer“ (und kein Fehler im Code)? */
@@ -233,16 +254,20 @@ export async function pruefeMitRueckfall<T>(haupt: () => Promise<T>, rueckfall: 
   }
 }
 
-export function kommentar(e: Ergebnis, modell: string, usd: number | null, reviewer: Reviewer = "codex"): string {
+/** Prüfer-Kommentar am PR: Urteil, Funde, Gate-Hinweise, Reviewer, Modell und Kosten. */
+export function kommentar(e: Ergebnis, modell: string, usd: number | null, reviewer: Reviewer = "codex", stufe?: { ersteRunde: boolean; stufe: Denkstufe; ueberDeckel?: boolean }): string {
   const zeilen = e.funde.map((f) => `- **${f.schwere}** \`${f.datei}${f.zeile ? `:${f.zeile}` : ""}\`: ${f.text.replace(/\s+/g, " ").trim()}`);
   return [
     MARKER,
+    // SIN-928: Die Fundliste der ersten Runde ist der Vertrag des PRs; Folgerunden prüfen nur nach (SIN-926).
+    ...(stufe?.ersteRunde ? [FUNDLISTE_MARKER] : []),
     `### Prüfer (zweites Modell): ${e.bestanden ? "bestanden" : "nicht bestanden"}`,
     zeilen.length ? zeilen.join("\n") : "Keine Funde.",
     hatRisiko(e) ? "\nSicherheitsfund „hoch“: Das Gate setzt `risk:high`, Auto-Merge wartet auf `freigegeben`." : "",
     !e.bestanden && !hatRisiko(e) ? "\nLabel `pruefer:offen`: Merge gesperrt, bis ein neuer Prüfer-Lauf auf dem aktuellen Head besteht. Sinan wird nicht gebraucht." : "",
+    stufe?.ueberDeckel ? "\nTagesdeckel für gründliche Prüfungen erreicht: diese Runde lief mit Denkstufe `low`." : "",
     `\n${reviewerZeile(reviewer)}`,
-    `<sub>Modell ${modell}${usd === null ? "" : `, Kosten ${usd.toFixed(4)} $`}</sub>`,
+    `<sub>Modell ${modell}${stufe ? `, Denkstufe ${stufe.stufe}` : ""}${usd === null ? "" : `, Kosten ${usd.toFixed(4)} $`}</sub>`,
     ...(e.haken?.length ? [hakenMarker(e.haken)] : []),
   ].join("\n");
 }

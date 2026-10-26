@@ -12,65 +12,33 @@
  */
 import { readFile } from "node:fs/promises";
 import { zaehleHaken } from "../../src/lib/ceo/fertig";
-import { ladePausenAlle } from "../kontingent/pausen";
 import { PROJEKTE } from "../../src/lib/projekte";
-import { ausLinear, gespiegelteIds, LABEL, linearId, MAX_REPARATUR, offeneSpiegel, type GithubIssue } from "../../src/lib/loop/auswahl";
-import { supabaseReservierung, verwaist, type Reservierung, type ReservierungsSpeicher } from "../../src/lib/loop/reservierung";
+import { ausLinear, gespiegelteIds, LABEL, linearId, type GithubIssue } from "../../src/lib/loop/auswahl";
+import type { Reservierung } from "../../src/lib/loop/reservierung";
 import {
   entscheidungenAusKommentaren,
   entscheidungsText,
-  erkenneIssueHaenger,
-  erkennePrHaenger,
   erledigtSeit,
   gesundheit,
   istAktiv,
   leitstandSnapshot,
   istPausiert,
   kommtAlsNeuInFrage,
-  MARKER_ZURUECK,
   pruefeNeuesProjekt,
   repoAusLinks,
-  reparaturText,
   snapshotGrundOhneProjekt,
   snapshotUebersprungenGrund,
   tagesstand,
   updateFaellig,
   updateText,
+  type HaengerAktion,
   type PrInfo,
   type Projekt,
   type WaechterIssue,
 } from "../../src/lib/waechter/waechter";
-
-
-const env = process.env;
-const DRY = env.DRY_RUN === "1";
-const jetzt = new Date();
-
-
-const log = (projekt: string, text: string) => console.log(`${DRY ? "[trocken] " : ""}${projekt}: ${text}`);
-
-async function linear<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  if (!env.LINEAR_API_KEY) throw new Error("LINEAR_API_KEY fehlt");
-  const res = await fetch("https://api.linear.app/graphql", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: env.LINEAR_API_KEY },
-    body: JSON.stringify({ query, variables }),
-  });
-  const json = (await res.json()) as { data?: T; errors?: unknown };
-  if (!res.ok || json.errors) throw new Error(`Linear: ${res.status} ${JSON.stringify(json.errors ?? "")}`);
-  return json.data as T;
-}
-
-async function gh<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  if (!env.GH_TOKEN) throw new Error("GH_TOKEN fehlt (Secret AGENT_WORKFLOW_TOKEN)");
-  const res = await fetch(`https://api.github.com${path}`, {
-    method: init.method ?? "GET",
-    headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
-    body: init.body ? JSON.stringify(init.body) : undefined,
-  });
-  if (!res.ok) throw new Error(`GitHub ${init.method ?? "GET"} ${path}: ${res.status} ${await res.text()}`);
-  return (res.status === 204 ? null : await res.json()) as T;
-}
+import { DRY, env, gh, jetzt, linear, log, neuesIssue, teamDaten } from "./netz";
+import { behandleHaenger, behandlePrHaenger, claimsAufraeumen, reservierungen } from "./reparatur";
+import { pruefeTestnutzerRegel } from "./testnutzer";
 
 // ------------------------------------------------------------------ Linear
 
@@ -143,30 +111,6 @@ async function ladeIssues(projektId: string): Promise<WaechterIssue[]> {
     completedAt: n.completedAt,
     kommentare: n.comments.nodes.map((c) => c.body),
   }));
-}
-
-async function teamDaten(teamId: string) {
-  const d = await linear<{ team: { states: { nodes: { id: string; name: string }[] }; labels: { nodes: { id: string; name: string }[] } } }>(
-    `query($t: String!) { team(id: $t) { states { nodes { id name } } labels(first: 250) { nodes { id name } } } }`,
-    { t: teamId },
-  );
-  const status = (name: string) => d.team.states.nodes.find((x) => x.name === name)?.id;
-  const label = (name: string) => d.team.labels.nodes.find((x) => x.name.toLowerCase() === name)?.id;
-  return { status, label };
-}
-
-async function kommentar(issueId: string, body: string) {
-  await linear(`mutation($id: String!, $b: String!) { commentCreate(input: { issueId: $id, body: $b }) { success } }`, { id: issueId, b: body });
-}
-
-async function neuesIssue(teamId: string, projektId: string, title: string, description: string, labels: string[], status = "Todo") {
-  const t = await teamDaten(teamId);
-  const labelIds = labels.map(t.label).filter((x): x is string => !!x);
-  if (labelIds.length < labels.length) console.log(`::warning::Linear-Label fehlt im Team (${labels.join(", ")}).`);
-  await linear(
-    `mutation($i: IssueCreateInput!) { issueCreate(input: $i) { success } }`,
-    { i: { teamId, projectId: projektId, title, description, labelIds, stateId: t.status(status) } },
-  );
 }
 
 let leadId: string | null | undefined;
@@ -245,69 +189,33 @@ async function schreibeSnapshot(zeile: ReturnType<typeof leitstandSnapshot>) {
 
 const ghOffeneSpiegel = (repo: string) => gh<GithubIssue[]>(`/repos/${repo}/issues?labels=${LABEL}&state=open&per_page=100`);
 
-/** SIN-760: Beim Zurücksetzen auf Todo den offenen Spiegel schließen, sonst bleibt das Issue „gespiegelt“. */
-async function schliesseSpiegel(repo: string, offene: GithubIssue[], identifier: string) {
-  for (const n of offeneSpiegel(offene, identifier)) {
-    await gh(`/repos/${repo}/issues/${n}/comments`, { method: "POST", body: { body: "neu gestartet" } });
-    await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: { state: "closed" } });
-  }
-}
-
-// ------------------------------------------------------------------ Reservierung (SIN-832)
-
-const reservierungen = (): ReservierungsSpeicher | null =>
-  env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY ? supabaseReservierung({ url: env.SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY }) : null;
-
-/** Läuft oder wartet im Repo ein Worker-Lauf (claude.yml)? `null`, wenn das nicht lesbar ist: dann bleibt jeder Claim. */
-async function workerLaeuft(repo: string): Promise<boolean | null> {
-  try {
-    for (const status of ["in_progress", "queued"]) {
-      const d = await gh<{ total_count: number }>(`/repos/${repo}/actions/workflows/claude.yml/runs?status=${status}&per_page=1`);
-      if (d.total_count > 0) return true;
-    }
-    return false;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Verwaiste Claims mit Beleg lösen (kein offener PR, kein Spiegel, kein laufender Worker, älter als 6 h).
- * Beleg ist dieser Wächter-Lauf; ohne Lauf-URL (lokal) wird nichts freigegeben.
- */
-async function claimsAufraeumen(projekt: string, repo: string, ids: string[], prs: PrInfo[], gespiegelt: Set<string>, stand: Reservierung[]) {
-  const speicher = reservierungen();
-  const beleg = env.GITHUB_RUN_ID ? `https://github.com/${env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand"}/actions/runs/${env.GITHUB_RUN_ID}` : null;
-  if (!speicher || !stand.length) return;
-  const laeuft = await workerLaeuft(repo);
-  const mitPr = new Set(prs.map((p) => linearId(p.titel)).filter((x): x is string => !!x));
-  for (const r of stand.filter((x) => x.claim && ids.includes(x.issue))) {
-    if (!verwaist(r, { offenerPr: mitPr.has(r.issue), gespiegelt: gespiegelt.has(r.issue), workerLaeuft: laeuft, jetzt })) continue;
-    log(projekt, `${r.issue}: Claim ${r.claim} verwaist (kein PR, kein Spiegel, kein laufender Worker, seit ${r.seit}) → freigeben`);
-    if (DRY || !beleg) continue;
-    if (!(await speicher.freigeben(r, beleg))) log(projekt, `${r.issue}: Freigabe verloren (Stand geändert), nächster Lauf prüft erneut`);
-  }
-}
-
-/**
- * Nach dem Zurücksetzen auf Todo (Kontingent-Abbruch oder 6 h ohne PR, Spiegel gerade geschlossen) den Claim im selben
- * Schritt lösen; Beleg ist dieser Wächter-Lauf. Ohne Lauf-URL (lokal) oder Supabase bleibt er.
- */
-async function claimNachZuruecksetzen(projekt: string, id: string, repo?: string) {
-  const speicher = reservierungen();
-  if (!speicher || !env.GITHUB_RUN_ID) return;
-  // 6 h ohne PR ist nur Zeitablauf: lösen erst, wenn belegt kein Worker-Lauf mehr läuft oder wartet (sonst später claimsAufraeumen).
-  if (repo && (await workerLaeuft(repo)) !== false) return log(projekt, `${id}: Claim bleibt, Worker-Lauf aktiv oder Zustand unbekannt`);
-  const beleg = `https://github.com/${env.GITHUB_REPOSITORY ?? "siinanXD/Leitstand"}/actions/runs/${env.GITHUB_RUN_ID}`;
-  try {
-    const r = await speicher.laden(id);
-    if (r.claim && !(await speicher.freigeben(r, beleg))) log(projekt, `${id}: Claim nach Zurücksetzen nicht gelöst (Stand geändert)`);
-  } catch (e) {
-    log(projekt, `${id}: Claim nach Zurücksetzen nicht lesbar: ${e instanceof Error ? e.message : e}`);
-  }
-}
-
 // ------------------------------------------------------------------ Ablauf
+
+/** SIN-762: Snapshot vor Pausen, Hängern und Reparaturen, damit ein Fehler dort ihn nicht einfriert. */
+async function snapshotLeitstand(projekt: string, issues: WaechterIssue[], prs: PrInfo[], repo: string, gespiegelt: Set<string>, fehler: string[]) {
+  // Linear-Link und PROJEKTE unterscheiden sich in der Schreibweise (siinanxd/leitstand vs. siinanXD/Leitstand).
+  if (repo.toLowerCase() !== PROJEKTE.find((x) => x.id === "leitstand")?.repo?.toLowerCase()) return;
+  const haken = await readFile("docs/FERTIG.md", "utf8").then(zaehleHaken, () => null);
+  const zeile = leitstandSnapshot(issues, prs, repo, haken, gespiegelt);
+  // Fehler im Feld `queue.fehler` (jsonb, keine Migration nötig).
+  if (fehler.length) Object.assign(zeile.queue, { fehler });
+  log(projekt, `Snapshot: ${JSON.stringify(zeile.queue)}, fertig ${haken ? `${haken.fertig} von ${haken.gesamt}` : "unbekannt"}`);
+  if (!DRY) await schreibeSnapshot(zeile);
+}
+
+/** Tages-Update, wenn das letzte älter als 24 Stunden ist. */
+async function tagesUpdate(projekt: Projekt, letztesUpdateAt: string | null, issues: WaechterIssue[], haenger: HaengerAktion[]) {
+  if (!updateFaellig(letztesUpdateAt, jetzt)) return;
+  const stand = tagesstand(issues, haenger, jetzt);
+  const g = gesundheit(stand);
+  log(projekt.name, `Projekt-Update (${g})`);
+  if (DRY) return;
+  await linear(`mutation($p: String!, $b: String!, $h: ProjectUpdateHealthType) { projectUpdateCreate(input: { projectId: $p, body: $b, health: $h }) { success } }`, {
+    p: projekt.id,
+    b: updateText(stand),
+    h: g,
+  });
+}
 
 async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | null; teamId: string }, repo: string) {
   const { projekt, teamId } = p;
@@ -325,49 +233,10 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
   };
   const [prs, offeneGh] = await Promise.all([teil("prs", () => ladePrs(repo), [] as PrInfo[]), teil("spiegel", () => ghOffeneSpiegel(repo), [] as GithubIssue[])]);
   const gespiegelt = gespiegelteIds(offeneGh);
-
-  // SIN-762: Snapshot vor Pausen, Hängern und Reparaturen, damit ein Fehler dort ihn nicht einfriert.
-  // Linear-Link und PROJEKTE unterscheiden sich in der Schreibweise (siinanxd/leitstand vs. siinanXD/Leitstand).
-  if (repo.toLowerCase() === PROJEKTE.find((x) => x.id === "leitstand")?.repo?.toLowerCase()) {
-    const haken = await readFile("docs/FERTIG.md", "utf8").then(zaehleHaken, () => null);
-    const zeile = leitstandSnapshot(issues, prs, repo, haken, gespiegelt);
-    // Fehler im Feld `queue.fehler` (jsonb, keine Migration nötig).
-    if (fehler.length) Object.assign(zeile.queue, { fehler });
-    log(projekt.name, `Snapshot: ${JSON.stringify(zeile.queue)}, fertig ${haken ? `${haken.fertig} von ${haken.gesamt}` : "unbekannt"}`);
-    if (!DRY) await schreibeSnapshot(zeile);
-  }
-
-  const team = await teamDaten(teamId);
+  await snapshotLeitstand(projekt.name, issues, prs, repo, gespiegelt, fehler);
 
   // Hänger vor der Schlange, damit zurückgesetzte Issues nicht doppelt zählen.
-  const claudePausen = (await ladePausenAlle()).filter((p) => p.dienst === "claude").map((p) => p.erstellt_at);
-  // Ohne geladene PRs/Spiegel wäre jeder Lauf ein „Hänger“: dann nichts zurücksetzen.
-  const haenger = fehler.length ? [] : erkenneIssueHaenger(issues, prs, jetzt, claudePausen);
-  for (const h of haenger) {
-    if (h.kontingent) {
-      log(projekt.name, `${h.issue.identifier} scheiterte am Claude-Kontingent → zurück auf Todo`);
-      if (DRY) continue;
-      const todo = team.status("Todo");
-      if (todo) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: todo });
-      await kommentar(h.issue.id, "Wächter: Der Lauf scheiterte am Claude-Kontingent, kein Hänger. Zurück auf Todo, startet nach der Pause von selbst.");
-      await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
-      await claimNachZuruecksetzen(projekt.name, h.issue.identifier);
-    } else if (h.art === "zuruecksetzen") {
-      log(projekt.name, `${h.issue.identifier} hängt seit über 6 h ohne PR → zurück auf Todo`);
-      if (DRY) continue;
-      const todo = team.status("Todo");
-      if (todo) await linear(`mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`, { id: h.issue.id, s: todo });
-      await kommentar(h.issue.id, `Wächter: seit über 6 Stunden In Progress ohne offenen PR. Zurück auf Todo (einmalig). ${MARKER_ZURUECK}`);
-      await schliesseSpiegel(repo, offeneGh, h.issue.identifier);
-      await claimNachZuruecksetzen(projekt.name, h.issue.identifier, repo);
-    } else {
-      log(projekt.name, `${h.issue.identifier} hängt erneut → needs-human`);
-      if (DRY) continue;
-      const l = team.label("needs-human");
-      if (l) await linear(`mutation($id: String!, $l: [String!]) { issueUpdate(id: $id, input: { addedLabelIds: $l }) { success } }`, { id: h.issue.id, l: [l] });
-      await kommentar(h.issue.id, "Wächter: hängt zum zweiten Mal ohne PR. Sinan entscheidet (needs-human).");
-    }
-  }
+  const haenger = await behandleHaenger(projekt.name, issues, prs, offeneGh, repo, await teamDaten(teamId), fehler.length > 0);
 
   // SIN-832: dauerhafte Claims und Reparaturzähler dieses Projekts; nicht lesbar = keine Reparatur, kein Aufräumen.
   const speicher = reservierungen();
@@ -375,57 +244,14 @@ async function aktivesProjekt(p: { projekt: Projekt; letztesUpdateAt: string | n
   // Alle Issues mit offenem PR und alle mit Claim: der Zähler gilt auch ohne aktiven Claim (Befund 4).
   const mitPr = prs.map((p) => linearId(p.titel)).filter((x): x is string => !!x);
   const stand = speicher ? await teil("reservierung", () => speicher.staende([...ids, ...mitPr]), [] as Reservierung[]) : [];
-  const zaehler = new Map(stand.map((r) => [r.issue, r.reparaturen]));
-  const reservierungLesbar = !!speicher && !fehler.some((f) => f.startsWith("reservierung:"));
-
-  for (const a of erkennePrHaenger(prs, jetzt, zaehler)) {
-    if (a.art === "reparatur") {
-      log(projekt.name, `PR #${a.pr.number} rot ohne Commit → @claude, Runde ${a.runde}`);
-      if (DRY) continue;
-      // Erst issueweit zählen, dann bitten. Ohne lesbaren Stand oder bei verlorenem Compare-and-swap keine Runde.
-      // PRs ohne Linear-Kennung (z. B. Dependabot) und Läufe ohne Supabase zählen wie bisher nur über Labels.
-      const id = linearId(a.pr.titel);
-      if (id && speicher) {
-        const r = reservierungLesbar ? await speicher.laden(id).catch(() => null) : null;
-        // Frisch geladenen Stand erneut gegen die Grenze prüfen, bevor gezählt wird.
-        if (r && r.reparaturen >= MAX_REPARATUR) {
-          log(projekt.name, `PR #${a.pr.number}: ${id} hat ${r.reparaturen} Runden (issueweit) → keine weitere`);
-          continue;
-        }
-        if (!r || !(await speicher.zaehleReparatur(r, a.pr.titel).catch(() => false))) {
-          log(projekt.name, `PR #${a.pr.number}: Reparaturzähler für ${id} nicht gezählt (Stand fehlt oder geändert) → keine Runde`);
-          continue;
-        }
-      }
-      await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: [`repair:${a.runde}`] } });
-      await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, { method: "POST", body: { body: reparaturText(a.pr, a.runde) } });
-    } else {
-      log(projekt.name, `PR #${a.pr.number} nach ${MAX_REPARATUR} Runden noch rot → needs-human`);
-      if (DRY) continue;
-      await gh(`/repos/${repo}/issues/${a.pr.number}/labels`, { method: "POST", body: { labels: ["needs-human"] } });
-      await gh(`/repos/${repo}/issues/${a.pr.number}/comments`, {
-        method: "POST",
-        body: { body: `Wächter: build ist nach ${MAX_REPARATUR} Reparaturrunden noch rot${a.pr.runUrl ? ` (${a.pr.runUrl})` : ""}. Stopp, Sinan entscheidet.` },
-      });
-    }
-  }
+  const lesbar = !!speicher && !fehler.some((f) => f.startsWith("reservierung:"));
+  await behandlePrHaenger(projekt.name, repo, prs, new Map(stand.map((r) => [r.issue, r.reparaturen])), speicher, lesbar);
 
   if (!fehler.length) await claimsAufraeumen(projekt.name, repo, ids, prs, gespiegelt, stand);
+  await pruefeTestnutzerRegel(projekt, teamId, repo).catch((e: Error) => console.log(`::warning::${projekt.name}: Testnutzer-Regel: ${e.message}`));
 
   // SIN-941: Die Schlange füllt nur der Planer (Nachrücken, Planungs-Issues).
-
-  if (updateFaellig(p.letztesUpdateAt, jetzt)) {
-    const stand = tagesstand(issues, haenger, jetzt);
-    const g = gesundheit(stand);
-    log(projekt.name, `Projekt-Update (${g})`);
-    if (!DRY) {
-      await linear(`mutation($p: String!, $b: String!, $h: ProjectUpdateHealthType) { projectUpdateCreate(input: { projectId: $p, body: $b, health: $h }) { success } }`, {
-        p: projekt.id,
-        b: updateText(stand),
-        h: g,
-      });
-    }
-  }
+  await tagesUpdate(projekt, p.letztesUpdateAt, issues, haenger);
 }
 
 async function neuesProjekt(p: { projekt: Projekt; teamId: string }) {

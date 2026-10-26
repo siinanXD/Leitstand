@@ -9,3 +9,4 @@ Routen, die ohne Design-Issue aus vorhandenen Komponenten und Tokens entstanden 
 | Kacheln „Was zählt (8 Wochen)“ und „Durchstich“, seit SIN-815 auf /details statt / (aus vorhandenen Klassen, Säulen als SVG mit Tokens) | 2026-10-15 | SIN-630 |
 | /wochen-check „Wochen-Check“ (Menüpunkt unter „Mehr“, Checkliste aus vorhandenen Klassen) | 2026-10-15 | SIN-631 |
 | /entscheidungen „Entscheidungen“ (Karten wie /freigabe) und Punkt „Entscheidungen: n“ in „Braucht dich“ auf / | 2026-10-23 | SIN-1013 |
+| /bilder „Bilder“ (Figma-Bilder aus docs/figma-ansichten.json, Karten wie /entscheidungen, noch ohne Menüpunkt) | 2026-10-26 | SIN-1038 |

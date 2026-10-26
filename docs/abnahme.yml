@@ -28,6 +28,12 @@
   art: datei
   pfad: src/lib/agent-testnutzer/sitzung.ts
   enthaelt: baueStorageState
+- id: leitstand-testnutzer-regel
+  produkt: leitstand
+  titel: Die Testnutzer-Regel für Projekte mit Login steht in AGENTS.md (SIN-915)
+  art: datei
+  pfad: AGENTS.md
+  enthaelt: Testnutzer-Regel (SIN-915)
 - id: leitstand-testnutzer-routen
   produkt: leitstand
   titel: Die Routenliste des Testnutzers liegt im Repo (SIN-1031)
@@ -79,6 +85,11 @@
   rest: loop_events?project=eq.leitstand&select=created_at&order=created_at.desc&limit=1
   zeitfeld: created_at
   max_alter_min: 180
+- id: leitstand-bilder
+  produkt: leitstand
+  titel: Die Seite /bilder antwortet (SIN-1038)
+  art: http
+  url: ${LEITSTAND_URL}/bilder
 - id: leitstand-health
   produkt: leitstand
   titel: Die Leitstand-App antwortet
@@ -177,7 +188,7 @@
   art: github
   repo: siinanXD/gedaechtnis
   pfad: Fehler/2026-10-20.md
-  enthaelt: Kein Diff
+  enthaelt: kein Diff
 
 # Lern-App
 - id: lernapp-snapshot
@@ -440,18 +451,38 @@
   art: datei
   pfad: README.md
   enthaelt: docs/architecture.svg
+- id: leitstand-readme-vitrine
+  produkt: leitstand
+  titel: Das README hat den Vitrinen-Abschnitt „What I learned“ (SIN-752)
+  art: datei
+  pfad: README.md
+  enthaelt: "## What I learned"
+- id: leitstand-github-profil
+  produkt: leitstand
+  titel: docs/github-profil.md schlägt Beschreibung und Topics je Loop-Repo vor (SIN-752)
+  art: datei
+  pfad: docs/github-profil.md
+  enthaelt: siinanXD/stromlauf-ai
+- id: lernapp-readme-vitrine
+  produkt: lernapp
+  titel: Das Lern-App-README beginnt mit Pitch, Why und Architektur-Diagramm (SIN-752)
+  art: github
+  repo: siinanXD/Content-Agent-Lernapp
+  pfad: README.md
+  enthaelt: docs/architecture.svg
+- id: stromlauf-readme-vitrine
+  produkt: leitstand
+  titel: Das stromlauf-ai-README hat den englischen Vitrinen-Abschnitt (SIN-752)
+  art: github
+  repo: siinanXD/stromlauf-ai
+  pfad: README.md
+  enthaelt: "## What I learned"
 - id: dispatch-je-repo
   produkt: leitstand
   titel: Der Dispatcher baut je Produkt-Repo (linearProjekt in projekte.ts)
   art: datei
   pfad: src/lib/projekte.ts
   enthaelt: linearProjekt
-- id: leitstand-haken-zaehler
-  produkt: leitstand
-  titel: Die Aufgaben-Karte zeigt „N von M Haken“ (SIN-754)
-  art: datei
-  pfad: src/app/page.tsx
-  enthaelt: Haken
 - id: leitstand-platz-part-of
   produkt: leitstand
   titel: Gemergter „Part of“-PR belegt keinen Dispatcher-Platz (SIN-781)
@@ -532,7 +563,7 @@
   art: github
   repo: siinanXD/gedaechtnis
   pfad: Entscheidungen/SIN-639.md
-  enthaelt: "datum: 2026-10-18"
+  enthaelt: "datum: 2026-10-15"
 - id: gedaechtnis-historie-status
   produkt: gedaechtnis
   titel: Historische Vault-Entscheidung behält ihren Status (SIN-615)
@@ -833,10 +864,10 @@
 
 - id: pruefer-wettlauf-reparatur
   produkt: leitstand
-  titel: repair.yml startet nach gescheitertem dispatchtem Prüfer-Lauf und liest die PR-Nummer aus dem Laufnamen
+  titel: repair.yml startet nach gescheitertem dispatchtem Prüfer-Lauf; loop.ts liest die PR-Nummer aus dem Laufnamen (SIN-1009)
   art: datei
-  pfad: .github/workflows/repair.yml
-  enthaelt: pruefer PR ([1-9][0-9]*)
+  pfad: src/lib/loop/pruefer-lauf.ts
+  enthaelt: PR ([1-9][0-9]*)$/
 
 # SIN-945: Worker liest den Auftrag per Skript
 - id: auftrag-lesen
@@ -1234,3 +1265,11 @@
   titel: loop_snapshot trägt das Feld e2e (Kennzahlen der E2E-Strecke, SIN-1073)
   art: db
   rest: loop_snapshot?project=eq.leitstand&select=e2e
+
+# SIN-928: Prüfer wählt die Denkstufe je Runde (high nur erste Runde, Gate-Diff, > 300 Zeilen; Tagesdeckel)
+- id: pruefer-denkstufe
+  produkt: leitstand
+  titel: Der Prüfer setzt reasoning_effort aus der Denkstufe statt fest low (SIN-928)
+  art: datei
+  pfad: scripts/pruefer/pruefer.ts
+  enthaelt: "reasoning_effort: s.stufe"
