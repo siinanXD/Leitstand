@@ -1,4 +1,4 @@
-import { leseRegister } from "@/lib/figma-ansichten/figma-ansichten";
+import { figmaLink, leseRegister } from "@/lib/figma-ansichten/figma-ansichten";
 import { Rahmen } from "../rahmen";
 import { Bild } from "./bild";
 import "../freigabe.css";
@@ -21,7 +21,7 @@ export default function Bilder() {
           ) : (
             <ul className="bereiche">
               {ansichten.map((a) => (
-                <Bild key={`${a.datei}/${a.node}`} ansicht={a} />
+                <Bild key={`${a.datei}/${a.node}`} ansicht={a} link={figmaLink(a)} />
               ))}
             </ul>
           )}

@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { browserClient } from "@/lib/browser-client";
-import { figmaLink, type Ansicht } from "@/lib/figma-ansichten/figma-ansichten";
+import type { Ansicht } from "@/lib/figma-ansichten/figma-ansichten";
 
 type Zustand = { art: "laedt" } | { art: "fehlt" } | { art: "ok"; url: string; stand: string };
 
 /** Holt das PNG mit Sitzungs-Token über die Route; jeder Fehler wird zum Satz „Bild nicht verfügbar“. */
-export function Bild({ ansicht }: { ansicht: Ansicht }) {
+export function Bild({ ansicht, link }: { ansicht: Ansicht; link: string }) {
   const [z, setZ] = useState<Zustand>({ art: "laedt" });
   useEffect(() => {
     let url: string | null = null;
@@ -16,8 +16,10 @@ export function Bild({ ansicht }: { ansicht: Ansicht }) {
       const { data } = (await browserClient()?.auth.getSession()) ?? { data: { session: null } };
       const res = await fetch(`/api/figma-bild?node=${encodeURIComponent(ansicht.node)}`, { headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` } }).catch(() => null);
       if (!res?.ok) return offen && setZ({ art: "fehlt" });
-      url = URL.createObjectURL(await res.blob());
-      if (offen) setZ({ art: "ok", url, stand: res.headers.get("X-Bild-Stand") ?? "" });
+      const blob = await res.blob();
+      if (!offen) return;
+      url = URL.createObjectURL(blob);
+      setZ({ art: "ok", url, stand: res.headers.get("X-Bild-Stand") ?? "" });
     })();
     return () => {
       offen = false;
@@ -43,7 +45,7 @@ export function Bild({ ansicht }: { ansicht: Ansicht }) {
       )}
       <p className="leer">
         {z.art === "ok" && z.stand ? `Stand ${new Date(z.stand).toLocaleString("de-DE", { timeZone: "Europe/Berlin" })} · ` : ""}
-        <a href={figmaLink(ansicht)} target="_blank" rel="noreferrer">
+        <a href={link} target="_blank" rel="noreferrer">
           In Figma öffnen
         </a>
       </p>
