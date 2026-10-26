@@ -838,10 +838,10 @@
 
 - id: pruefer-wettlauf-reparatur
   produkt: leitstand
-  titel: repair.yml startet nach gescheitertem dispatchtem Prüfer-Lauf und liest die PR-Nummer aus dem Laufnamen
+  titel: repair.yml startet nach gescheitertem dispatchtem Prüfer-Lauf; loop.ts liest die PR-Nummer aus dem Laufnamen (SIN-1009)
   art: datei
-  pfad: .github/workflows/repair.yml
-  enthaelt: pruefer PR ([1-9][0-9]*)
+  pfad: src/lib/loop/pruefer-lauf.ts
+  enthaelt: PR ([1-9][0-9]*)$/
 
 # SIN-945: Worker liest den Auftrag per Skript
 - id: auftrag-lesen
