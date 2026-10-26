@@ -210,7 +210,8 @@ export function nachruecken(issues: LinearIssue[], gespiegelt: Set<string>, max:
   const kandidaten = issues
     .filter((i) => i.stateType === "backlog" && !offenBlockiert(i))
     .filter((i) => !i.labels.some((l) => NIE_AUTOMATISCH.includes(l.toLowerCase())))
-    .sort((a, b) => rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt));
+    // SIN-1090: Issues mit worker-pfade zuerst; ohne Pfade laufen sie nur allein (Trend-Radar SIN-1087 rückte zweimal nach und hing).
+    .sort((a, b) => Number(!schreibPfade(a).length) - Number(!schreibPfade(b).length) || rang(a.priority) - rang(b.priority) || a.createdAt.localeCompare(b.createdAt));
   return kandidaten[0] ?? null;
 }
 

@@ -187,3 +187,10 @@ test("SIN-1090: startbares Issue ohne Pfade blockiert das Nachrücken nicht, wen
   const mitPfaden = issue("SIN-21", ["docs/y.md"]);
   assert.equal(nachruecken([mitPfaden, backlog], new Set(), 2), null, "Issue mit Pfaden bleibt startbar");
 });
+
+test("SIN-1090: Nachrücken bevorzugt Backlog-Issues mit Pfaden", () => {
+  const ohnePfade = { ...issue("SIN-30"), stateType: "backlog", labels: [], priority: 1 };
+  const mitPfaden = { ...issue("SIN-31", ["docs/z.md"]), stateType: "backlog", labels: [], priority: 3 };
+  assert.equal(nachruecken([ohnePfade, mitPfaden], new Set(), 2)?.identifier, "SIN-31");
+  assert.equal(nachruecken([ohnePfade], new Set(), 2)?.identifier, "SIN-30", "ohne Alternative rückt es weiter nach");
+});
