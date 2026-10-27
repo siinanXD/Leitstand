@@ -1,0 +1,14 @@
+- id: sin-1089-freigabe-label
+  produkt: leitstand
+  titel: SIN-1089 Freigabe setzt ausschließlich das Label
+  art: datei
+  pfad: src/lib/freigabe.ts
+  enthaelt: 'await netz.label(repo, nr, "freigegeben")'
+  enthaelt_nicht: '/merge'
+- id: sin-1089-freigabe-ohne-merge
+  produkt: leitstand
+  titel: SIN-1089 Freigabe hat keinen Merge-Aufruf
+  art: datei
+  pfad: src/lib/freigabe.ts
+  enthaelt: 'await netz.label(repo, nr, "freigegeben")'
+  enthaelt_nicht: '.merge('

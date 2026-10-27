@@ -5,7 +5,7 @@ import type { NativeReview } from "../../src/lib/pruefer/codex";
 import { bindeCodexAntworten, github, ladeAnforderungen, REPOS, seiten } from "./codex";
 
 type Kommentar = { id: number; body: string; created_at: string; updated_at: string; user: { login: string; type: string } | null };
-type Pr = { number: number; draft: boolean; labels: { name: string }[]; head: { sha: string; ref: string; repo: { full_name: string } | null } };
+type Pr = { number: number; title: string; draft: boolean; labels: { name: string }[]; head: { sha: string; ref: string; repo: { full_name: string } | null } };
 const DRY = process.env.DRY_RUN === "1";
 
 function pruefeQuelle() {
@@ -14,7 +14,7 @@ function pruefeQuelle() {
 }
 
 function pruefeAntwort(repo: string, pr: Pr): boolean {
-  if (pr.draft || pr.labels.some(l => l.name === "needs-human") || !/^(claude|codex)\//.test(pr.head.ref) || pr.head.repo?.full_name !== repo) return false;
+  if (pr.draft || pr.labels.some(l => l.name === "needs-human") || !(/^(claude|codex)\//.test(pr.head.ref) || /\bSIN-\d+\b/i.test(pr.title)) || pr.head.repo?.full_name !== repo) return false;
   const kommentare = seiten<Kommentar>(`repos/${repo}/issues/${pr.number}/comments?per_page=100`);
   const fragen = ladeAnforderungen(kommentare, "siinanXD");
   if (!fragen.some(f => f.head === pr.head.sha)) return false;

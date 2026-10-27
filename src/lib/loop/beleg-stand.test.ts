@@ -47,6 +47,7 @@ test("aktueller Linear-Auftrag ersetzt veralteten Spiegel; Fehler blockieren", a
   const holen = async () => new Response(JSON.stringify({ data: { issue: { identifier: "SIN-854", title: "Auftrag", description } } }));
   const a = await ladeAuftrag("fix(loop): Auftrag (SIN-854)", "fixture", holen);
   assert.equal(a.body, description);
+  assert.deepEqual(await ladeAuftrag("fix(loop): Auftrag (sin-854)", "fixture", holen), a);
   description = "1. geändertes Kriterium";
   const b = await ladeAuftrag("fix(loop): Auftrag (SIN-854)", "fixture", holen);
   assert.notEqual(a.hash, b.hash);
